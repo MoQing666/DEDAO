@@ -229,9 +229,10 @@ button:disabled { opacity: .4; cursor: default; }
 .stat-row .num { width: 96px; text-align: right; font-size: 12px; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
 .kv { background: rgba(0,0,0,.22); border: 1px solid #2e2942; padding: 4px 6px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-.kv label { color: var(--dim); font-size: 12px; }
+.kv label { color: var(--dim); font-size: 12px; flex: none; }
 .kv b { font-size: 14px; color: var(--gold); }
-.kv b.small { font-size: 12px; color: var(--text); max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv b.small { font-size: 12px; color: var(--text); min-width: 0; word-break: break-all; }
+.kv.wide { grid-column: span 2; }
 .stat-line { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
 .stat-line label { color: var(--dim); flex: none; width: 34px; }
 

@@ -207,6 +207,7 @@ const Engine = (function () {
     if (s.flags.petGrown) g *= 1.15;
     else if (s.flags.pet) g *= 1.05;
     g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
+    g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
     g *= 1 + equipStats(s).cult;
     let note = '';
     if ((s.elixirs.juling || 0) > 0) {
@@ -285,8 +286,9 @@ const Engine = (function () {
   }
   function applyReinc(s, meta) {
     s.reinc.cult = meta.reinc.cult || 0;
-    s.reinc.break = meta.reinc.break || 0;
     s.reinc.alchemy = meta.reinc.alchemy || 0;
+    s.reinc.alchemyDouble = meta.reinc.alchemyDouble || 0;
+    s.reinc.shesheng = meta.reinc.shesheng || 0;
     const list = REINCARNATION;
     list.forEach(function (r) {
       const n = meta.reinc[r.id] || 0;
@@ -294,8 +296,8 @@ const Engine = (function () {
       for (let i = 0; i < n; i++) {
         if (r.id === 'wu') s.wu++;
         else if (r.id === 'ti') s.ti++;
-        else if (r.id === 'stone') s.stone += 500;
-        else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 3;
+        else if (r.id === 'stone') s.stone += 1000;
+        else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 6;
         else if (r.id === 'tech0') { if (s.techs.indexOf('shengong') < 0) s.techs.push('shengong'); }
         else if (r.id === 'life20') s.lifeMax += 20;
       }
@@ -935,7 +937,12 @@ const Engine = (function () {
     const mg = moGain(s, 0.25);
     spend(s, cultCost(s));
     let note2 = '';
-    if (s.qi >= need) note2 = '（修为已满，可尝试突破！）';
+    const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
+    if (sheshengLv > 0) {
+      s.lifeMax -= sheshengLv;
+      note2 += '（舍生：寿元 -' + sheshengLv + '）';
+    }
+    if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);
     return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '，灵力 +' + mg + '。' + (r.note ? r.note : '') + note2;
   }
@@ -1084,9 +1091,12 @@ const Engine = (function () {
     s.herb -= f.cost.herb;
     const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.talents.indexOf('liancai') >= 0 ? 0.2 : 0) + (s.reinc.alchemy || 0) * 0.10 + (s.sect === 'dpxia' ? 0.2 : 0));
     if (Math.random() < chance) {
-      s.elixirs[f.out] = (s.elixirs[f.out] || 0) + 1;
+      let qty = 1;
+      const doubleChance = ((s.reinc && s.reinc.alchemyDouble) || 0) * 0.10;
+      if (doubleChance > 0 && Math.random() < doubleChance) qty = 2;
+      s.elixirs[f.out] = (s.elixirs[f.out] || 0) + qty;
       refreshStats(s); saveState(s);
-      return { ok: true, msg: '丹成！你炼出【' + ELIXIRS[f.out].name + '】一枚。' };
+      return { ok: true, msg: '丹成！你炼出【' + ELIXIRS[f.out].name + '】' + (qty > 1 ? '×' + qty : '一枚') + '。' + (qty > 1 ? '（双倍产出！）' : '') };
     }
     saveState(s);
     return { ok: false, msg: '炸炉了……灵草化作飞灰，你心疼地捂了捂胸口。' };
@@ -1121,21 +1131,21 @@ const Engine = (function () {
   function breakInfo(s) {
     const st = STAGES[s.idx];
     const nxt = STAGES[s.idx + 1];
-    let base = 0.8 + (s.wu - 5) * 0.01 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0) + (s.reinc.break || 0) * 0.05;
+    let base = 0.8 + (s.wu - 5) * 0.01 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0);
     let mode = 'small', trib = null, desc = '';
     if (st.realm === '元婴' && st.sub === '中期') {
-      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015 + (s.reinc.break || 0) * 0.05;
+      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (!nxt) {
-      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015 + (s.reinc.break || 0) * 0.05;
+      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (nxt.realm === '筑基') {
-      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0) + (s.reinc.break || 0) * 0.05;
+      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0);
       base = Math.min(base, 0.9);
       desc = '筑基无天劫，唯需破开尘障。你凝神静气，尝试以灵力重铸凡躯……';
     } else if (nxt.realm !== st.realm) {
       mode = 'trib'; trib = nxt.realm;
-      base = 0.55 + s.ti * 0.015 + (s.reinc.break || 0) * 0.05;
+      base = 0.55 + s.ti * 0.015;
       let body = s.linggen.body || {};
       base += (body.trib || 0) + (s.sect === 'xuantian' ? 0.05 : 0) + (s.arts.indexOf('jinylv') >= 0 ? 0.1 : 0);
       const eid = BREAK_ELIXIR[nxt.realm];

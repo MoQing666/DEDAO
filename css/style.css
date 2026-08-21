@@ -26,7 +26,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body {
-  font-family: 'YuYang', 'Zpix', 'SimSun', '宋体', monospace;
+  font-family: 'Zpix', 'SimSun', '宋体', monospace;
   background:
     radial-gradient(ellipse at 50% -10%, #2a2540 0%, transparent 60%),
     repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px),
@@ -37,6 +37,16 @@ body {
   image-rendering: pixelated;
   overflow: hidden;
 }
+
+/* ---- 标题用古风字体 ---- */
+h1, h2, h3, h4, .tower-title, .chapter-title, .chapter-sub, .settle-head h2,
+.logo-cn, .logo-sub, .end-detail h2, #end-title, #battle-title, #battle-sub {
+  font-family: 'YuYang', 'Zpix', 'SimSun', serif;
+}
+.chapter-title, .tower-title, .settle-head h2 {
+  letter-spacing: 6px;
+}
+
 .screen {
   max-width: 520px;
   margin: 0 auto;
@@ -198,7 +208,8 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .adv-tools .btn-small { padding: 4px 12px; font-size: 12px; }
 .battle-log { margin-top: 8px; }
-.battle-log .bl { font-size: 13px; color: var(--dim); margin: 3px 0; }
+.battle-log .bl { font-size: 13px; color: var(--dim); margin: 3px 0; font-family: 'Zpix', monospace; }
+#battle-title, #battle-sub { font-family: 'YuYang', serif; letter-spacing: 4px; }
 .hud-line { display: flex; align-items: center; margin-top: 4px; font-size: 13px; color: var(--dim); }
 .lcap { width: 34px; flex: none; }
 .lbar { flex: 1; height: 10px; background: #120f1a; border: 1px solid #3a3450; position: relative; }

@@ -6,6 +6,11 @@
   src: url('../assets/fonts/zpix.ttf') format('truetype');
   font-display: swap;
 }
+@font-face {
+  font-family: 'YuYang';
+  src: url('../assets/fonts/TsangerYuYangT-W05.woff2') format('woff2');
+  font-display: swap;
+}
 
 :root {
   --bg: #12101a;
@@ -21,7 +26,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body {
-  font-family: 'Zpix', 'SimSun', '宋体', monospace;
+  font-family: 'YuYang', 'Zpix', 'SimSun', '宋体', monospace;
   background:
     radial-gradient(ellipse at 50% -10%, #2a2540 0%, transparent 60%),
     repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px),

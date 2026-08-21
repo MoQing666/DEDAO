@@ -128,28 +128,14 @@
 
     $('st-wu').textContent = S.wu;
     $('st-ti').textContent = S.ti;
-    $('st-mo').textContent = S.mo + '/' + S.moMax;
     $('st-atk').textContent = S.atk;
     $('st-dun').textContent = S.dunSpeed || 1;
-    $('st-hp').textContent = S.hp + '/' + S.hpMax;
     $('st-linggen').textContent = S.linggen ? S.linggen.name : '-';
     $('st-sect').textContent = S.sect ? SECTS[S.sect].name : '散修';
     $('st-talent').textContent = S.talents.map(function (t) {
       const x = TALENTS.filter(function (y) { return y.id === t; })[0];
       return x ? x.name : '';
     }).join('、') || '无';
-    const xf = S.techEquip && S.techEquip.xinfa && TECHNIQUES[S.techEquip.xinfa];
-    const spellN = (S.techEquip && S.techEquip.shufa || []).length;
-    const dun = S.techEquip && S.techEquip.dunshu && TECHNIQUES[S.techEquip.dunshu];
-    const gearStr =
-      (xf ? '<span style="color:' + GRADE_COLOR[xf.grade] + '">[' + xf.name + '·修行中]</span>' : '<span class="dim">无心法</span>') +
-      (spellN ? '<span class="tech-chips">法术×' + spellN + '</span>' : '') +
-      (dun ? '<span class="tech-chips">[' + dun.name + ']</span>' : '') +
-      ' ─ ' +
-      (S.arts.length ? S.arts.map(function (a) {
-        return '<span class="gold">[' + ARTIFACTS[a].name + ']</span>';
-      }).join(' ') : '<span class="dim">无法宝</span>');
-    $('st-gear').innerHTML = gearStr;
 
     $('btn-cult-label').textContent = '修炼（' + Engine.cultCost(S) + '点）';
     $('btn-cult').classList.toggle('disabled', !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));

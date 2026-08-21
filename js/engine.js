@@ -963,7 +963,7 @@ const Engine = (function () {
       s.seen[ev.id] = 1;
       return ev;
     }
-    const pool = EVENTS.shejiao.filter(evOK(s, 1));
+    const pool = EVENTS.shejiao.concat(EVENTS.mijing).filter(evOK(s, 1));
     if (!pool.length) { spend(s, 1); return '这一带没有值得交谈的人，你独自练剑半日。'; }
     spend(s, 1);
     const ev = pickWeighted(pool);

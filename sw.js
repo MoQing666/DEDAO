@@ -1,4 +1,4 @@
-const CACHE = 'dedao-v1';
+const CACHE = 'dedao-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,8 @@ const ASSETS = [
   './js/data.js',
   './js/engine.js',
   './js/ui.js',
-  './manifest.json'
+  './manifest.json',
+  './assets/fonts/TsangerYuYangT-W05.woff2'
 ];
 
 self.addEventListener('install', function (e) {

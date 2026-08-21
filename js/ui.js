@@ -130,12 +130,6 @@
     $('st-ti').textContent = S.ti;
     $('st-atk').textContent = S.atk;
     $('st-dun').textContent = S.dunSpeed || 1;
-    $('st-linggen').textContent = S.linggen ? S.linggen.name : '-';
-    $('st-sect').textContent = S.sect ? SECTS[S.sect].name : '散修';
-    $('st-talent').textContent = S.talents.map(function (t) {
-      const x = TALENTS.filter(function (y) { return y.id === t; })[0];
-      return x ? x.name : '';
-    }).join('、') || '无';
 
     $('btn-cult-label').textContent = '修炼（' + Engine.cultCost(S) + '点）';
     $('btn-cult').classList.toggle('disabled', !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));

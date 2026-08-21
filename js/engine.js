@@ -940,6 +940,7 @@ const Engine = (function () {
     saveState(s);
   }
   function cultivate(s) {
+    if (s.cultedThisYear) return '今年已修炼过，明年再来吧。';
     if (!canAction(s, cultCost(s))) return '行动点不足';
     const need = requireNeed(s);
     if (s.qi >= need) return '修为已满，瓶颈隐隐颤动——该尝试突破了。';
@@ -948,6 +949,7 @@ const Engine = (function () {
     s.qi += actual;
     const mg = moGain(s, 0.25);
     spend(s, cultCost(s));
+    s.cultedThisYear = true;
     let note2 = '';
     const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
     if (sheshengLv > 0) {
@@ -1403,6 +1405,7 @@ const Engine = (function () {
     s.year += 1;
     s.actionsLeft = actionPoints(s);
     s.hp = s.hpMax;
+    s.cultedThisYear = false;
     s.mo = calcMoMax(s);
     let fenglu = null;
     if (s.sect && SECT_FENGLU[s.sect]) {

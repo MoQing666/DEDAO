@@ -131,8 +131,8 @@
     $('st-atk').textContent = S.atk;
     $('st-dun').textContent = S.dunSpeed || 1;
 
-    $('btn-cult-label').textContent = '修炼（' + Engine.cultCost(S) + '点）';
-    $('btn-cult').classList.toggle('disabled', !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));
+    $('btn-cult-label').textContent = S.cultedThisYear ? '修炼（今年已修炼）' : '修炼（' + Engine.cultCost(S) + '点）';
+    $('btn-cult').classList.toggle('disabled', S.cultedThisYear || !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));
     ['btn-arts', 'btn-social', 'btn-fate'].forEach(function (id) {
       $(id).classList.toggle('disabled', !Engine.canAction(S, 1));
     });

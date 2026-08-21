@@ -1100,6 +1100,144 @@
     refresh();
   }
 
+  /* ---------------- 属性面板 ---------------- */
+  function openAttrs() {
+    if (!S) return;
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    box.innerHTML = '';
+    const wrap = document.createElement('div');
+
+    // 基础属性
+    const h1 = document.createElement('h4');
+    h1.textContent = '基础属性';
+    wrap.appendChild(h1);
+    const st = safeStage(S);
+    const es = Engine.equipStats(S);
+    const cultR = Engine.cultGain(S);
+    const baseRows = [
+      ['境界', st.realm + ' ' + st.sub + '（' + S.idx + '阶）'],
+      ['悟性', S.wu + (es.wu ? ' (+' + es.wu + ')' : '')],
+      ['体魄', S.ti + (es.ti ? ' (+' + es.ti + ')' : '')],
+      ['攻击', S.atk],
+      ['气血', S.hp + ' / ' + S.hpMax],
+      ['灵力', S.mo + ' / ' + S.moMax],
+      ['遁速', S.dunSpeed || 1],
+      ['寿元', S.age + ' / ' + S.lifeMax],
+      ['修为', S.qi + ' / ' + Engine.requireNeed(S)],
+      ['一次修炼', '+' + cultR.gain + ' 修为']
+    ];
+    const tbl = document.createElement('div');
+    tbl.className = 'attr-table';
+    baseRows.forEach(function (r) {
+      const row = document.createElement('div');
+      row.className = 'attr-row';
+      row.innerHTML = '<span class="attr-label">' + r[0] + '</span><span class="attr-val">' + r[1] + '</span>';
+      tbl.appendChild(row);
+    });
+    wrap.appendChild(tbl);
+
+    // 灵根
+    const h2 = document.createElement('h4');
+    h2.textContent = '灵根';
+    wrap.appendChild(h2);
+    const lg = document.createElement('p');
+    if (S.linggen) {
+      lg.innerHTML = '<b style="color:#e8c15a">' + S.linggen.name + '</b> — ' + S.linggen.desc;
+      if (S.linggen.body) {
+        const parts = [];
+        if (S.linggen.body.atk) parts.push('攻击+' + S.linggen.body.atk);
+        if (S.linggen.body.hpMax) parts.push('气血上限+' + S.linggen.body.hpMax);
+        if (S.linggen.body.trib) parts.push('渡劫+' + Math.round(S.linggen.body.trib * 100) + '%');
+        if (S.linggen.body.mo) parts.push('灵力+' + S.linggen.body.mo);
+        if (parts.length) lg.innerHTML += '<br><span class="dim">加成：' + parts.join('，') + '</span>';
+      }
+    } else {
+      lg.textContent = '未觉醒';
+    }
+    wrap.appendChild(lg);
+
+    // 命格
+    const h3 = document.createElement('h4');
+    h3.textContent = '命格';
+    wrap.appendChild(h3);
+    if (S.talents.length) {
+      S.talents.forEach(function (t) {
+        const x = TALENTS.filter(function (y) { return y.id === t; })[0];
+        if (!x) return;
+        const p = document.createElement('p');
+        p.innerHTML = '<b style="color:#e8c15a">' + x.name + '</b> — ' + x.desc;
+        wrap.appendChild(p);
+      });
+    } else {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '无命格';
+      wrap.appendChild(p);
+    }
+
+    // 宗门
+    const h4 = document.createElement('h4');
+    h4.textContent = '宗门';
+    wrap.appendChild(h4);
+    const sectP = document.createElement('p');
+    if (S.sect) {
+      const sc = SECTS[S.sect];
+      sectP.innerHTML = '<b style="color:#e8c15a">' + sc.name + '</b> — ' + sc.desc;
+    } else {
+      sectP.textContent = '散修（未加入宗门）';
+    }
+    wrap.appendChild(sectP);
+
+    // 装备加成
+    const h5 = document.createElement('h4');
+    h5.textContent = '装备加成';
+    wrap.appendChild(h5);
+    const eqP = document.createElement('p');
+    const eqParts = [];
+    if (es.hpMax) eqParts.push('气血上限+' + es.hpMax);
+    if (es.atk) eqParts.push('攻击+' + es.atk);
+    if (es.wu) eqParts.push('悟性+' + es.wu);
+    if (es.ti) eqParts.push('体魄+' + es.ti);
+    if (es.cult) eqParts.push('修炼+' + Math.round(es.cult * 100) + '%');
+    eqP.textContent = eqParts.length ? eqParts.join('，') : '无装备加成';
+    eqP.className = eqParts.length ? '' : 'dim';
+    wrap.appendChild(eqP);
+
+    // 心法/遁术
+    const h6 = document.createElement('h4');
+    h6.textContent = '功法';
+    wrap.appendChild(h6);
+    const xf = S.techEquip && S.techEquip.xinfa && TECHNIQUES[S.techEquip.xinfa];
+    const dun = S.techEquip && S.techEquip.dunshu && TECHNIQUES[S.techEquip.dunshu];
+    const spells = (S.techEquip && S.techEquip.shufa || []).map(function (t) { return TECHNIQUES[t]; });
+    const techP = document.createElement('p');
+    const techParts = [];
+    if (xf) techParts.push('心法：[' + xf.name + '] 修炼+' + Math.round((xf.mult - 1) * 100) + '%');
+    if (dun) techParts.push('遁术：[' + dun.name + ']');
+    if (spells.length) techParts.push('法术：' + spells.map(function (s) { return s.name; }).join('、'));
+    techP.textContent = techParts.length ? techParts.join('。') : '无功法';
+    techP.className = techParts.length ? '' : 'dim';
+    wrap.appendChild(techP);
+
+    // 轮回加成
+    const h7 = document.createElement('h4');
+    h7.textContent = '轮回加成';
+    wrap.appendChild(h7);
+    const reincP = document.createElement('p');
+    const reincParts = [];
+    if ((S.reinc.cult || 0) > 0) reincParts.push('道种：修炼+' + (S.reinc.cult * 10) + '%');
+    if ((S.reinc.alchemy || 0) > 0) reincParts.push('丹心：炼丹+' + (S.reinc.alchemy * 10) + '%');
+    if ((S.reinc.alchemyDouble || 0) > 0) reincParts.push('丹心：双倍产出+' + (S.reinc.alchemyDouble * 10) + '%');
+    if ((S.reinc.shesheng || 0) > 0) reincParts.push('舍生：修炼+' + (S.reinc.shesheng * 10) + '%，-1寿元/次');
+    reincP.textContent = reincParts.length ? reincParts.join('。') : '无轮回加成';
+    reincP.className = reincParts.length ? '' : 'dim';
+    wrap.appendChild(reincP);
+
+    box.appendChild(wrap);
+  }
+
   /* ---------------- 装备页 ---------------- */
   function openGear() {
     showScreen('gear');
@@ -2009,6 +2147,7 @@
     $('modal').onclick = function (e) { if (e.target === $('modal')) closeModal(); };
 
     $('t-load').onclick = function () { openSaveModal(false); };
+    $('btn-attrs').onclick = function () { if (!S) return; openAttrs(); };
     $('btn-tech').onclick = function () { if (!S) return; openTech(); };
     $('btn-settings').onclick = function () { openSettings(); };
     $('adv-bag').onclick = function () { if (S) openModal('bag'); };

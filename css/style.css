@@ -367,6 +367,13 @@ button:disabled { opacity: .4; cursor: default; }
 .modal-inner h3 { color: var(--gold); margin: 6px 0 10px; font-size: 15px; }
 .modal-inner h4 { color: var(--gold); margin: 12px 0 6px; font-size: 14px; }
 
+/* ---------------- 属性面板 ---------------- */
+.attr-table { margin: 8px 0; }
+.attr-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #2e2942; font-size: 13px; }
+.attr-row:last-child { border-bottom: none; }
+.attr-label { color: var(--dim); }
+.attr-val { color: var(--gold); text-align: right; }
+
 /* ---------------- 设置 / 存档 / 功法 ---------------- */
 .btn-small.maxed,
 .btn-small:disabled { background: transparent; color: var(--dim); border-color: #4a4360; opacity: .7; }

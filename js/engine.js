@@ -1547,7 +1547,7 @@ const Engine = (function () {
     endLife: endLife, useElixir: useElixir,
     runEvent: runEvent, applyOps: applyOps,
     combatStart: combatStart, combatAct: combatAct, combatAuto: combatAuto,
-    equipStats: equipStats, getBestShufa: getBestShufa, getDunshu: getDunshu,
+    equipStats: equipStats, cultGain: cultGain, getBestShufa: getBestShufa, getDunshu: getDunshu,
     findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, gainEquip: gainEquip,
     startAdventure: startAdventure, advGenLayer: advGenLayer, advResolve: advResolve,
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,

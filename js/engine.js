@@ -939,8 +939,8 @@ const Engine = (function () {
     let note2 = '';
     const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
     if (sheshengLv > 0) {
-      s.lifeMax -= sheshengLv;
-      note2 += '（舍生：寿元 -' + sheshengLv + '）';
+      s.lifeMax -= 1;
+      note2 += '（舍生：寿元 -1）';
     }
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);

@@ -188,7 +188,7 @@ const Engine = (function () {
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
-    if (s.talents.indexOf('kejian') >= 0) a *= 1.3;
+    if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
     if (s.linggen && s.linggen.body && s.linggen.body.atk) a += s.linggen.body.atk;
     if (s.arts.indexOf('qingfeng') >= 0) a += 20;
     if (s.sect && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
@@ -201,7 +201,7 @@ const Engine = (function () {
     if (s.wu >= 10) g *= 1.1;
     g *= techMult(s);
     if (s.linggen) g *= (s.linggen.qiMul || 1);
-    if (s.talents.indexOf('daoti') >= 0) g *= 1.3;
+    if (s.talents.indexOf('daoti') >= 0) g *= 1.1;
     if (s.arts.indexOf('juling') >= 0) g *= 1.15;
     if (s.flags.daoLu) g *= 1.1;
     if (s.flags.petGrown) g *= 1.15;
@@ -350,6 +350,7 @@ const Engine = (function () {
     const t = TALENTS.filter(function (x) { return x.id === talentId; })[0];
     if (t && t.apply) {
       if (t.apply.wu) s.wu += t.apply.wu;
+      if (t.apply.ti) s.ti += t.apply.ti;
       if (t.apply.life) s.lifeMax += t.apply.life;
     }
     if (s.bg && s.bg.flavor.stone) s.stone += s.bg.flavor.stone;
@@ -381,7 +382,13 @@ const Engine = (function () {
       switch (k) {
         case 'qi': s.qi += v; out.push('修为 ' + (v > 0 ? '+' : '') + v); break;
         case 'hp': s.hp += v; out.push('气血 ' + (v > 0 ? '+' : '') + v); break;
-        case 'stone': s.stone += v; out.push('灵石 ' + (v > 0 ? '+' : '') + v); break;
+        case 'stone': {
+          let sv = v;
+          if (s.talents.indexOf('fuyuan') >= 0 && sv > 0) sv = Math.round(sv * 1.10);
+          s.stone += sv;
+          out.push('灵石 ' + (sv > 0 ? '+' : '') + sv);
+          break;
+        }
         case 'herb': s.herb += v; out.push('灵草 ' + (v > 0 ? '+' : '') + v); break;
         case 'iron': s.iron += v; out.push('灵铁 ' + (v > 0 ? '+' : '') + v); break;
         case 'life': s.lifeMax += v; out.push('寿元 ' + (v > 0 ? '+' : '') + v); break;
@@ -650,7 +657,12 @@ const Engine = (function () {
     }
     if (b.win) {
       const gains = [];
-      if (b.loot.stone) { s.stone += b.loot.stone; gains.push('灵石 +' + b.loot.stone); }
+      if (b.loot.stone) {
+        let ls = b.loot.stone;
+        if (s.talents.indexOf('fuyuan') >= 0) ls = Math.round(ls * 1.10);
+        s.stone += ls;
+        gains.push('灵石 +' + ls);
+      }
       if (b.loot.herb) { s.herb += b.loot.herb; gains.push('灵草 +' + b.loot.herb); }
       if (b.loot.iron) { s.iron += b.loot.iron; gains.push('灵铁 +' + b.loot.iron); }
       if (b.loot.elixirs) gains.push.apply(gains, applyOps(s, { elixirs: b.loot.elixirs }));
@@ -1040,20 +1052,6 @@ const Engine = (function () {
       if (!pool.length) return null;
       const picked = pickWeighted(pool);
       s.seen[picked.id] = 1;
-      if (s.talents.indexOf('fuyuan') >= 0 && picked.effect) {
-        const e = picked.effect;
-        const d = {};
-        ['stone', 'herb', 'iron'].forEach(function (k) {
-          if (typeof e[k] === 'number') d[k] = e[k] * 2;
-        });
-        d.qi = e.qi;
-        d.hp = e.hp;
-        if (Object.keys(d).length) {
-          const copy = JSON.parse(JSON.stringify(picked));
-          copy.effect = d;
-          return copy;
-        }
-      }
       return picked;
     })();
     if (!ev) { spend(s, 1); return '你巡山半日，一无所获。'; }
@@ -1131,7 +1129,7 @@ const Engine = (function () {
   function breakInfo(s) {
     const st = STAGES[s.idx];
     const nxt = STAGES[s.idx + 1];
-    let base = 0.8 + (s.wu - 5) * 0.01 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0);
+    let base = 0.8 + (s.wu - 5) * 0.01;
     let mode = 'small', trib = null, desc = '';
     if (st.realm === '元婴' && st.sub === '中期') {
       mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
@@ -1140,7 +1138,7 @@ const Engine = (function () {
       mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (nxt.realm === '筑基') {
-      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015 + (s.talents.indexOf('dayili') >= 0 ? 0.15 : 0);
+      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015;
       base = Math.min(base, 0.9);
       desc = '筑基无天劫，唯需破开尘障。你凝神静气，尝试以灵力重铸凡躯……';
     } else if (nxt.realm !== st.realm) {

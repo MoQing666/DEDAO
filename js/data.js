@@ -123,13 +123,13 @@ const LINGGEN_POOL = [
 
 /* ---------------- 开局天赋 ---------------- */
 const TALENTS = [
-  { id: 'daoti',   name: '天生道体',   desc: '天地灵气亲近你，修炼速度 +30%。',  apply: { cultMul: 0.3 } },
-  { id: 'dayili',  name: '大毅力',     desc: '心志坚如铁石，突破成功率 +15%。',  apply: { breakMul: 0.15 } },
+  { id: 'daoti',   name: '天生道体',   desc: '天地灵气亲近你，修炼速度 +10%。',  apply: { cultMul: 0.1 } },
   { id: 'liancai', name: '炼丹奇才',   desc: '丹火亲和，炼丹成功率 +20%。',      apply: { alchemyMul: 0.2 } },
-  { id: 'fuyuan',  name: '福缘深厚',   desc: '贵人相助，机缘事件奖励翻倍。',    apply: { fortune: true } },
-  { id: 'kejian',  name: '天生剑胚',   desc: '剑心通明，攻击 +30%。',           apply: { atkMul: 0.3 } },
+  { id: 'fuyuan',  name: '福缘深厚',   desc: '财源广进，获得灵石时 +10%。',      apply: { stoneMul: 0.10 } },
+  { id: 'kejian',  name: '天生剑胚',   desc: '剑心通明，攻击 +20%。',           apply: { atkMul: 0.2 } },
   { id: 'shengji', name: '生生不息',   desc: '寿元 +40 载。',                   apply: { life: 40 } },
-  { id: 'tongmei', name: '大智若愚',   desc: '大智若愚，初始悟性 +2。',         apply: { wu: 2 } }
+  { id: 'tongmei', name: '大智若愚',   desc: '大智若愚，初始悟性 +2。',         apply: { wu: 2 } },
+  { id: 'qixue',   name: '气血充足',   desc: '先天体魄强健，体魄 +2。',         apply: { ti: 2 } }
 ];
 
 /* ---------------- 名字彩蛋 ---------------- */

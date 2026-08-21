@@ -197,7 +197,7 @@ const Engine = (function () {
     return Math.round(a);
   }
   function cultGain(s) {
-    let g = (60 + s.wu * 20) * (1 + 0.3 * bigIdxOf(s));
+    let g = (60 + s.wu * 10) * (1 + 0.3 * bigIdxOf(s));
     if (s.wu >= 10) g *= 1.1;
     g *= techMult(s);
     if (s.linggen) g *= (s.linggen.qiMul || 1);
@@ -317,7 +317,7 @@ const Engine = (function () {
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
       sect: null, broken: 0, actionsLeft: 3,
       year: 1, flags: {}, seen: {}, log: [], lifeLog: [], dead: false,
-      endReason: null, lifeMax: 150, reinc: {},
+      endReason: null, lifeMax: 70, reinc: {},
       equip: { head: null, body: null, leg: null, treasure: [] },
       trib: null, field: [], mine: { depth: 0 },
       inventory: [], battle: null, adv: null

@@ -70,11 +70,13 @@ const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05
 
 /* ---------------- 法宝（炼器产物） ---------------- */
 const ARTIFACTS = {
-  qingfeng: { name: '青锋剑', type: '攻', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
-  xuantie:  { name: '玄铁甲', type: '守', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
-  juling:   { name: '聚灵珠', type: '辅', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +15%' },
-  jinylv:   { name: '金缕衣', type: '守', desc: '天蚕金丝所织，万法不侵。', effect: '渡劫成功率 +10%' },
-  poefu:    { name: '破厄符', type: '咒', desc: '古符一枚，生死关头可挡一次灾厄。', effect: '渡劫失败时免死一次' }
+  // 秘境一(炼气-筑基): 黄级法宝
+  qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
+  poefu:    { name: '破厄符', type: '咒', grade: '黄', desc: '古符一枚，生死关头可挡一次灾厄。', effect: '渡劫失败时免死一次' },
+  // 秘境二(金丹-元婴): 地天级法宝
+  xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
+  juling:   { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +15%' },
+  jinylv:   { name: '金缕衣', type: '守', grade: '天', desc: '天蚕金丝所织，万法不侵。', effect: '渡劫成功率 +10%' }
 };
 
 /* ---------------- 材料与货币 ---------------- */
@@ -86,11 +88,14 @@ const MATERIALS = {
 
 /* ---------------- 炼器丹方（配方） ---------------- */
 const FORMULAS = [
-  { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron: 20 }, needRealm: 0 },
-  { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron: 30 }, needRealm: 1 },
-  { id: 'juling',   out: 'juling',   type: '法宝', cost: { iron: 40 }, needRealm: 1 },
-  { id: 'jinylv',   out: 'jinylv',   type: '法宝', cost: { iron: 60 }, needRealm: 2 },
-  { id: 'poefu',    out: 'poefu',    type: '法宝', cost: { iron: 25 }, needRealm: 0 },
+  // 法宝: 秘境一(炼气-筑基)产物
+  { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron: 15 }, needRealm: 0, grade: '黄' },
+  { id: 'poefu',    out: 'poefu',    type: '法宝', cost: { iron: 20 }, needRealm: 0, grade: '黄' },
+  // 法宝: 秘境二(金丹-元婴)产物
+  { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron: 35 }, needRealm: 2, grade: '地' },
+  { id: 'juling',   out: 'juling',   type: '法宝', cost: { iron: 45 }, needRealm: 2, grade: '地' },
+  { id: 'jinylv',   out: 'jinylv',   type: '法宝', cost: { iron: 60 }, needRealm: 2, grade: '天' },
+  // 丹药
   { id: 'juling_pill', out: 'juling', type: '丹',  cost: { herb: 5 },  needRealm: 0 },
   { id: 'zhuji_pill',  out: 'zhuji',  type: '丹',  cost: { herb: 10 }, needRealm: 0 },
   { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb: 20 }, needRealm: 1 },
@@ -1235,6 +1240,22 @@ const ADV_SETTINGS = [
   '星光倒悬的诡异洞窟，天顶有星辰在缓缓流转。',
   '爬满藤蔓的废弃宫殿，檐角滴着不知名的水。',
   '暗河奔涌的地底河道，水声在石壁间来回冲撞。'
+];
+// 秘境一(炼气-筑基): 低级秘境
+const ADV_SETTINGS_1 = [
+  '黑雾弥漫的乱葬岗，磷火在墓碑间游走。',
+  '白骨累累的古战场，锈蚀的兵刃插满大地。',
+  '草木疯长的潮湿峡谷，雾气浓得化不开。',
+  '城外荒废的道观，蛛网封住了半扇门。',
+  '山脚下的野林，落叶下隐约有灵光闪烁。'
+];
+// 秘境二(金丹-元婴): 高级秘境
+const ADV_SETTINGS_2 = [
+  '星光倒悬的诡异洞窟，天顶有星辰在缓缓流转。',
+  '爬满藤蔓的废弃宫殿，檐角滴着不知名的水。',
+  '暗河奔涌的地底河道，水声在石壁间来回冲撞。',
+  '雷云翻涌的天坑，电弧在岩壁间跳跃。',
+  '远古祭坛的废墟，石柱上刻满了失传的符文。'
 ];
 const ADV_NODES = {
   combat:   { name: '遭遇战',   icon: '⚔', desc: '前方妖气冲天，一场恶战在所难免。' },

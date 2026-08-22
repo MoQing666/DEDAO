@@ -433,14 +433,37 @@
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */
   function actExplore() {
-    const r = Engine.startAdventure(S);
-    if (r.ok === false) { log(r.msg || '行动点不足'); afterAction(); return; }
-    // 播放探索音效
-    if (typeof AudioManager !== 'undefined') {
-      AudioManager.playSfx('explore');
-      AudioManager.playBgm('adventure');
+    // 筑基后可选择秘境类型
+    if (bigIdxOf(S) >= 1) {
+      showChapter('选择秘境', [
+        '你修为已至筑基，可踏入更深层的秘境。',
+        '低级秘境安稳，高级秘境凶险——但回报也更丰厚。'
+      ], {
+        subtitle: '秘境分层',
+        choices: [
+          { t: '秘境一 · 炼气筑基级\n黄玄级产物，适合当前境界', advType: 1 },
+          { t: '秘境二 · 金丹元婴级\n地天级产物，凶险但回报丰厚', advType: 2 }
+        ]
+      }).then(function (r) {
+        if (!r || !r.pick) return;
+        const type = r.pick.advType || 1;
+        const res = Engine.startAdventure(S, type);
+        if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
+        if (typeof AudioManager !== 'undefined') {
+          AudioManager.playSfx('explore');
+          AudioManager.playBgm('adventure');
+        }
+        advIntro();
+      });
+    } else {
+      const r = Engine.startAdventure(S, 1);
+      if (r.ok === false) { log(r.msg || '行动点不足'); afterAction(); return; }
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playSfx('explore');
+        AudioManager.playBgm('adventure');
+      }
+      advIntro();
     }
-    advIntro();
   }
   function advIntro() {
     const a = S.adv;

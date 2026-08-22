@@ -516,7 +516,7 @@ const Engine = (function () {
   }
 
   /* ---------------- 品质与境界匹配（夺宝） ---------------- */
-  const REALM_TIER_RANGE = [[1, 2], [2, 3], [3, 4], [4, 5]];
+  const REALM_TIER_RANGE = [[1, 2], [1, 2], [3, 4], [3, 4]];
   function realmTierRange(bi) {
     const r = REALM_TIER_RANGE[Math.max(0, Math.min(3, bi))];
     return r;
@@ -701,15 +701,15 @@ const Engine = (function () {
   }
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */
-  const TECH_DROPS = {
-    0: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao'],
-    1: ['changchun', 'leiyin', 'yingdun', 'yuhuo'],
-    2: ['taixuan', 'hanshuang', 'leiyin', 'tiangang', 'suodi'],
-    3: ['taixuan', 'hundun', 'jianqi', 'suodi'],
-    4: ['hundun', 'kaitian', 'wanjian', 'jianqi']
-  };
-  function enemyGen(s, tag, depth) {
-    const bi = Math.min(bigIdxOf(s), 3);
+  // 秘境一(炼气-筑基): 黄玄级功法
+  const TECH_DROPS_1 = ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'];
+  // 秘境二(金丹-元婴): 地天级功法
+  const TECH_DROPS_2 = ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'];
+  function enemyGen(s, tag, depth, advType) {
+    // advType: 1=秘境一(炼气-筑基), 2=秘境二(金丹-元婴)
+    const type = advType || s.advType || 1;
+    const maxBi = type === 1 ? 1 : 3; // 秘境一最高筑基, 秘境二最高元婴
+    const bi = Math.min(bigIdxOf(s), maxBi);
     const pool = MONSTER_POOL[['lianqi', 'zhuji', 'jindan', 'yuanying'][bi]];
     const m = pool[Math.floor(Math.random() * pool.length)];
     const elite = tag === 'elite', boss = tag === 'boss' || tag === 'final';
@@ -720,21 +720,31 @@ const Engine = (function () {
     const loot = { stone: Math.round((30 + depth * 25) * realmM * (elite ? 1.6 : 1) * (boss ? 3 : 1)) };
     if (Math.random() < 0.3 + depth * 0.08) loot.herb = 1 + Math.floor(Math.random() * (1 + depth));
     if (Math.random() < 0.25 + depth * 0.06) loot.iron = 1 + Math.floor(Math.random() * 2);
-    if ((boss || tag === 'final') && Math.random() < 0.8) loot.tech = TECH_DROPS[bi][Math.floor(Math.random() * TECH_DROPS[bi].length)];
-    if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
+    // 功法掉落按秘境类型分层
+    if ((boss || tag === 'final') && Math.random() < 0.8) {
+      const techPool = type === 1 ? TECH_DROPS_1 : TECH_DROPS_2;
+      loot.tech = techPool[Math.floor(Math.random() * techPool.length)];
+    }
+    // 装备掉落按秘境类型分层
+    const equipBi = type === 1 ? Math.min(bi, 1) : Math.max(bi, 2);
+    if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(equipBi, depth + (boss ? 2 : 0));
     const bname = (tag === 'final') ? '洞天之主' : (boss ? MONSTER_POOL.boss[Math.floor(Math.random() * MONSTER_POOL.boss.length)].name : m.name);
     const bline = (tag === 'final') ? '他端坐于秘境最深处，仿佛早已等你多时。' :
       (boss ? MONSTER_POOL.boss.filter(function (x) { return x.name === bname; })[0].line : m.line);
     return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1 };
   }
-  function startAdventure(s) {
+  function startAdventure(s, advType) {
     if (s.adventuredYear === s.year) return { ok: false, msg: '天地灵机有限，一年只能入秘境一次。' };
     if (!canAction(s, 2)) return { ok: false, msg: '行动点不足' };
+    // 秘境类型限制：筑基前只能进秘境一
+    const type = advType || 1;
+    if (type === 2 && bigIdxOf(s) < 1) return { ok: false, msg: '修为不足，秘境二需要筑基以上方可进入。' };
     spend(s, 2);
     s.adventuredYear = s.year;
+    s.advType = type;
     s.adv = {
       depth: 1, maxDepth: 5,
-      setting: ADV_SETTINGS[Math.floor(Math.random() * ADV_SETTINGS.length)],
+      setting: (type === 1 ? ADV_SETTINGS_1 : ADV_SETTINGS_2)[Math.floor(Math.random() * (type === 1 ? ADV_SETTINGS_1.length : ADV_SETTINGS_2.length))],
       gains: [], status: 'running', caught: false, done: false
     };
     refreshStats(s); saveState(s);
@@ -777,11 +787,12 @@ const Engine = (function () {
   }
   function advResolve(s, node) {
     const d = s.adv.depth, bi = bigIdxOf(s), realmM = 1 + bi * 0.5;
+    const advType = s.advType || 1;
     if (node.type === 'combat' || node.type === 'elite') {
-      return { type: 'battle', spec: enemyGen(s, node.type, d), title: node.type === 'elite' ? '精英拦路！' : '遭遇战！' };
+      return { type: 'battle', spec: enemyGen(s, node.type, d, advType), title: node.type === 'elite' ? '精英拦路！' : '遭遇战！' };
     }
     if (node.type === 'final') {
-      return { type: 'final', spec: enemyGen(s, 'final', Math.min(d + 1, 7)) };
+      return { type: 'final', spec: enemyGen(s, 'final', Math.min(d + 1, 7), advType) };
     }
     if (node.type === 'treasure') {
       const g = [];

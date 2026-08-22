@@ -908,9 +908,41 @@
           logSection('【' + (r.trib || '破境') + '】');
           resLines.forEach(function (l) { log(l, r.ok && r.win ? 'gold' : 'bad'); });
           settle.forEach(function (l) { log(l, r.ok && r.win ? 'good' : 'dim'); });
-          afterAction();
+          // 突破筑基成功且未加入宗门，触发宗门剧情
+          if (r.ok && r.win && S.realm === '筑基' && !S.sect) {
+            sectJoinFlow().then(function () { afterAction(); });
+          } else {
+            afterAction();
+          }
         });
       });
+    });
+  }
+
+  /* ---------------- 宗门加入剧情（突破筑基后触发） ---------------- */
+  function sectJoinFlow() {
+    return showChapter('仙门开山 · 拜入宗门', [
+      '筑基成功，灵压外溢——三座仙门的飞行舟同时降临。',
+      '青云剑宗的弟子踏剑而行，剑气纵横；丹霞谷的长老袖中飞出万千灵草；玄天门的山门化作金光巨罩，罩住半座城。',
+      '三碑齐立，但凡筑基以上散修，皆可择一门而入。'
+    ], {
+      subtitle: '筑基之后 · 机缘降临',
+      choices: [
+        { t: '入【青云剑宗】：不求长生，只求一剑破万法', effect: { sect: 'qingyunjian' },
+          lines: ['你踏上剑舟。舟上老剑修只看了你一眼："剑心尚可，就是穷。"你：……'] },
+        { t: '入【丹霞谷】：丹成九转，天上人间', effect: { sect: 'dpxia' },
+          lines: ['你被一位袖中藏丹炉的长老领进谷中，满谷灵药飘香，药童们朝你作揖。'] },
+        { t: '入【玄天门】：稳扎稳打，守得云开见月明', effect: { sect: 'xuantian' },
+          lines: ['金光巨罩裂开一道门户，门中传来洪钟般的声音："入我门者，先守十年山。"你行礼入门。'] },
+        { t: '婉拒：独来独往，方是自在', effect: {},
+          lines: ['你遥遥一礼，转身走入人潮。那三座飞行舟的阴影掠过城头——自由，也是要自己扛的。'] }
+      ]
+    }).then(function (r) {
+      if (r && r.pick && r.pick.effect && r.pick.effect.sect) {
+        S.sect = r.pick.effect.sect;
+        Engine.saveState(S);
+        log('拜入【' + SECTS[S.sect].name + '】', 'gold');
+      }
     });
   }
 

@@ -435,26 +435,7 @@
   function actExplore() {
     // 筑基后可选择秘境类型
     if (bigIdxOf(S) >= 1) {
-      showChapter('选择秘境', [
-        '你修为已至筑基，可踏入更深层的秘境。',
-        '低级秘境安稳，高级秘境凶险——但回报也更丰厚。'
-      ], {
-        subtitle: '秘境分层',
-        choices: [
-          { t: '秘境一 · 炼气筑基级\n黄玄级产物，适合当前境界', advType: 1 },
-          { t: '秘境二 · 金丹元婴级\n地天级产物，凶险但回报丰厚', advType: 2 }
-        ]
-      }).then(function (r) {
-        if (!r || !r.pick) return;
-        const type = r.pick.advType || 1;
-        const res = Engine.startAdventure(S, type);
-        if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
-        if (typeof AudioManager !== 'undefined') {
-          AudioManager.playSfx('explore');
-          AudioManager.playBgm('adventure');
-        }
-        advIntro();
-      });
+      openAdvSelect();
     } else {
       const r = Engine.startAdventure(S, 1);
       if (r.ok === false) { log(r.msg || '行动点不足'); afterAction(); return; }
@@ -465,6 +446,85 @@
       advIntro();
     }
   }
+
+  /* ---------------- 秘境选择扩展页面 ---------------- */
+  function openAdvSelect() {
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    box.innerHTML = '';
+
+    const title = document.createElement('h3');
+    title.textContent = '选择秘境';
+    title.style.marginBottom = '8px';
+    box.appendChild(title);
+
+    const desc = document.createElement('p');
+    desc.className = 'dim';
+    desc.textContent = '不同秘境产出不同品级的宝物。秘境一年只能进入一次。';
+    desc.style.marginBottom = '16px';
+    box.appendChild(desc);
+
+    // 秘境一
+    const adv1Card = document.createElement('div');
+    adv1Card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;';
+    adv1Card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+      '<b style="color:#c9a86a;font-size:16px;">秘境一 · 炼气筑基</b>' +
+      '<span style="color:#c9a86a;font-size:12px;border:1px solid #c9a86a;padding:2px 6px;border-radius:4px;">黄玄级</span></div>' +
+      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">低级秘境，适合炼气至筑基修士探索。</p>' +
+      '<div style="font-size:12px;color:#6a6a7a;">产出：黄玄级功法、tier1-2装备、灵草灵铁</div>';
+    const btn1 = document.createElement('button');
+    btn1.className = 'btn-main';
+    btn1.textContent = '进入秘境一';
+    btn1.style.marginTop = '8px';
+    btn1.onclick = function () {
+      ov.style.display = 'none';
+      const res = Engine.startAdventure(S, 1);
+      if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playSfx('explore');
+        AudioManager.playBgm('adventure');
+      }
+      advIntro();
+    };
+    adv1Card.appendChild(btn1);
+    box.appendChild(adv1Card);
+
+    // 秘境二
+    const adv2Card = document.createElement('div');
+    adv2Card.style.cssText = 'border:1px solid #3a2e52;background:rgba(20,10,40,.3);padding:12px;border-radius:8px;';
+    adv2Card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+      '<b style="color:#b26de0;font-size:16px;">秘境二 · 金丹元婴</b>' +
+      '<span style="color:#b26de0;font-size:12px;border:1px solid #b26de0;padding:2px 6px;border-radius:4px;">地天级</span></div>' +
+      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">高级秘境，凶险万分但回报丰厚。需要筑基以上方可进入。</p>' +
+      '<div style="font-size:12px;color:#6a6a7a;">产出：地天级功法、tier3-4装备、珍稀法宝</div>';
+    const btn2 = document.createElement('button');
+    btn2.className = 'btn-main';
+    btn2.textContent = '进入秘境二';
+    btn2.style.marginTop = '8px';
+    btn2.style.borderColor = '#b26de0';
+    btn2.onclick = function () {
+      ov.style.display = 'none';
+      const res = Engine.startAdventure(S, 2);
+      if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playSfx('explore');
+        AudioManager.playBgm('adventure');
+      }
+      advIntro();
+    };
+    adv2Card.appendChild(btn2);
+    box.appendChild(adv2Card);
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-small';
+    closeBtn.textContent = '返回';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.onclick = function () { ov.style.display = 'none'; };
+    box.appendChild(closeBtn);
+  }
+
   function advIntro() {
     const a = S.adv;
     $('chapter').classList.add('explore-mode');

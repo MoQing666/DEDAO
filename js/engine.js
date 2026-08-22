@@ -209,6 +209,7 @@ const Engine = (function () {
     g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
     g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
     g *= 1 + equipStats(s).cult;
+    if (s.sect && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
     let note = '';
     if ((s.elixirs.juling || 0) > 0) {
       s.elixirs.juling--;

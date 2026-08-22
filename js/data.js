@@ -191,9 +191,9 @@ const BACKGROUNDS = [
 
 /* ---------------- 宗门 ---------------- */
 const SECTS = {
-  qingyunjian: { name: '青云剑宗', desc: '剑修云集，剑气纵横三千里。' , effect: { atkMul: 0.25 }, perk: '每十载宗门大比，胜者得灵石' },
+  qingyunjian: { name: '青云剑宗', desc: '剑修云集，剑气纵横三千里。' , effect: { atkMul: 0.10 }, perk: '每十载宗门大比，胜者得灵石' },
   dpxia:      { name: '丹霞谷',   desc: '以丹入道，谷中灵田千顷。' ,    effect: { alchemyMul: 0.20 }, perk: '每十载分得灵丹十枚' },
-  xuantian:   { name: '玄天门',   desc: '重守御，善阵法，护山罩如金钟。', effect: { trib: 0.05, hpMax: 100 }, perk: '师门阵法定你心，渡劫有加护' }
+  xuantian:   { name: '玄天门',   desc: '重守御，善阵法，护山罩如金钟。', effect: { cultMul: 0.10, hpMax: 100 }, perk: '师门阵法定你心，修炼有加护' }
 };
 
 /* ---------------- 渡劫文案 ---------------- */

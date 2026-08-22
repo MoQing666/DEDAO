@@ -433,18 +433,8 @@
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */
   function actExplore() {
-    // 筑基后可选择秘境类型
-    if (bigIdxOf(S) >= 1) {
-      openAdvSelect();
-    } else {
-      const r = Engine.startAdventure(S, 1);
-      if (r.ok === false) { log(r.msg || '行动点不足'); afterAction(); return; }
-      if (typeof AudioManager !== 'undefined') {
-        AudioManager.playSfx('explore');
-        AudioManager.playBgm('adventure');
-      }
-      advIntro();
-    }
+    // 所有玩家都显示秘境选择界面
+    openAdvSelect();
   }
 
   /* ---------------- 秘境选择扩展页面 ---------------- */
@@ -453,6 +443,8 @@
     const box = $('modal-body');
     ov.style.display = 'flex';
     box.innerHTML = '';
+
+    const canAdv2 = bigIdxOf(S) >= 1; // 筑基以上可进入秘境二
 
     const title = document.createElement('h3');
     title.textContent = '选择秘境';
@@ -492,17 +484,18 @@
 
     // 秘境二
     const adv2Card = document.createElement('div');
-    adv2Card.style.cssText = 'border:1px solid #3a2e52;background:rgba(20,10,40,.3);padding:12px;border-radius:8px;';
+    adv2Card.style.cssText = 'border:1px solid #3a2e52;background:rgba(20,10,40,.3);padding:12px;border-radius:8px;' + (canAdv2 ? '' : 'opacity:0.5;');
     adv2Card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
       '<b style="color:#b26de0;font-size:16px;">秘境二 · 金丹元婴</b>' +
       '<span style="color:#b26de0;font-size:12px;border:1px solid #b26de0;padding:2px 6px;border-radius:4px;">地天级</span></div>' +
-      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">高级秘境，凶险万分但回报丰厚。需要筑基以上方可进入。</p>' +
+      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">高级秘境，凶险万分但回报丰厚。' + (canAdv2 ? '需要筑基以上方可进入。' : '<b style="color:#e05a7a;">需要筑基以上方可进入</b>') + '</p>' +
       '<div style="font-size:12px;color:#6a6a7a;">产出：地天级功法、tier3-4装备、珍稀法宝</div>';
     const btn2 = document.createElement('button');
     btn2.className = 'btn-main';
-    btn2.textContent = '进入秘境二';
+    btn2.textContent = canAdv2 ? '进入秘境二' : '境界不足';
     btn2.style.marginTop = '8px';
     btn2.style.borderColor = '#b26de0';
+    btn2.disabled = !canAdv2;
     btn2.onclick = function () {
       ov.style.display = 'none';
       const res = Engine.startAdventure(S, 2);

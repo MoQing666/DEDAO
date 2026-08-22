@@ -178,7 +178,8 @@ const Engine = (function () {
     return st;
   }
   function calcHpMax(s) {
-    let m = 80 + s.ti * 20 + bigIdxOf(s) * 80;
+    const tiMulti = [20, 25, 30, 35][bigIdxOf(s)] || 20;
+    let m = 80 + s.ti * tiMulti + bigIdxOf(s) * 80;
     if (s.linggen && s.linggen.body && s.linggen.body.hpMax) m += s.linggen.body.hpMax;
     if (s.arts.indexOf('xuantie') >= 0) m += 150;
     if (s.sect && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
@@ -1135,10 +1136,10 @@ const Engine = (function () {
     let base = 0.8 + (s.wu - 5) * 0.01;
     let mode = 'small', trib = null, desc = '';
     if (st.realm === '元婴' && st.sub === '中期') {
-      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
+      mode = 'trib'; trib = '飞升'; base = 0.45;
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (!nxt) {
-      mode = 'trib'; trib = '飞升'; base = 0.45 + s.ti * 0.015;
+      mode = 'trib'; trib = '飞升'; base = 0.45;
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (nxt.realm === '筑基') {
       mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015;
@@ -1146,7 +1147,7 @@ const Engine = (function () {
       desc = '筑基无天劫，唯需破开尘障。你凝神静气，尝试以灵力重铸凡躯……';
     } else if (nxt.realm !== st.realm) {
       mode = 'trib'; trib = nxt.realm;
-      base = 0.55 + s.ti * 0.015;
+      base = 0.55;
       let body = s.linggen.body || {};
       base += (body.trib || 0) + (s.sect === 'xuantian' ? 0.05 : 0) + (s.arts.indexOf('jinylv') >= 0 ? 0.1 : 0);
       const eid = BREAK_ELIXIR[nxt.realm];

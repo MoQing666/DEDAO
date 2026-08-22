@@ -201,12 +201,6 @@ button:disabled { opacity: .4; cursor: default; }
   box-shadow: 0 0 24px rgba(255,210,122,.18);
 }
 .b-spellbar .btn-small { font-size: 13px; padding: 6px 14px; }
-.adv-tools {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 10px; padding-top: 8px;
-  border-top: 1px dashed #3a3452;
-}
-.adv-tools .btn-small { padding: 4px 12px; font-size: 12px; }
 .battle-log { margin-top: 8px; }
 .battle-log .bl { font-size: 13px; color: var(--dim); margin: 3px 0; font-family: 'YuYang', serif; }
 #battle-title, #battle-sub { font-family: 'YuYang', serif; letter-spacing: 4px; }

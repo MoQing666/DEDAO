@@ -948,8 +948,8 @@ const Engine = (function () {
     const actual = Math.min(r.gain, need - s.qi);
     s.qi += actual;
     const mg = moGain(s, 0.25);
-    spend(s, cultCost(s));
     s.cultedThisYear = true;
+    spend(s, cultCost(s));
     let note2 = '';
     const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
     if (sheshengLv > 0) {
@@ -958,7 +958,7 @@ const Engine = (function () {
     }
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);
-    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '，灵力 +' + mg + '。' + (r.note ? r.note : '') + note2;
+    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '。' + (r.note ? r.note : '') + note2;
   }
   function canAction(s, n) { return s.actionsLeft >= n && !s.dead; }
 

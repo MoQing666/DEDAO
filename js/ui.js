@@ -9,7 +9,7 @@
 
   /* ---------------- 设置（声音 / 节奏 / 特效） ---------------- */
   const CFG_KEY = 'dedao_cfg';
-  let CFG = { sound: 0, vol: 0.5, fx: 1, pace: 1 };
+  let CFG = { sound: 1, vol: 0.5, bgm: 1, bgmVol: 0.5, fx: 1, pace: 1 };
   (function () {
     try {
       const c = JSON.parse(localStorage.getItem(CFG_KEY));
@@ -19,23 +19,17 @@
   function saveCfg() {
     try { localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); } catch (e) {}
     document.body.classList.toggle('fx-off', !CFG.fx);
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.enableBgm(!!CFG.bgm);
+      AudioManager.enableSfx(!!CFG.sound);
+      AudioManager.setBgmVolume(CFG.bgmVol || 0.5);
+      AudioManager.setSfxVolume(CFG.vol || 0.5);
+    }
   }
-  let audioCtx = null;
   function sfx(kind) {
-    if (!CFG.sound) return;
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
-      const f = { click: 520, good: 880, win: 1320, bad: 180, break: 1760 }[kind] || 520;
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      g.gain.setValueAtTime((CFG.vol || 0.5) * 0.18, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (kind === 'break' ? 0.6 : 0.15));
-      osc.start();
-      osc.stop(audioCtx.currentTime + (kind === 'break' ? 0.6 : 0.15));
-    } catch (e) {}
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.playSfx(kind);
+    }
   }
 
   const $ = function (id) { return document.getElementById(id); };
@@ -45,14 +39,28 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
   function randName() {
-    const a = ['青', '白', '墨', '玄', '孤', '临', '归', '逐', '问', '无', '一', '九'];
-    const b = ['崖', '尘', '渊', '鸿', '月', '鹤', '衣', '剑', '微', '离', '止', '明'];
+    const a = ['青', '白', '墨', '玄', '孤', '临', '归', '逐', '问', '无', '一', '九', '天', '风', '云', '月', '星', '落', '寒', '雪', '霜', '烟', '雨', '水', '火', '雷', '电'];
+    const b = ['崖', '尘', '渊', '鸿', '月', '鹤', '衣', '剑', '微', '离', '止', '明', '影', '风', '林', '山', '水', '云', '川', '海'];
     return a[Math.floor(Math.random() * a.length)] + b[Math.floor(Math.random() * b.length)];
   }
   function showScreen(name) {
     ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement'].forEach(function (n) {
       $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
     });
+    // 根据屏幕切换BGM
+    if (typeof AudioManager !== 'undefined') {
+      var bgmMap = {
+        'title': 'title',
+        'game': 'game',
+        'rebirth': 'peaceful',
+        'ending': 'ending',
+        'gear': 'peaceful',
+        'settlement': 'ending'
+      };
+      if (bgmMap[name]) {
+        AudioManager.playBgm(bgmMap[name]);
+      }
+    }
   }
 
   /* ---------------- 日志（按年分块可折叠） ---------------- */
@@ -180,7 +188,6 @@
       box.innerHTML = '';
       $('chapter-choices').innerHTML = '';
       ov.style.display = 'flex';
-      $('adv-tools').style.display = (S && S.adv && S.adv.status === 'running') ? 'flex' : 'none';
       cs = { resolve: resolve, opts: opts, lines: lines.slice(), i: 0 };
       $('chapter-actions').style.display = 'block';
       $('chapter-actions').textContent = '继续';
@@ -330,28 +337,36 @@
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
       ov.style.display = 'flex';
+      // 播放战斗BGM和音效
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playBgm('battle');
+        AudioManager.playSfx('battle_start');
+      }
       renderBattle();
       function finish(r) {
         ov.style.display = 'none';
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
+        // 恢复游戏BGM
+        if (typeof AudioManager !== 'undefined') {
+          AudioManager.playBgm('game');
+          AudioManager.playSfx(r.win ? 'battle_end' : 'bad');
+        }
         if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {
-          const pend = Engine.pendingDuobao(S);
-          const firstItem = pend[0] ? Engine.findEquip(pend[0]) : null;
-          const highRealm = firstItem && firstItem.tier >= 4;
-          if (highRealm && S.idx >= 6) {
-            S.flags.pendingDuobaoYear = S.year + 1;
-            Engine.saveState(S);
-            log('宝光冲天，消息走漏——夺宝贼遁入暗处，扬言来年初再来夺宝！', 'bad');
-            resolve(r);
-          } else {
-            duobaoRun().then(function () { resolve(r); });
-          }
+          S.flags.pendingDuobaoYear = S.year + 2;
+          Engine.saveState(S);
+          log('宝光冲天，消息走漏——夺宝贼遁入暗处，扬言后年来夺宝！', 'bad');
+          resolve(r);
         } else {
           resolve(r);
         }
       }
       function doAct(act, spellId) {
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
+        // 播放动作音效
+        if (typeof AudioManager !== 'undefined') {
+          var actSfx = { atk: 'attack', spell: 'spell', guard: 'heal', flee: 'miss' };
+          if (actSfx[act]) AudioManager.playSfx(actSfx[act]);
+        }
         const r = Engine.combatAct(S, act, spellId);
         r.lines.forEach(function (l) { bl(l); });
         renderBattle();
@@ -420,6 +435,11 @@
   function actExplore() {
     const r = Engine.startAdventure(S);
     if (r.ok === false) { log(r.msg || '行动点不足'); afterAction(); return; }
+    // 播放探索音效
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.playSfx('explore');
+      AudioManager.playBgm('adventure');
+    }
     advIntro();
   }
   function advIntro() {
@@ -620,6 +640,11 @@
   function advFinish(why) {
     const a = S.adv;
     Engine.advEnd(S, why === '战败' ? 'lost' : 'done');
+    // 恢复游戏BGM
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.playBgm('game');
+      AudioManager.playSfx(why === '战败' ? 'bad' : 'good');
+    }
     const lines = [];
     if (why === '战败') {
       lines.push('你重伤倒地，意识模糊前只想着一个念头——活着回去。');
@@ -676,6 +701,14 @@
     }
     const gains = Engine.runEvent(S, ev);
     const lines = ev.lines.slice();
+    // 有收益时播放音效
+    if (gains.length > 0 && typeof AudioManager !== 'undefined') {
+      var hasEquip = gains.some(function(g) { return g.indexOf('装备') >= 0; });
+      var hasMoney = gains.some(function(g) { return g.indexOf('灵石') >= 0; });
+      if (hasEquip) AudioManager.playSfx('item');
+      else if (hasMoney) AudioManager.playSfx('money');
+      else AudioManager.playSfx('good');
+    }
     if (ev.chapter) {
       return showChapter(ev.title, lines, {
         choices: ev.choices,
@@ -710,7 +743,14 @@
   /* ---------------- 行动 ---------------- */
   function actCultivate() {
     const r = Engine.cultivate(S);
-    if (typeof r === 'string') { log(r); afterAction(); }
+    if (typeof r === 'string') { 
+      log(r); 
+      // 修炼成功时播放音效
+      if (r.indexOf('今年已修炼过') === -1 && r.indexOf('行动点不足') === -1 && r.indexOf('修为已满') === -1) {
+        if (typeof AudioManager !== 'undefined') AudioManager.playSfx('good');
+      }
+      afterAction(); 
+    }
   }
   function actExplore2() { actExplore(); }
   function actSocial() {
@@ -855,6 +895,10 @@
         resLines.push(r.line);
         if (r.died) resLines.push('你无力回天——');
       }
+      // 播放突破音效
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playSfx(r.ok && r.win ? 'break' : 'bad');
+      }
       return showChapter('突破 · 结算', resLines.concat([
         '—— —— —— ——',
         '往日旧身已随雷火散去，这一世的前路，从此不同。'
@@ -924,10 +968,10 @@
     refresh();
   }
 
-  /* ---------------- 两百年之约 · 魔渊 ---------------- */
+  /* ---------------- 百年之约 · 魔渊 ---------------- */
   function fateFlow() {
     showChapter(FATE_EVENT.title, FATE_EVENT.lines, {
-      subtitle: '两百年之约 · 魔渊将开',
+      subtitle: '百年之约 · 魔渊将开',
       choices: [{ t: '义无反顾，踏入魔渊' }]
     }).then(function () {
       const win = Engine.fateBattle(S);
@@ -941,6 +985,11 @@
 
   /* ---------------- 结局 / 结算 ---------------- */
   function endLifeFlow() {
+    // 播放结局BGM
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.playBgm('ending');
+      AudioManager.playSfx(S.endReason === '飞升' ? 'win' : 'bad');
+    }
     const meta = Engine.loadMeta();
     const ach = Engine.earnPoints(S, meta);
     meta.points += S.earnedPoints || 0;
@@ -1866,6 +1915,22 @@
       r.appendChild(ctl);
       return r;
     };
+    const onBgm = document.createElement('input');
+    onBgm.type = 'checkbox';
+    onBgm.checked = !!CFG.bgm;
+    onBgm.onchange = function () { 
+      CFG.bgm = onBgm.checked ? 1 : 0; 
+      saveCfg(); 
+      if (CFG.bgm) {
+        AudioManager.playBgm('game');
+      }
+    };
+    wrap.appendChild(rowLine('背景音乐', onBgm));
+    const bgmVol = document.createElement('input');
+    bgmVol.type = 'range';
+    bgmVol.min = 0; bgmVol.max = 100; bgmVol.value = Math.round((CFG.bgmVol || 0.5) * 100);
+    bgmVol.oninput = function () { CFG.bgmVol = bgmVol.value / 100; saveCfg(); };
+    wrap.appendChild(rowLine('音乐音量', bgmVol));
     const onSound = document.createElement('input');
     onSound.type = 'checkbox';
     onSound.checked = !!CFG.sound;
@@ -1875,7 +1940,7 @@
     vol.type = 'range';
     vol.min = 0; vol.max = 100; vol.value = Math.round(CFG.vol * 100);
     vol.oninput = function () { CFG.vol = vol.value / 100; saveCfg(); sfx('click'); };
-    wrap.appendChild(rowLine('音量', vol));
+    wrap.appendChild(rowLine('音效音量', vol));
     const pace = document.createElement('select');
     [['快', 0], ['标准', 1], ['慢（逐字打字）', 2]].forEach(function (o) {
       const op = document.createElement('option');
@@ -2108,47 +2173,68 @@
   function boot() {
     M = Engine.loadMeta();
     if (!M._bonus20) { M.points = (M.points || 0) + 20; M._bonus20 = true; Engine.saveMeta(M); }
+    
+    // 初始化音频配置
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.init({
+        bgmEnabled: !!CFG.bgm,
+        sfxEnabled: !!CFG.sound,
+        bgmVolume: CFG.bgmVol || 0.5,
+        sfxVolume: CFG.vol || 0.5
+      });
+    }
+    
     showScreen('title');
     renderTitle();
-    $('t-new').onclick = function () { startNewLife(); };
-    $('t-continue').onclick = actContinue;
-    $('t-rebirth').onclick = function () { renderRebirth(); showScreen('rebirth'); };
-    $('rb-back').onclick = function () { renderTitle(); showScreen('title'); };
-    $('btn-reborn').onclick = actReborn;
-    $('btn-end-title').onclick = function () { renderTitle(); showScreen('title'); };
-
-    $('btn-cult').onclick = actCultivate;
-    $('btn-explore').onclick = actExplore2;
-    $('btn-social').onclick = actSocial;
-    $('btn-fate').onclick = actJiyuan;
-    $('btn-sect').onclick = actSect;
-    $('btn-break').onclick = actBreak;
-    $('btn-year').onclick = actYearEnd;
-    $('btn-bag').onclick = function () { openModal('bag'); };
-    $('btn-gear').onclick = openGear;
+    
+    // 用户交互后激活音频
+    function onFirstInteract() {
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.activate();
+      }
+      document.removeEventListener('click', onFirstInteract);
+      document.removeEventListener('touchstart', onFirstInteract);
+    }
+    document.addEventListener('click', onFirstInteract);
+    document.addEventListener('touchstart', onFirstInteract);
+    
+    // 绑定按钮事件
+    $('t-new').onclick = function () { sfx('click'); startNewLife(); };
+    $('t-continue').onclick = function () { sfx('click'); actContinue(); };
+    $('t-rebirth').onclick = function () { sfx('click'); renderRebirth(); showScreen('rebirth'); };
+    $('rb-back').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };
+    $('btn-reborn').onclick = function () { sfx('click'); actReborn(); };
+    $('btn-end-title').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };
+    $('btn-cult').onclick = function () { sfx('click'); actCultivate(); };
+    $('btn-explore').onclick = function () { sfx('click'); actExplore2(); };
+    $('btn-social').onclick = function () { sfx('click'); actSocial(); };
+    $('btn-fate').onclick = function () { sfx('click'); actJiyuan(); };
+    $('btn-sect').onclick = function () { sfx('click'); actSect(); };
+    $('btn-break').onclick = function () { sfx('click'); actBreak(); };
+    $('btn-year').onclick = function () { sfx('click'); actYearEnd(); };
+    $('btn-bag').onclick = function () { sfx('click'); openModal('bag'); };
+    $('btn-gear').onclick = function () { sfx('click'); openGear(); };
     $('btn-arts').onclick = function () {
       if (!S || S.dead) return;
       if (!Engine.canAction(S, 1)) { log('行动点不足'); return; }
+      sfx('click');
       Engine.spend(S, 1);
       S.inArts = true;
       log('你进入百艺工坊，开始忙活。（消耗1行动点）');
       openModal('arts');
       refresh();
     };
-    $('crafts-gear').onclick = openGear;
-    $('crafts-back').onclick = function () { showScreen('game'); refresh(); };
-    $('modal-close').onclick = closeModal;
-    $('modal').onclick = function (e) { if (e.target === $('modal')) closeModal(); };
-
-    $('t-load').onclick = function () { openSaveModal(false); };
-    $('btn-attrs').onclick = function () { if (!S) return; openAttrs(); };
-    $('btn-tech').onclick = function () { if (!S) return; openTech(); };
-    $('btn-settings').onclick = function () { openSettings(); };
-    $('adv-bag').onclick = function () { if (S) openModal('bag'); };
-    $('adv-gear').onclick = function () { if (S) advGearModal(); };
-    $('adv-tech').onclick = function () { if (S) openTech(); };
-    $('pause-resume').onclick = function () { $('pause').style.display = 'none'; };
+    $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
+    $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
+    $('modal-close').onclick = function () { sfx('click'); closeModal(); };
+    $('modal').onclick = function (e) { if (e.target === $('modal')) { sfx('click'); closeModal(); } };
+    $('t-load').onclick = function () { sfx('click'); openSaveModal(false); };
+    $('btn-attrs').onclick = function () { if (!S) return; sfx('click'); openAttrs(); };
+    $('btn-tech').onclick = function () { if (!S) return; sfx('click'); openTech(); };
+    $('btn-settings').onclick = function () { sfx('click'); openSettings(); };
+    $('pause-resume').onclick = function () { sfx('click'); $('pause').style.display = 'none'; };
     $('pause-exit').onclick = function () {
+      sfx('click');
       if (S) { Engine.saveState(S); }
       suspended = true;
       $('pause').style.display = 'none';

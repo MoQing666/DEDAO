@@ -102,7 +102,55 @@ var AudioManager = (function () {
     // 停止当前BGM
     stopBgm();
     
-    // 使用合成音作为BGM
+    // 检查是否有真实音频文件
+    var bgmFiles = {
+      title: 'assets/audio/bgm/求道一两风_minimax_free.mp3'
+    };
+    
+    if (bgmFiles[name]) {
+      // 使用真实音频文件
+      try {
+        bgmAudio = new Audio();
+        bgmAudio.src = bgmFiles[name];
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0;
+        
+        bgmAudio.play().then(function() {
+          // 淡入效果
+          var targetVolume = bgmVolume * 0.6;
+          var steps = 20;
+          var stepTime = 1000 / steps;
+          var volumeStep = targetVolume / steps;
+          var currentStep = 0;
+          
+          fadeTimer = setInterval(function() {
+            currentStep++;
+            if (currentStep >= steps) {
+              bgmAudio.volume = targetVolume;
+              clearInterval(fadeTimer);
+              fadeTimer = null;
+            } else {
+              bgmAudio.volume = volumeStep * currentStep;
+            }
+          }, stepTime);
+        }).catch(function(e) {
+          console.warn('Failed to play BGM file:', e);
+          // 降级到合成音
+          playSynthBgm(name);
+        });
+        
+        currentBgm = name;
+      } catch (e) {
+        playSynthBgm(name);
+      }
+    } else {
+      // 使用合成音作为BGM
+      playSynthBgm(name);
+    }
+  }
+  
+  // 合成BGM
+  function playSynthBgm(name) {
     if (audioCtx) {
       try {
         var osc = audioCtx.createOscillator();
@@ -110,22 +158,15 @@ var AudioManager = (function () {
         osc.connect(g);
         g.connect(audioCtx.destination);
         
-        // 根据BGM类型设置频率
         var freqs = {
-          title: 262,
-          game: 330,
-          battle: 196,
-          peaceful: 392,
-          sect: 294,
-          adventure: 349,
-          ending: 523
+          title: 262, game: 330, battle: 196,
+          peaceful: 392, sect: 294, adventure: 349, ending: 523
         };
         
         osc.type = 'sine';
         osc.frequency.value = freqs[name] || 262;
         g.gain.setValueAtTime(0, audioCtx.currentTime);
         g.gain.linearRampToValueAtTime(bgmVolume * 0.3, audioCtx.currentTime + 1);
-        
         osc.start();
         
         bgmAudio = { osc: osc, gain: g, paused: false };
@@ -136,10 +177,19 @@ var AudioManager = (function () {
 
   // 停止BGM
   function stopBgm() {
+    if (fadeTimer) {
+      clearInterval(fadeTimer);
+      fadeTimer = null;
+    }
     if (bgmAudio) {
       try {
         if (bgmAudio.osc) {
+          // 合成音
           bgmAudio.osc.stop();
+        } else if (bgmAudio.pause) {
+          // 真实音频文件
+          bgmAudio.pause();
+          bgmAudio.src = '';
         }
       } catch (e) {}
       bgmAudio = null;
@@ -149,20 +199,32 @@ var AudioManager = (function () {
 
   // 暂停BGM
   function pauseBgm() {
-    if (bgmAudio && bgmAudio.gain) {
+    if (bgmAudio) {
       try {
-        bgmAudio.gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        bgmAudio.paused = true;
+        if (bgmAudio.gain) {
+          // 合成音
+          bgmAudio.gain.gain.setValueAtTime(0, audioCtx.currentTime);
+          bgmAudio.paused = true;
+        } else if (bgmAudio.pause) {
+          // 真实音频文件
+          bgmAudio.pause();
+        }
       } catch (e) {}
     }
   }
 
   // 恢复BGM
   function resumeBgm() {
-    if (bgmAudio && bgmAudio.gain && bgmEnabled) {
+    if (bgmAudio && bgmEnabled) {
       try {
-        bgmAudio.gain.gain.linearRampToValueAtTime(bgmVolume * 0.1, audioCtx.currentTime + 0.5);
-        bgmAudio.paused = false;
+        if (bgmAudio.gain) {
+          // 合成音
+          bgmAudio.gain.gain.linearRampToValueAtTime(bgmVolume * 0.1, audioCtx.currentTime + 0.5);
+          bgmAudio.paused = false;
+        } else if (bgmAudio.play) {
+          // 真实音频文件
+          bgmAudio.play();
+        }
       } catch (e) {}
     }
   }

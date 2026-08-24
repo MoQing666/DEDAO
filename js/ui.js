@@ -47,11 +47,11 @@
     ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement'].forEach(function (n) {
       $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
     });
-    // 根据屏幕切换BGM
+    // 根据屏幕切换BGM - 标题和游戏页面都播放同一个BGM
     if (typeof AudioManager !== 'undefined') {
       var bgmMap = {
         'title': 'title',
-        'game': 'game',
+        'game': 'title',  // 游戏页面也使用标题BGM
         'rebirth': 'peaceful',
         'ending': 'ending',
         'gear': 'peaceful',
@@ -2337,6 +2337,7 @@
     $('modal-close').onclick = function () { sfx('click'); closeModal(); };
     $('modal').onclick = function (e) { if (e.target === $('modal')) { sfx('click'); closeModal(); } };
     $('t-load').onclick = function () { sfx('click'); openSaveModal(false); };
+    $('t-settings').onclick = function () { sfx('click'); openSettings(); };
     $('btn-attrs').onclick = function () { if (!S) return; sfx('click'); openAttrs(); };
     $('btn-tech').onclick = function () { if (!S) return; sfx('click'); openTech(); };
     $('btn-settings').onclick = function () { sfx('click'); openSettings(); };

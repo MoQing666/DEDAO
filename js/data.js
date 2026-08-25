@@ -39,7 +39,6 @@ const ELIXIRS = {
   zhuji:    { name: '筑基丹',   desc: '突破筑基时自动服用，成功率 +25%。' },
 jiejin:   { name: '结金丹', desc: '突破金丹渡劫时自动服用，成功率 +25%。' },
   yuanying: { name: '元婴丹', desc: '突破元婴渡劫时自动服用，成功率 +25%。' },
-  liaoshang:{ name: '疗伤丹',   desc: '服用后恢复四成气血。' },
   zengshou: { name: '增寿丹',   desc: '服用后寿元 +50。' },
   wudao:    { name: '悟道丹',   desc: '服用后道心通明，悟性 +1。' }
 };
@@ -100,7 +99,6 @@ const FORMULAS = [
   { id: 'zhuji_pill',  out: 'zhuji',  type: '丹',  cost: { herb: 10 }, needRealm: 0 },
   { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb: 20 }, needRealm: 1 },
   { id: 'yuanying_pill',out: 'yuanying',type:'丹',  cost: { herb: 35 }, needRealm: 2 },
-  { id: 'liaoshang_pill',out:'liaoshang',type:'丹', cost: { herb: 8 },  needRealm: 0 },
   { id: 'zengshou_pill',out: 'zengshou',type:'丹',  cost: { herb: 25 }, needRealm: 1 },
   { id: 'wudao_pill', out: 'wudao',   type: '丹',   cost: { herb: 80 }, needRealm: 3 }
 ];
@@ -329,7 +327,7 @@ E('jiyuan', {
 E('jiyuan', {
   id: 'xianhe_songyao', title: '仙鹤衔药', chapter: false, weight: 4, min: 4, max: 14,
   lines: ['一只白鹤掠过你头顶，丢下一株通体泛着金芒的灵芝，长鸣一声消失在云间。'],
-  effect: { herb: 3, elixirs: { liaoshang: 2 } },
+  effect: { herb: 5 },
   result: '你收下灵芝与鹤羽。那白鹤，来处不明。'
 });
 E('jiyuan', {
@@ -619,7 +617,7 @@ E('mijing', {
           { t: '留作炼器之用', effect: { iron: 25 }, lines: ['你以玉匣封存冰髓。这世上最好的冰系炼器材料，值得等一个最好的炉子。'] }
         ]
       } },
-    { t: '以疗伤丹敬奉，舍髓而去', effect: { herb: 10, stone: 80 }, lines: ['你将疗伤丹投入蛟口，冰蛟竟温顺下来，拱了拱你的手。它额头缺了一角——旧伤仍在。你忽然想起那句"修行，修的也是慈悲"。'] }
+    { t: '以灵草敬奉，舍髓而去', effect: { herb: 10, stone: 80 }, lines: ['你将灵草投入蛟口，冰蛟竟温顺下来，拱了拱你的手。它额头缺了一角——旧伤仍在。你忽然想起那句"修行，修的也是慈悲"。'] }
   ]
 });
 E('mijing', {
@@ -811,8 +809,8 @@ E('mijing', {
             lines: ['你以玉瓶装走一瓢雷液——那是绝佳的炼器材料。'] }
         ]
       } },
-    { t: '在池边以雷液炼符', effect: { elixirs: { liaoshang: 2 } },
-      lines: ['你借雷光淬炼符纸，炼出两枚疗伤符。雷池虽险，未入者无伤。'] },
+    { t: '在池边以雷液炼符', effect: { herb: 5, stone: 30 },
+      lines: ['你借雷光淬炼符纸，炼出几张灵符。雷池虽险，未入者无伤。'] },
     { t: '引雷悟道', effect: { wu: 2, hp: -20 },
       lines: ['你以引雷诀引来一道细雷，于雷光中观想阴阳生灭。仿佛有什么在心头破壳。（悟性+2）'] }
   ]
@@ -1091,7 +1089,7 @@ const SECT_SOCIAL = {
     { id: 'ss_dx_zaodan', title: '丹霞·晨起炼丹', chapter: true, weight: 4, min: 1, max: 3,
       lines: ['晨雾未散，丹房已燃起第一炉火。你挽袖上前，接过大长老手里的药臼。'],
       choices: [
-        { t: '捣药研配，循序而作', effect: { wu: 0.5, elixirs: { liaoshang: 1 } }, lines: ['你配的一剂活血丹火候刚好，大长老验收时"嗯"了一声。（悟性+0.5，疗伤丹+1）'] },
+        { t: '捣药研配，循序而作', effect: { wu: 0.5, herb: 3 }, lines: ['你配的一剂活血丹火候刚好，大长老验收时"嗯"了一声。（悟性+0.5，灵草+3）'] },
         { t: '求教一炉聚气丹的成败关窍', effect: { stone: -15, elixirs: { juling: 2 } }, lines: ['大长老让你亲自执炉，你赔上十五块灵石的材料，好在丹成两粒。（聚气丹+2）'] }
       ] }
   ],
@@ -1265,7 +1263,6 @@ const ADV_NODES = {
 const SHOP_ITEMS = [
   { id: 'herb5',       name: '灵草 ×5',    price: 30,  give: { herb: 5 } },
   { id: 'iron3',       name: '灵铁 ×3',    price: 30,  give: { iron: 3 } },
-  { id: 'liaoshang',   name: '疗伤丹',     price: 50,  give: { elixirs: { liaoshang: 1 } } },
   { id: 'juling',      name: '聚气丹',     price: 80,  give: { elixirs: { juling: 1 } } },
   { id: 'zhuji',       name: '筑基丹',     price: 150, give: { elixirs: { zhuji: 1 } } },
   { id: 'jiejin',      name: '结金丹',     price: 400, give: { elixirs: { jiejin: 1 } } },

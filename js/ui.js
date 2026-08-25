@@ -341,6 +341,10 @@
       function finish(r) {
         ov.style.display = 'none';
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
+        // 战斗结束后恢复血量为满
+        Engine.refreshStats(S);
+        S.hp = S.hpMax;
+        Engine.saveState(S);
         if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {
           S.flags.pendingDuobaoYear = S.year + 2;
           Engine.saveState(S);
@@ -1676,7 +1680,7 @@
         const d = document.createElement('div');
         d.className = 'bag-item';
         d.innerHTML = '<b>' + ELIXIRS[id].name + '</b> ×' + n + '<br><span class="dim">' + ELIXIRS[id].desc + '</span>' +
-          (id === 'liaoshang' || id === 'zengshou' || id === 'wudao' ? '<button>服用</button>' : '');
+          (id === 'zengshou' || id === 'wudao' ? '<button>服用</button>' : '');
         const btn = d.querySelector('button');
         if (btn) btn.onclick = function () {
           Engine.useElixir(S, id);

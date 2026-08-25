@@ -234,8 +234,7 @@ const Engine = (function () {
     if (!e || (s.elixirs[id] || 0) <= 0) return false;
     s.elixirs[id]--;
     if (s.elixirs[id] <= 0) delete s.elixirs[id];
-    if (id === 'liaoshang') s.hp = Math.min(calcHpMax(s), s.hp + Math.round(calcHpMax(s) * 0.4));
-    else if (id === 'zengshou') s.lifeMax += 50;
+    if (id === 'zengshou') s.lifeMax += 50;
     else if (id === 'wudao') { s.wu++; s.wuAcc = 0; }
     refreshStats(s);
     return true;
@@ -802,7 +801,7 @@ const Engine = (function () {
       if (Math.random() < 0.35 + d * 0.08) { const h = 1 + Math.floor(Math.random() * 2); s.herb += h; g.push('灵草 +' + h); }
       if (Math.random() < 0.2 + d * 0.05) { const i2 = 1 + Math.floor(Math.random() * 3); s.iron += i2; g.push('灵铁 +' + i2); }
       if (Math.random() < 0.25 + d * 0.07) {
-        const ids = ['juling', 'liaoshang', 'liaoshang', 'zengshou'];
+        const ids = ['juling', 'zengshou'];
         const e = ids[Math.floor(Math.random() * ids.length)];
         s.elixirs[e] = (s.elixirs[e] || 0) + 1; g.push('丹药【' + ELIXIRS[e].name + '】×1');
       }
@@ -905,9 +904,9 @@ const Engine = (function () {
     const mats = SHOP_ITEMS.filter(function (i) { return i.id === 'herb5' || i.id === 'iron3'; });
     stock.push(pick(mats));
     const danPool = SHOP_ITEMS.filter(function (i) {
-      return i.give && i.give.elixirs && ['liaoshang', 'juling', 'zhuji', 'jiejin', 'zengshou'].indexOf(Object.keys(i.give.elixirs)[0]) >= 0;
+      return i.give && i.give.elixirs && ['juling', 'zhuji', 'jiejin', 'zengshou'].indexOf(Object.keys(i.give.elixirs)[0]) >= 0;
     });
-    const dmax = { liaoshang: 0, juling: 0, zhuji: 0, jiejin: 1, zengshou: 1 };
+    const dmax = { juling: 0, zhuji: 0, jiejin: 1, zengshou: 1 };
     const okDan = danPool.filter(function (i) {
       const eid = Object.keys(i.give.elixirs)[0];
       return bigIdxOf(s) >= dmax[eid] && d >= (eid === 'jiejin' || eid === 'zengshou' ? 2 : 1);

@@ -1883,10 +1883,13 @@
     });
     const hb = $('sell-herb');
     const ib = $('sell-iron');
-    hb.textContent = '灵草 5株 → 20灵石（现有 ' + S.herb + '）';
-    ib.textContent = '灵铁 5块 → 30灵石（现有 ' + S.iron + '）';
-    hb.disabled = S.herb < 5;
-    ib.disabled = S.iron < 5;
+    // 汇总灵草灵铁
+    var totalHerb = Object.keys(S.materials || {}).filter(function(k) { return k.startsWith('herb'); }).reduce(function(a, k) { return a + (S.materials[k] || 0); }, 0);
+    var totalIron = Object.keys(S.materials || {}).filter(function(k) { return k.startsWith('iron'); }).reduce(function(a, k) { return a + (S.materials[k] || 0); }, 0);
+    hb.textContent = '灵草 5株 → 20灵石（现有 ' + totalHerb + '）';
+    ib.textContent = '灵铁 5块 → 30灵石（现有 ' + totalIron + '）';
+    hb.disabled = totalHerb < 5;
+    ib.disabled = totalIron < 5;
     hb.onclick = function () {
       const g = Engine.sellMaterial(S, 'herb', 5);
       log('你出售了 5 株灵草，得灵石 ' + g + '。', 'good');
@@ -1903,7 +1906,8 @@
   /* ---------------- 炼丹 / 炼器 / 储物袋 ---------------- */
   function craftBatch(f, kind) {
     const run = kind === 'alchemy' ? function () { return Engine.doAlchemy(S, f); } : function () { return Engine.doForge(S, f); };
-    const hasMat = kind === 'alchemy' ? function () { return S.herb >= f.cost.herb; } : function () { return S.iron >= f.cost.iron; };
+    var costKey = Object.keys(f.cost)[0];
+    const hasMat = function () { return (S.materials[costKey] || 0) >= f.cost[costKey]; };
     let n = 0, okN = 0;
     while (hasMat()) {
       const r = run();
@@ -2066,6 +2070,7 @@
   function renderArtsTab(kind, body) {
     body.innerHTML = '';
     if (kind === 'alchemy') {
+      if (!S.materials) S.materials = {};
       const t = document.createElement('h4');
       t.textContent = '鼎炉 · 以灵草成丹';
       body.appendChild(t);
@@ -2083,7 +2088,8 @@
           refresh();
         };
         btns[1].onclick = function () {
-          if (S.herb < f.cost.herb) { log('灵草不足，炼不得。', 'bad'); return; }
+          var costKey = Object.keys(f.cost)[0];
+          if ((S.materials[costKey] || 0) < f.cost[costKey]) { log(MATERIALS[costKey].name + '不足，炼不得。', 'bad'); return; }
           craftBatch(f, 'alchemy');
         };
         list.appendChild(rowEl);
@@ -2092,6 +2098,7 @@
       return;
     }
     if (kind === 'forge') {
+      if (!S.materials) S.materials = {};
       const t = document.createElement('h4');
       t.textContent = '铸炉 · 以灵铁炼器';
       body.appendChild(t);
@@ -2109,7 +2116,8 @@
           refresh();
         };
         btns[1].onclick = function () {
-          if (S.iron < f.cost.iron) { log('灵铁不足，炼不得。', 'bad'); return; }
+          var costKey = Object.keys(f.cost)[0];
+          if ((S.materials[costKey] || 0) < f.cost[costKey]) { log(MATERIALS[costKey].name + '不足，炼不得。', 'bad'); return; }
           craftBatch(f, 'forge');
         };
         list.appendChild(rowEl);
@@ -2118,6 +2126,7 @@
       return;
     }
     if (kind === 'land') {
+      if (!S.materials) S.materials = {};
       const ps = fieldList(S);
       const t = document.createElement('h4');
       t.textContent = '灵田 · 现有 ' + ps.length + '/6 亩';
@@ -2145,15 +2154,17 @@
         body.appendChild(p);
       }
       const h5 = document.createElement('h4');
-      h5.textContent = '播种（灵草若干）';
+      h5.textContent = '播种';
       body.appendChild(h5);
       const seeds = document.createElement('div');
       Object.keys(FIELD_SEEDS).forEach(function (id) {
         const sd = FIELD_SEEDS[id];
+        var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
+        var herbName = MATERIALS[herbKey] ? MATERIALS[herbKey].name : '灵草';
         const rowEl = document.createElement('div');
         rowEl.className = 'formula-row';
         rowEl.innerHTML = '<div><b>[' + sd.name + ']</b><br><span class="dim">' + sd.desc + '</span></div>' +
-          '<button>灵草' + sd.cost + ' → 播种</button>';
+          '<button>' + herbName + ' ×' + sd.cost + ' → 播种</button>';
         rowEl.querySelector('button').onclick = function () {
           const r = Engine.plantField(S, id);
           log(r, r.indexOf('你翻土') === 0 ? 'good' : 'bad');
@@ -2247,9 +2258,12 @@
   }
   function costStr(c) {
     const out = [];
-    if (c.stone) out.push('灵石' + c.stone);
-    if (c.herb) out.push('灵草' + c.herb);
-    if (c.iron) out.push('灵铁' + c.iron);
+    for (var key in c) {
+      if (key === 'stone') out.push('灵石' + c[key]);
+      else if (MATERIALS[key]) out.push(MATERIALS[key].name + c[key]);
+      else if (key === 'herb') out.push('灵草' + c[key]);
+      else if (key === 'iron') out.push('灵铁' + c[key]);
+    }
     return out.join('+');
   }
   function renderCraftsPage() {

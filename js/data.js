@@ -94,26 +94,32 @@ const MATERIALS = {
 
 /* ---------------- 炼器丹方（配方） ---------------- */
 const FORMULAS = [
-  // 法宝: 秘境一(炼气-筑基)产物
-  { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron: 15 }, needRealm: 0, grade: '黄' },
-  // 法宝: 秘境二(金丹-元婴)产物
-  { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron: 35 }, needRealm: 2, grade: '地' },
-  { id: 'juling',   out: 'juling',   type: '法宝', cost: { iron: 45 }, needRealm: 2, grade: '地' },
-  { id: 'jinylv',   out: 'jinylv',   type: '法宝', cost: { iron: 60 }, needRealm: 2, grade: '天' },
-  // 丹药
-  { id: 'juling_pill', out: 'juling', type: '丹',  cost: { herb: 5 },  needRealm: 0 },
-  { id: 'zhuji_pill',  out: 'zhuji',  type: '丹',  cost: { herb: 10 }, needRealm: 0 },
-  { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb: 20 }, needRealm: 1 },
-  { id: 'yuanying_pill',out: 'yuanying',type:'丹',  cost: { herb: 35 }, needRealm: 2 },
-  { id: 'zengshou_pill',out: 'zengshou',type:'丹',  cost: { herb: 25 }, needRealm: 1 },
-  { id: 'wudao_pill', out: 'wudao',   type: '丹',   cost: { herb: 80 }, needRealm: 3 }
+  // 黄级配方（炼气）
+  { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron_huang: 15 }, needRealm: 0, grade: '黄', years: 2 },
+  { id: 'juling_pill', out: 'juling', type: '丹',  cost: { herb_huang: 5 },  needRealm: 0, grade: '黄', years: 1 },
+  // 玄级配方（筑基）
+  { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron_xuan: 25 }, needRealm: 1, grade: '玄', years: 4 },
+  { id: 'zhuji_pill', out: 'zhuji',  type: '丹',  cost: { herb_xuan: 10 }, needRealm: 1, grade: '玄', years: 3 },
+  { id: 'zengshou_pill', out: 'zengshou', type: '丹', cost: { herb_xuan: 15 }, needRealm: 1, grade: '玄', years: 4 },
+  // 地级配方（金丹）
+  { id: 'juling_art',   out: 'juling',   type: '法宝', cost: { iron_di: 35 }, needRealm: 2, grade: '地', years: 6 },
+  { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb_di: 20 }, needRealm: 2, grade: '地', years: 5 },
+  { id: 'yuanying_pill', out: 'yuanying', type: '丹', cost: { herb_di: 30 }, needRealm: 2, grade: '地', years: 7 },
+  // 天级配方（元婴）
+  { id: 'jinylv',   out: 'jinylv',   type: '法宝', cost: { iron_tian: 50 }, needRealm: 3, grade: '天', years: 10 },
+  { id: 'wudao_pill', out: 'wudao',  type: '丹',  cost: { herb_tian: 40 }, needRealm: 3, grade: '天', years: 8 }
 ];
 
 /* ---------------- 灵田种子（百艺 · 种植） ---------------- */
 const FIELD_SEEDS = {
-  lingshen:    { name: '灵草田', cost: 1, years: 2, gain: [3, 6], desc: '种 1 株灵草苗，两年后收 3~6 株。' },
-  lingshen_big:{ name: '灵参田', cost: 6, years: 4, gain: [14, 24], desc: '埋 6 株灵草为参，四年后收 14~24 株，偶有参王。' }
+  lingshen_huang: { name: '黄级灵草田', cost: 1, years: 2, gain: [3, 6], grade: '黄', desc: '种黄级灵草苗，两年后收3~6株。' },
+  lingshen_xuan:  { name: '玄级灵草田', cost: 3, years: 3, gain: [4, 8], grade: '玄', desc: '种玄级灵草苗，三年后收4~8株。' },
+  lingshen_di:    { name: '地级灵草田', cost: 6, years: 4, gain: [5, 10], grade: '地', desc: '种地级灵草苗，四年后收5~10株。' },
+  lingshen_tian:  { name: '天级灵草田', cost: 10, years: 5, gain: [6, 12], grade: '天', desc: '种天级灵草苗，五年后收6~12株。' }
 };
+
+// 灵田产出映射
+const FIELD_GRADE_MAP = { '黄': 'herb_huang', '玄': 'herb_xuan', '地': 'herb_di', '天': 'herb_tian' };
 
 /* ---------------- 灵根 ---------------- */
 const LINGGEN_POOL = [

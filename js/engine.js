@@ -26,6 +26,17 @@ const Engine = (function () {
     try {
       const s = JSON.parse(localStorage.getItem(slotKey(slot)));
       ensureTechEquip(s);
+      // 迁移旧材料系统到分级材料系统
+      if (s && !s.materials) {
+        s.materials = {
+          herb_huang: s.herb || 0,
+          herb_xuan: 0, herb_di: 0, herb_tian: 0,
+          iron_huang: s.iron || 0,
+          iron_xuan: 0, iron_di: 0, iron_tian: 0
+        };
+        s.herb = 0;
+        s.iron = 0;
+      }
       return s;
     } catch (e) {}
     return null;
@@ -936,10 +947,24 @@ const Engine = (function () {
     return { ok: true, lines: out };
   }
   function sellMaterial(s, kind, n) {
+    if (!s.materials) s.materials = {};
     if (kind !== 'herb' && kind !== 'iron') return false;
-    const have = kind === 'herb' ? s.herb : s.iron;
-    if (have < n) return false;
-    if (kind === 'herb') s.herb -= n; else s.iron -= n;
+    // 汇总所有分级材料
+    var keys = Object.keys(s.materials).filter(function(k) { return k.startsWith(kind); });
+    var total = keys.reduce(function(a, k) { return a + (s.materials[k] || 0); }, 0);
+    if (total < n) return false;
+    // 从最低级开始扣减
+    var remaining = n;
+    var gradeOrder = kind === 'herb' ? ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'] : ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+    for (var i = 0; i < gradeOrder.length && remaining > 0; i++) {
+      var key = gradeOrder[i];
+      var have = s.materials[key] || 0;
+      var deduct = Math.min(have, remaining);
+      if (deduct > 0) {
+        s.materials[key] -= deduct;
+        remaining -= deduct;
+      }
+    }
     const g = n * SELL_PRICE[kind];
     s.stone += g;
     refreshStats(s); saveState(s);
@@ -1098,11 +1123,18 @@ const Engine = (function () {
 
   /* ---------------- 炼丹 / 炼器 ---------------- */
   function alchemyChoices(s) {
+    if (!s.materials) s.materials = {};
     return FORMULAS.filter(function (f) { return f.type === '丹' && bigIdxOf(s) >= f.needRealm; });
   }
   function doAlchemy(s, f) {
-    if (s.herb < f.cost.herb) return { ok: false, msg: '灵草不足，需要 ' + f.cost.herb + ' 株' };
-    s.herb -= f.cost.herb;
+    if (!s.materials) s.materials = {};
+    // 获取配方需要的材料key
+    var costKey = Object.keys(f.cost)[0];
+    var costAmount = f.cost[costKey];
+    if ((s.materials[costKey] || 0) < costAmount) {
+      return { ok: false, msg: MATERIALS[costKey].name + '不足，需要 ' + costAmount + ' 株' };
+    }
+    s.materials[costKey] -= costAmount;
     const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.talents.indexOf('liancai') >= 0 ? 0.2 : 0) + (s.reinc.alchemy || 0) * 0.10 + (s.sect === 'dpxia' ? 0.2 : 0));
     if (Math.random() < chance) {
       let qty = 1;
@@ -1116,11 +1148,18 @@ const Engine = (function () {
     return { ok: false, msg: '炸炉了……灵草化作飞灰，你心疼地捂了捂胸口。' };
   }
   function forgeChoices(s) {
+    if (!s.materials) s.materials = {};
     return FORMULAS.filter(function (f) { return f.type === '法宝' && bigIdxOf(s) >= f.needRealm; });
   }
   function doForge(s, f) {
-    if (s.iron < f.cost.iron) return { ok: false, msg: '灵铁不足，需要 ' + f.cost.iron + ' 块' };
-    s.iron -= f.cost.iron;
+    if (!s.materials) s.materials = {};
+    // 获取配方需要的材料key
+    var costKey = Object.keys(f.cost)[0];
+    var costAmount = f.cost[costKey];
+    if ((s.materials[costKey] || 0) < costAmount) {
+      return { ok: false, msg: MATERIALS[costKey].name + '不足，需要 ' + costAmount + ' 块' };
+    }
+    s.materials[costKey] -= costAmount;
     const chance = Math.min(0.9, 0.75 + (s.ti - 5) * 0.01);
     if (Math.random() < chance) {
       if (s.arts.indexOf(f.out) < 0) s.arts.push(f.out);
@@ -1350,17 +1389,21 @@ const Engine = (function () {
     return { seed: p.seed, name: sd.name, years: years, needYears: sd.years, done: done, desc: sd.desc };
   }
   function plantField(s, seedId) {
+    if (!s.materials) s.materials = {};
     const sd = FIELD_SEEDS[seedId];
     if (!sd) return '没有这种种子。';
     const plots = fieldPlots(s);
     if (plots.length >= 6) return '灵田已满（最多六亩），先采收再种吧。';
-    if (s.herb < sd.cost) return '灵草不足（播种需 ' + sd.cost + ' 株）。';
-    s.herb -= sd.cost;
+    // 使用分级灵草播种
+    var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
+    if ((s.materials[herbKey] || 0) < sd.cost) return MATERIALS[herbKey].name + '不足（播种需 ' + sd.cost + ' 株）。';
+    s.materials[herbKey] -= sd.cost;
     plots.push({ seed: seedId, planted: s.year });
     refreshStats(s); saveState(s);
     return '你翻土、下种、引灵泉灌溉，一亩【' + sd.name + '】就此落成。' + sd.desc;
   }
   function harvestField(s, i) {
+    if (!s.materials) s.materials = {};
     const plots = fieldPlots(s);
     const p = plots[i];
     if (!p) return '这一亩田并不存在。';
@@ -1368,23 +1411,32 @@ const Engine = (function () {
     const years = s.year - (p.planted || s.year);
     if (years < sd.years) return '这一亩【' + sd.name + '】还有 ' + (sd.years - years) + ' 年才成熟。';
     let n = sd.gain[0] + Math.floor(Math.random() * (sd.gain[1] - sd.gain[0] + 1));
-    s.herb += n;
-    let extra = '';
-    if (p.seed === 'lingshen_big' && Math.random() < 0.25) { s.herb += 6; extra = '，并掘出一株野参王（额外灵草 +6）'; }
+    // 产出分级灵草
+    var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
+    s.materials[herbKey] = (s.materials[herbKey] || 0) + n;
     plots.splice(i, 1);
     refreshStats(s); saveState(s);
-    return '你挥锄采收【' + sd.name + '】，得灵草 ' + n + ' 株' + extra;
+    return '你挥锄采收【' + sd.name + '】，得' + MATERIALS[herbKey].name + ' ' + n + ' 株';
   }
   function digMine(s) {
+    if (!s.materials) s.materials = {};
     if (!s.mine) s.mine = { depth: 0 };
     const d = s.mine.depth || 0;
+    const bi = bigIdxOf(s);
+    const ironKey = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
     const r = Math.random();
     let msg;
     if (r < 0.15) { const st = (8 + d * 2) * 10; s.stone += st; msg = '矿脉深处竟嵌着几条灵石原矿（灵石 +' + st + '）。'; }
-    else if (r < 0.3) { const h = (1 + Math.floor(Math.random() * 2)) * 10; s.herb += h; msg = '你在岩缝里寻到几株伴生灵草（灵草 +' + h + '）。'; }
+    else if (r < 0.3) {
+      var herbKey = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang';
+      const h = (1 + Math.floor(Math.random() * 2)) * 10;
+      s.materials[herbKey] = (s.materials[herbKey] || 0) + h;
+      msg = '你在岩缝里寻到几株伴生灵草（' + MATERIALS[herbKey].name + ' +' + h + '）。';
+    }
     else {
       const n = (2 + Math.floor(d / 2) + Math.floor(Math.random() * (3 + Math.floor(d / 3)))) * 10;
-      s.iron += n; msg = '你抡起卦锤一凿一凿，挖出灵铁 ' + n + ' 块。';
+      s.materials[ironKey] = (s.materials[ironKey] || 0) + n;
+      msg = '你抡起卦锤一凿一凿，挖出' + MATERIALS[ironKey].name + ' ' + n + ' 块。';
     }
     if (Math.random() < 0.35 && d < 10) { s.mine.depth = d + 1; msg += ' 矿脉愈挖愈深，灵气渐盛（矿脉深度 +1）。'; }
     refreshStats(s); saveState(s);

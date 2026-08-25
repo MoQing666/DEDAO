@@ -1974,9 +1974,33 @@
       box.appendChild(body);
       renderArtsTab('alchemy', body);
     } else if (kind === 'bag') {
+      if (!S.materials) S.materials = {};
       const title = document.createElement('h3');
       title.textContent = '储物袋';
       box.appendChild(title);
+
+      // 灵材部分
+      const matTitle = document.createElement('h4');
+      matTitle.textContent = '灵材';
+      box.appendChild(matTitle);
+      const matGrid = document.createElement('div');
+      matGrid.className = 'bag-grid';
+      const matKeys = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian', 'iron_huang', 'iron_xuan', 'iron_di', 'iron_tian', 'stone'];
+      matKeys.forEach(function (key) {
+        var n = key === 'stone' ? (S.stone || 0) : (S.materials[key] || 0);
+        if (!n) return;
+        var d = document.createElement('div');
+        d.className = 'bag-item';
+        d.innerHTML = '<b>' + MATERIALS[key].name + '</b> ×' + n;
+        matGrid.appendChild(d);
+      });
+      if (!matGrid.children.length) matGrid.innerHTML = '<p class="dim">无灵材</p>';
+      box.appendChild(matGrid);
+
+      // 丹药部分
+      const elixirTitle = document.createElement('h4');
+      elixirTitle.textContent = '丹药';
+      box.appendChild(elixirTitle);
       const bag = document.createElement('div');
       bag.className = 'bag-grid';
       Object.keys(ELIXIRS).forEach(function (id) {
@@ -1994,8 +2018,10 @@
         };
         bag.appendChild(d);
       });
-      if (!bag.children.length) bag.innerHTML = '<p class="dim">袋中空空如也，修行的第一步从攒家底开始。</p>';
+      if (!bag.children.length) bag.innerHTML = '<p class="dim">无丹药</p>';
       box.appendChild(bag);
+
+      // 功法和法宝
       const gear = document.createElement('div');
       gear.innerHTML = '<h4>功法</h4>' + (S.techs.length ? S.techs.map(function (t) {
         const g = TECHNIQUES[t].grade;

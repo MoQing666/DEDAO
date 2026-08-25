@@ -337,18 +337,16 @@
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
       ov.style.display = 'flex';
-      // 播放战斗BGM和音效
+      // 播放战斗音效
       if (typeof AudioManager !== 'undefined') {
-        AudioManager.playBgm('battle');
         AudioManager.playSfx('battle_start');
       }
       renderBattle();
       function finish(r) {
         ov.style.display = 'none';
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
-        // 恢复游戏BGM
+        // 恢复音效
         if (typeof AudioManager !== 'undefined') {
-          AudioManager.playBgm('game');
           AudioManager.playSfx(r.win ? 'battle_end' : 'bad');
         }
         if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {

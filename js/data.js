@@ -80,7 +80,15 @@ const ARTIFACTS = {
 /* ---------------- 材料与货币 ---------------- */
 const MATERIALS = {
   herb:  { name: '灵草', emoji: '🌿' },
+  herb_huang: { name: '黄级灵草', emoji: '🌿', grade: '黄' },
+  herb_xuan:  { name: '玄级灵草', emoji: '🌿', grade: '玄' },
+  herb_di:    { name: '地级灵草', emoji: '🌿', grade: '地' },
+  herb_tian:  { name: '天级灵草', emoji: '🌿', grade: '天' },
   iron:  { name: '灵铁', emoji: '⚒' },
+  iron_huang: { name: '黄级灵铁', emoji: '⚒', grade: '黄' },
+  iron_xuan:  { name: '玄级灵铁', emoji: '⚒', grade: '玄' },
+  iron_di:    { name: '地级灵铁', emoji: '⚒', grade: '地' },
+  iron_tian:  { name: '天级灵铁', emoji: '⚒', grade: '天' },
   stone: { name: '灵石', emoji: '◇' }
 };
 

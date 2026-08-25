@@ -129,10 +129,14 @@
       d.className = 'ap-dot' + (i < S.actionsLeft ? ' on' : '');
       $('h-actions').appendChild(d);
     }
+    // 显示灵材（汇总）
+    if (!S.materials) S.materials = {};
+    var totalHerb = (S.herb || 0) + (S.materials.herb_huang || 0) + (S.materials.herb_xuan || 0) + (S.materials.herb_di || 0) + (S.materials.herb_tian || 0);
+    var totalIron = (S.iron || 0) + (S.materials.iron_huang || 0) + (S.materials.iron_xuan || 0) + (S.materials.iron_di || 0) + (S.materials.iron_tian || 0);
     $('h-res').innerHTML =
       '<span class="chip">灵石 ' + S.stone + '</span>' +
-      '<span class="chip">灵草 ' + S.herb + '</span>' +
-      '<span class="chip">灵铁 ' + S.iron + '</span>';
+      '<span class="chip">灵草 ' + totalHerb + '</span>' +
+      '<span class="chip">灵铁 ' + totalIron + '</span>';
 
     const need = requireNeed(S);
     const qiPct = Math.max(0, Math.min(100, S.qi / need * 100));

@@ -2136,26 +2136,76 @@
       return;
     }
     if (kind === 'mine') {
-      const d = S.mine ? S.mine.depth || 0 : 0;
+      const bi = Engine.bigIdxOf(S);
+      const ironGrades = ['黄', '玄', '地', '天'];
+      const ironKeys = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+      const ironKey = ironKeys[bi] || 'iron_huang';
+      const ironGrade = ironGrades[bi] || '黄';
+      const ironName = MATERIALS[ironKey] ? MATERIALS[ironKey].name : '黄级灵铁';
+
       const t = document.createElement('h4');
-      t.textContent = '灵矿 · 当前矿脉深度 ' + d + '（越深，灵铁与灵石越丰）';
+      t.textContent = '灵矿 · ' + ironGrade + '级矿脉';
       body.appendChild(t);
       const p = document.createElement('p');
       p.className = 'dim';
       p.textContent = '抡起卦锤，一锤一凿皆是机缘。';
       body.appendChild(p);
-      const b = document.createElement('button');
-      b.className = 'big';
-      b.textContent = '挖矿（1行动点）';
-      b.onclick = function () {
+
+      // 挖矿三日
+      const btn1 = document.createElement('button');
+      btn1.className = 'big';
+      btn1.textContent = '挖矿三日（1行动点）';
+      btn1.style.marginBottom = '8px';
+      btn1.onclick = function () {
         if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
+        if (S.hp <= 100) { log('气血不足，无法挖矿。'); return; }
         Engine.spend(S, 1);
-        const r = Engine.digMine(S);
-        log(r, r.indexOf('灵石') >= 0 ? 'gold' : 'good');
+        S.hp -= 100;
+        S.materials[ironKey] = (S.materials[ironKey] || 0) + 10;
+        Engine.refreshStats(S);
+        Engine.saveState(S);
+        log('你挖矿三日，得' + ironName + ' ×10，气血 -100。', 'good');
         renderArtsTab('mine', body);
         refresh();
       };
-      body.appendChild(b);
+      body.appendChild(btn1);
+
+      // 挖矿到极限
+      const btn2 = document.createElement('button');
+      btn2.className = 'big';
+      btn2.textContent = '挖矿到极限（1行动点）';
+      btn2.style.marginBottom = '8px';
+      btn2.onclick = function () {
+        if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
+        if (S.hp <= 100) { log('气血不足，无法挖矿。'); return; }
+        Engine.spend(S, 1);
+        const maxIron = Math.floor((S.hp - 1) / 100) * 10;
+        const hpCost = Math.floor(maxIron / 10) * 100;
+        S.hp -= hpCost;
+        S.materials[ironKey] = (S.materials[ironKey] || 0) + maxIron;
+        Engine.refreshStats(S);
+        Engine.saveState(S);
+        log('你挖矿到极限，得' + ironName + ' ×' + maxIron + '，气血 -' + hpCost + '。', 'good');
+        renderArtsTab('mine', body);
+        refresh();
+      };
+      body.appendChild(btn2);
+
+      // 锻体
+      const btn3 = document.createElement('button');
+      btn3.className = 'big';
+      btn3.textContent = '锻体（1行动点）';
+      btn3.onclick = function () {
+        if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
+        Engine.spend(S, 1);
+        S.ti = (S.ti || 0) + 0.5;
+        Engine.refreshStats(S);
+        Engine.saveState(S);
+        log('你苦修锻体，体魄 +0.5。', 'good');
+        renderArtsTab('mine', body);
+        refresh();
+      };
+      body.appendChild(btn3);
       return;
     }
   }

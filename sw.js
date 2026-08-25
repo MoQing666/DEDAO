@@ -1,13 +1,15 @@
-const CACHE = 'dedao-v6';
+const CACHE = 'dedao-v7';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/data.js',
   './js/engine.js',
+  './js/audio.js',
   './js/ui.js',
   './manifest.json',
-  './assets/fonts/TsangerYuYangT-W05.woff2'
+  './assets/fonts/TsangerYuYangT-W05.woff2',
+  './assets/audio/bgm/求道一两风_minimax_free.mp3'
 ];
 
 self.addEventListener('install', function (e) {

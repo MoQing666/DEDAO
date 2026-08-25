@@ -104,7 +104,13 @@ var AudioManager = (function () {
     
     // 检查是否有真实音频文件
     var bgmFiles = {
-      title: 'assets/audio/bgm/求道一两风_minimax_free.mp3'
+      title: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      game: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      battle: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      peaceful: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      sect: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      adventure: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
+      ending: 'assets/audio/bgm/求道一两风_minimax_free.mp3'
     };
     
     if (bgmFiles[name]) {
@@ -134,7 +140,6 @@ var AudioManager = (function () {
             }
           }, stepTime);
         }).catch(function(e) {
-          console.warn('Failed to play BGM file:', e);
           // 降级到合成音
           playSynthBgm(name);
         });

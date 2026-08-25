@@ -337,10 +337,18 @@
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
       ov.style.display = 'flex';
+      // 进入战斗播放战斗BGM
+      if (typeof AudioManager !== 'undefined') {
+        AudioManager.playBgm('battle');
+      }
       renderBattle();
       function finish(r) {
         ov.style.display = 'none';
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
+        // 退出战斗恢复游戏BGM
+        if (typeof AudioManager !== 'undefined') {
+          AudioManager.playBgm('game');
+        }
         // 战斗结束后恢复血量为满
         Engine.refreshStats(S);
         S.hp = S.hpMax;

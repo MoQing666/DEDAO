@@ -37,7 +37,7 @@ Syntax check: `node --check js/data.js && node --check js/engine.js && node --ch
 ## Audio System
 - `AudioManager` global: `playBgm(name)`, `playSfx(name)`, `stopBgm()`, `pauseBgm()`, `resumeBgm()`, `setBgmVolume(vol)`, `setSfxVolume(vol)`, `enableBgm(enabled)`, `enableSfx(enabled)`
 - Real audio files: `assets/audio/bgm/` and `assets/audio/sfx/`
-- BGM: all scenes use `assets/audio/bgm/求道一两风_minimax_free.mp3` (title, game, battle, peaceful, sect, adventure, ending)
+- BGM: 场景使用 `求道一两风_minimax_free.mp3`，战斗使用 `仙魔浩劫_watermark.mp3`
 - Falls back to Web Audio synthesis if files fail to load
 - `generate-audio.js` — run `node generate-audio.js` to regenerate placeholder WAV files
 

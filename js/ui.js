@@ -2136,6 +2136,7 @@
       return;
     }
     if (kind === 'mine') {
+      if (!S.materials) S.materials = {};
       const bi = Engine.bigIdxOf(S);
       const ironGrades = ['黄', '玄', '地', '天'];
       const ironKeys = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];

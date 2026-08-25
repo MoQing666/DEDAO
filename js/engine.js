@@ -1394,6 +1394,7 @@ const Engine = (function () {
   /* ---------------- 炼制队列系统 ---------------- */
   function startCraft(s, formulaId) {
     if (!s.craftQueue) s.craftQueue = [];
+    if (!s.materials) s.materials = {};
     const formula = FORMULAS.find(function(f) { return f.id === formulaId; });
     if (!formula) return { ok: false, msg: '配方不存在' };
     for (var mat in formula.cost) {
@@ -1440,6 +1441,7 @@ const Engine = (function () {
   function giveGift(s, targetId, giftType) {
     if (!s.favor) s.favor = {};
     if (!s.giftCooldown) s.giftCooldown = {};
+    if (!s.materials) s.materials = {};
     var target = FAVOR_SYSTEM[targetId];
     if (!target) return { ok: false, msg: '目标不存在' };
     var gift = target.gifts[giftType];

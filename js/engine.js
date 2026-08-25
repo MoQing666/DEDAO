@@ -1403,6 +1403,90 @@ const Engine = (function () {
     return msg;
   }
 
+  /* ---------------- 炼制队列系统 ---------------- */
+  function startCraft(s, formulaId) {
+    if (!s.craftQueue) s.craftQueue = [];
+    const formula = FORMULAS.find(function(f) { return f.id === formulaId; });
+    if (!formula) return { ok: false, msg: '配方不存在' };
+    for (var mat in formula.cost) {
+      if ((s.materials[mat] || 0) < formula.cost[mat]) {
+        return { ok: false, msg: '材料不足' };
+      }
+    }
+    for (var mat in formula.cost) {
+      s.materials[mat] -= formula.cost[mat];
+    }
+    s.craftQueue.push({
+      formulaId: formulaId,
+      startYear: s.year,
+      endYear: s.year + formula.years,
+      output: formula.out,
+      type: formula.type
+    });
+    refreshStats(s); saveState(s);
+    return { ok: true, msg: '开始炼制，需要' + formula.years + '年' };
+  }
+  function accelerateCraft(s, queueIndex) {
+    if (!s.craftQueue || !s.craftQueue[queueIndex]) return { ok: false, msg: '炼制任务不存在' };
+    var craft = s.craftQueue[queueIndex];
+    var formula = FORMULAS.find(function(f) { return f.id === craft.formulaId; });
+    if (!formula) return { ok: false, msg: '配方不存在' };
+    var accelYears = { 0: 2, 1: 3, 2: 4, 3: 5 };
+    var accel = accelYears[formula.needRealm] || 2;
+    craft.endYear -= accel;
+    var msg = '加速' + accel + '年';
+    if (craft.endYear <= s.year) {
+      msg += '，炼制完成！';
+      if (craft.type === '丹') {
+        s.elixirs[craft.output] = (s.elixirs[craft.output] || 0) + 1;
+      } else {
+        grantEquipChecked(s, craft.output);
+      }
+      s.craftQueue.splice(queueIndex, 1);
+    }
+    refreshStats(s); saveState(s);
+    return { ok: true, msg: msg };
+  }
+
+  /* ---------------- 结缘系统 ---------------- */
+  function giveGift(s, targetId, giftType) {
+    if (!s.favor) s.favor = {};
+    if (!s.giftCooldown) s.giftCooldown = {};
+    var target = FAVOR_SYSTEM[targetId];
+    if (!target) return { ok: false, msg: '目标不存在' };
+    var gift = target.gifts[giftType];
+    if (!gift) return { ok: false, msg: '礼物不存在' };
+    if (s.giftCooldown[targetId] >= s.year) return { ok: false, msg: '今年已赠送过礼物' };
+    if ((s.materials[giftType] || 0) <= 0) return { ok: false, msg: '材料不足' };
+    s.materials[giftType]--;
+    s.favor[targetId] = Math.min(target.maxFavor, (s.favor[targetId] || 0) + gift.favor);
+    s.giftCooldown[targetId] = s.year;
+    refreshStats(s); saveState(s);
+    return { ok: true, msg: '赠送' + gift.name + '，好感度+' + gift.favor };
+  }
+
+  /* ---------------- 事件系统 ---------------- */
+  function getAvailableEvents(s) {
+    if (!s.completedEvents) s.completedEvents = {};
+    var events = [];
+    if (bigIdxOf(s) >= 1 && !s.completedEvents['main_zhuji']) {
+      events.push({ id: 'main_zhuji', title: '筑基之路', desc: '修为达到筑基，可开启新篇章。' });
+    }
+    if (bigIdxOf(s) >= 2 && !s.completedEvents['main_jindan']) {
+      events.push({ id: 'main_jindan', title: '金丹大道', desc: '修为达到金丹，天命显现。' });
+    }
+    if (bigIdxOf(s) >= 3 && !s.completedEvents['main_yuanying']) {
+      events.push({ id: 'main_yuanying', title: '元婴之劫', desc: '修为达到元婴，心魔来袭。' });
+    }
+    return events;
+  }
+  function triggerEvent(s, eventId) {
+    if (!s.completedEvents) s.completedEvents = {};
+    s.completedEvents[eventId] = true;
+    saveState(s);
+    return { ok: true, msg: '事件完成' };
+  }
+
   /* ---------------- 年末 / 岁月 ---------------- */
   function endYear(s) {
     s.age += 1;
@@ -1577,6 +1661,9 @@ const Engine = (function () {
     grantEquipChecked: grantEquipChecked, pendingDuobao: pendingDuobao,
     duobaoSpec: duobaoSpec, grantPendingEquip: grantPendingEquip, dropPendingEquip: dropPendingEquip,
     shopStock: shopStock, buyStock: buyStock, sellMaterial: sellMaterial,
+    startCraft: startCraft, accelerateCraft: accelerateCraft,
+    giveGift: giveGift, getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,
+    bigIdxOf: bigIdxOf,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, checkAchievements: checkAchievements

@@ -1397,6 +1397,297 @@
     showScreen('gear');
     renderGear();
   }
+
+  /* ---------------- 结缘系统UI ---------------- */
+  function openFavor() {
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
+    box.innerHTML = '';
+
+    const title = document.createElement('h3');
+    title.textContent = '结缘';
+    box.appendChild(title);
+
+    // 道侣部分
+    if (S.flags && S.flags.daoLu) {
+      box.appendChild(createFavorSection('daolu'));
+    } else if (S.flags && S.flags.lin) {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '与林婉儿的缘分未满，暂无法结缘。';
+      box.appendChild(p);
+    } else {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '尚未结识有缘人。';
+      box.appendChild(p);
+    }
+
+    // 宠物部分
+    if (S.flags && S.flags.pet) {
+      box.appendChild(createFavorSection('pet'));
+    }
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-small';
+    closeBtn.textContent = '关闭';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.onclick = function() { closeModal(); };
+    box.appendChild(closeBtn);
+  }
+
+  function createFavorSection(targetId) {
+    const target = FAVOR_SYSTEM[targetId];
+    const favor = (S.favor && S.favor[targetId]) || 0;
+    const section = document.createElement('div');
+    section.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px;';
+
+    const header = document.createElement('h4');
+    header.style.color = '#e8c15a';
+    header.textContent = target.name;
+    section.appendChild(header);
+
+    const desc = document.createElement('p');
+    desc.className = 'dim';
+    desc.textContent = target.desc;
+    section.appendChild(desc);
+
+    // 好感度星星
+    const stars = document.createElement('div');
+    stars.style.cssText = 'display:flex;gap:4px;margin:8px 0;';
+    for (let i = 0; i < target.maxFavor; i++) {
+      const star = document.createElement('span');
+      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? '#e8c15a' : '#3a3450');
+      star.textContent = '★';
+      stars.appendChild(star);
+    }
+    const favorText = document.createElement('span');
+    favorText.style.cssText = 'margin-left:8px;color:#8a8394;font-size:12px;';
+    favorText.textContent = '(' + favor.toFixed(1) + '/' + target.maxFavor + ')';
+    stars.appendChild(favorText);
+    section.appendChild(stars);
+
+    // 赠送礼物
+    const giftTitle = document.createElement('p');
+    giftTitle.style.cssText = 'margin-top:8px;color:#c9a86a;font-size:13px;';
+    giftTitle.textContent = '赠送礼物（每年一次）：';
+    section.appendChild(giftTitle);
+
+    const giftBtns = document.createElement('div');
+    giftBtns.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;';
+    for (const giftType in target.gifts) {
+      const gift = target.gifts[giftType];
+      const btn = document.createElement('button');
+      btn.className = 'btn-small';
+      btn.textContent = gift.name + '(+' + gift.favor + ')';
+      btn.onclick = function() {
+        const result = Engine.giveGift(S, targetId, giftType);
+        if (result.ok) {
+          log(result.msg, 'good');
+          openFavor();
+          refresh();
+        } else {
+          log(result.msg, 'bad');
+        }
+      };
+      giftBtns.appendChild(btn);
+    }
+    section.appendChild(giftBtns);
+    return section;
+  }
+
+  /* ---------------- 修仙百艺UI（炼丹/炼器） ---------------- */
+  function openCraftQueue() {
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
+    box.innerHTML = '';
+
+    const title = document.createElement('h3');
+    title.textContent = '修仙百艺';
+    box.appendChild(title);
+
+    // 炼制队列
+    if (S.craftQueue && S.craftQueue.length > 0) {
+      const queueDiv = document.createElement('div');
+      queueDiv.style.cssText = 'background:rgba(232,193,90,0.08);border:1px solid rgba(232,193,90,0.3);border-radius:8px;padding:12px;margin-bottom:12px;';
+      queueDiv.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">炼制队列</h4>';
+      S.craftQueue.forEach(function(craft, index) {
+        const formula = FORMULAS.find(function(f) { return f.id === craft.formulaId; });
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);';
+        const name = craft.type === '丹' ? ELIXIRS[craft.output].name : ARTIFACTS[craft.output].name;
+        const yearsLeft = craft.endYear - S.year;
+        item.innerHTML = '<span>' + name + '</span><span>' + (yearsLeft > 0 ? '还需' + yearsLeft + '年' : '可完成') + '</span>';
+        if (yearsLeft > 0) {
+          const accelBtn = document.createElement('button');
+          accelBtn.className = 'btn-small';
+          accelBtn.textContent = '加速';
+          accelBtn.onclick = function() {
+            const result = Engine.accelerateCraft(S, index);
+            if (result.ok) {
+              log(result.msg, 'good');
+              openCraftQueue();
+              refresh();
+            }
+          };
+          item.appendChild(accelBtn);
+        }
+        queueDiv.appendChild(item);
+      });
+      box.appendChild(queueDiv);
+    }
+
+    const bi = Engine.bigIdxOf(S);
+    const availableFormulas = FORMULAS.filter(function(f) { return f.needRealm <= bi; });
+
+    // 炼丹部分
+    const alchemyTitle = document.createElement('h4');
+    alchemyTitle.style.cssText = 'color:#4ec9a0;margin-top:16px;margin-bottom:8px;';
+    alchemyTitle.textContent = '── 炼丹 ──';
+    box.appendChild(alchemyTitle);
+
+    const alchemyFormulas = availableFormulas.filter(function(f) { return f.type === '丹'; });
+    if (alchemyFormulas.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '暂无可用丹方';
+      box.appendChild(p);
+    } else {
+      alchemyFormulas.forEach(function(formula) {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
+        const elixir = ELIXIRS[formula.out];
+        const costStr = Object.keys(formula.cost).map(function(mat) {
+          return MATERIALS[mat].name + '×' + formula.cost[mat];
+        }).join('、');
+        card.innerHTML = '<h4>' + elixir.name + '</h4>' +
+          '<p class="desc" style="color:#4ec9a0;">' + elixir.desc + '</p>' +
+          '<p class="desc">' + formula.grade + '级 · 需' + formula.years + '年</p>' +
+          '<p class="desc">材料：' + costStr + '</p>';
+        const craftBtn = document.createElement('button');
+        craftBtn.className = 'btn-small';
+        craftBtn.textContent = '开始炼丹';
+        craftBtn.onclick = function() {
+          const result = Engine.startCraft(S, formula.id);
+          if (result.ok) {
+            log(result.msg, 'good');
+            openCraftQueue();
+            refresh();
+          } else {
+            log(result.msg, 'bad');
+          }
+        };
+        card.appendChild(craftBtn);
+        box.appendChild(card);
+      });
+    }
+
+    // 炼器部分
+    const forgeTitle = document.createElement('h4');
+    forgeTitle.style.cssText = 'color:#b26de0;margin-top:16px;margin-bottom:8px;';
+    forgeTitle.textContent = '── 炼器 ──';
+    box.appendChild(forgeTitle);
+
+    const forgeFormulas = availableFormulas.filter(function(f) { return f.type === '法宝'; });
+    if (forgeFormulas.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '暂无可用配方';
+      box.appendChild(p);
+    } else {
+      forgeFormulas.forEach(function(formula) {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
+        const artifact = ARTIFACTS[formula.out];
+        const costStr = Object.keys(formula.cost).map(function(mat) {
+          return MATERIALS[mat].name + '×' + formula.cost[mat];
+        }).join('、');
+        card.innerHTML = '<h4>' + artifact.name + '</h4>' +
+          '<p class="desc" style="color:#b26de0;">' + artifact.desc + '</p>' +
+          '<p class="desc">效果：' + artifact.effect + '</p>' +
+          '<p class="desc">' + formula.grade + '级 · 需' + formula.years + '年</p>' +
+          '<p class="desc">材料：' + costStr + '</p>';
+        const craftBtn = document.createElement('button');
+        craftBtn.className = 'btn-small';
+        craftBtn.textContent = '开始炼器';
+        craftBtn.onclick = function() {
+          const result = Engine.startCraft(S, formula.id);
+          if (result.ok) {
+            log(result.msg, 'good');
+            openCraftQueue();
+            refresh();
+          } else {
+            log(result.msg, 'bad');
+          }
+        };
+        card.appendChild(craftBtn);
+        box.appendChild(card);
+      });
+    }
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-small';
+    closeBtn.textContent = '关闭';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.onclick = function() { closeModal(); };
+    box.appendChild(closeBtn);
+  }
+
+  /* ---------------- 事件系统UI ---------------- */
+  function openEvents() {
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
+    box.innerHTML = '';
+
+    const title = document.createElement('h3');
+    title.textContent = '事件';
+    box.appendChild(title);
+
+    const events = Engine.getAvailableEvents(S);
+
+    if (events.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '暂无可用事件';
+      box.appendChild(p);
+    } else {
+      events.forEach(function(event) {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
+        card.innerHTML = '<h4>' + event.title + '</h4><p class="desc">' + event.desc + '</p>';
+        const completeBtn = document.createElement('button');
+        completeBtn.className = 'btn-small';
+        completeBtn.textContent = '完成事件';
+        completeBtn.onclick = function() {
+          const result = Engine.triggerEvent(S, event.id);
+          if (result.ok) {
+            log('完成事件：' + event.title, 'good');
+            openEvents();
+            refresh();
+          }
+        };
+        card.appendChild(completeBtn);
+        box.appendChild(card);
+      });
+    }
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-small';
+    closeBtn.textContent = '关闭';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.onclick = function() { closeModal(); };
+    box.appendChild(closeBtn);
+  }
+
   function advGearModal() {
     const ov = $('modal');
     const box = $('modal-body');
@@ -2344,6 +2635,15 @@
     $('btn-attrs').onclick = function () { if (!S) return; sfx('click'); openAttrs(); };
     $('btn-tech').onclick = function () { if (!S) return; sfx('click'); openTech(); };
     $('btn-settings').onclick = function () { sfx('click'); openSettings(); };
+
+    // 底部栏按钮事件
+    $('btn-bag-bottom').onclick = function () { sfx('click'); openModal('bag'); };
+    $('btn-gear-bottom').onclick = function () { sfx('click'); openGear(); };
+    $('btn-tech-bottom').onclick = function () { if (!S) return; sfx('click'); openTech(); };
+    $('btn-favor').onclick = function () { if (!S) return; sfx('click'); openFavor(); };
+    $('btn-craft-bottom').onclick = function () { if (!S) return; sfx('click'); openCraftQueue(); };
+    $('btn-events').onclick = function () { if (!S) return; sfx('click'); openEvents(); };
+
     $('pause-resume').onclick = function () { sfx('click'); $('pause').style.display = 'none'; };
     $('pause-exit').onclick = function () {
       sfx('click');

@@ -515,7 +515,7 @@ const Engine = (function () {
   }
 
   /* ---------------- 品质与境界匹配（夺宝） ---------------- */
-  const REALM_TIER_RANGE = [[1, 2], [1, 2], [3, 4], [3, 4]];
+  const REALM_TIER_RANGE = [[1, 2], [2, 3], [3, 4], [4, 5]];
   function realmTierRange(bi) {
     const r = REALM_TIER_RANGE[Math.max(0, Math.min(3, bi))];
     return r;
@@ -704,6 +704,8 @@ const Engine = (function () {
   const TECH_DROPS_1 = ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'];
   // 秘境二(金丹-元婴): 地天级功法
   const TECH_DROPS_2 = ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'];
+  // 按境界索引的功法掉落池
+  const TECH_DROPS = [TECH_DROPS_1, TECH_DROPS_1, TECH_DROPS_2, TECH_DROPS_2];
   function enemyGen(s, tag, depth, advType) {
     // advType: 1=秘境一(炼气-筑基), 2=秘境二(金丹-元婴)
     const type = advType || s.advType || 1;
@@ -970,7 +972,7 @@ const Engine = (function () {
     }
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);
-    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '。' + (r.note ? r.note : '') + note2;
+    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '，灵力 +' + mg + '。' + (r.note ? r.note : '') + note2;
   }
   function canAction(s, n) { return s.actionsLeft >= n && !s.dead; }
 

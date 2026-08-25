@@ -337,18 +337,10 @@
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
       ov.style.display = 'flex';
-      // 播放战斗音效
-      if (typeof AudioManager !== 'undefined') {
-        AudioManager.playSfx('battle_start');
-      }
       renderBattle();
       function finish(r) {
         ov.style.display = 'none';
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
-        // 恢复音效
-        if (typeof AudioManager !== 'undefined') {
-          AudioManager.playSfx(r.win ? 'battle_end' : 'bad');
-        }
         if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {
           S.flags.pendingDuobaoYear = S.year + 2;
           Engine.saveState(S);

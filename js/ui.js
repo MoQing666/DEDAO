@@ -47,11 +47,16 @@
     ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement'].forEach(function (n) {
       $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
     });
+    // 底部栏只在游戏页面显示
+    var bottomBar = $('bottom-bar');
+    if (bottomBar) {
+      bottomBar.style.display = (name === 'game') ? 'flex' : 'none';
+    }
     // 根据屏幕切换BGM - 标题和游戏页面都播放同一个BGM
     if (typeof AudioManager !== 'undefined') {
       var bgmMap = {
         'title': 'title',
-        'game': 'title',  // 游戏页面也使用标题BGM
+        'game': 'title',
         'rebirth': 'peaceful',
         'ending': 'ending',
         'gear': 'peaceful',

@@ -353,6 +353,7 @@
         Engine.refreshStats(S);
         S.hp = S.hpMax;
         Engine.saveState(S);
+        console.log('[Battle] HP restored to', S.hp);
         if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {
           S.flags.pendingDuobaoYear = S.year + 2;
           Engine.saveState(S);

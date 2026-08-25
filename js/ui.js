@@ -2646,7 +2646,11 @@
     $('btn-gear-bottom').onclick = function () { sfx('click'); openGear(); };
     $('btn-tech-bottom').onclick = function () { if (!S) return; sfx('click'); openTech(); };
     $('btn-favor').onclick = function () { if (!S) return; sfx('click'); openFavor(); };
-    $('btn-craft-bottom').onclick = function () { if (!S) return; sfx('click'); openCraftQueue(); };
+    $('btn-craft-bottom').onclick = function () {
+      if (!S || S.dead) return;
+      sfx('click');
+      openModal('arts');
+    };
     $('btn-events').onclick = function () { if (!S) return; sfx('click'); openEvents(); };
 
     $('pause-resume').onclick = function () { sfx('click'); $('pause').style.display = 'none'; };

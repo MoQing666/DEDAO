@@ -71,7 +71,6 @@ const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05
 const ARTIFACTS = {
   // 秘境一(炼气-筑基): 黄级法宝
   qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
-  poefu:    { name: '破厄符', type: '咒', grade: '黄', desc: '古符一枚，生死关头可挡一次灾厄。', effect: '渡劫失败时免死一次' },
   // 秘境二(金丹-元婴): 地天级法宝
   xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
   juling:   { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +15%' },
@@ -89,7 +88,6 @@ const MATERIALS = {
 const FORMULAS = [
   // 法宝: 秘境一(炼气-筑基)产物
   { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron: 15 }, needRealm: 0, grade: '黄' },
-  { id: 'poefu',    out: 'poefu',    type: '法宝', cost: { iron: 20 }, needRealm: 0, grade: '黄' },
   // 法宝: 秘境二(金丹-元婴)产物
   { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron: 35 }, needRealm: 2, grade: '地' },
   { id: 'juling',   out: 'juling',   type: '法宝', cost: { iron: 45 }, needRealm: 2, grade: '地' },
@@ -377,11 +375,11 @@ E('jiyuan', {
   setFlags: { beggar_repaid: 1 },
   lines: [
     '多年后，你再次路过那座城隍庙。',
-    '老乞丐还躺在老地方，仿佛这些年从未动过。这一次，他往你手里塞了一枚黄符：',
-    '"老头我捡破烂捡了一辈子，就捡到了这一样好东西。拿去吧，能挡一次要命的事。"'
+    '老乞丐还躺在老地方，仿佛这些年从未动过。这一次，他往你手里塞了一个布袋：',
+    '"老头我捡破烂捡了一辈子，攒了点碎银子。拿去吧，别嫌少。"'
   ],
-  effect: { art: 'poefu' },
-  result: '你握紧那枚温热的破厄符。他朝你挥挥手，像赶一只聒噪的乌鸦。\n（获得法宝：破厄符）'
+  effect: { stone: 100 },
+  result: '你接过沉甸甸的布袋，里面装满了灵石。他朝你挥挥手，像赶一只聒噪的乌鸦。'
 });
 E('jiyuan', {
   id: 'beggar_cold_return', title: '一个馒头的遗憾', chapter: true, weight: 100, min: 9, max: 14, once: true,

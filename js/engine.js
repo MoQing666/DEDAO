@@ -1240,20 +1240,8 @@ const Engine = (function () {
     return { ok: true, win: false, mode: 'small', line: '瓶颈如铁，任你如何冲击都纹丝不动。你散去凝起的灵力，修为折损三成，看来还需时日。' };
   }
   function tribFail(s, info, trib, isFly) {
-    let poefu = s.arts.indexOf('poefu') >= 0;
     const deathChance = isFly ? 1 : (trib === '元婴' ? 0.25 : (trib === '金丹' ? 0.15 : 0));
     let died = Math.random() < deathChance;
-    if (died && poefu) {
-      died = false;
-      poefu = false;
-      s.arts = s.arts.filter(function (a) { return a !== 'poefu'; });
-      s.qi = Math.round(s.qi * 0.4);
-      s.hp = Math.max(1, Math.round(s.hpMax * 0.3));
-      s.lifeMax -= 40;
-      refreshStats(s); saveState(s);
-      return { ok: true, win: false, mode: 'trib', trib: trib, saved: true,
-        line: '天劫轰然压顶，你道体将碎——怀中【破厄符】无风自燃，替你挡下致命一击！\n你重伤跌落山涧，道基折损，寿元削减四十载。活下去，就是赢。' };
-    }
     if (died) {
       s.dead = true;
       s.endReason = '天劫陨落';

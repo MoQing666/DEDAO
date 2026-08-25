@@ -2146,17 +2146,13 @@
       const t = document.createElement('h4');
       t.textContent = '灵矿 · ' + ironGrade + '级矿脉';
       body.appendChild(t);
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '抡起卦锤，一锤一凿皆是机缘。';
-      body.appendChild(p);
+      const list = document.createElement('div');
 
       // 挖矿三日
-      const btn1 = document.createElement('button');
-      btn1.className = 'big';
-      btn1.textContent = '挖矿三日（1行动点）';
-      btn1.style.marginBottom = '8px';
-      btn1.onclick = function () {
+      const row1 = document.createElement('div');
+      row1.className = 'formula-row';
+      row1.innerHTML = '<div><b>[挖矿三日]</b><br><span class="dim">抡锤三日，换取灵铁。气血 -100</span></div><button>' + ironName + ' ×10</button>';
+      row1.querySelector('button').onclick = function () {
         if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
         if (S.hp <= 100) { log('气血不足，无法挖矿。'); return; }
         Engine.spend(S, 1);
@@ -2168,14 +2164,13 @@
         renderArtsTab('mine', body);
         refresh();
       };
-      body.appendChild(btn1);
+      list.appendChild(row1);
 
       // 挖矿到极限
-      const btn2 = document.createElement('button');
-      btn2.className = 'big';
-      btn2.textContent = '挖矿到极限（1行动点）';
-      btn2.style.marginBottom = '8px';
-      btn2.onclick = function () {
+      const row2 = document.createElement('div');
+      row2.className = 'formula-row';
+      row2.innerHTML = '<div><b>[挖矿到极限]</b><br><span class="dim">拼命挖掘，榨干每一分气血。每100气血换10灵铁</span></div><button>极限开采</button>';
+      row2.querySelector('button').onclick = function () {
         if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
         if (S.hp <= 100) { log('气血不足，无法挖矿。'); return; }
         Engine.spend(S, 1);
@@ -2189,13 +2184,13 @@
         renderArtsTab('mine', body);
         refresh();
       };
-      body.appendChild(btn2);
+      list.appendChild(row2);
 
       // 锻体
-      const btn3 = document.createElement('button');
-      btn3.className = 'big';
-      btn3.textContent = '锻体（1行动点）';
-      btn3.onclick = function () {
+      const row3 = document.createElement('div');
+      row3.className = 'formula-row';
+      row3.innerHTML = '<div><b>[锻体]</b><br><span class="dim">以矿为炉，锤炼肉身。体魄 +0.5</span></div><button>锻体</button>';
+      row3.querySelector('button').onclick = function () {
         if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
         Engine.spend(S, 1);
         S.ti = (S.ti || 0) + 0.5;
@@ -2205,7 +2200,9 @@
         renderArtsTab('mine', body);
         refresh();
       };
-      body.appendChild(btn3);
+      list.appendChild(row3);
+
+      body.appendChild(list);
       return;
     }
   }

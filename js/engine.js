@@ -586,6 +586,9 @@ const Engine = (function () {
   // eslint-disable-next-line no-redeclare
   function combatStart(s, spec) {
     refreshStats(s);
+    // 进入战斗时血量和灵力自动补满
+    s.hp = s.hpMax;
+    s.mo = s.moMax;
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;

@@ -622,8 +622,8 @@ const Engine = (function () {
     const out = [];
     if (!b || b.done) return { done: true, lines: ['战斗已经结束。'] };
     const enemyAtkRoll = function () {
-      let d = Math.max(1, Math.round(b.atk * (0.8 + Math.random() * 0.3)));
-      if (b.slow) d = Math.round(d * 0.6);
+      let d = b.atk; // 基础伤害 = 敌方攻击力（无随机）
+      if (b.slow) { d = Math.round(d * 0.6); b.slow = false; } // 减速当回合生效后移除
       if (b.guarded) d = Math.round(d * 0.35);
       if (b.guard > 0) d = Math.round(d * (1 - b.guard));
       return d;
@@ -661,14 +661,14 @@ const Engine = (function () {
       const cost = sp.cost || 0;
       if (s.mo < cost) return { done: false, lines: ['灵力不足（' + s.mo + '/' + s.moMax + '），术法难以催动。'] };
       s.mo -= cost;
-      const dmg = Math.max(2, Math.round(s.atk * sp.dmg * (0.9 + Math.random() * 0.2)));
+      const dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
       b.hp -= dmg;
       out.push('你施展【' + sp.name + '】，' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』造成 ' + dmg + ' 点伤害！');
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
       if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
       else counter();
     } else {
-      const dmg = Math.max(1, Math.round(s.atk * (0.85 + Math.random() * 0.3)));
+      const dmg = Math.max(1, s.atk); // 无随机
       b.hp -= dmg;
       out.push('你出手如电，对『' + b.name + '』造成 ' + dmg + ' 点伤害。');
       if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }

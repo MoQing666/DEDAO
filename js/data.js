@@ -110,8 +110,8 @@ const TECHNIQUES = {
   wanjian:  { name: '万剑归宗', cls: 'shufa', grade: '天', dmg: 6.2,  cost: 60, desc: '万剑齐鸣，天地失色。' },
   /* ---- 遁术：逃跑与被击减免 ---- */
   xiaoyao:  { name: '逍遥步',   cls: 'dunshu', grade: '黄', flee: 0.4,  desc: '踏歌而行，来去如风。' },
-  yingdun:  { name: '影遁术',   cls: 'dunshu', grade: '玄', flee: 0.6,  guard: 0.2, desc: '身化残影，刀剑难近。' },
-  suodi:    { name: '缩地成寸', cls: 'dunshu', grade: '地', flee: 1.0,  guard: 0.3, desc: '一步千里，万军难留。' }
+  yingdun:  { name: '影遁术',   cls: 'dunshu', grade: '玄', flee: 0.6,  guard: 0.1, desc: '身化残影，刀剑难近。' },
+  suodi:    { name: '缩地成寸', cls: 'dunshu', grade: '地', flee: 1.0,  guard: 0.2, desc: '一步千里，万军难留。' }
 };
 const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05a7a', 仙: '#9adcff' };
 

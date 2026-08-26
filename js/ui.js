@@ -346,6 +346,7 @@
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
       ov.style.display = 'flex';
+      ov.style.zIndex = '300'; // 确保战斗层在最上层
       // 进入战斗播放战斗BGM
       if (typeof AudioManager !== 'undefined') {
         AudioManager.playBgm('battle');
@@ -353,6 +354,7 @@
       renderBattle();
       function finish(r) {
         ov.style.display = 'none';
+        ov.style.zIndex = ''; // 重置z-index
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
         // 退出战斗恢复游戏BGM
         if (typeof AudioManager !== 'undefined') {

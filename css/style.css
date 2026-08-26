@@ -316,10 +316,6 @@ button:disabled { opacity: .4; cursor: default; }
 .chapter-overlay.explore-mode {
   z-index: 99;
 }
-/* 战斗层始终在最上层 */
-#battle.chapter-overlay {
-  z-index: 300;
-}
 .screen.explore-active {
   z-index: 100;
 }

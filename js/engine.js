@@ -748,15 +748,18 @@ const Engine = (function () {
   function startAdventure(s, advType) {
     if (s.adventuredYear === s.year) return { ok: false, msg: '天地灵机有限，一年只能入秘境一次。' };
     if (!canAction(s, 2)) return { ok: false, msg: '行动点不足' };
-    // 秘境类型限制：筑基前只能进秘境一
-    const type = advType || 1;
-    if (type === 2 && bigIdxOf(s) < 1) return { ok: false, msg: '修为不足，秘境二需要筑基以上方可进入。' };
+    // 秘境类型限制
+    const advKey = advType || 'huang';
+    const advConfig = ADVENTURE_CONFIG[advKey];
+    if (!advConfig) return { ok: false, msg: '秘境不存在' };
+    if (bigIdxOf(s) < advConfig.realmReq) return { ok: false, msg: '修为不足，需要' + BIG_REALMS[advConfig.realmReq] + '以上方可进入。' };
     spend(s, 2);
     s.adventuredYear = s.year;
-    s.advType = type;
+    s.advType = advKey;
+    const settings = ADV_SETTINGS_MAP[advKey] || ADV_SETTINGS_HUANG;
     s.adv = {
       depth: 1, maxDepth: 5,
-      setting: (type === 1 ? ADV_SETTINGS_1 : ADV_SETTINGS_2)[Math.floor(Math.random() * (type === 1 ? ADV_SETTINGS_1.length : ADV_SETTINGS_2.length))],
+      setting: settings[Math.floor(Math.random() * settings.length)],
       gains: [], status: 'running', caught: false, done: false
     };
     refreshStats(s); saveState(s);

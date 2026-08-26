@@ -1191,7 +1191,7 @@ const REINCARNATION = [
   { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 3, max: 5,  apply: { wu: 1 } },
   { id: 'ti',         name: '强体',     desc: '体魄 +1（肉身根基）',            cost: 3, max: 5,  apply: { ti: 1 } },
   { id: 'stone',      name: '殷实',     desc: '出生时灵石 +1000',               cost: 2, max: 4,  apply: { stone: 1000 } },
-  { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×6',           cost: 1, max: 3,  apply: { elixirs: { juling: 6 } } },
+  { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 1, max: 3,  apply: { elixirs: { juling: 3 } } },
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
   { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
   { id: 'forge',      name: '器魂',     desc: '炼器时间 -1年',                   cost: 3, max: 3,  apply: { forgeTimeReduce: 1 } },

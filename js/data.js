@@ -1234,7 +1234,7 @@ const EQUIPS = {
     wenyao_guan:     { name: '文瑶玉冠',   tier: 2, hpMax: 35,  atk: 6,      price: 160,  desc: '玉质温润，灵光内蕴。' },
     xuantie_kuijia:  { name: '玄铁战盔',   tier: 3, hpMax: 90,  atk: 10, ti: 1, price: 600, desc: '铁血千锤，镇守灵台。' },
     tianbao_guan:    { name: '天宝紫金冠', tier: 4, hpMax: 140, atk: 18, wu: 1, price: 2200, desc: '紫金流彩，天地垂青。' },
-    taiyi_huxian:    { name: '太一太上冠', tier: 5, hpMax: 210, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
+    taiyi_huxian:    { name: '太一太上冠', tier: 5, hpMax: 100, wu: 1, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
   },
   body: {
     cubu_daopao:     { name: '粗布道袍',   tier: 1, hpMax: 18,  price: 45,   desc: '山门弟子人手一件。' },

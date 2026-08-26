@@ -117,11 +117,13 @@ const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05
 
 /* ---------------- 法宝（炼器产物） ---------------- */
 const ARTIFACTS = {
-  // 秘境一(炼气-筑基): 黄级法宝
+  // 黄级法宝
   qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
-  // 秘境二(金丹-元婴): 地天级法宝
+  yuewang_sword: { name: '越王勾践剑', type: '攻', grade: '天', desc: '千古名剑，锋芒毕露，斩妖除魔。', effect: '攻击 +50' },
+  // 地级法宝
   xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
-  juling:   { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +5%' },
+  juling_art: { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +5%' },
+  // 天级法宝
   jinylv:   { name: '金缕衣', type: '守', grade: '天', desc: '天蚕金丝所织，万法不侵。', effect: '渡劫成功率 +10%' }
 };
 
@@ -1192,8 +1194,10 @@ const REINCARNATION = [
   { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×6',           cost: 1, max: 3,  apply: { elixirs: { juling: 6 } } },
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
   { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
+  { id: 'forge',      name: '器魂',     desc: '炼器时间 -1年',                   cost: 3, max: 3,  apply: { forgeTimeReduce: 1 } },
   { id: 'tech0',      name: '家传心法', desc: '出生自带黄阶功法《生息功》',     cost: 3, max: 1,  apply: { tech: 'shengong' } },
-  { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 4, max: 3,  apply: { life: 20 } },
+  { id: 'sword0',     name: '祖传宝剑', desc: '出生自带法宝【越王勾践剑】',     cost: 6, max: 1,  apply: { art: 'yuewang_sword' } },
+  { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 2, max: 3,  apply: { life: 20 } },
   { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } }
 ];
 
@@ -1255,6 +1259,7 @@ const EQUIPS = {
     taiji_baguapei:  { name: '太极八卦佩', tier: 5, hpMax: 130, atk: 34, wu: 1, cult: 0.15, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
     // 炼器法宝
     qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
+    yuewang_sword:   { name: '越王勾践剑', tier: 5, atk: 50,    price: 0,    desc: '千古名剑，锋芒毕露，斩妖除魔。' },
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
     juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.05, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
     jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' }

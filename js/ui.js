@@ -1497,6 +1497,7 @@
     const reincParts = [];
     if ((S.reinc.cult || 0) > 0) reincParts.push('道种：修炼+' + (S.reinc.cult * 10) + '%');
     if ((S.reinc.alchemyTimeReduce || 0) > 0) reincParts.push('丹心：炼丹时间-' + S.reinc.alchemyTimeReduce + '年');
+    if ((S.reinc.forgeTimeReduce || 0) > 0) reincParts.push('器魂：炼器时间-' + S.reinc.forgeTimeReduce + '年');
     if ((S.reinc.shesheng || 0) > 0) reincParts.push('舍生：修炼+' + (S.reinc.shesheng * 10) + '%，-1寿元/次');
     reincP.textContent = reincParts.length ? reincParts.join('。') : '无轮回加成';
     reincP.className = reincParts.length ? '' : 'dim';
@@ -1716,6 +1717,7 @@
       p.textContent = '暂无可用配方';
       box.appendChild(p);
     } else {
+      const forgeTimeReduce = (S.reinc && S.reinc.forgeTimeReduce) || 0;
       forgeFormulas.forEach(function(formula) {
         const card = document.createElement('div');
         card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
@@ -1723,10 +1725,12 @@
         const costStr = Object.keys(formula.cost).map(function(mat) {
           return MATERIALS[mat].name + '×' + formula.cost[mat];
         }).join('、');
+        const actualYears = Math.max(0, formula.years - forgeTimeReduce);
+        const yearsText = actualYears <= 0 ? '瞬间成器' : '需' + actualYears + '年';
         card.innerHTML = '<h4>' + artifact.name + '</h4>' +
           '<p class="desc" style="color:#b26de0;">' + artifact.desc + '</p>' +
           '<p class="desc">效果：' + artifact.effect + '</p>' +
-          '<p class="desc">' + formula.grade + '级 · 需' + formula.years + '年</p>' +
+          '<p class="desc">' + formula.grade + '级 · ' + yearsText + (forgeTimeReduce > 0 ? '（器魂-' + forgeTimeReduce + '年）' : '') + '</p>' +
           '<p class="desc">材料：' + costStr + '</p>';
         const craftBtn = document.createElement('button');
         craftBtn.className = 'btn-small';

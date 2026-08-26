@@ -299,6 +299,7 @@ const Engine = (function () {
   function applyReinc(s, meta) {
     s.reinc.cult = meta.reinc.cult || 0;
     s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
+    s.reinc.forgeTimeReduce = meta.reinc.forge || 0;
     s.reinc.shesheng = meta.reinc.shesheng || 0;
     const list = REINCARNATION;
     list.forEach(function (r) {
@@ -1530,11 +1531,14 @@ const Engine = (function () {
     for (var mat in formula.cost) {
       s.materials[mat] -= formula.cost[mat];
     }
-    // 计算炼制时间（丹心减少炼丹时间）
+    // 计算炼制时间（丹心减少炼丹时间，器魂减少炼器时间）
     var craftYears = formula.years;
     if (formula.type === '丹') {
       var timeReduce = (s.reinc && s.reinc.alchemyTimeReduce) || 0;
       craftYears = Math.max(0, craftYears - timeReduce);
+    } else if (formula.type === '法宝') {
+      var forgeTimeReduce = (s.reinc && s.reinc.forgeTimeReduce) || 0;
+      craftYears = Math.max(0, craftYears - forgeTimeReduce);
     }
     // 如果时间为0，直接完成
     if (craftYears <= 0) {
@@ -1546,7 +1550,8 @@ const Engine = (function () {
         if (s.inventory.indexOf(formula.out) < 0) s.inventory.push(formula.out);
       }
       refreshStats(s); saveState(s);
-      return { ok: true, msg: '丹心通明，瞬间成丹！', instant: true };
+      var instantMsg = formula.type === '丹' ? '丹心通明，瞬间成丹！' : '器魂觉醒，瞬间成器！';
+      return { ok: true, msg: instantMsg, instant: true };
     }
     s.craftQueue.push({
       formulaId: formulaId,

@@ -298,8 +298,7 @@ const Engine = (function () {
   }
   function applyReinc(s, meta) {
     s.reinc.cult = meta.reinc.cult || 0;
-    s.reinc.alchemy = meta.reinc.alchemy || 0;
-    s.reinc.alchemyDouble = meta.reinc.alchemyDouble || 0;
+    s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
     s.reinc.shesheng = meta.reinc.shesheng || 0;
     const list = REINCARNATION;
     list.forEach(function (r) {
@@ -1165,14 +1164,11 @@ const Engine = (function () {
       return { ok: false, msg: MATERIALS[costKey].name + '不足，需要 ' + costAmount + ' 株' };
     }
     s.materials[costKey] -= costAmount;
-    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.talents.indexOf('liancai') >= 0 ? 0.2 : 0) + (s.reinc.alchemy || 0) * 0.10 + (s.sect === 'dpxia' ? 0.2 : 0));
+    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.talents.indexOf('liancai') >= 0 ? 0.2 : 0) + (s.sect === 'dpxia' ? 0.2 : 0));
     if (Math.random() < chance) {
-      let qty = 1;
-      const doubleChance = ((s.reinc && s.reinc.alchemyDouble) || 0) * 0.10;
-      if (doubleChance > 0 && Math.random() < doubleChance) qty = 2;
-      s.elixirs[f.out] = (s.elixirs[f.out] || 0) + qty;
+      s.elixirs[f.out] = (s.elixirs[f.out] || 0) + 1;
       refreshStats(s); saveState(s);
-      return { ok: true, msg: '丹成！你炼出【' + ELIXIRS[f.out].name + '】' + (qty > 1 ? '×' + qty : '一枚') + '。' + (qty > 1 ? '（双倍产出！）' : '') };
+      return { ok: true, msg: '丹成！你炼出【' + ELIXIRS[f.out].name + '】一枚。' };
     }
     saveState(s);
     return { ok: false, msg: '炸炉了……灵草化作飞灰，你心疼地捂了捂胸口。' };
@@ -1534,15 +1530,33 @@ const Engine = (function () {
     for (var mat in formula.cost) {
       s.materials[mat] -= formula.cost[mat];
     }
+    // 计算炼制时间（丹心减少炼丹时间）
+    var craftYears = formula.years;
+    if (formula.type === '丹') {
+      var timeReduce = (s.reinc && s.reinc.alchemyTimeReduce) || 0;
+      craftYears = Math.max(0, craftYears - timeReduce);
+    }
+    // 如果时间为0，直接完成
+    if (craftYears <= 0) {
+      if (formula.type === '丹') {
+        s.elixirs[formula.out] = (s.elixirs[formula.out] || 0) + 1;
+      } else {
+        if (s.arts.indexOf(formula.out) < 0) s.arts.push(formula.out);
+        if (!s.inventory) s.inventory = [];
+        if (s.inventory.indexOf(formula.out) < 0) s.inventory.push(formula.out);
+      }
+      refreshStats(s); saveState(s);
+      return { ok: true, msg: '丹心通明，瞬间成丹！', instant: true };
+    }
     s.craftQueue.push({
       formulaId: formulaId,
       startYear: s.year,
-      endYear: s.year + formula.years,
+      endYear: s.year + craftYears,
       output: formula.out,
       type: formula.type
     });
     refreshStats(s); saveState(s);
-    return { ok: true, msg: '开始炼制，需要' + formula.years + '年' };
+    return { ok: true, msg: '开始炼制，需要' + craftYears + '年' };
   }
   function accelerateCraft(s, queueIndex) {
     if (!s.craftQueue || !s.craftQueue[queueIndex]) return { ok: false, msg: '炼制任务不存在' };

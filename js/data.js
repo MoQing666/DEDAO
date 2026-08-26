@@ -1191,7 +1191,7 @@ const REINCARNATION = [
   { id: 'stone',      name: '殷实',     desc: '出生时灵石 +1000',               cost: 2, max: 4,  apply: { stone: 1000 } },
   { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×6',           cost: 1, max: 3,  apply: { elixirs: { juling: 6 } } },
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
-  { id: 'alchemy',    name: '丹心',     desc: '炼丹产出双倍几率 +10%',          cost: 4, max: 3,  apply: { alchemyDouble: 0.10 } },
+  { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
   { id: 'tech0',      name: '家传心法', desc: '出生自带黄阶功法《生息功》',     cost: 3, max: 1,  apply: { tech: 'shengong' } },
   { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 4, max: 3,  apply: { life: 20 } },
   { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } }

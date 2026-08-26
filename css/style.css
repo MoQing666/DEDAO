@@ -52,7 +52,7 @@ h1, h2, h3, h4, .tower-title, .chapter-title, .chapter-sub, .settle-head h2,
   margin: 0 auto;
   height: 100vh;
   height: 100dvh;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 10px 10px 70px;

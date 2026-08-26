@@ -345,8 +345,10 @@
       $('battle-log').innerHTML = '';
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
+      console.log('[Battle] Setting display to flex, current:', ov.style.display);
       ov.style.display = 'flex';
-      ov.style.zIndex = '300'; // 确保战斗层在最上层
+      ov.style.zIndex = '300';
+      console.log('[Battle] After setting, display:', ov.style.display, 'zIndex:', ov.style.zIndex);
       // 进入战斗播放战斗BGM
       if (typeof AudioManager !== 'undefined') {
         AudioManager.playBgm('battle');

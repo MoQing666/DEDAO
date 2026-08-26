@@ -52,10 +52,10 @@ h1, h2, h3, h4, .tower-title, .chapter-title, .chapter-sub, .settle-head h2,
   margin: 0 auto;
   height: 100vh;
   height: 100dvh;
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: 10px 10px 0;
+  padding: 10px 10px 70px;
   animation: fadein .3s;
 }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

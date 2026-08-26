@@ -106,7 +106,7 @@ var AudioManager = (function () {
     var bgmFiles = {
       title: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
       game: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
-      battle: 'assets/audio/bgm/仙魔浩劫_watermark.mp3',
+      battle: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
       peaceful: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
       sect: 'assets/audio/bgm/求道一两风_minimax_free.mp3',
       adventure: 'assets/audio/bgm/求道一两风_minimax_free.mp3',

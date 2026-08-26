@@ -683,6 +683,15 @@ const Engine = (function () {
       if (b.loot.elixirs) gains.push.apply(gains, applyOps(s, { elixirs: b.loot.elixirs }));
       if (b.loot.tech) gains.push.apply(gains, applyOps(s, { tech: b.loot.tech }));
       if (b.loot.equip) gains.push.apply(gains, applyOps(s, { equip: b.loot.equip }));
+      // 灵物掉落
+      if (b.loot.spirit) {
+        if (!s.spiritItems) s.spiritItems = [];
+        if (s.spiritItems.indexOf(b.loot.spirit) < 0) {
+          s.spiritItems.push(b.loot.spirit);
+          const spirit = SPIRIT_ITEMS[b.loot.spirit];
+          if (spirit) gains.push('获得灵物【' + spirit.name + '】');
+        }
+      }
       const extra = {};
       ['atk', 'hpMax', 'wu', 'hp'].forEach(function (k) { if (b.loot[k]) extra[k] = b.loot[k]; });
       if (Object.keys(extra).length) gains.push.apply(gains, applyOps(s, extra));
@@ -745,6 +754,11 @@ const Engine = (function () {
     }
     // 装备掉落按秘境等级
     if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
+    // BOSS掉落灵物
+    if (boss || tag === 'final') {
+      const spiritMap = { huang: 'shangpin_lingjing', xuan: 'shangpin_yaodan', di: 'dongxu_micui', tian: 'mohex_suibian' };
+      loot.spirit = spiritMap[advKey] || 'shangpin_lingjing';
+    }
     const bname = (tag === 'final') ? advConfig.boss.name : (boss ? advConfig.boss.name : m.name);
     const bline = (tag === 'final') ? advConfig.boss.line : (boss ? advConfig.boss.line : m.line);
     return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1 };
@@ -1234,26 +1248,70 @@ const Engine = (function () {
   function breakthrough(s) {
     if (!canBreak(s)) return { ok: false, msg: '修为尚未圆满。' };
     const info = breakInfo(s);
-    if (info.mode === 'trib' && info.trib !== '飞升') {
-      if (!s.trib || s.trib.target !== info.trib) s.trib = { target: info.trib, ren: false };
-      if (!s.trib.ren) {
-        saveState(s);
-        return { ok: false, needTrib: true, trib: info.trib, ren: false, phase: 'ren' };
-      }
-      saveState(s);
-      return { ok: false, needTrib: true, trib: info.trib, ren: true, phase: 'tianjie' };
+    // 检查是否有对应灵物可用于完美突破
+    if (!s.spiritItems) s.spiritItems = [];
+    const targetRealm = info.trib || (info.nxt ? info.nxt.realm : null);
+    const spiritId = SPIRIT_FOR_REALM[targetRealm];
+    const hasSpirit = spiritId && s.spiritItems.indexOf(spiritId) >= 0;
+    // 返回突破选项
+    return {
+      ok: false,
+      needChoice: true,
+      info: info,
+      hasSpirit: hasSpirit,
+      spiritId: spiritId,
+      spiritName: hasSpirit ? SPIRIT_ITEMS[spiritId].name : null,
+      hasElixir: hasAnyElixir(s),
+      msg: '请选择突破方式'
+    };
+  }
+  // 检查是否有任意丹药
+  function hasAnyElixir(s) {
+    for (var id in s.elixirs) {
+      if (s.elixirs[id] > 0) return true;
     }
-    if (info.mode === 'trib' && info.trib === '飞升') {
-      if (!s.trib || s.trib.target !== '飞升') s.trib = { target: '飞升', ren: false };
-      if (!s.trib.ren) {
-        saveState(s);
-        return { ok: false, needTrib: true, trib: '飞升', ren: false, phase: 'ren' };
-      }
-      saveState(s);
-      return { ok: false, needTrib: true, trib: '飞升', ren: true, phase: 'tianjie' };
+    return false;
+  }
+  // 完美突破（使用灵物）
+  function perfectBreakthrough(s, spiritId) {
+    if (!canBreak(s)) return { ok: false, msg: '修为尚未圆满。' };
+    const info = breakInfo(s);
+    if (!s.spiritItems || s.spiritItems.indexOf(spiritId) < 0) return { ok: false, msg: '没有此灵物。' };
+    // 消耗灵物
+    s.spiritItems = s.spiritItems.filter(function(id) { return id !== spiritId; });
+    // 标记完美突破
+    if (!s.perfectBreaks) s.perfectBreaks = [];
+    s.perfectBreaks.push(spiritId);
+    // 应用灵物效果
+    const spirit = SPIRIT_ITEMS[spiritId];
+    if (spirit && spirit.apply) {
+      if (spirit.apply.moMax) s.moMaxBonus = (s.moMaxBonus || 0) + spirit.apply.moMax;
+      if (spirit.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + spirit.apply.hpMax;
+      if (spirit.apply.doubleCult) s.doubleCultChance = (s.doubleCultChance || 0) + spirit.apply.doubleCult;
+      if (spirit.apply.doubleDmg) s.doubleDmgChance = (s.doubleDmgChance || 0) + spirit.apply.doubleDmg;
     }
-    const roll = Math.random();
-    const pass = roll < info.base;
+    // 执行突破
+    return doBreakthrough(s, info, true);
+  }
+  // 普通突破（使用丹药）
+  function normalBreakthrough(s, elixirId) {
+    if (!canBreak(s)) return { ok: false, msg: '修为尚未圆满。' };
+    const info = breakInfo(s);
+    // 消耗丹药
+    if (elixirId && (s.elixirs[elixirId] || 0) > 0) {
+      s.elixirs[elixirId]--;
+      if (s.elixirs[elixirId] <= 0) delete s.elixirs[elixirId];
+      // 丹药效果：增加气血上限
+      const grade = ELIXIRS[elixirId] ? (ELIXIRS[elixirId].grade || '黄') : '黄';
+      const hpBonus = ELIXIR_GRADE_HP[grade] || 50;
+      s.hpMaxBonus = (s.hpMaxBonus || 0) + hpBonus;
+    }
+    // 执行突破
+    return doBreakthrough(s, info, false);
+  }
+  // 执行突破
+  function doBreakthrough(s, info, isPerfect) {
+    const pass = isPerfect || Math.random() < info.base;
     if (pass) {
       s.qi = 0;
       let tech = null;
@@ -1264,7 +1322,7 @@ const Engine = (function () {
         s.endReason = '飞升';
         logLife(s, 'feisheng', '渡劫飞升，得道成仙');
         refreshStats(s); saveState(s);
-        return { ok: true, win: true, mode: info.mode, trib: info.trib, tech: tech, line: '天门已开，你于万丈雷光中踏出最后一步。' };
+        return { ok: true, win: true, mode: info.mode, trib: info.trib, tech: tech, perfect: isPerfect, line: '天门已开，你于万丈雷光中踏出最后一步。' };
       }
       s.idx += 1;
       s.broken += 1;
@@ -1703,6 +1761,7 @@ const Engine = (function () {
     alchemyChoices: alchemyChoices, doAlchemy: doAlchemy,
     forgeChoices: forgeChoices, doForge: doForge,
     canBreak: canBreak, breakInfo: breakInfo, breakthrough: breakthrough,
+    perfectBreakthrough: perfectBreakthrough, normalBreakthrough: normalBreakthrough,
     sectCombat: sectCombat, sectLecture: sectLecture,
     cultCost: cultCost, actionPoints: actionPoints,
     endYear: endYear, fateBattle: fateBattle,

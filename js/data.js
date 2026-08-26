@@ -44,6 +44,54 @@ jiejin:   { name: '结金丹', desc: '突破金丹渡劫时自动服用，成功
 };
 const BREAK_ELIXIR = { 筑基: 'zhuji', 金丹: 'jiejin', 元婴: 'yuanying' };
 
+/* ---------------- 灵物（秘境BOSS掉落，用于完美突破） ---------------- */
+const SPIRIT_ITEMS = {
+  shangpin_lingjing: {
+    name: '上品灵晶',
+    grade: '黄',
+    desc: '蕴含纯净灵气的晶石，突破筑基时使用可完美突破。',
+    effect: '灵力上限 +100',
+    apply: { moMax: 100 }
+  },
+  shangpin_yaodan: {
+    name: '上品妖丹',
+    grade: '玄',
+    desc: '千年妖兽凝聚的内丹，突破金丹时使用可完美突破。',
+    effect: '气血上限 +300',
+    apply: { hpMax: 300 }
+  },
+  dongxu_micui: {
+    name: '洞虚秘淬',
+    grade: '地',
+    desc: '洞天深处孕育的神秘液体，突破元婴时使用可完美突破。',
+    effect: '修炼30%几率双倍修为',
+    apply: { doubleCult: 0.3 }
+  },
+  mohex_suibian: {
+    name: '魔核碎片',
+    grade: '天',
+    desc: '魔祖核心碎裂的碎片，飞升时使用可完美突破。',
+    effect: '法术和攻击50%几率双倍伤害',
+    apply: { doubleDmg: 0.5 }
+  }
+};
+
+// 灵物与境界对应
+const SPIRIT_FOR_REALM = {
+  筑基: 'shangpin_lingjing',
+  金丹: 'shangpin_yaodan',
+  元婴: 'dongxu_micui',
+  飞升: 'mohex_suibian'
+};
+
+// 丹药等级对应突破效果
+const ELIXIR_GRADE_HP = {
+  '黄': 50,
+  '玄': 100,
+  '地': 300,
+  '天': 500
+};
+
 /* ---------------- 功法：心法（修行） / 法术（招式） / 遁术（身法） ---------------- */
 const TECHNIQUES = {
   /* ---- 心法：修炼加成 ---- */

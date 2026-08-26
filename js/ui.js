@@ -969,54 +969,145 @@
   }
   function breakthroughFlow() {
     if (!Engine.canBreak(S)) return;
-    const info = Engine.breakInfo(S);
-    const lines = [];
+    const result = Engine.breakthrough(S);
+    if (!result.needChoice) return;
+    const info = result.info;
     const tribTxt = info.trib ? TRIBULATION_TEXTS[info.trib] : null;
-    if (tribTxt) {
-      lines.push.apply(lines, tribTxt.intro);
-    } else {
-      lines.push(info.desc);
-      lines.push('你盘膝而坐，运起周身灵力，向那无形壁垒发起一记又一记冲击……');
+
+    // 显示突破选择界面
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
+    box.innerHTML = '';
+
+    const title = document.createElement('h3');
+    title.textContent = info.trib ? '渡劫 · ' + info.trib + '劫' : '破境突破';
+    box.appendChild(title);
+
+    const desc = document.createElement('p');
+    desc.className = 'dim';
+    desc.textContent = info.desc;
+    box.appendChild(desc);
+
+    // 灵物突破选项
+    if (result.hasSpirit) {
+      const spiritCard = document.createElement('div');
+      spiritCard.style.cssText = 'border:1px solid #e8c15a;background:rgba(232,193,90,0.1);padding:12px;margin-bottom:12px;border-radius:8px;';
+      const spirit = SPIRIT_ITEMS[result.spiritId];
+      spiritCard.innerHTML = '<h4 style="color:#e8c15a;">完美突破 · 使用【' + spirit.name + '】</h4>' +
+        '<p class="desc">' + spirit.desc + '</p>' +
+        '<p style="color:#4ec9a0;">效果：' + spirit.effect + '</p>' +
+        '<p class="desc">必然成功，无失败风险</p>';
+      const spiritBtn = document.createElement('button');
+      spiritBtn.className = 'btn-main';
+      spiritBtn.textContent = '使用' + spirit.name + '突破';
+      spiritBtn.style.marginTop = '8px';
+      spiritBtn.onclick = function () {
+        ov.style.display = 'none';
+        executeBreakthrough('perfect', result.spiritId);
+      };
+      spiritCard.appendChild(spiritBtn);
+      box.appendChild(spiritCard);
     }
-    showChapter(info.trib ? '渡劫 · ' + info.trib + '劫' : '破境突破', lines, {
-      subtitle: info.desc
-    }).then(function () {
-      const before = statSheet(S);
-      const r = Engine.breakthrough(S);
-      if (r.needTrib) { dujieFlow(r.trib); return; }
-      const resLines = [];
-      if (r.ok && r.win) {
-        if (r.trib) {
-          resLines.push(TRIBULATION_TEXTS[r.trib].resultWin);
-        } else {
-          resLines.push('灵台轰鸣一声，你踏入了全新的境界。');
+
+    // 丹药突破选项
+    if (result.hasElixir) {
+      const elixirCard = document.createElement('div');
+      elixirCard.style.cssText = 'border:1px solid #6ab8c9;background:rgba(106,184,201,0.1);padding:12px;margin-bottom:12px;border-radius:8px;';
+      elixirCard.innerHTML = '<h4 style="color:#6ab8c9;">普通突破 · 使用丹药</h4>' +
+        '<p class="desc">消耗一枚丹药，增加气血上限（黄级+50，玄级+100，地级+300，天级+500）</p>' +
+        '<p class="desc">成功率：' + Math.round(info.base * 100) + '%</p>';
+      // 列出可用丹药
+      const elixirList = document.createElement('div');
+      elixirList.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;';
+      Object.keys(S.elixirs).forEach(function(id) {
+        if (S.elixirs[id] > 0) {
+          const elixir = ELIXIRS[id];
+          const btn = document.createElement('button');
+          btn.className = 'btn-small';
+          btn.textContent = elixir.name + ' ×' + S.elixirs[id];
+          btn.onclick = function () {
+            ov.style.display = 'none';
+            executeBreakthrough('normal', id);
+          };
+          elixirList.appendChild(btn);
         }
-        if (r.tech) resLines.push('大道玄音入耳，你心领神会，习得新功法【《' + TECHNIQUES[r.tech].name + '》·' + TECHNIQUES[r.tech].grade + '阶】。');
+      });
+      elixirCard.appendChild(elixirList);
+      box.appendChild(elixirCard);
+    }
+
+    // 无丹药直接突破
+    const directCard = document.createElement('div');
+    directCard.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;';
+    directCard.innerHTML = '<h4>直接突破</h4>' +
+      '<p class="desc">不使用任何道具，直接尝试突破</p>' +
+      '<p class="desc">成功率：' + Math.round(info.base * 100) + '%</p>';
+    const directBtn = document.createElement('button');
+    directBtn.className = 'btn-main';
+    directBtn.textContent = '直接突破';
+    directBtn.style.marginTop = '8px';
+    directBtn.onclick = function () {
+      ov.style.display = 'none';
+      executeBreakthrough('direct', null);
+    };
+    directCard.appendChild(directBtn);
+    box.appendChild(directCard);
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-small';
+    closeBtn.textContent = '返回';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.onclick = function () { ov.style.display = 'none'; };
+    box.appendChild(closeBtn);
+  }
+
+  function executeBreakthrough(type, itemId) {
+    const before = statSheet(S);
+    let r;
+    if (type === 'perfect') {
+      r = Engine.perfectBreakthrough(S, itemId);
+    } else if (type === 'normal') {
+      r = Engine.normalBreakthrough(S, itemId);
+    } else {
+      r = Engine.normalBreakthrough(S, null);
+    }
+    const resLines = [];
+    if (r.ok && r.win) {
+      if (r.trib) {
+        resLines.push(TRIBULATION_TEXTS[r.trib].resultWin);
       } else {
-        if (r.trib) resLines.push(TRIBULATION_TEXTS[r.trib].resultLose);
-        resLines.push(r.line);
-        if (r.died) resLines.push('你无力回天——');
+        resLines.push('灵台轰鸣一声，你踏入了全新的境界。');
       }
-      // 播放突破音效
-      if (typeof AudioManager !== 'undefined') {
-        AudioManager.playSfx(r.ok && r.win ? 'break' : 'bad');
+      if (r.perfect) {
+        const spirit = SPIRIT_ITEMS[itemId];
+        resLines.push('【' + spirit.name + '】之力融入你的道基，完美突破！');
       }
-      return showChapter('突破 · 结算', resLines.concat([
-        '—— —— —— ——',
-        '往日旧身已随雷火散去，这一世的前路，从此不同。'
-      ]), { subtitle: r.ok && r.win ? '破关成功' : '未能破关' }).then(function () {
-        const settle = diffLines(before, S);
-        return showChapter('突破 · 结算明细', settle, { subtitle: '当前实力一览' }).then(function () {
-          logSection('【' + (r.trib || '破境') + '】');
-          resLines.forEach(function (l) { log(l, r.ok && r.win ? 'gold' : 'bad'); });
-          settle.forEach(function (l) { log(l, r.ok && r.win ? 'good' : 'dim'); });
-          // 突破筑基成功且未加入宗门，触发宗门剧情
-          if (r.ok && r.win && S.realm === '筑基' && !S.sect) {
-            sectJoinFlow().then(function () { afterAction(); });
-          } else {
-            afterAction();
-          }
-        });
+      if (r.tech) resLines.push('大道玄音入耳，你心领神会，习得新功法【《' + TECHNIQUES[r.tech].name + '》·' + TECHNIQUES[r.tech].grade + '阶】。');
+    } else {
+      if (r.trib) resLines.push(TRIBULATION_TEXTS[r.trib].resultLose);
+      resLines.push(r.line);
+      if (r.died) resLines.push('你无力回天——');
+    }
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.playSfx(r.ok && r.win ? 'break' : 'bad');
+    }
+    showChapter('突破 · 结算', resLines.concat([
+      '—— —— —— ——',
+      '往日旧身已随雷火散去，这一世的前路，从此不同。'
+    ]), { subtitle: r.ok && r.win ? '破关成功' : '未能破关' }).then(function () {
+      const settle = diffLines(before, S);
+      return showChapter('突破 · 结算明细', settle, { subtitle: '当前实力一览' }).then(function () {
+        logSection('【' + (r.trib || '破境') + '】');
+        resLines.forEach(function (l) { log(l, r.ok && r.win ? 'gold' : 'bad'); });
+        settle.forEach(function (l) { log(l, r.ok && r.win ? 'good' : 'dim'); });
+        if (r.ok && r.win && S.realm === '筑基' && !S.sect) {
+          sectJoinFlow().then(function () { afterAction(); });
+        } else {
+          afterAction();
+        }
       });
     });
   }

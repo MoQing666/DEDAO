@@ -568,6 +568,31 @@
       advResolveNode(node);
     });
   }
+  function generateTreasureReward() {
+    if (!S.materials) S.materials = {};
+    const bi = Engine.bigIdxOf(S);
+    const d = S.adv ? S.adv.depth || 1 : 1;
+    const g = [];
+    const roll = Math.random();
+    if (roll < 0.33) {
+      const equip = Engine.randomEquip(bi, d);
+      if (equip) { g.push.apply(g, Engine.grantEquipChecked(S, equip)); }
+      else { S.stone += 50; g.push('灵石 +50'); }
+    } else if (roll < 0.66) {
+      const techPool = TECH_DROPS_MAP[S.advType || 'huang'] || TECH_DROPS_MAP.huang;
+      const t = techPool[Math.floor(Math.random() * techPool.length)];
+      g.push.apply(g, Engine.applyOps(S, { tech: t }));
+    } else {
+      const matType = Math.random() < 0.5 ? 'herb' : 'iron';
+      const matKey = matType === 'herb' ?
+        ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang' :
+        ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
+      const amount = 5 + d * 3;
+      S.materials[matKey] = (S.materials[matKey] || 0) + amount;
+      g.push(MATERIALS[matKey].name + ' +' + amount);
+    }
+    return g;
+  }
   function advResolveNode(node) {
     const a = S.adv;
     if (!a || a.done || a.status !== 'running') return;
@@ -576,7 +601,13 @@
       openBattle(res.spec, { title: res.title }).then(function (r) {
         const b = S.battle;
         if (r.win) {
-          showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(function () { return duobaoRun(); }).then(advAdvance);
+          // 精英战斗胜利后给予宝箱奖励
+          if (res.eliteReward) {
+            const eliteLoot = generateTreasureReward();
+            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(function () { return duobaoRun(); }).then(advAdvance);
+          } else {
+            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(function () { return duobaoRun(); }).then(advAdvance);
+          }
         } else if (r.lost) {
           advFinish('战败');
         } else {

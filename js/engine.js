@@ -780,15 +780,14 @@ const Engine = (function () {
     if (d >= s.adv.maxDepth + 1) return { final: true };
     const pool = [];
     const add = function (t, n) { for (let i = 0; i < n; i++) pool.push(t); };
-    add('combat', 3 + Math.floor(Math.random() * 2));
-    add('treasure', 2);
+    add('combat', 5);
+    add('treasure', 1);
     add('elite', d >= 2 ? 2 : 0);
     add('herb', 2);
     add('iron', 1);
-    add('shop', 1);
+    add('shop', 3);
     add('event', 1);
     add('trap', d >= 3 ? 1 : 0);
-    add('rest', 2);
     shuffle(pool);
     const picks = [];
     pool.forEach(function (t) {
@@ -805,9 +804,12 @@ const Engine = (function () {
   }
   function advResolve(s, node) {
     const d = s.adv.depth, bi = bigIdxOf(s), realmM = 1 + bi * 0.5;
-    const advType = s.advType || 1;
-    if (node.type === 'combat' || node.type === 'elite') {
-      return { type: 'battle', spec: enemyGen(s, node.type, d, advType), title: node.type === 'elite' ? '精英拦路！' : '遭遇战！' };
+    const advType = s.advType || 'huang';
+    if (node.type === 'combat') {
+      return { type: 'battle', spec: enemyGen(s, 'combat', d, advType), title: '遭遇战！' };
+    }
+    if (node.type === 'elite') {
+      return { type: 'battle', spec: enemyGen(s, 'elite', d, advType), title: '精英拦路！', eliteReward: true };
     }
     if (node.type === 'final') {
       return { type: 'final', spec: enemyGen(s, 'final', Math.min(d + 1, 7), advType) };
@@ -815,21 +817,28 @@ const Engine = (function () {
     if (node.type === 'treasure') {
       const g = [];
       const lines = ['宝箱缓缓开启，尘埃落定——'];
-      const s1 = Math.round((25 + d * 18) * realmM);
-      s.stone += s1; g.push('灵石 +' + s1);
-      if (Math.random() < 0.35 + d * 0.08) { const h = 1 + Math.floor(Math.random() * 2); s.herb += h; g.push('灵草 +' + h); }
-      if (Math.random() < 0.2 + d * 0.05) { const i2 = 1 + Math.floor(Math.random() * 3); s.iron += i2; g.push('灵铁 +' + i2); }
-      if (Math.random() < 0.25 + d * 0.07) {
-        const ids = ['juling', 'zengshou'];
-        const e = ids[Math.floor(Math.random() * ids.length)];
-        s.elixirs[e] = (s.elixirs[e] || 0) + 1; g.push('丹药【' + ELIXIRS[e].name + '】×1');
-      }
-      if (Math.random() < 0.18 + d * 0.06) {
-        g.push.apply(g, grantEquipChecked(s, randomEquip(bi, d)));
-      }
-      if (Math.random() < 0.1) {
-        const t = TECH_DROPS[bi][Math.floor(Math.random() * TECH_DROPS[bi].length)];
+      // 只给装备/功法/灵材之一
+      if (!s.materials) s.materials = {};
+      const roll = Math.random();
+      if (roll < 0.33) {
+        // 装备
+        const equip = randomEquip(bi, d);
+        if (equip) { g.push.apply(g, grantEquipChecked(s, equip)); }
+        else { const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1); }
+      } else if (roll < 0.66) {
+        // 功法
+        const techPool = TECH_DROPS_MAP[advType] || TECH_DROPS_MAP.huang;
+        const t = techPool[Math.floor(Math.random() * techPool.length)];
         g.push.apply(g, applyOps(s, { tech: t }));
+      } else {
+        // 灵材
+        const matType = Math.random() < 0.5 ? 'herb' : 'iron';
+        const matKey = matType === 'herb' ?
+          ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang' :
+          ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
+        const amount = 5 + d * 3;
+        s.materials[matKey] = (s.materials[matKey] || 0) + amount;
+        g.push(MATERIALS[matKey].name + ' +' + amount);
       }
       s.adv.gains.push.apply(s.adv.gains, g);
       refreshStats(s); saveState(s);

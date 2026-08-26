@@ -338,14 +338,19 @@
   function openBattle(spec, opts) {
     return new Promise(function (resolve) {
       opts = opts || {};
+      console.log('[Battle] openBattle called');
       const b = Engine.combatStart(S, spec);
       const ov = $('battle');
+      console.log('[Battle] ov element:', ov);
+      if (!ov) { console.error('[Battle] battle element not found!'); resolve({win: false}); return; }
       $('battle-title').textContent = opts.title || '遭遇战';
       $('battle-sub').textContent = spec.line || '';
       $('battle-log').innerHTML = '';
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
+      console.log('[Battle] Setting display to flex');
       ov.style.display = 'flex';
+      console.log('[Battle] Display set, current value:', ov.style.display);
       // 进入战斗播放战斗BGM
       if (typeof AudioManager !== 'undefined') {
         AudioManager.playBgm('battle');
@@ -584,6 +589,7 @@
     const a = S.adv;
     if (!a || a.done || a.status !== 'running') return;
     const res = Engine.advResolve(S, node);
+    console.log('[Adv] advResolveNode result:', res.type, res);
     if (res.type === 'battle') {
       openBattle(res.spec, { title: res.title }).then(function (r) {
         const b = S.battle;

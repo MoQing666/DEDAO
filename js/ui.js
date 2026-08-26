@@ -1993,15 +1993,39 @@
       box.appendChild(matTitle);
       const matGrid = document.createElement('div');
       matGrid.className = 'bag-grid';
-      const matKeys = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian', 'iron_huang', 'iron_xuan', 'iron_di', 'iron_tian', 'stone'];
+      const matKeys = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian', 'iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+      const sellPrices = { herb_huang: 4, herb_xuan: 8, herb_di: 15, herb_tian: 30, iron_huang: 6, iron_xuan: 12, iron_di: 22, iron_tian: 45 };
       matKeys.forEach(function (key) {
-        var n = key === 'stone' ? (S.stone || 0) : (S.materials[key] || 0);
+        var n = S.materials[key] || 0;
         if (!n) return;
         var d = document.createElement('div');
         d.className = 'bag-item';
-        d.innerHTML = '<b>' + MATERIALS[key].name + '</b> ×' + n;
+        d.innerHTML = '<b>' + MATERIALS[key].name + '</b> ×' + n + '<br><span class="dim">售价 ' + sellPrices[key] + ' 灵石/个</span><br><button>卖出1个</button><button>卖出全部</button>';
+        var btns = d.querySelectorAll('button');
+        btns[0].onclick = function () {
+          if (S.materials[key] < 1) return;
+          S.materials[key]--;
+          S.stone += sellPrices[key];
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('卖出' + MATERIALS[key].name + ' ×1，得灵石 ' + sellPrices[key] + '。', 'good');
+          openModal('bag'); refresh();
+        };
+        btns[1].onclick = function () {
+          var amount = S.materials[key] || 0;
+          if (amount < 1) return;
+          S.materials[key] = 0;
+          S.stone += amount * sellPrices[key];
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('卖出' + MATERIALS[key].name + ' ×' + amount + '，得灵石 ' + (amount * sellPrices[key]) + '。', 'good');
+          openModal('bag'); refresh();
+        };
         matGrid.appendChild(d);
       });
+      // 灵石显示
+      var stoneD = document.createElement('div');
+      stoneD.className = 'bag-item';
+      stoneD.innerHTML = '<b>灵石</b> ×' + (S.stone || 0);
+      matGrid.appendChild(stoneD);
       if (!matGrid.children.length) matGrid.innerHTML = '<p class="dim">无灵材</p>';
       box.appendChild(matGrid);
 
@@ -2011,23 +2035,72 @@
       box.appendChild(elixirTitle);
       const bag = document.createElement('div');
       bag.className = 'bag-grid';
+      const elixirPrices = { juling: 30, zhuji: 80, jiejin: 200, yuanying: 350, zengshou: 150, wudao: 400 };
       Object.keys(ELIXIRS).forEach(function (id) {
         const n = S.elixirs[id] || 0;
         if (!n) return;
         const d = document.createElement('div');
         d.className = 'bag-item';
-        d.innerHTML = '<b>' + ELIXIRS[id].name + '</b> ×' + n + '<br><span class="dim">' + ELIXIRS[id].desc + '</span>' +
-          (id === 'zengshou' || id === 'wudao' ? '<button>服用</button>' : '');
-        const btn = d.querySelector('button');
-        if (btn) btn.onclick = function () {
-          Engine.useElixir(S, id);
-          log('服用【' + ELIXIRS[id].name + '】，药力化开。', 'good');
+        const price = elixirPrices[id] || 50;
+        d.innerHTML = '<b>' + ELIXIRS[id].name + '</b> ×' + n + '<br><span class="dim">' + ELIXIRS[id].desc + '</span><br><span class="dim">售价 ' + price + ' 灵石</span>';
+        // 服用按钮
+        if (id === 'zengshou' || id === 'wudao') {
+          var useBtn = document.createElement('button');
+          useBtn.textContent = '服用';
+          useBtn.onclick = function () {
+            Engine.useElixir(S, id);
+            log('服用【' + ELIXIRS[id].name + '】，药力化开。', 'good');
+            openModal('bag'); refresh();
+          };
+          d.appendChild(useBtn);
+        }
+        // 卖出按钮
+        var sellBtn = document.createElement('button');
+        sellBtn.textContent = '卖出1个';
+        sellBtn.style.marginLeft = '4px';
+        sellBtn.onclick = function () {
+          if ((S.elixirs[id] || 0) < 1) return;
+          S.elixirs[id]--;
+          if (S.elixirs[id] <= 0) delete S.elixirs[id];
+          S.stone += price;
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('卖出【' + ELIXIRS[id].name + '】×1，得灵石 ' + price + '。', 'good');
           openModal('bag'); refresh();
         };
+        d.appendChild(sellBtn);
         bag.appendChild(d);
       });
       if (!bag.children.length) bag.innerHTML = '<p class="dim">无丹药</p>';
       box.appendChild(bag);
+
+      // 装备部分
+      if (S.inventory && S.inventory.length > 0) {
+        const equipTitle = document.createElement('h4');
+        equipTitle.textContent = '装备';
+        box.appendChild(equipTitle);
+        const equipGrid = document.createElement('div');
+        equipGrid.className = 'bag-grid';
+        S.inventory.forEach(function (id, idx) {
+          const it = Engine.findEquip(id);
+          if (!it) return;
+          const d = document.createElement('div');
+          d.className = 'bag-item';
+          const sellPrice = Math.floor((it.price || 50) * 0.5);
+          d.innerHTML = '<b>' + it.name + '</b><br><span class="dim">' + (it.desc || '') + '</span><br><span class="dim">售价 ' + sellPrice + ' 灵石</span>';
+          var sellBtn = document.createElement('button');
+          sellBtn.textContent = '卖出';
+          sellBtn.onclick = function () {
+            S.inventory.splice(idx, 1);
+            S.stone += sellPrice;
+            Engine.refreshStats(S); Engine.saveState(S);
+            log('卖出【' + it.name + '】，得灵石 ' + sellPrice + '。', 'good');
+            openModal('bag'); refresh();
+          };
+          d.appendChild(sellBtn);
+          equipGrid.appendChild(d);
+        });
+        box.appendChild(equipGrid);
+      }
 
       // 功法和法宝
       const gear = document.createElement('div');

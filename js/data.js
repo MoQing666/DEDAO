@@ -1234,21 +1234,21 @@ const EQUIPS = {
     wenyao_guan:     { name: '文瑶玉冠',   tier: 2, hpMax: 35,  atk: 6,      price: 160,  desc: '玉质温润，灵光内蕴。' },
     xuantie_kuijia:  { name: '玄铁战盔',   tier: 3, hpMax: 90,  atk: 10, ti: 1, price: 600, desc: '铁血千锤，镇守灵台。' },
     tianbao_guan:    { name: '天宝紫金冠', tier: 4, hpMax: 140, atk: 18, wu: 1, price: 2200, desc: '紫金流彩，天地垂青。' },
-    taiyi_huxian:    { name: '太一太上冠', tier: 5, hpMax: 210, atk: 24, wu: 1, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
+    taiyi_huxian:    { name: '太一太上冠', tier: 5, hpMax: 210, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
   },
   body: {
     cubu_daopao:     { name: '粗布道袍',   tier: 1, hpMax: 18,  price: 45,   desc: '山门弟子人手一件。' },
     linwen_ruanjia:  { name: '鳞纹软甲',   tier: 2, hpMax: 55,  atk: 5,      price: 180,  desc: '蛟鳞串成，贴身轻盈。' },
     xuanjing_zhongjia:{ name: '玄精重甲',  tier: 3, hpMax: 110, atk: 12,     price: 650,  desc: '玄精所铸，重逾千钧。' },
     jinluo_baoyi:    { name: '金络宝衣',   tier: 4, hpMax: 180, atk: 15, wu: 1, price: 2400, desc: '金丝络络，百邪不侵。' },
-    xinghe_fayi:     { name: '星河法衣',   tier: 5, hpMax: 250, atk: 20, wu: 1, price: 7200, desc: '衣上星辰自晦明，映照周天。' }
+    xinghe_fayi:     { name: '星河法衣',   tier: 5, hpMax: 250, ti: 2, price: 7200, desc: '衣上星辰自晦明，映照周天。' }
   },
   leg: {
     qingma_caoxie:   { name: '青麻草鞋',   tier: 1, hpMax: 8,   price: 30,   desc: '山野寻常物，走得稳当。' },
     yunwen_buxue:    { name: '云纹步靴',   tier: 2, hpMax: 25,  atk: 6, wu: 1, price: 170, desc: '靴底绣云，步履生风。' },
     fenglei_zhuiyue: { name: '风雷追月靴', tier: 3, hpMax: 50,  atk: 14,     price: 620,  desc: '雷霆加身，追风逐月。' },
     tianxing_xue:    { name: '天行靴',     tier: 4, hpMax: 70,  atk: 20, wu: 1, price: 2300, desc: '天行健，君子自强不息。' },
-    lingyun_xianlv:  { name: '凌云仙履',   tier: 5, hpMax: 100, atk: 28, wu: 1, price: 6600, desc: '履下生云，步步登仙。' }
+    lingyun_xianlv:  { name: '凌云仙履',   tier: 5, hpMax: 100, dun: 2, price: 6600, desc: '履下生云，步步登仙。' }
   },
   treasure: {
     // 基础宝物
@@ -1256,7 +1256,7 @@ const EQUIPS = {
     juling_zhu:      { name: '聚灵珠',     tier: 2, hpMax: 20,  cult: 0.10,  price: 200,  desc: '明珠悬佩，灵气自聚。' },
     zhenhun_moyu:    { name: '镇魂墨玉',   tier: 3, hpMax: 40,  atk: 16,     price: 680,  desc: '墨玉一枚，静心凝神。' },
     jingang_xiangmoyin:{ name: '金刚降魔印', tier: 4, hpMax: 90, atk: 26, wu: 1, price: 2500, desc: '万佛铸印，降魔护身。' },
-    taiji_baguapei:  { name: '太极八卦佩', tier: 5, hpMax: 130, atk: 34, wu: 1, cult: 0.15, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
+    taiji_baguapei:  { name: '太极八卦佩', tier: 5, wu: 2, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
     // 炼器法宝
     qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
     yuewang_sword:   { name: '越王勾践剑', tier: 5, atk: 50,    price: 0,    desc: '千古名剑，锋芒毕露，斩妖除魔。' },

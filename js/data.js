@@ -1199,11 +1199,17 @@ const EQUIPS = {
     lingyun_xianlv:  { name: '凌云仙履',   tier: 5, hpMax: 100, atk: 28, wu: 1, price: 6600, desc: '履下生云，步步登仙。' }
   },
   treasure: {
+    // 基础宝物
     gutang_pinganpai:{ name: '古檀平安牌', tier: 1, hpMax: 15,  price: 50,   desc: '老檀木所刻，讨个吉利。' },
     juling_zhu:      { name: '聚灵珠',     tier: 2, hpMax: 20,  cult: 0.10,  price: 200,  desc: '明珠悬佩，灵气自聚。' },
     zhenhun_moyu:    { name: '镇魂墨玉',   tier: 3, hpMax: 40,  atk: 16,     price: 680,  desc: '墨玉一枚，静心凝神。' },
     jingang_xiangmoyin:{ name: '金刚降魔印', tier: 4, hpMax: 90, atk: 26, wu: 1, price: 2500, desc: '万佛铸印，降魔护身。' },
-    taiji_baguapei:  { name: '太极八卦佩', tier: 5, hpMax: 130, atk: 34, wu: 1, cult: 0.15, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' }
+    taiji_baguapei:  { name: '太极八卦佩', tier: 5, hpMax: 130, atk: 34, wu: 1, cult: 0.15, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
+    // 炼器法宝
+    qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
+    xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
+    juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.15, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
+    jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' }
   }
 };
 

@@ -1163,8 +1163,11 @@ const Engine = (function () {
     const chance = Math.min(0.9, 0.75 + (s.ti - 5) * 0.01);
     if (Math.random() < chance) {
       if (s.arts.indexOf(f.out) < 0) s.arts.push(f.out);
+      // 添加到inventory以便装备
+      if (!s.inventory) s.inventory = [];
+      if (s.inventory.indexOf(f.out) < 0) s.inventory.push(f.out);
       refreshStats(s); saveState(s);
-      return { ok: true, msg: '宝光一闪！【' + ARTIFACTS[f.out].name + '】炼成了。' };
+      return { ok: true, msg: '宝光一闪！【' + ARTIFACTS[f.out].name + '】炼成了。可在装备栏法宝位装备。' };
     }
     saveState(s);
     return { ok: false, msg: '火候过了三分，灵铁化作废渣。你深吸一口气，下次再来。' };

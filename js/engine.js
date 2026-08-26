@@ -721,31 +721,32 @@ const Engine = (function () {
   // 按境界索引的功法掉落池
   const TECH_DROPS = [TECH_DROPS_1, TECH_DROPS_1, TECH_DROPS_2, TECH_DROPS_2];
   function enemyGen(s, tag, depth, advType) {
-    // advType: 1=秘境一(炼气-筑基), 2=秘境二(金丹-元婴)
-    const type = advType || s.advType || 1;
-    const maxBi = type === 1 ? 1 : 3; // 秘境一最高筑基, 秘境二最高元婴
-    const bi = Math.min(bigIdxOf(s), maxBi);
-    const pool = MONSTER_POOL[['lianqi', 'zhuji', 'jindan', 'yuanying'][bi]];
+    // advType: 'huang', 'xuan', 'di', 'tian'
+    const advKey = advType || s.advType || 'huang';
+    const advConfig = ADVENTURE_CONFIG[advKey];
+    const pool = advConfig.monsters;
     const m = pool[Math.floor(Math.random() * pool.length)];
     const elite = tag === 'elite', boss = tag === 'boss' || tag === 'final';
+    const bi = ADVENTURE_GRADE[advKey] || 0;
     const hits = (elite ? 4.5 : 3.2) + depth * 0.4;
     const hp = Math.round(s.atk * hits * (boss ? 1.7 : 1));
     const atk = Math.max(1, Math.round(s.hpMax / (boss ? 11 : (6 + depth * 0.5)) * (elite ? 1.25 : 1)));
     const realmM = 1 + bi * 0.6;
     const loot = { stone: Math.round((30 + depth * 25) * realmM * (elite ? 1.6 : 1) * (boss ? 3 : 1)) };
-    if (Math.random() < 0.3 + depth * 0.08) loot.herb = 1 + Math.floor(Math.random() * (1 + depth));
-    if (Math.random() < 0.25 + depth * 0.06) loot.iron = 1 + Math.floor(Math.random() * 2);
-    // 功法掉落按秘境类型分层
+    // 产出对应等级灵材
+    const herbKey = advConfig.drops.herb;
+    const ironKey = advConfig.drops.iron;
+    if (Math.random() < 0.3 + depth * 0.08) loot[herbKey] = 1 + Math.floor(Math.random() * (1 + depth));
+    if (Math.random() < 0.25 + depth * 0.06) loot[ironKey] = 1 + Math.floor(Math.random() * 2);
+    // 功法掉落按秘境等级
     if ((boss || tag === 'final') && Math.random() < 0.8) {
-      const techPool = type === 1 ? TECH_DROPS_1 : TECH_DROPS_2;
+      const techPool = TECH_DROPS_MAP[advKey] || TECH_DROPS_MAP.huang;
       loot.tech = techPool[Math.floor(Math.random() * techPool.length)];
     }
-    // 装备掉落按秘境类型分层
-    const equipBi = type === 1 ? Math.min(bi, 1) : Math.max(bi, 2);
-    if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(equipBi, depth + (boss ? 2 : 0));
-    const bname = (tag === 'final') ? '洞天之主' : (boss ? MONSTER_POOL.boss[Math.floor(Math.random() * MONSTER_POOL.boss.length)].name : m.name);
-    const bline = (tag === 'final') ? '他端坐于秘境最深处，仿佛早已等你多时。' :
-      (boss ? MONSTER_POOL.boss.filter(function (x) { return x.name === bname; })[0].line : m.line);
+    // 装备掉落按秘境等级
+    if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
+    const bname = (tag === 'final') ? advConfig.boss.name : (boss ? advConfig.boss.name : m.name);
+    const bline = (tag === 'final') ? advConfig.boss.line : (boss ? advConfig.boss.line : m.line);
     return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1 };
   }
   function startAdventure(s, advType) {

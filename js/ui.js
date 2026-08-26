@@ -454,9 +454,16 @@
     const ov = $('modal');
     const box = $('modal-body');
     ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
     box.innerHTML = '';
 
-    const canAdv2 = bigIdxOf(S) >= 1; // 筑基以上可进入秘境二
+    const bi = Engine.bigIdxOf(S);
+    const advConfigs = [
+      { key: 'huang', name: '匪徒营寨', grade: '黄', color: '#c9a86a', realmReq: 0, realmName: '炼气', desc: '炼气期秘境，匪徒盘踞之地。', drops: '黄级功法、黄级装备、黄级灵材' },
+      { key: 'xuan', name: '大黑山', grade: '玄', color: '#6ab8c9', realmReq: 1, realmName: '筑基', desc: '筑基期秘境，妖兽横行之地。', drops: '玄级功法、玄级装备、玄级灵材' },
+      { key: 'di', name: '洞天福地', grade: '地', color: '#a06ac9', realmReq: 2, realmName: '金丹', desc: '金丹期秘境，上古洞天遗迹。', drops: '地级功法、地级装备、地级灵材' },
+      { key: 'tian', name: '魔道祖地', grade: '天', color: '#e05a7a', realmReq: 3, realmName: '元婴', desc: '元婴期秘境，魔道势力盘踞之地。', drops: '天级功法、天级装备、天级灵材' }
+    ];
 
     const title = document.createElement('h3');
     title.textContent = '选择秘境';
@@ -469,64 +476,40 @@
     desc.style.marginBottom = '16px';
     box.appendChild(desc);
 
-    // 秘境一
-    const adv1Card = document.createElement('div');
-    adv1Card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;';
-    adv1Card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-      '<b style="color:#c9a86a;font-size:16px;">秘境一 · 炼气筑基</b>' +
-      '<span style="color:#c9a86a;font-size:12px;border:1px solid #c9a86a;padding:2px 6px;border-radius:4px;">黄玄级</span></div>' +
-      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">低级秘境，适合炼气至筑基修士探索。</p>' +
-      '<div style="font-size:12px;color:#6a6a7a;">产出：黄玄级功法、tier1-2装备、灵草灵铁</div>';
-    const btn1 = document.createElement('button');
-    btn1.className = 'btn-main';
-    btn1.textContent = '进入秘境一';
-    btn1.style.marginTop = '8px';
-    btn1.onclick = function () {
-      ov.style.display = 'none';
-      const res = Engine.startAdventure(S, 1);
-      if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
-      if (typeof AudioManager !== 'undefined') {
-        AudioManager.playSfx('explore');
-        AudioManager.playBgm('adventure');
-      }
-      advIntro();
-    };
-    adv1Card.appendChild(btn1);
-    box.appendChild(adv1Card);
-
-    // 秘境二
-    const adv2Card = document.createElement('div');
-    adv2Card.style.cssText = 'border:1px solid #3a2e52;background:rgba(20,10,40,.3);padding:12px;border-radius:8px;' + (canAdv2 ? '' : 'opacity:0.5;');
-    adv2Card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-      '<b style="color:#b26de0;font-size:16px;">秘境二 · 金丹元婴</b>' +
-      '<span style="color:#b26de0;font-size:12px;border:1px solid #b26de0;padding:2px 6px;border-radius:4px;">地天级</span></div>' +
-      '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">高级秘境，凶险万分但回报丰厚。' + (canAdv2 ? '需要筑基以上方可进入。' : '<b style="color:#e05a7a;">需要筑基以上方可进入</b>') + '</p>' +
-      '<div style="font-size:12px;color:#6a6a7a;">产出：地天级功法、tier3-4装备、珍稀法宝</div>';
-    const btn2 = document.createElement('button');
-    btn2.className = 'btn-main';
-    btn2.textContent = canAdv2 ? '进入秘境二' : '境界不足';
-    btn2.style.marginTop = '8px';
-    btn2.style.borderColor = '#b26de0';
-    btn2.disabled = !canAdv2;
-    btn2.onclick = function () {
-      ov.style.display = 'none';
-      const res = Engine.startAdventure(S, 2);
-      if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
-      if (typeof AudioManager !== 'undefined') {
-        AudioManager.playSfx('explore');
-        AudioManager.playBgm('adventure');
-      }
-      advIntro();
-    };
-    adv2Card.appendChild(btn2);
-    box.appendChild(adv2Card);
+    advConfigs.forEach(function(adv) {
+      const canEnter = bi >= adv.realmReq;
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;' + (canEnter ? '' : 'opacity:0.5;');
+      card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<b style="color:' + adv.color + ';font-size:16px;">' + adv.grade + '级秘境 · ' + adv.name + '</b>' +
+        '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
+        '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : '<b style="color:#e05a7a;"> 需要' + adv.realmName + '以上方可进入</b>') + '</p>' +
+        '<div style="font-size:12px;color:#6a6a7a;">产出：' + adv.drops + '</div>';
+      const btn = document.createElement('button');
+      btn.className = 'btn-main';
+      btn.textContent = canEnter ? '进入' + adv.name : '境界不足';
+      btn.style.marginTop = '8px';
+      btn.style.borderColor = adv.color;
+      btn.disabled = !canEnter;
+      btn.onclick = function () {
+        ov.style.display = 'none';
+        const res = Engine.startAdventure(S, adv.key);
+        if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
+        if (typeof AudioManager !== 'undefined') {
+          AudioManager.playSfx('explore');
+        }
+        advIntro();
+      };
+      card.appendChild(btn);
+      box.appendChild(card);
+    });
 
     // 关闭按钮
     const closeBtn = document.createElement('button');
     closeBtn.className = 'btn-small';
     closeBtn.textContent = '返回';
     closeBtn.style.marginTop = '12px';
-    closeBtn.onclick = function () { ov.style.display = 'none'; };
+    closeBtn.onclick = function () { closeModal(); };
     box.appendChild(closeBtn);
   }
 

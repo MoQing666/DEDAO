@@ -464,6 +464,10 @@
       { key: 'di', name: '洞天福地', grade: '地', color: '#a06ac9', realmReq: 2, realmName: '金丹', desc: '金丹期秘境，上古洞天遗迹。', drops: '地级功法、地级装备、地级灵材' },
       { key: 'tian', name: '魔道祖地', grade: '天', color: '#e05a7a', realmReq: 3, realmName: '元婴', desc: '元婴期秘境，魔道势力盘踞之地。', drops: '天级功法、天级装备、天级灵材' }
     ];
+    // 遗世仙踪每10年出现一次
+    if (Engine.isXianAdventureAvailable(S)) {
+      advConfigs.push({ key: 'xian', name: '遗世仙踪', grade: '仙', color: '#9adcff', realmReq: 3, realmName: '元婴', desc: '每十年一现的仙人遗迹，内藏仙品宝物。', drops: '仙级装备、天级功法、天级灵材' });
+    }
 
     const title = document.createElement('h3');
     title.textContent = '选择秘境';
@@ -630,6 +634,8 @@
 
   /* ---- 夺宝：超品级装备引来的劫 ---- */
   function duobaoRun() {
+    // 遗世仙踪秘境不触发夺宝
+    if (S.advType === 'xian') return Promise.resolve(false);
     const pend = Engine.pendingDuobao(S);
     if (!pend) return Promise.resolve(false);
     const names = pend.map(function (id) {
@@ -1163,6 +1169,10 @@
     if (r === 'fate') { fateFlow(); return; }
     logSection('第 ' + S.year + ' 年 · ' + S.age + ' 岁');
     log('爆竹声中，旧岁翻篇。你长身而起，新一年的风已经吹进门来。');
+    // 遗世仙踪每10年出现一次
+    if (Engine.isXianAdventureAvailable(S)) {
+      log('【遗世仙踪】仙光乍现，遗世仙踪秘境降临！速往秘境入口探索。', 'gold');
+    }
     if (typeof r === 'string' && r.indexOf('ok|') === 0) {
       const f = r.slice(3).split('、');
       log('宗门俸禄：' + f.join('、'), 'sect');

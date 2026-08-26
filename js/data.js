@@ -1341,6 +1341,17 @@ const ADVENTURE_CONFIG = {
     monsters: MONSTER_POOL.tian,
     boss: MONSTER_POOL.boss[3],
     drops: { herb: 'herb_tian', iron: 'iron_tian' }
+  },
+  xian: {
+    name: '遗世仙踪',
+    grade: '仙',
+    realmReq: 3,
+    desc: '每十年一现的仙人遗迹，内藏仙品宝物。',
+    monsters: MONSTER_POOL.tian,
+    boss: { name: '仙人残念', line: '一缕仙人残念，金光万丈，威压如山。' },
+    drops: { herb: 'herb_tian', iron: 'iron_tian' },
+    noDuobao: true,
+    isSpecial: true
   }
 };
 
@@ -1377,12 +1388,21 @@ const ADV_SETTINGS_TIAN = [
   '万魔殿前，魔火熊熊燃烧，热浪扑面。',
   '魔渊深处，黑暗中无数双眼睛在注视着你。'
 ];
+// 仙级秘境：遗世仙踪（每十年一现）
+const ADV_SETTINGS_XIAN = [
+  '金光万丈的仙人洞府，灵气浓郁得几乎凝成实质。',
+  '悬浮在云端的仙宫废墟，仙鹤盘旋，钟声悠扬。',
+  '千年古树下，一位白发老者正在品茶，似在等你。',
+  '仙泉叮咚，池中金莲绽放，每一瓣都蕴含道韵。',
+  '天门半开，仙乐阵阵，隐约可见琼楼玉宇。'
+];
 // 按秘境等级索引
 const ADV_SETTINGS_MAP = {
   huang: ADV_SETTINGS_HUANG,
   xuan: ADV_SETTINGS_XUAN,
   di: ADV_SETTINGS_DI,
-  tian: ADV_SETTINGS_TIAN
+  tian: ADV_SETTINGS_TIAN,
+  xian: ADV_SETTINGS_XIAN
 };
 const ADV_NODES = {
   combat:   { name: '遭遇战',   icon: '⚔', desc: '前方妖气冲天，一场恶战在所难免。' },

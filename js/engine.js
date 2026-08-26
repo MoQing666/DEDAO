@@ -548,6 +548,10 @@ const Engine = (function () {
   function pendingDuobao(s) {
     return s.pendingDuobao && s.pendingDuobao.length ? s.pendingDuobao.slice() : null;
   }
+  // 检查遗世仙踪是否可用（每10年出现一次）
+  function isXianAdventureAvailable(s) {
+    return s.year % 10 === 0 && bigIdxOf(s) >= 3;
+  }
   function duobaoSpec(s) {
     const bi = Math.min(bigIdxOf(s), 3);
     const nbi = Math.min(bi + 1, 3);
@@ -836,8 +840,9 @@ const Engine = (function () {
       if (!s.materials) s.materials = {};
       const roll = Math.random();
       if (roll < 0.33) {
-        // 装备
-        const equip = randomEquip(bi, d);
+        // 装备（遗世仙踪掉落仙品）
+        const equipTier = advType === 'xian' ? 4 : bi;
+        const equip = randomEquip(equipTier, d);
         if (equip) { g.push.apply(g, grantEquipChecked(s, equip)); }
         else { const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1); }
       } else if (roll < 0.66) {
@@ -1798,6 +1803,7 @@ const Engine = (function () {
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
     fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,
     grantEquipChecked: grantEquipChecked, pendingDuobao: pendingDuobao,
+    isXianAdventureAvailable: isXianAdventureAvailable,
     duobaoSpec: duobaoSpec, grantPendingEquip: grantPendingEquip, dropPendingEquip: dropPendingEquip,
     shopStock: shopStock, buyStock: buyStock, sellMaterial: sellMaterial,
     startCraft: startCraft, accelerateCraft: accelerateCraft,

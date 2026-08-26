@@ -285,7 +285,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- 章节叙事层 ---------------- */
 .chapter-overlay {
-  position: fixed; inset: 0; z-index: 100;
+  position: fixed; inset: 0; z-index: 200;
   background:
     repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 4px),
     linear-gradient(180deg, #0e0c15 0%, #171322 60%, #0e0c15 100%);
@@ -328,7 +328,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- 弹窗 ---------------- */
 .modal {
-  position: fixed; inset: 0; z-index: 90;
+  position: fixed; inset: 0; z-index: 250;
   background: rgba(5,4,10,.8);
   display: flex; align-items: flex-end; justify-content: center;
 }

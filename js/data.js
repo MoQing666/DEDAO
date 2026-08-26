@@ -73,7 +73,7 @@ const ARTIFACTS = {
   qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
   // 秘境二(金丹-元婴): 地天级法宝
   xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
-  juling:   { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +15%' },
+  juling:   { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +5%' },
   jinylv:   { name: '金缕衣', type: '守', grade: '天', desc: '天蚕金丝所织，万法不侵。', effect: '渡劫成功率 +10%' }
 };
 
@@ -1208,7 +1208,7 @@ const EQUIPS = {
     // 炼器法宝
     qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
-    juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.15, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
+    juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.05, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
     jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' }
   }
 };

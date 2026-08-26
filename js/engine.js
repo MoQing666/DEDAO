@@ -214,7 +214,7 @@ const Engine = (function () {
     g *= techMult(s);
     if (s.linggen) g *= (s.linggen.qiMul || 1);
     if (s.talents.indexOf('daoti') >= 0) g *= 1.1;
-    if (s.arts.indexOf('juling') >= 0) g *= 1.15;
+    if (s.arts.indexOf('juling') >= 0) g *= 1.05;
     if (s.flags.daoLu) g *= 1.1;
     if (s.flags.petGrown) g *= 1.15;
     else if (s.flags.pet) g *= 1.05;

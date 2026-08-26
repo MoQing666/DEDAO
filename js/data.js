@@ -93,25 +93,104 @@ const ELIXIR_GRADE_HP = {
 };
 
 /* ---------------- 功法：心法（修行） / 法术（招式） / 遁术（身法） ---------------- */
+// 五行相克：金→木→土→水→火→金
+const ELEMENT_COUNTER = { '金': '木', '木': '土', '土': '水', '水': '火', '火': '金' };
 const TECHNIQUES = {
-  /* ---- 心法：修炼加成 ---- */
-  tunai:    { name: '吐纳诀',   cls: 'xinfa', grade: '黄', mult: 1.20, desc: '粗浅呼吸吐纳之法，聊胜于无。' },
-  shengong: { name: '生息功',   cls: 'xinfa', grade: '黄', mult: 1.30, desc: '如春草复苏，气机生生不息。', mo: 20 },
-  changchun:{ name: '长春功',   cls: 'xinfa', grade: '玄', mult: 1.50, desc: '生机绵绵，如草木长春。', mo: 45 },
-  tiangang: { name: '天罡诀',   cls: 'xinfa', grade: '玄', mult: 1.65, desc: '引天罡正气，浩然沛然。', mo: 70 },
-  taixuan:  { name: '太玄经',   cls: 'xinfa', grade: '地', mult: 1.85, desc: '玄之又玄，众妙之门。', mo: 110 },
-  hundun:   { name: '混沌诀',   cls: 'xinfa', grade: '天', mult: 2.30, desc: '分光化影，万象归元。', mo: 160 },
-  kaitian:  { name: '开天篇',   cls: 'xinfa', grade: '仙', mult: 3.00, desc: '盘古遗篇，一斧开天。', mo: 220 },
-  /* ---- 法术：战斗招式，需灵力催动 ---- */
-  yuhuo:    { name: '御火诀',   cls: 'shufa', grade: '黄', dmg: 3.0,  cost: 15, desc: '一道火蛇缠身，焚其经脉。' },
-  hanshuang:{ name: '凝霜诀',   cls: 'shufa', grade: '黄', dmg: 2.7,  cost: 12, slow: true, desc: '霜刃透骨，令敌出手迟缓。' },
-  leiyin:   { name: '雷音引',   cls: 'shufa', grade: '玄', dmg: 3.8,  cost: 25, desc: '引天雷一击，声势骇人。' },
-  jianqi:   { name: '剑气纵横', cls: 'shufa', grade: '地', dmg: 5.0,  cost: 40, desc: '一剑既出，千剑相随。' },
-  wanjian:  { name: '万剑归宗', cls: 'shufa', grade: '天', dmg: 6.2,  cost: 60, desc: '万剑齐鸣，天地失色。' },
-  /* ---- 遁术：逃跑与被击减免 ---- */
-  xiaoyao:  { name: '逍遥步',   cls: 'dunshu', grade: '黄', flee: 0.4,  desc: '踏歌而行，来去如风。' },
-  yingdun:  { name: '影遁术',   cls: 'dunshu', grade: '玄', flee: 0.6,  guard: 0.1, desc: '身化残影，刀剑难近。' },
-  suodi:    { name: '缩地成寸', cls: 'dunshu', grade: '地', flee: 1.0,  guard: 0.2, desc: '一步千里，万军难留。' }
+  /* ========== 心法：修炼加成 ========== */
+  // --- 通用五行心法(黄) ---
+  jingang:   { name: '金刚诀',   cls: 'xinfa', grade: '黄', mult: 1.20, element: '金', desc: '刚猛无铸，金气贯体。' },
+  qingmu:    { name: '青木功',   cls: 'xinfa', grade: '黄', mult: 1.20, element: '木', desc: '青木生机，气机流转。' },
+  xuanshui:  { name: '玄水诀',   cls: 'xinfa', grade: '黄', mult: 1.20, element: '水', desc: '上善若水，润泽经脉。' },
+  chihuo:    { name: '赤火功',   cls: 'xinfa', grade: '黄', mult: 1.20, element: '火', desc: '烈焰焚天，以火炼体。' },
+  houtu:     { name: '厚土诀',   cls: 'xinfa', grade: '黄', mult: 1.20, element: '土', desc: '厚德载物，稳如泰山。' },
+  // --- 通用五行心法(玄) ---
+  tiangang:  { name: '天罡诀',   cls: 'xinfa', grade: '玄', mult: 1.50, element: '金', desc: '引天罡正气，浩然沛然。' },
+  changchun: { name: '长春功',   cls: 'xinfa', grade: '玄', mult: 1.50, element: '木', desc: '生机绵绵，如草木长春。' },
+  taiyin:    { name: '太阴诀',   cls: 'xinfa', grade: '玄', mult: 1.50, element: '水', desc: '太阴之气，润物无声。' },
+  chunyang:  { name: '纯阳功',   cls: 'xinfa', grade: '玄', mult: 1.50, element: '火', desc: '纯阳之气，焚尽阴邪。' },
+  kunyuan:   { name: '坤元诀',   cls: 'xinfa', grade: '玄', mult: 1.50, element: '土', desc: '坤元厚德，承载万物。' },
+  // --- 通用五行心法(地) ---
+  gengjin:   { name: '庚金诀',   cls: 'xinfa', grade: '地', mult: 1.80, element: '金', desc: '庚金之气，锐不可当。' },
+  yimu:      { name: '乙木诀',   cls: 'xinfa', grade: '地', mult: 1.80, element: '木', desc: '乙木生机，生生不息。' },
+  guishui:   { name: '癸水诀',   cls: 'xinfa', grade: '地', mult: 1.80, element: '水', desc: '癸水之精，润泽万物。' },
+  binghuo:   { name: '丙火诀',   cls: 'xinfa', grade: '地', mult: 1.80, element: '火', desc: '丙火之威，焚天灭地。' },
+  wutu:      { name: '戊土诀',   cls: 'xinfa', grade: '地', mult: 1.80, element: '土', desc: '戊土之厚，镇压四方。' },
+  // --- 通用五行心法(天) ---
+  baihu:     { name: '白虎诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '金', desc: '白虎主杀，金气冲霄。' },
+  qinglong:  { name: '青龙诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '木', desc: '青龙盘踞，万木回春。' },
+  xuanwu:    { name: '玄武诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '水', desc: '玄武镇北，水火不侵。' },
+  zhuque:    { name: '朱雀诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '火', desc: '朱雀涅槃，浴火重生。' },
+  qilin:     { name: '麒麟诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '土', desc: '麒麟踏云，厚德无疆。' },
+  // --- 仙级心法 ---
+  kaitian:   { name: '开天篇',   cls: 'xinfa', grade: '仙', mult: 3.00, desc: '盘古遗篇，一斧开天。' },
+  // --- 宗门心法：青云剑宗 ---
+  qy_xinfa1: { name: '青云剑诀', cls: 'xinfa', grade: '黄', mult: 1.20, sect: 'qingyunjian', atkMul: 0.05, desc: '剑气贯体，攻伐初显。' },
+  qy_xinfa2: { name: '御剑心法', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'qingyunjian', atkMul: 0.10, desc: '御剑凌空，剑意通神。' },
+  qy_xinfa3: { name: '剑魂心经', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'qingyunjian', atkMul: 0.15, spellMul: 0.05, desc: '人剑合一，剑魂觉醒。' },
+  qy_xinfa4: { name: '太虚剑典', cls: 'xinfa', grade: '天', mult: 2.30, sect: 'qingyunjian', atkMul: 0.20, spellMul: 0.10, desc: '太虚剑道，万法归一。' },
+  // --- 宗门心法：丹霞谷 ---
+  dx_xinfa1: { name: '丹霞心法', cls: 'xinfa', grade: '黄', mult: 1.20, sect: 'dpxia', desc: '以丹入道，初窥门径。' },
+  dx_xinfa2: { name: '火灵心经', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'dpxia', atkMul: 0.05, desc: '丹火通灵，威力初显。' },
+  dx_xinfa3: { name: '丹道真解', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'dpxia', atkMul: 0.10, craftTimeReduce: 1, desc: '丹道大成，炼丹如神。' },
+  dx_xinfa4: { name: '九转丹典', cls: 'xinfa', grade: '天', mult: 2.30, sect: 'dpxia', atkMul: 0.15, craftTimeReduce: 1, desc: '九转金丹，道法自然。' },
+  // --- 宗门心法：玄天门 ---
+  xt_xinfa1: { name: '玄天心法', cls: 'xinfa', grade: '黄', mult: 1.20, sect: 'xuantian', guard: 0.05, desc: '阵法护体，初入门墙。' },
+  xt_xinfa2: { name: '护山心经', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'xuantian', guard: 0.10, hpMax: 50, desc: '护山大阵，固若金汤。' },
+  xt_xinfa3: { name: '天罡心法', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'xuantian', guard: 0.15, hpMax: 100, desc: '天罡正气，万邪不侵。' },
+  xt_xinfa4: { name: '玄武真经', cls: 'xinfa', grade: '天', mult: 2.30, sect: 'xuantian', guard: 0.20, hpMax: 150, reduceDmg: 0.05, desc: '玄武真身，不朽不灭。' },
+
+  /* ========== 法术：战斗招式 ========== */
+  // --- 黄级法术 ---
+  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 3.0,  cost: 15, desc: '金气化刃，斩敌经脉。' },
+  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 2.5,  cost: 12, debuff: { atkDown: 20, duration: 2 }, desc: '藤蔓缠绕，令敌行动迟缓。' },
+  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 2.8,  cost: 14, desc: '水气凝聚，化弹击敌。' },
+  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 2.5,  cost: 13, buff: { atkUp: 20, duration: 3 }, desc: '火球焚身，烈焰加护。' },
+  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 2.5,  cost: 13, buff: { defUp: 20, duration: 2 }, desc: '巨石压顶，土气护体。' },
+  // --- 玄级法术（攻击） ---
+  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 4.0,  cost: 25, desc: '金光化剑，锐不可当。' },
+  muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.30, desc: '木灵之力，治愈创伤。' },
+  hanbing:   { name: '寒冰刺',   cls: 'shufa', grade: '玄', element: '水', dmg: 3.5,  cost: 28, freeze: 1, desc: '寒冰刺骨，冻彻心扉。' },
+  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.5,  cost: 22, buff: { atkUp: 20, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
+  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 3.5,  cost: 26, desc: '巨岩轰击，势大力沉。' },
+  // --- 玄级法术（抵御/恢复） ---
+  jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 18, buff: { defUp: 30, duration: 3 }, desc: '金光护体，刀枪不入。' },
+  shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 0,   cost: 18, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势。' },
+  shuilingshu: { name: '水灵术', cls: 'shufa', grade: '玄', element: '水', dmg: 0,   cost: 20, heal: 0.25, desc: '水灵之力，治愈创伤。' },
+  huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 18, buff: { defUp: 25, duration: 2 }, desc: '烈焰护盾，焚尽攻击。' },
+  yanjia:     { name: '岩甲术',   cls: 'shufa', grade: '玄', element: '土', dmg: 0,   cost: 20, buff: { defUp: 40, duration: 3 }, desc: '岩石护甲，固若金汤。' },
+  // --- 地级法术 ---
+  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '金', dmg: 5.5,  cost: 45, desc: '万剑齐鸣，天地失色。' },
+  shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 40, heal: 0.50, desc: '生机盎然，枯木回春。' },
+  xuanbing:   { name: '玄冰阵',   cls: 'shufa', grade: '地', element: '水', dmg: 4.0,  cost: 42, freeze: 2, desc: '玄冰大阵，冻彻天地。' },
+  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 5.5,  cost: 45, desc: '天火降世，焚尽万物。' },
+  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.5,  cost: 38, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方。' },
+  // --- 天级法术 ---
+  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '金', dmg: 7.0,  cost: 70, desc: '金光破天，一击必杀。' },
+  wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 65, heal: 0.80, desc: '万木回春，枯木逢生。' },
+  bingfeng:   { name: '冰封千里', cls: 'shufa', grade: '天', element: '水', dmg: 5.0,  cost: 75, freeze: 3, desc: '冰封千里，万物凝固。' },
+  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 7.0,  cost: 70, desc: '焚天灭地，烈焰滔天。' },
+  dadi:       { name: '大地守护', cls: 'shufa', grade: '天', element: '土', dmg: 0,    cost: 60, buff: { defUp: 50, duration: 3 }, desc: '大地守护，万邪不侵。' },
+
+  /* ========== 遁术：逃跑与防御 ========== */
+  // --- 通用遁术 ---
+  xiaoyao:   { name: '逍遥步',   cls: 'dunshu', grade: '黄', flee: 0.40, desc: '踏歌而行，来去如风。' },
+  yingdun:   { name: '影遁术',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, desc: '身化残影，刀剑难近。' },
+  suodi:     { name: '缩地成寸', cls: 'dunshu', grade: '地', flee: 1.00, guard: 0.20, desc: '一步千里，万军难留。' },
+  // --- 青云剑宗遁术 ---
+  qy_dun1:   { name: '剑影步',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'qingyunjian', desc: '身随剑动，剑影随行。' },
+  qy_dun2:   { name: '御剑飞行', cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'qingyunjian', desc: '御剑凌空，逍遥天地。' },
+  qy_dun3:   { name: '剑遁术',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'qingyunjian', desc: '人剑合一，瞬息千里。' },
+  qy_dun4:   { name: '万剑归一', cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'qingyunjian', desc: '万剑归一，剑道极致。' },
+  // --- 丹霞谷遁术 ---
+  dx_dun1:   { name: '火遁术',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'dpxia', desc: '借火遁形，烟消云散。' },
+  dx_dun2:   { name: '烟火遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'dpxia', desc: '烟雾弥漫，遁入无形。' },
+  dx_dun3:   { name: '丹火遁',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'dpxia', desc: '丹火护体，浴火而遁。' },
+  dx_dun4:   { name: '浴火遁',   cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'dpxia', desc: '浴火重生，凤凰涅槃。' },
+  // --- 玄天门遁术 ---
+  xt_dun1:   { name: '土遁术',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'xuantian', desc: '借土遁形，遁地无形。' },
+  xt_dun2:   { name: '石壁遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'xuantian', desc: '石壁护身，固若金汤。' },
+  xt_dun3:   { name: '阵遁术',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'xuantian', desc: '阵法传送，瞬息千里。' },
+  xt_dun4:   { name: '天罡遁',   cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'xuantian', desc: '天罡护体，万法不侵。' }
 };
 const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05a7a', 仙: '#9adcff' };
 

@@ -595,7 +595,7 @@ const Engine = (function () {
     if (spec.noFlee) flee = 0.05;
     const spells = equippedShufa(s);
     const spellList = spells.map(function (x) {
-      for (const id in TECHNIQUES) if (TECHNIQUES[id] === x) return { id: id, name: x.name, grade: x.grade };
+      for (const id in TECHNIQUES) if (TECHNIQUES[id] === x) return { id: id, name: x.name, grade: x.grade, cost: x.cost || 0 };
       return null;
     }).filter(Boolean);
     s.battle = {

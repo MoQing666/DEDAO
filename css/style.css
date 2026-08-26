@@ -295,7 +295,6 @@ button:disabled { opacity: .4; cursor: default; }
 /* 战斗层最高优先级 */
 #battle {
   z-index: 9999 !important;
-  background: rgba(255, 0, 0, 0.5) !important;
 }
 .chapter-inner {
   width: 100%; max-width: 520px; max-height: 100%;

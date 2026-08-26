@@ -1340,6 +1340,15 @@ const ADVENTURE_CONFIG = {
   }
 };
 
+// 秘境等级映射
+const ADVENTURE_GRADE = {
+  huang: 0,
+  xuan: 1,
+  di: 2,
+  tian: 3,
+  xian: 3
+};
+
 /* ---------------- 冒险环境与节点文案（按秘境等级分层） ---------------- */
 // 黄级秘境：匪徒营寨（炼气期，人型怪）
 const ADV_SETTINGS_HUANG = [

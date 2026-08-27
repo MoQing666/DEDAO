@@ -1153,12 +1153,27 @@
     afterAction();
   }
   function actYearEnd() {
-    // 如果还有行动点，弹出确认
+    // 如果还有行动点，弹出游戏内确认
     if (S.actionsLeft > 0 && !S.dead) {
-      if (!confirm('你还有 ' + S.actionsLeft + ' 个行动点未消耗，确定要进入下一年吗？')) {
-        return;
-      }
+      showChapter('岁月将尽', [
+        '你还有 ' + S.actionsLeft + ' 个行动点未消耗。',
+        '是继续修行，还是辞旧迎新？'
+      ], {
+        subtitle: '第' + S.year + '年 · ' + S.age + '岁',
+        choices: [
+          { t: '继续修行\n把剩余行动点用完', effect: {}, lines: ['你决定再看看，这一年还没过完。'] },
+          { t: '辞旧迎新\n进入下一年', effect: {}, lines: ['你收拾好这一年的际遇，静待新岁。'] }
+        ]
+      }).then(function (r) {
+        if (r && r.pick && r.pick.t.indexOf('辞旧迎新') >= 0) {
+          doYearEnd();
+        }
+      });
+      return;
     }
+    doYearEnd();
+  }
+  function doYearEnd() {
     const r = Engine.endYear(S);
     if (r === 'end') { endLifeFlow(); return; }
     if (r === 'fate') { fateFlow(); return; }

@@ -208,7 +208,7 @@ button:disabled { opacity: .4; cursor: default; }
 .lcap { width: 34px; flex: none; }
 .lbar { flex: 1; height: 10px; background: #120f1a; border: 1px solid #3a3450; position: relative; }
 .lbar i { position: absolute; left: 0; top: 0; bottom: 0; display: block; transition: width .3s; }
-.aps { display: inline-flex; gap: 4px; margin-left: 6px; }
+.aps { display: inline-flex; gap: 4px; margin-left: 6px; margin-right: 12px; }
 .ap-dot { width: 12px; height: 12px; background: #3a3450; border: 1px solid #5a5270; transform: rotate(45deg); }
 .ap-dot.on { background: var(--gold); border-color: #f3d98a; }
 .res { margin-left: auto; display: inline-flex; gap: 8px; font-size: 13px; }

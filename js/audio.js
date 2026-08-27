@@ -116,36 +116,49 @@ var AudioManager = (function () {
     if (bgmFiles[name]) {
       // 使用真实音频文件
       try {
+        // 先停止当前BGM
+        stopBgm();
+        
         bgmAudio = new Audio();
+        bgmAudio.preload = 'auto';
         bgmAudio.src = bgmFiles[name];
         bgmAudio.loop = true;
         bgmAudio.volume = 0;
         
-        bgmAudio.play().then(function() {
-          // 淡入效果
-          var targetVolume = bgmVolume * 0.6;
-          var steps = 20;
-          var stepTime = 1000 / steps;
-          var volumeStep = targetVolume / steps;
-          var currentStep = 0;
-          
-          fadeTimer = setInterval(function() {
-            currentStep++;
-            if (currentStep >= steps) {
-              bgmAudio.volume = targetVolume;
-              clearInterval(fadeTimer);
-              fadeTimer = null;
-            } else {
-              bgmAudio.volume = volumeStep * currentStep;
-            }
-          }, stepTime);
-        }).catch(function(e) {
-          // 降级到合成音
+        // 等待音频加载完成后再播放
+        bgmAudio.addEventListener('canplaythrough', function() {
+          bgmAudio.play().then(function() {
+            // 淡入效果
+            var targetVolume = bgmVolume * 0.6;
+            var steps = 20;
+            var stepTime = 1000 / steps;
+            var volumeStep = targetVolume / steps;
+            var currentStep = 0;
+            
+            fadeTimer = setInterval(function() {
+              currentStep++;
+              if (currentStep >= steps) {
+                bgmAudio.volume = targetVolume;
+                clearInterval(fadeTimer);
+                fadeTimer = null;
+              } else {
+                bgmAudio.volume = volumeStep * currentStep;
+              }
+            }, stepTime);
+          }).catch(function(e) {
+            console.log('BGM播放失败，使用合成音:', e);
+            playSynthBgm(name);
+          });
+        }, { once: true });
+        
+        bgmAudio.addEventListener('error', function(e) {
+          console.log('BGM加载失败，使用合成音:', e);
           playSynthBgm(name);
-        });
+        }, { once: true });
         
         currentBgm = name;
       } catch (e) {
+        console.log('BGM初始化失败，使用合成音:', e);
         playSynthBgm(name);
       }
     } else {

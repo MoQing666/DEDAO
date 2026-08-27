@@ -1431,6 +1431,15 @@ const ADVENTURE_GRADE = {
   xian: 3
 };
 
+// 秘境功法掉落映射
+const TECH_DROPS_MAP = {
+  huang: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'],
+  xuan: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'],
+  di: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
+  tian: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
+  xian: ['kaitian', 'taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi']
+};
+
 /* ---------------- 冒险环境与节点文案（按秘境等级分层） ---------------- */
 // 黄级秘境：匪徒营寨（炼气期，人型怪）
 const ADV_SETTINGS_HUANG = [

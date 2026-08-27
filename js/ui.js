@@ -112,7 +112,7 @@
     $('h-realm').style.borderColor = st.color;
 
     $('h-year').textContent = '第' + S.year + '年 · ' + S.age + '岁 / ' + S.lifeMax + '寿';
-    $('h-stone').innerHTML = '<span class="chip">◇ ' + S.stone + '</span>';
+    $('h-stone').innerHTML = '<span class="chip">灵石 ' + S.stone + '</span>';
 
     const hpPct = Math.max(0, Math.min(100, S.hp / S.hpMax * 100));
     bar('bar-hp', hpPct, hpPct < 30 ? '#e0604a' : '#e86a5a');

@@ -2929,7 +2929,7 @@
   /* ---------------- 开机 ---------------- */
   function boot() {
     M = Engine.loadMeta();
-    if (!M._bonus20) { M.points = (M.points || 0) + 20; M._bonus20 = true; Engine.saveMeta(M); }
+    if (!M._bonus20) { M.points = (M.points || 0) + 100; M._bonus20 = true; Engine.saveMeta(M); }
     
     // 初始化音频配置
     if (typeof AudioManager !== 'undefined') {

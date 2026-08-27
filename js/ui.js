@@ -118,7 +118,7 @@
     $('h-actions').innerHTML = '';
     for (let i = 0; i < ap; i++) {
       const d = document.createElement('span');
-      d.className = 'ap-dot' + (i < S.actionsLeft ? ' on' : '');
+      d.className = 'ap-dot' + (i >= S.actionsLeft ? ' on' : '');
       $('h-actions').appendChild(d);
     }
 

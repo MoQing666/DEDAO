@@ -220,6 +220,13 @@ const Engine = (function () {
     else if (s.flags.pet) g *= 1.05;
     g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
     g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
+    // 五行灵体：修炼五行心法时速度+10% per level
+    if (s.reinc && s.reinc.wuxingCultMul && s.techEquip && s.techEquip.xinfa) {
+      var xf = TECHNIQUES[s.techEquip.xinfa];
+      if (xf && xf.element) {
+        g *= 1 + s.reinc.wuxingCultMul;
+      }
+    }
     g *= 1 + equipStats(s).cult;
     if (s.sect && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
     let note = '';
@@ -301,6 +308,9 @@ const Engine = (function () {
     s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
     s.reinc.forgeTimeReduce = meta.reinc.forge || 0;
     s.reinc.shesheng = meta.reinc.shesheng || 0;
+    s.reinc.herbGrowReduce = meta.reinc.lvling_bottle || 0;
+    s.reinc.extraField = meta.reinc.extra_field || 0;
+    s.reinc.wuxingCultMul = meta.reinc.wuxing_body || 0;
     const list = REINCARNATION;
     list.forEach(function (r) {
       const n = meta.reinc[r.id] || 0;
@@ -314,6 +324,11 @@ const Engine = (function () {
         else if (r.id === 'life20') s.lifeMax += 20;
       }
     });
+    // 初始化灵田（基础1块 + 随身灵田天赋）
+    var fieldCount = 1 + (s.reinc.extraField || 0);
+    while (s.field.length < fieldCount) {
+      s.field.push(null);
+    }
   }
   function startLife(name) {
     const meta = loadMeta();
@@ -1463,23 +1478,53 @@ const Engine = (function () {
     const p = plots[i];
     if (!p) return null;
     const sd = FIELD_SEEDS[p.seed];
+    var growReduce = (s.reinc && s.reinc.herbGrowReduce) || 0;
+    var needYears = Math.max(1, sd.years - growReduce);
     const years = Math.max(0, s.year - (p.planted || s.year));
-    const done = years >= sd.years;
-    return { seed: p.seed, name: sd.name, years: years, needYears: sd.years, done: done, desc: sd.desc };
+    const done = years >= needYears;
+    return { seed: p.seed, name: sd.name, years: years, needYears: needYears, done: done, desc: sd.desc };
   }
-  function plantField(s, seedId) {
+  function plantField(s, seedId, quantity) {
     if (!s.materials) s.materials = {};
     const sd = FIELD_SEEDS[seedId];
     if (!sd) return '没有这种种子。';
     const plots = fieldPlots(s);
-    if (plots.length >= 6) return '灵田已满（最多六亩），先采收再种吧。';
+    // 检查灵田数量限制
+    var maxFields = getMaxFields(s);
+    var usedFields = plots.filter(function(p) { return p !== null; }).length;
+    if (usedFields >= maxFields) return '灵田已满（最多' + maxFields + '亩），先采收再种吧。';
     // 使用分级灵草播种
     var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
-    if ((s.materials[herbKey] || 0) < sd.cost) return MATERIALS[herbKey].name + '不足（播种需 ' + sd.cost + ' 株）。';
-    s.materials[herbKey] -= sd.cost;
-    plots.push({ seed: seedId, planted: s.year });
+    var qty = quantity || 1;
+    var totalCost = sd.cost * qty;
+    if ((s.materials[herbKey] || 0) < totalCost) return MATERIALS[herbKey].name + '不足（播种需 ' + totalCost + ' 株）。';
+    s.materials[herbKey] -= totalCost;
+    // 找到第一个空闲的灵田槽位
+    var slotIndex = -1;
+    for (var i = 0; i < plots.length; i++) {
+      if (plots[i] === null) { slotIndex = i; break; }
+    }
+    if (slotIndex === -1) {
+      plots.push({ seed: seedId, planted: s.year, quantity: qty });
+    } else {
+      plots[slotIndex] = { seed: seedId, planted: s.year, quantity: qty };
+    }
     refreshStats(s); saveState(s);
-    return '你翻土、下种、引灵泉灌溉，一亩【' + sd.name + '】就此落成。' + sd.desc;
+    return '你翻土、下种、引灵泉灌溉，一亩【' + sd.name + '】（' + qty + '株）就此落成。' + sd.desc;
+  }
+  function getMaxFields(s) {
+    return 3; // 最多3块灵田
+  }
+  function unlockField(s) {
+    var maxFields = getMaxFields(s);
+    var currentFields = s.field ? s.field.length : 0;
+    if (currentFields >= maxFields) return { ok: false, msg: '灵田已达上限。' };
+    var cost = currentFields === 0 ? 100 : 200;
+    if (s.stone < cost) return { ok: false, msg: '灵石不足，需要 ' + cost + ' 灵石。' };
+    s.stone -= cost;
+    s.field.push(null);
+    refreshStats(s); saveState(s);
+    return { ok: true, msg: '成功解锁新灵田！（消耗 ' + cost + ' 灵石）' };
   }
   function harvestField(s, i) {
     if (!s.materials) s.materials = {};
@@ -1487,15 +1532,21 @@ const Engine = (function () {
     const p = plots[i];
     if (!p) return '这一亩田并不存在。';
     const sd = FIELD_SEEDS[p.seed];
+    var growReduce = (s.reinc && s.reinc.herbGrowReduce) || 0;
+    var needYears = Math.max(1, sd.years - growReduce);
     const years = s.year - (p.planted || s.year);
-    if (years < sd.years) return '这一亩【' + sd.name + '】还有 ' + (sd.years - years) + ' 年才成熟。';
-    let n = sd.gain[0] + Math.floor(Math.random() * (sd.gain[1] - sd.gain[0] + 1));
+    if (years < needYears) return '这一亩【' + sd.name + '】还有 ' + (needYears - years) + ' 年才成熟。';
+    var qty = p.quantity || 1;
+    var totalGain = 0;
+    for (var q = 0; q < qty; q++) {
+      totalGain += sd.gain[0] + Math.floor(Math.random() * (sd.gain[1] - sd.gain[0] + 1));
+    }
     // 产出分级灵草
     var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
-    s.materials[herbKey] = (s.materials[herbKey] || 0) + n;
-    plots.splice(i, 1);
+    s.materials[herbKey] = (s.materials[herbKey] || 0) + totalGain;
+    plots[i] = null; // 清空灵田槽位
     refreshStats(s); saveState(s);
-    return '你挥锄采收【' + sd.name + '】，得' + MATERIALS[herbKey].name + ' ' + n + ' 株';
+    return '你挥锄采收【' + sd.name + '】（' + qty + '株），得' + MATERIALS[herbKey].name + ' ' + totalGain + ' 株';
   }
   function digMine(s) {
     if (!s.materials) s.materials = {};
@@ -1802,6 +1853,7 @@ const Engine = (function () {
     xinmoSpec: xinmoSpec, tianjieSpec: tianjieSpec,
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
     fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,
+    unlockField: unlockField, getMaxFields: getMaxFields, fieldPlots: fieldPlots,
     grantEquipChecked: grantEquipChecked, pendingDuobao: pendingDuobao,
     isXianAdventureAvailable: isXianAdventureAvailable,
     duobaoSpec: duobaoSpec, grantPendingEquip: grantPendingEquip, dropPendingEquip: dropPendingEquip,

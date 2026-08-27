@@ -241,10 +241,10 @@ const FORMULAS = [
 
 /* ---------------- 灵田种子（百艺 · 种植） ---------------- */
 const FIELD_SEEDS = {
-  lingshen_huang: { name: '黄级灵草田', cost: 1, years: 2, gain: [3, 6], grade: '黄', desc: '种黄级灵草苗，两年后收3~6株。' },
-  lingshen_xuan:  { name: '玄级灵草田', cost: 3, years: 3, gain: [4, 8], grade: '玄', desc: '种玄级灵草苗，三年后收4~8株。' },
-  lingshen_di:    { name: '地级灵草田', cost: 6, years: 4, gain: [5, 10], grade: '地', desc: '种地级灵草苗，四年后收5~10株。' },
-  lingshen_tian:  { name: '天级灵草田', cost: 10, years: 5, gain: [6, 12], grade: '天', desc: '种天级灵草苗，五年后收6~12株。' }
+  lingshen_huang: { name: '黄级灵草田', cost: 1, years: 1, gain: [3, 6], grade: '黄', desc: '种黄级灵草苗，一年后收3~6株。' },
+  lingshen_xuan:  { name: '玄级灵草田', cost: 3, years: 2, gain: [4, 8], grade: '玄', desc: '种玄级灵草苗，两年后收4~8株。' },
+  lingshen_di:    { name: '地级灵草田', cost: 6, years: 3, gain: [5, 10], grade: '地', desc: '种地级灵草苗，三年后收5~10株。' },
+  lingshen_tian:  { name: '天级灵草田', cost: 10, years: 4, gain: [6, 12], grade: '天', desc: '种天级灵草苗，四年后收6~12株。' }
 };
 
 // 灵田产出映射
@@ -1262,7 +1262,10 @@ const REINCARNATION = [
   { id: 'tech0',      name: '家传心法', desc: '出生自带黄阶功法《生息功》',     cost: 3, max: 1,  apply: { tech: 'shengong' } },
   { id: 'sword0',     name: '祖传宝剑', desc: '出生自带法宝【越王勾践剑】',     cost: 6, max: 1,  apply: { art: 'yuewang_sword' } },
   { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 2, max: 3,  apply: { life: 20 } },
-  { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } }
+  { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } },
+  { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
+  { id: 'extra_field',   name: '随身灵田', desc: '初始灵田 +1块',                cost: 3, max: 3,  apply: { extraField: 1 } },
+  { id: 'wuxing_body',   name: '五行灵体', desc: '修炼五行心法速度 +10%',        cost: 5, max: 3,  apply: { wuxingCultMul: 0.10 } }
 ];
 
 /* ---------------- 工具函数 ---------------- */

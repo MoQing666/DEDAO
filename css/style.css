@@ -281,7 +281,19 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .btn-break.ready { background: rgba(232,193,90,.15); border-color: var(--gold); color: var(--gold); animation: pulse 1.2s infinite; }
 @keyframes pulse { 0%,100% { box-shadow: 0 0 0 rgba(232,193,90,0); } 50% { box-shadow: 0 0 12px rgba(232,193,90,.5); } }
-.yearbar { position: fixed; bottom: 60px; left: 0; right: 0; margin: 0 auto; max-width: 520px; padding: 10px 10px 14px; background: linear-gradient(0deg, #0d0b13 70%, transparent); z-index: 5; }
+.year-row { display: flex; gap: 8px; margin-top: 8px; }
+.year-row .btn-break { flex: 1; margin-top: 0; }
+.btn-year {
+  flex: 1;
+  margin-top: 0;
+  background: var(--gold);
+  color: #221a06;
+  border-color: #f3d98a;
+  font-size: 15px;
+  letter-spacing: 2px;
+  padding: 10px 14px;
+}
+.btn-year:hover:not(:disabled) { background: #f3d98a; }
 
 /* ---------------- 章节叙事层 ---------------- */
 .chapter-overlay {

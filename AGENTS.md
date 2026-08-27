@@ -69,11 +69,20 @@ Graded materials: `herb_huang/xuan/di/tian`, `iron_huang/xuan/di/tian`.
 Old `s.herb`/`s.iron` migrated to `s.materials` on load.
 Display shows totals across all grades.
 
+## Herb Planting System (灵田种植)
+- Initial field count: 1 (can be increased with 随身灵田 talent or unlocking with spirit stones)
+- Unlock 2nd field: 100 spirit stones
+- Unlock 3rd field: 200 spirit stones
+- Each field can plant 1 or 3 plants per grade
+- Growth times: 黄1年, 玄2年, 地3年, 天4年
+- 小绿瓶 talent reduces growth time by 1 year per level (min 1 year)
+
 ## UI Structure
 - **Bottom bar** — Fixed at bottom, z-index 50. Contains: 储物袋, 装备, 功法, 结缘, 百艺, 事件
 - **Modal** — z-index 250
 - **Battle overlay** — z-index 9999 (CSS `!important`)
 - **Screen** — `overflow: hidden`, padding-bottom 70px for bottom bar
+- **Year button** — Always visible, shows confirmation if actions remain
 
 ## Key gotchas
 - **Cultivation is once per year.** `cultivate()` checks `s.cultedThisYear`; `endYear()` resets it.
@@ -88,3 +97,8 @@ Display shows totals across all grades.
 - `validSave` accepts dead/ended saves (`S.dead || S.endReason` returns true early).
 - **S.materials** must be initialized: `if (!s.materials) s.materials = {};`
 - Tests use `_Spatch(fn)` to mutate `S` state. Test paths are hardcoded `D:/opencode/DEDAO/js/`.
+
+## New Talents (轮回天赋)
+- **小绿瓶** (`lvling_bottle`): 3轮回点, 灵草成长-1年/级, max 3级
+- **随身灵田** (`extra_field`): 3轮回点, 初始灵田+1块/级, max 3级
+- **五行灵体** (`wuxing_body`): 5轮回点, 修炼五行心法速度+10%/级, max 3级

@@ -111,9 +111,8 @@
     $('h-realm').style.color = st.color;
     $('h-realm').style.borderColor = st.color;
 
-    $('h-year').textContent = '第' + S.year + '年 · ' + S.age + '岁 / ' + S.lifeMax + ' 寿';
-    const lifePct = Math.max(0, Math.min(100, (S.lifeMax - S.age) / S.lifeMax * 100));
-    bar('bar-life', lifePct, lifePct < 20 ? '#e0604a' : '#9adcff');
+    $('h-year').textContent = '第' + S.year + '年 · ' + S.age + '岁 / ' + S.lifeMax + '寿';
+    $('h-stone').innerHTML = '<span class="chip">◇ ' + S.stone + '</span>';
 
     const hpPct = Math.max(0, Math.min(100, S.hp / S.hpMax * 100));
     bar('bar-hp', hpPct, hpPct < 30 ? '#e0604a' : '#e86a5a');
@@ -122,21 +121,6 @@
     const moPct = Math.max(0, Math.min(100, S.mo / S.moMax * 100));
     bar('bar-mo', moPct, '#7d5cff');
     $('mo-val').textContent = S.mo + '/' + S.moMax;
-
-    $('h-actions').innerHTML = '';
-    for (let i = 0; i < ap; i++) {
-      const d = document.createElement('span');
-      d.className = 'ap-dot' + (i < S.actionsLeft ? ' on' : '');
-      $('h-actions').appendChild(d);
-    }
-    // 显示灵材（汇总）
-    if (!S.materials) S.materials = {};
-    var totalHerb = (S.herb || 0) + (S.materials.herb_huang || 0) + (S.materials.herb_xuan || 0) + (S.materials.herb_di || 0) + (S.materials.herb_tian || 0);
-    var totalIron = (S.iron || 0) + (S.materials.iron_huang || 0) + (S.materials.iron_xuan || 0) + (S.materials.iron_di || 0) + (S.materials.iron_tian || 0);
-    $('h-res').innerHTML =
-      '<span class="chip">灵石 ' + S.stone + '</span>' +
-      '<span class="chip">灵草 ' + totalHerb + '</span>' +
-      '<span class="chip">灵铁 ' + totalIron + '</span>';
 
     const need = requireNeed(S);
     const qiPct = Math.max(0, Math.min(100, S.qi / need * 100));
@@ -168,9 +152,6 @@
     $('btn-break-label').textContent = canB
       ? (info.trib ? '渡劫·' + info.trib + '劫' : '破境突破')
       : '突破（修为未满）';
-
-    const inAdv = S.adv && S.adv.status === 'running';
-    $('yearbar').style.display = (S.actionsLeft <= 0 && !S.dead && !inAdv) ? 'block' : 'none';
   }
   function bar(id, pct, color) {
     const el = $(id);
@@ -1164,6 +1145,12 @@
     afterAction();
   }
   function actYearEnd() {
+    // 如果还有行动点，弹出确认
+    if (S.actionsLeft > 0 && !S.dead) {
+      if (!confirm('你还有 ' + S.actionsLeft + ' 个行动点未消耗，确定要进入下一年吗？')) {
+        return;
+      }
+    }
     const r = Engine.endYear(S);
     if (r === 'end') { endLifeFlow(); return; }
     if (r === 'fate') { fateFlow(); return; }
@@ -2321,32 +2308,62 @@
     }
     if (kind === 'land') {
       if (!S.materials) S.materials = {};
-      const ps = fieldList(S);
+      const plots = fieldPlots(S);
+      const usedFields = plots.filter(function(p) { return p !== null; }).length;
+      const maxFields = Engine.getMaxFields(S);
       const t = document.createElement('h4');
-      t.textContent = '灵田 · 现有 ' + ps.length + '/6 亩';
+      t.textContent = '灵田 · 已用 ' + usedFields + '/' + maxFields + ' 亩';
       body.appendChild(t);
-      if (ps.length) {
-        const plots = document.createElement('div');
-        ps.forEach(function (p, i) {
-          const rowEl = document.createElement('div');
-          rowEl.className = 'formula-row';
-          rowEl.innerHTML = '<div><b>[' + p.name + ']</b><br><span class="dim">' + p.desc + '<br>已种 ' + p.years + '/' + p.needYears + ' 年' + (p.done ? ' · 可采收' : '') + '</span></div>' +
-            (p.done ? '<button>采收</button>' : '<button disabled>未成熟</button>');
-          rowEl.querySelector('button').onclick = function () {
-            const r = Engine.harvestField(S, i);
-            log(r, 'good');
-            renderArtsTab('land', body);
-            refresh();
-          };
-          plots.appendChild(rowEl);
+
+      // 显示已有灵田
+      if (plots.length > 0) {
+        const plotsDiv = document.createElement('div');
+        plots.forEach(function (p, i) {
+          if (p === null) {
+            // 空闲灵田槽位
+            const emptyEl = document.createElement('div');
+            emptyEl.className = 'formula-row';
+            emptyEl.innerHTML = '<div><b>[空闲灵田]</b><br><span class="dim">可在此播种</span></div>';
+            plotsDiv.appendChild(emptyEl);
+          } else {
+            const fi = Engine.fieldInfo(S, i);
+            const rowEl = document.createElement('div');
+            rowEl.className = 'formula-row';
+            rowEl.innerHTML = '<div><b>[' + fi.name + ']</b><br><span class="dim">' + fi.desc + '<br>已种 ' + fi.years + '/' + fi.needYears + ' 年（' + (p.quantity || 1) + '株）' + (fi.done ? ' · 可采收' : '') + '</span></div>' +
+              (fi.done ? '<button>采收</button>' : '<button disabled>未成熟</button>');
+            rowEl.querySelector('button').onclick = function () {
+              const r = Engine.harvestField(S, i);
+              log(r, 'good');
+              renderArtsTab('land', body);
+              refresh();
+            };
+            plotsDiv.appendChild(rowEl);
+          }
         });
-        body.appendChild(plots);
-      } else {
-        const p = document.createElement('p');
-        p.className = 'dim';
-        p.textContent = '灵田荒芜，尚无耕垄。可在下方播种。';
-        body.appendChild(p);
+        body.appendChild(plotsDiv);
       }
+
+      // 解锁灵田按钮
+      if (plots.length < maxFields) {
+        const unlockDiv = document.createElement('div');
+        unlockDiv.style.cssText = 'margin: 12px 0; padding: 8px; background: rgba(232,193,90,0.1); border: 1px solid rgba(232,193,90,0.3); border-radius: 4px;';
+        var unlockCost = plots.length === 0 ? 100 : 200;
+        unlockDiv.innerHTML = '<span style="color: #e8c15a;">解锁新灵田</span> <span class="dim">（' + unlockCost + ' 灵石）</span>';
+        const unlockBtn = document.createElement('button');
+        unlockBtn.className = 'btn-small';
+        unlockBtn.textContent = '解锁';
+        unlockBtn.disabled = S.stone < unlockCost;
+        unlockBtn.onclick = function() {
+          const r = Engine.unlockField(S);
+          log(r.msg, r.ok ? 'good' : 'bad');
+          renderArtsTab('land', body);
+          refresh();
+        };
+        unlockDiv.appendChild(unlockBtn);
+        body.appendChild(unlockDiv);
+      }
+
+      // 播种区域
       const h5 = document.createElement('h4');
       h5.textContent = '播种';
       body.appendChild(h5);
@@ -2357,14 +2374,34 @@
         var herbName = MATERIALS[herbKey] ? MATERIALS[herbKey].name : '灵草';
         const rowEl = document.createElement('div');
         rowEl.className = 'formula-row';
-        rowEl.innerHTML = '<div><b>[' + sd.name + ']</b><br><span class="dim">' + sd.desc + '</span></div>' +
-          '<button>' + herbName + ' ×' + sd.cost + ' → 播种</button>';
-        rowEl.querySelector('button').onclick = function () {
-          const r = Engine.plantField(S, id);
+        rowEl.innerHTML = '<div><b>[' + sd.name + ']</b><br><span class="dim">' + sd.desc + '</span></div>';
+        const btnGroup = document.createElement('div');
+        btnGroup.style.cssText = 'display: flex; gap: 4px;';
+        // 播种1株按钮
+        const btn1 = document.createElement('button');
+        btn1.className = 'btn-small';
+        btn1.textContent = herbName + ' ×' + sd.cost + ' → 种1株';
+        btn1.disabled = (S.materials[herbKey] || 0) < sd.cost;
+        btn1.onclick = function () {
+          const r = Engine.plantField(S, id, 1);
           log(r, r.indexOf('你翻土') === 0 ? 'good' : 'bad');
           renderArtsTab('land', body);
           refresh();
         };
+        btnGroup.appendChild(btn1);
+        // 播种3株按钮
+        const btn3 = document.createElement('button');
+        btn3.className = 'btn-small';
+        btn3.textContent = '种3株（' + (sd.cost * 3) + '）';
+        btn3.disabled = (S.materials[herbKey] || 0) < sd.cost * 3;
+        btn3.onclick = function () {
+          const r = Engine.plantField(S, id, 3);
+          log(r, r.indexOf('你翻土') === 0 ? 'good' : 'bad');
+          renderArtsTab('land', body);
+          refresh();
+        };
+        btnGroup.appendChild(btn3);
+        rowEl.appendChild(btnGroup);
         seeds.appendChild(rowEl);
       });
       body.appendChild(seeds);
@@ -2445,10 +2482,14 @@
   function fieldList(S) {
     const out = [];
     (S.field || []).forEach(function (p, i) {
+      if (p === null) return; // 跳过空闲槽位
       const fi = Engine.fieldInfo(S, i);
       if (fi) out.push(fi);
     });
     return out;
+  }
+  function fieldPlots(S) {
+    return S.field || (S.field = []);
   }
   function costStr(c) {
     const out = [];

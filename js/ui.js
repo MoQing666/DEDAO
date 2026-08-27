@@ -114,6 +114,14 @@
     $('h-year').textContent = '第' + S.year + '年 · ' + S.age + '岁 / ' + S.lifeMax + '寿';
     $('h-stone').innerHTML = '<span class="chip">灵石 ' + S.stone + '</span>';
 
+    // 行动点显示
+    $('h-actions').innerHTML = '';
+    for (let i = 0; i < ap; i++) {
+      const d = document.createElement('span');
+      d.className = 'ap-dot' + (i < S.actionsLeft ? ' on' : '');
+      $('h-actions').appendChild(d);
+    }
+
     const hpPct = Math.max(0, Math.min(100, S.hp / S.hpMax * 100));
     bar('bar-hp', hpPct, hpPct < 30 ? '#e0604a' : '#e86a5a');
     $('hp-val').textContent = S.hp + '/' + S.hpMax;

@@ -621,6 +621,12 @@
       });
       return;
     }
+    if (res.type === 'plain' || res.type === 'treasure') {
+      showChapter(res.type === 'treasure' ? '宝箱' : '前行', res.lines, {
+        subtitle: res.type === 'treasure' ? '宝箱开启' : ''
+      }).then(function () { return duobaoRun(); }).then(advAdvance);
+      return;
+    }
     showChapter('前行', res.lines).then(function () { return duobaoRun(); }).then(advAdvance);
   }
 

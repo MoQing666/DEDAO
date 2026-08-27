@@ -123,6 +123,10 @@ const TECHNIQUES = {
   qilin:     { name: '麒麟诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '土', desc: '麒麟踏云，厚德无疆。' },
   // --- 仙级心法 ---
   kaitian:   { name: '开天篇',   cls: 'xinfa', grade: '仙', mult: 3.00, desc: '盘古遗篇，一斧开天。' },
+  // --- 通用心法（商店/掉落） ---
+  shengong:  { name: '生息功',   cls: 'xinfa', grade: '黄', mult: 1.15, desc: '吐纳生息，气机绵长。' },
+  taixuan:   { name: '太玄经',   cls: 'xinfa', grade: '地', mult: 1.80, desc: '太玄妙法，道法自然。' },
+  hundun:    { name: '混沌诀',   cls: 'xinfa', grade: '天', mult: 2.30, desc: '混沌初开，万法归宗。' },
   // --- 宗门心法：青云剑宗 ---
   qy_xinfa1: { name: '青云剑诀', cls: 'xinfa', grade: '黄', mult: 1.20, sect: 'qingyunjian', atkMul: 0.05, desc: '剑气贯体，攻伐初显。' },
   qy_xinfa2: { name: '御剑心法', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'qingyunjian', atkMul: 0.10, desc: '御剑凌空，剑意通神。' },
@@ -146,6 +150,10 @@ const TECHNIQUES = {
   shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 2.8,  cost: 14, desc: '水气凝聚，化弹击敌。' },
   huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 2.5,  cost: 13, buff: { atkUp: 20, duration: 3 }, desc: '火球焚身，烈焰加护。' },
   luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 2.5,  cost: 13, buff: { defUp: 20, duration: 2 }, desc: '巨石压顶，土气护体。' },
+  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 2.5,  cost: 13, desc: '御火之术，焚尽万物。' },
+  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 2.5,  cost: 13, desc: '凝霜化冰，寒气逼人。' },
+  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.5,  cost: 13, desc: '雷音震耳，破敌心神。' },
+  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '金', dmg: 3.0,  cost: 15, desc: '剑气纵横，斩敌百步。' },
   // --- 玄级法术（攻击） ---
   jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 4.0,  cost: 25, desc: '金光化剑，锐不可当。' },
   muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.30, desc: '木灵之力，治愈创伤。' },

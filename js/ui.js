@@ -2536,6 +2536,32 @@
     $('pause').style.display = 'none';
   }
 
+  /* ---------------- 血炼系统UI（未实装） ---------------- */
+  function showXuelian() {
+    showScreen('crafts');
+    renderXuelianPage();
+  }
+  function renderXuelianPage() {
+    const body = $('crafts-body');
+    body.innerHTML = '';
+    
+    const title = document.createElement('h3');
+    title.textContent = '血炼';
+    body.appendChild(title);
+    
+    const desc = document.createElement('p');
+    desc.className = 'dim';
+    desc.textContent = '以血为引，以魂为炉，炼化万物精华。';
+    body.appendChild(desc);
+    
+    const locked = document.createElement('div');
+    locked.style.cssText = 'text-align:center;padding:40px 20px;color:#5a5270;';
+    locked.innerHTML = '<p style="font-size:18px;margin-bottom:12px;">🔒</p><p>血炼之法尚未习得</p><p class="dim" style="margin-top:8px;">需获得血炼秘籍方可开启</p>';
+    body.appendChild(locked);
+    
+    $('crafts-back').onclick = function () { showScreen('game'); refresh(); };
+  }
+
   /* ---------------- 功法管理 ---------------- */
   function openTech() {
     showScreen('tech');
@@ -2964,16 +2990,13 @@
     $('btn-gear').onclick = function () { sfx('click'); openGear(); };
     $('btn-arts').onclick = function () {
       if (!S || S.dead) return;
-      if (!Engine.canAction(S, 1)) { log('行动点不足'); return; }
       sfx('click');
-      Engine.spend(S, 1);
-      S.inArts = true;
-      log('你进入百艺工坊，开始忙活。（消耗1行动点）');
-      openModal('arts');
-      refresh();
+      showXuelian();
     };
     $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
     $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
+    $('tech-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
+    $('favor-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('modal-close').onclick = function () { sfx('click'); closeModal(); };
     $('modal').onclick = function (e) { if (e.target === $('modal')) { sfx('click'); closeModal(); } };
     $('t-load').onclick = function () { sfx('click'); openSaveModal(false); };

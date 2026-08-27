@@ -7,6 +7,7 @@ var AudioManager = (function () {
   var audioCtx = null;
   var bgmAudio = null;
   var currentBgm = null;
+  var currentBgmSrc = null;
   var pendingBgm = null;
   var bgmVolume = 0.5;
   var sfxVolume = 0.5;
@@ -33,6 +34,17 @@ var AudioManager = (function () {
     explore: 450,
     battle_start: 250,
     battle_end: 800
+  };
+
+  // BGM文件映射
+  var BGM_FILES = {
+    title: 'assets/audio/bgm/bgm_main.mp3',
+    game: 'assets/audio/bgm/bgm_main.mp3',
+    battle: 'assets/audio/bgm/bgm_battle.mp3',
+    peaceful: 'assets/audio/bgm/bgm_main.mp3',
+    sect: 'assets/audio/bgm/bgm_main.mp3',
+    adventure: 'assets/audio/bgm/bgm_main.mp3',
+    ending: 'assets/audio/bgm/bgm_main.mp3'
   };
 
   // 初始化音频上下文
@@ -91,91 +103,77 @@ var AudioManager = (function () {
   function playBgm(name) {
     if (!bgmEnabled) return;
     if (!activated) {
-      // 保存BGM名称，等待激活后播放
       pendingBgm = name;
       return;
     }
     
-    // 如果正在播放相同的BGM，忽略
-    if (currentBgm === name && bgmAudio && !bgmAudio.paused) return;
+    var targetSrc = BGM_FILES[name] || '';
+    
+    // 如果正在播放相同的音频文件，只更新名称，不重启
+    if (targetSrc && currentBgmSrc === targetSrc && bgmAudio && !bgmAudio.paused) {
+      currentBgm = name;
+      return;
+    }
     
     // 停止当前BGM
     stopBgm();
     
-    // 检查是否有真实音频文件
-    var bgmFiles = {
-      title: 'assets/audio/bgm/bgm_main.mp3',
-      game: 'assets/audio/bgm/bgm_main.mp3',
-      battle: 'assets/audio/bgm/bgm_battle.mp3',
-      peaceful: 'assets/audio/bgm/bgm_main.mp3',
-      sect: 'assets/audio/bgm/bgm_main.mp3',
-      adventure: 'assets/audio/bgm/bgm_main.mp3',
-      ending: 'assets/audio/bgm/bgm_main.mp3'
-    };
-    
-    if (bgmFiles[name]) {
-      // 使用真实音频文件
+    if (targetSrc) {
       try {
         var audio = new Audio();
         audio.preload = 'auto';
         audio.loop = true;
         audio.volume = 0;
         
-        // 标记当前音频对象
         var audioId = Date.now();
         audio._audioId = audioId;
         currentBgm = name;
+        currentBgmSrc = targetSrc;
         
-        // 等待音频加载完成后再播放
         audio.addEventListener('canplaythrough', function() {
-          // 检查是否仍然是当前音频
           if (!bgmAudio || bgmAudio._audioId !== audioId) {
             audio.pause();
-            audio.src = '';
+            audio.removeAttribute('src');
+            audio.load();
             return;
           }
           
           audio.play().then(function() {
-            // 淡入效果
-            var targetVolume = bgmVolume * 0.6;
+            var targetVol = bgmVolume * 0.6;
             var steps = 20;
             var stepTime = 1000 / steps;
-            var volumeStep = targetVolume / steps;
-            var currentStep = 0;
+            var volStep = targetVol / steps;
+            var step = 0;
             
             fadeTimer = setInterval(function() {
-              currentStep++;
-              if (currentStep >= steps) {
-                audio.volume = targetVolume;
+              step++;
+              if (step >= steps) {
+                audio.volume = targetVol;
                 clearInterval(fadeTimer);
                 fadeTimer = null;
               } else {
-                audio.volume = volumeStep * currentStep;
+                audio.volume = volStep * step;
               }
             }, stepTime);
           }).catch(function(e) {
-            console.log('BGM播放失败，使用合成音:', e);
             if (bgmAudio && bgmAudio._audioId === audioId) {
               playSynthBgm(name);
             }
           });
         }, { once: true });
         
-        audio.addEventListener('error', function(e) {
-          console.log('BGM加载失败，使用合成音:', e);
+        audio.addEventListener('error', function() {
           if (bgmAudio && bgmAudio._audioId === audioId) {
             playSynthBgm(name);
           }
         }, { once: true });
         
         bgmAudio = audio;
-        audio.src = bgmFiles[name];
+        audio.src = targetSrc;
       } catch (e) {
-        console.log('BGM初始化失败，使用合成音:', e);
         playSynthBgm(name);
       }
     } else {
-      // 使用合成音作为BGM
       playSynthBgm(name);
     }
   }
@@ -202,6 +200,7 @@ var AudioManager = (function () {
         
         bgmAudio = { osc: osc, gain: g, paused: false };
         currentBgm = name;
+        currentBgmSrc = null;
       } catch (e) {}
     }
   }
@@ -215,10 +214,8 @@ var AudioManager = (function () {
     if (bgmAudio) {
       try {
         if (bgmAudio.osc) {
-          // 合成音
           bgmAudio.osc.stop();
         } else if (bgmAudio.pause) {
-          // 真实音频文件
           bgmAudio.pause();
           bgmAudio.removeAttribute('src');
           bgmAudio.load();
@@ -226,6 +223,7 @@ var AudioManager = (function () {
       } catch (e) {}
       bgmAudio = null;
       currentBgm = null;
+      currentBgmSrc = null;
     }
   }
 
@@ -234,11 +232,9 @@ var AudioManager = (function () {
     if (bgmAudio) {
       try {
         if (bgmAudio.gain) {
-          // 合成音
           bgmAudio.gain.gain.setValueAtTime(0, audioCtx.currentTime);
           bgmAudio.paused = true;
         } else if (bgmAudio.pause) {
-          // 真实音频文件
           bgmAudio.pause();
         }
       } catch (e) {}
@@ -250,11 +246,9 @@ var AudioManager = (function () {
     if (bgmAudio && bgmEnabled) {
       try {
         if (bgmAudio.gain) {
-          // 合成音
           bgmAudio.gain.gain.linearRampToValueAtTime(bgmVolume * 0.1, audioCtx.currentTime + 0.5);
           bgmAudio.paused = false;
         } else if (bgmAudio.play) {
-          // 真实音频文件
           bgmAudio.play();
         }
       } catch (e) {}

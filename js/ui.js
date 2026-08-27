@@ -44,7 +44,7 @@
     return a[Math.floor(Math.random() * a.length)] + b[Math.floor(Math.random() * b.length)];
   }
   function showScreen(name) {
-    ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement'].forEach(function (n) {
+    ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement', 'tech', 'favor', 'crafts'].forEach(function (n) {
       $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
     });
     // 底部栏只在游戏页面显示
@@ -59,8 +59,11 @@
         'game': 'title',
         'rebirth': 'peaceful',
         'ending': 'ending',
-        'gear': 'peaceful',
-        'settlement': 'ending'
+        'gear': 'game',
+        'settlement': 'ending',
+        'tech': 'game',
+        'favor': 'game',
+        'crafts': 'game'
       };
       if (bgmMap[name]) {
         AudioManager.playBgm(bgmMap[name]);
@@ -1534,43 +1537,34 @@
 
   /* ---------------- 结缘系统UI ---------------- */
   function openFavor() {
-    const ov = $('modal');
-    const box = $('modal-body');
-    ov.style.display = 'flex';
-    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
-    box.innerHTML = '';
-
-    const title = document.createElement('h3');
-    title.textContent = '结缘';
-    box.appendChild(title);
+    showScreen('favor');
+    renderFavorPage();
+  }
+  function renderFavorPage() {
+    const body = $('favor-body');
+    body.innerHTML = '';
 
     // 道侣部分
     if (S.flags && S.flags.daoLu) {
-      box.appendChild(createFavorSection('daolu'));
+      body.appendChild(createFavorSection('daolu'));
     } else if (S.flags && S.flags.lin) {
       const p = document.createElement('p');
       p.className = 'dim';
       p.textContent = '与林婉儿的缘分未满，暂无法结缘。';
-      box.appendChild(p);
+      body.appendChild(p);
     } else {
       const p = document.createElement('p');
       p.className = 'dim';
       p.textContent = '尚未结识有缘人。';
-      box.appendChild(p);
+      body.appendChild(p);
     }
 
     // 宠物部分
     if (S.flags && S.flags.pet) {
-      box.appendChild(createFavorSection('pet'));
+      body.appendChild(createFavorSection('pet'));
     }
 
-    // 关闭按钮
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'btn-small';
-    closeBtn.textContent = '关闭';
-    closeBtn.style.marginTop = '12px';
-    closeBtn.onclick = function() { closeModal(); };
-    box.appendChild(closeBtn);
+    $('favor-back').onclick = function () { showScreen('game'); refresh(); };
   }
 
   function createFavorSection(targetId) {
@@ -2544,10 +2538,12 @@
 
   /* ---------------- 功法管理 ---------------- */
   function openTech() {
-    const ov = $('modal');
-    const box = $('modal-body');
-    ov.style.display = 'flex';
-    box.innerHTML = '';
+    showScreen('tech');
+    renderTechPage();
+  }
+  function renderTechPage() {
+    const body = $('tech-body');
+    body.innerHTML = '';
     const wrap = document.createElement('div');
     const ap = Engine.actionPoints(S);
     const eq = S.techEquip || (S.techEquip = { xinfa: null, shufa: [], dunshu: null });
@@ -2586,8 +2582,7 @@
         Engine.setXinfa(S, t);
         sfx('good');
         log('你改修【' + x.name + '】，从此专精此道。', 'good');
-        refresh();
-        openTech();
+        renderTechPage();
       });
       b.disabled = active;
       row.appendChild(b);
@@ -2596,13 +2591,13 @@
 
     const h2 = document.createElement('h4');
     const usedN = (eq.shufa || []).length;
-    h2.textContent = '法术（惟装者可用，法术位 ' + usedN + '/' + ap + '，随行动点而定）';
+    h2.textContent = '法术（法术位 ' + usedN + '/' + ap + '）';
     wrap.appendChild(h2);
     const shufa = S.techs.filter(function (t) { return TECHNIQUES[t].cls === 'shufa'; });
     if (!shufa.length) {
       const p = document.createElement('p');
       p.className = 'dim';
-      p.textContent = '尚未习得法术——坊市功法卷、秘境奇遇、论道大会皆可结缘。';
+      p.textContent = '尚未习得法术。';
       wrap.appendChild(p);
     }
     shufa.forEach(function (t) {
@@ -2612,12 +2607,12 @@
       const b = mkBtn(active ? '卸下' : '装备', active ? 'btn-small maxed' : 'btn-small', function () {
         const ok = Engine.toggleShufa(S, t);
         if (!ok) {
-          log('法术位已满（上限 = 行动点数），请先卸下一门法术。', 'bad');
+          log('法术位已满，请先卸下一门法术。', 'bad');
           return;
         }
         sfx('click');
         log(active ? '你撤下了【' + x.name + '】。' : '你把【' + x.name + '】纳入法术位。', 'good');
-        openTech();
+        renderTechPage();
       });
       row.appendChild(b);
       wrap.appendChild(row);
@@ -2641,18 +2636,14 @@
         Engine.setDunshu(S, t);
         sfx('good');
         log('你身法焕然一新，习演【' + x.name + '】。', 'good');
-        refresh();
-        openTech();
+        renderTechPage();
       });
       b.disabled = active;
       row.appendChild(b);
       wrap.appendChild(row);
     });
-    const tip = document.createElement('p');
-    tip.className = 'dim';
-    tip.textContent = '更换心法即刻生效（修炼倍率随之变化）；战斗中的法术只取已装备者，施法消耗灵力，灵力随修炼、休养与年月恢复。';
-    wrap.appendChild(tip);
-    box.appendChild(wrap);
+    body.appendChild(wrap);
+    $('tech-back').onclick = function () { showScreen('game'); refresh(); };
   }
 
   /* ---------------- 设置 ---------------- */

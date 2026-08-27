@@ -135,6 +135,11 @@ button:disabled { opacity: .4; cursor: default; }
 .hud-btns .bag-btn { margin: 0; }
 .bag-btn { margin: 0; padding: 5px 10px; font-size: 13px; }
 
+/* ---------------- 功法页 / 结缘页 ---------------- */
+#screen-tech, #screen-favor { overflow-y: auto; min-height: 0; }
+.tech-body, .favor-body { overflow-y: auto; flex: 1; min-height: 0; }
+.tech-body h4, .favor-body h4 { color: var(--gold); margin: 12px 0 6px; font-size: 14px; }
+
 /* ---------------- 装备页 ---------------- */
 #screen-gear { overflow-y: auto; min-height: 0; }
 .gear-head { text-align: center; flex: none; }

@@ -926,39 +926,69 @@ const Engine = (function () {
   
   // 残魂事件生成
   function genRemnantSoulEvent(s, d, bi, advType) {
-    // 根据秘境等级选择可学习的法术
-    var spellPool = [];
+    // 根据秘境等级选择可学习的功法
+    var spellPool = [];  // 法术
+    var xinfaPool = [];  // 心法
+    var dunshuPool = []; // 遁术
+    
     if (advType === 'huang' || advType === 'xuan') {
       spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
+      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan'];
+      dunshuPool = ['xiaoyao', 'yingdun'];
     } else if (advType === 'di') {
       spellPool = ['jinguang', 'muyuling', 'hanbing', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia'];
+      xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
+      dunshuPool = ['suodi'];
     } else {
       spellPool = ['wanjian', 'shengjiayang', 'xuanbing', 'tianhuo', 'shanyue', 'potian', 'wanmu', 'bingfeng', 'fantian', 'dadi'];
+      xinfaPool = ['baihu', 'qinglong', 'xuanwu', 'zhuque', 'qilin', 'hundun'];
+      dunshuPool = [];
     }
-    // 过滤掉玩家已有的法术
+    
+    // 过滤掉玩家已有的功法
     spellPool = spellPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
-    if (spellPool.length < 2) {
+    xinfaPool = xinfaPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
+    dunshuPool = dunshuPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
+    
+    // 合并所有可用功法
+    var allPool = [];
+    spellPool.forEach(function(t) { allPool.push({ id: t, type: '法术' }); });
+    xinfaPool.forEach(function(t) { allPool.push({ id: t, type: '心法' }); });
+    dunshuPool.forEach(function(t) { allPool.push({ id: t, type: '遁术' }); });
+    
+    if (allPool.length < 2) {
       return { type: 'plain', lines: ['迷雾散去，空无一物。你摇了摇头，继续前行。'] };
     }
-    // 随机选择2个法术
-    var shuffled = spellPool.slice();
+    
+    // 随机选择2个功法（不同类型优先）
+    var shuffled = allPool.slice();
     for (var i = shuffled.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
       var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
     }
-    var spell1 = shuffled[0];
-    var spell2 = shuffled[1];
+    
+    // 确保选择的两个功法类型不同
+    var pick1 = shuffled[0];
+    var pick2 = shuffled[1];
+    for (var k = 2; k < shuffled.length; k++) {
+      if (pick2.type === pick1.type) {
+        pick2 = shuffled[k];
+      } else {
+        break;
+      }
+    }
+    
     return {
       type: 'remnant_soul',
-      spell1: spell1,
-      spell2: spell2,
+      spell1: pick1.id,
+      spell2: pick2.id,
       lines: [
         '迷雾深处，一道虚幻的身影盘坐于石台之上。',
         '那是一位昔日修士的残魂，周身灵光黯淡，却仍保持着生前的威严。',
         '他缓缓睁开眼，望向你：',
         '"后来者……吾乃此间洞府旧主，坐化于此已有千年。"',
         '"吾生前精研法术，今将毕生所学留待有缘。"',
-        '"你可择一法术修炼，若欲多学，便需通过吾之考验。"'
+        '"你可择一功法修炼，若欲多学，便需通过吾之考验。"'
       ]
     };
   }

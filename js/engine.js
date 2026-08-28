@@ -586,12 +586,13 @@ const Engine = (function () {
   function duobaoSpec(s) {
     const bi = Math.min(bigIdxOf(s), 3);
     const nbi = Math.min(bi + 1, 3);
-    const pool = MONSTER_POOL[['lianqi', 'zhuji', 'jindan', 'yuanying'][nbi]];
+    const poolKeys = ['huang', 'xuan', 'di', 'tian'];
+    const pool = MONSTER_POOL[poolKeys[nbi]] || MONSTER_POOL.huang;
     const m = pool[Math.floor(Math.random() * pool.length)];
     const fate = 0.95 + nbi * 0.3;
     return {
       name: '夺宝客·' + m.name,
-      line: '一道遁光落下，' + (nbi >= 2 ? '衣袍猎猎，灵压如山。' : '来人目光灼灼，直奔你怀中宝光而去。') + '“此物与你有缘，与本座更有缘！”',
+      line: '一道遁光落下，' + (nbi >= 2 ? '衣袍猎猎，灵压如山。' : '来人目光灼灼，直奔你怀中宝光而去。') + '"此物与你有缘，与本座更有缘！"',
       atk: Math.max(1, Math.round(s.hpMax / 6.5 * (nbi >= 2 ? 1.3 : 1.1))),
       hp: Math.round(s.atk * (5.5 + nbi) * fate),
       loot: {},

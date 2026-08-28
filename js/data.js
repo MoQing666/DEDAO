@@ -276,7 +276,7 @@ const LINGGEN_POOL = [
 
 /* ---------------- 开局命格（品质分级） ---------------- */
 const TIER_COLORS = { white: '#b0b0bc', green: '#4ec9a0', blue: '#5ac8fa', purple: '#c06ae0', gold: '#e8c15a' };
-const TIER_NAMES = { white: '凡品', green: '良品', blue: '上品', purple: '极品', gold: '仙品' };
+const TIER_NAMES = { white: '凡命', green: '本命', blue: '奇命', purple: '极命', gold: '仙命' };
 const TALENTS = [
   // 凡品（白）
   { id: 'ti_plus',   name: '铜皮铁骨',   tier: 'white', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },

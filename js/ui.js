@@ -1421,7 +1421,7 @@
         ], {
           subtitle: '天机垂询',
           choices: pool.map(function (t) {
-            const tierName = TIER_NAMES[t.tier] || '凡品';
+            const tierName = TIER_NAMES[t.tier] || '凡命';
             const tierColor = TIER_COLORS[t.tier] || '#b0b0bc';
             return { t: '【' + t.name + '】' + t.desc, hint: '【' + tierName + '】' + t.desc, talentId: t.id };
           })
@@ -1516,7 +1516,7 @@
         const x = TALENTS.filter(function (y) { return y.id === t; })[0];
         if (!x) return;
         const p = document.createElement('p');
-        const tierName = TIER_NAMES[x.tier] || '凡品';
+        const tierName = TIER_NAMES[x.tier] || '凡命';
         const tierColor = TIER_COLORS[x.tier] || '#b0b0bc';
         p.innerHTML = '<b style="color:' + tierColor + '">【' + tierName + '】' + x.name + '</b> — ' + x.desc;
         wrap.appendChild(p);

@@ -764,6 +764,42 @@ const Engine = (function () {
   const TECH_DROPS_2 = ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'];
   // 按境界索引的功法掉落池
   const TECH_DROPS = [TECH_DROPS_1, TECH_DROPS_1, TECH_DROPS_2, TECH_DROPS_2];
+  
+  // 获取秘境功法池（法术+心法+遁术）
+  function getAdvTechPools(advType) {
+    var spellPool = [];  // 法术
+    var xinfaPool = [];  // 心法
+    var dunshuPool = []; // 遁术
+    
+    if (advType === 'huang' || advType === 'xuan') {
+      spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
+      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan'];
+      dunshuPool = ['xiaoyao', 'yingdun'];
+    } else if (advType === 'di') {
+      spellPool = ['jinguang', 'muyuling', 'hanbing', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia'];
+      xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
+      dunshuPool = ['suodi'];
+    } else {
+      spellPool = ['wanjian', 'shengjiayang', 'xuanbing', 'tianhuo', 'shanyue', 'potian', 'wanmu', 'bingfeng', 'fantian', 'dadi'];
+      xinfaPool = ['baihu', 'qinglong', 'xuanwu', 'zhuque', 'qilin', 'hundun'];
+      dunshuPool = [];
+    }
+    
+    return { spell: spellPool, xinfa: xinfaPool, dunshu: dunshuPool };
+  }
+  
+  // 从功法池中随机获取一个功法
+  function getRandomTechFromPools(advType, s) {
+    var pools = getAdvTechPools(advType);
+    var allPool = [];
+    
+    pools.spell.forEach(function(t) { if (TECHNIQUES[t] && (!s || s.techs.indexOf(t) < 0)) allPool.push(t); });
+    pools.xinfa.forEach(function(t) { if (TECHNIQUES[t] && (!s || s.techs.indexOf(t) < 0)) allPool.push(t); });
+    pools.dunshu.forEach(function(t) { if (TECHNIQUES[t] && (!s || s.techs.indexOf(t) < 0)) allPool.push(t); });
+    
+    if (allPool.length === 0) return null;
+    return allPool[Math.floor(Math.random() * allPool.length)];
+  }
   function enemyGen(s, tag, depth, advType) {
     // advType: 'huang', 'xuan', 'di', 'tian'
     const advKey = advType || s.advType || 'huang';
@@ -782,10 +818,13 @@ const Engine = (function () {
     const ironKey = advConfig.drops.iron;
     if (Math.random() < 0.3 + depth * 0.08) loot[herbKey] = 1 + Math.floor(Math.random() * (1 + depth));
     if (Math.random() < 0.25 + depth * 0.06) loot[ironKey] = 1 + Math.floor(Math.random() * 2);
-    // 功法掉落按秘境等级
+    // 功法掉落按秘境等级（从三池随机）
     if ((boss || tag === 'final') && Math.random() < 0.8) {
-      const techPool = TECH_DROPS_MAP[advKey] || TECH_DROPS_MAP.huang;
-      loot.tech = techPool[Math.floor(Math.random() * techPool.length)];
+      const tech = getRandomTechFromPools(advKey, s);
+      if (tech) loot.tech = tech;
+    } else if (elite && Math.random() < 0.4) {
+      const tech = getRandomTechFromPools(advKey, s);
+      if (tech) loot.tech = tech;
     }
     // 装备掉落按秘境等级
     if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
@@ -866,21 +905,24 @@ const Engine = (function () {
     if (node.type === 'treasure') {
       const g = [];
       const lines = ['宝箱缓缓开启，尘埃落定——'];
-      // 只给装备/功法/灵材之一
+      // 装备/功法/灵材
       if (!s.materials) s.materials = {};
       const roll = Math.random();
-      if (roll < 0.33) {
-        // 装备（遗世仙踪掉落仙品）
+      if (roll < 0.30) {
+        // 装备
         const equipTier = advType === 'xian' ? 4 : bi;
         const equip = randomEquip(equipTier, d);
         if (equip) { g.push.apply(g, grantEquipChecked(s, equip)); }
         else { const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1); }
-      } else if (roll < 0.66) {
-        // 功法
-        const techPool = TECH_DROPS_MAP[advType] || TECH_DROPS_MAP.huang;
-        const t = techPool[Math.floor(Math.random() * techPool.length)];
-        g.push.apply(g, applyOps(s, { tech: t }));
-      } else {
+      } else if (roll < 0.55) {
+        // 功法（从三池随机）
+        const tech = getRandomTechFromPools(advType, s);
+        if (tech) {
+          g.push.apply(g, applyOps(s, { tech: tech }));
+        } else {
+          const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1);
+        }
+      } else if (roll < 0.75) {
         // 灵材
         const matType = Math.random() < 0.5 ? 'herb' : 'iron';
         const matKey = matType === 'herb' ?
@@ -889,6 +931,11 @@ const Engine = (function () {
         const amount = 5 + d * 3;
         s.materials[matKey] = (s.materials[matKey] || 0) + amount;
         g.push(MATERIALS[matKey].name + ' +' + amount);
+      } else {
+        // 灵石
+        const s1 = Math.round((30 + d * 20) * realmM);
+        s.stone += s1;
+        g.push('灵石 +' + s1);
       }
       s.adv.gains.push.apply(s.adv.gains, g);
       refreshStats(s); saveState(s);

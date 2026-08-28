@@ -576,6 +576,8 @@
     const a = S.adv;
     if (!a || a.done || a.status !== 'running') return;
     const res = Engine.advResolve(S, node);
+    // 保留原始节点类型用于显示
+    res.originalType = node.type;
     if (res.type === 'battle') {
       openBattle(res.spec, { title: res.title }).then(function (r) {
         const b = S.battle;
@@ -621,13 +623,18 @@
       });
       return;
     }
-    if (res.type === 'plain' || res.type === 'treasure') {
-      showChapter(res.type === 'treasure' ? '宝箱' : '前行', res.lines, {
-        subtitle: res.type === 'treasure' ? '宝箱开启' : ''
-      }).then(function () { return duobaoRun(); }).then(advAdvance);
-      return;
+    // 根据原始节点类型设置标题
+    var chapterTitle = '前行';
+    var chapterSubtitle = '';
+    if (res.originalType === 'treasure') {
+      chapterTitle = '宝箱';
+      chapterSubtitle = '宝箱开启';
+    } else if (res.originalType === 'herb') {
+      chapterTitle = '灵草';
+    } else if (res.originalType === 'iron') {
+      chapterTitle = '灵矿';
     }
-    showChapter('前行', res.lines).then(function () { return duobaoRun(); }).then(advAdvance);
+    showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(function () { return duobaoRun(); }).then(advAdvance);
   }
 
   /* ---- 夺宝：超品级装备引来的劫 ---- */

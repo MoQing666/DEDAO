@@ -355,14 +355,7 @@
         S.hp = S.hpMax;
         Engine.saveState(S);
         console.log('[Battle] HP restored to', S.hp);
-        if (r.win && !spec.duobao && Engine.pendingDuobao(S)) {
-          S.flags.pendingDuobaoYear = S.year + 2;
-          Engine.saveState(S);
-          log('宝光冲天，消息走漏——夺宝贼遁入暗处，扬言后年来夺宝！', 'bad');
-          resolve(r);
-        } else {
-          resolve(r);
-        }
+        resolve(r);
       }
       function doAct(act, spellId) {
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
@@ -585,14 +578,14 @@
           // 精英战斗胜利后给予宝箱奖励
           if (res.eliteReward) {
             const eliteLoot = generateTreasureReward();
-            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(function () { return duobaoRun(); }).then(advAdvance);
+            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(advAdvance);
           } else {
-            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(function () { return duobaoRun(); }).then(advAdvance);
+            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(advAdvance);
           }
         } else if (r.lost) {
           advFinish('战败');
         } else {
-          showChapter('脱身', ['你及时抽身，绕开了这一处凶险。']).then(function () { return duobaoRun(); }).then(advAdvance);
+          showChapter('脱身', ['你及时抽身，绕开了这一处凶险。']).then(advAdvance);
         }
       });
       return;
@@ -604,9 +597,9 @@
     }
     if (res.type === 'event') {
       if (res.ev) {
-        runEvent(res.ev).then(function () { return duobaoRun(); }).then(advAdvance);
+        runEvent(res.ev).then(advAdvance);
       } else {
-        showChapter('雾散', ['迷雾散去，空无一物。你摇了摇头，继续前行。']).then(function () { return duobaoRun(); }).then(advAdvance);
+        showChapter('雾散', ['迷雾散去，空无一物。你摇了摇头，继续前行。']).then(advAdvance);
       }
       return;
     }
@@ -617,8 +610,8 @@
           const extra = Engine.advClearReward(S);
           showChapter('秘境通关', [res.spec.name + '化作流光消散，藏于深处的秘藏尽数显现！']
             .concat(extra), { subtitle: '通关秘藏' }).then(function () {
-              return duobaoRun();
-            }).then(function () { advFinish('通关'); });
+              advFinish('通关');
+            });
         } else if (r.lost) {
           advFinish('战败');
         } else {
@@ -638,7 +631,7 @@
     } else if (res.originalType === 'iron') {
       chapterTitle = '灵矿';
     }
-    showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(function () { return duobaoRun(); }).then(advAdvance);
+    showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(advAdvance);
   }
 
   /* ---- 残魂传承事件 ---- */
@@ -673,56 +666,20 @@
           if (S.techs.indexOf(spell2) < 0) S.techs.push(spell2);
           Engine.ensureTechEquip(S);
           Engine.saveState(S);
-          showChapter('残魂考验', ['残魂散去前微微点头："你有这个资格。"', '两道灵光同时飞入你的眉心——', '【' + t1.name + '】和【' + t2.name + '】已习得！'], { subtitle: '考验通过' }).then(function () { return duobaoRun(); }).then(advAdvance);
+          showChapter('残魂考验', ['残魂散去前微微点头："你有这个资格。"', '两道灵光同时飞入你的眉心——', '【' + t1.name + '】和【' + t2.name + '】已习得！'], { subtitle: '考验通过' }).then(advAdvance);
         } else {
           // 战斗失败，只获得第一个功法
           if (S.techs.indexOf(spell1) < 0) S.techs.push(spell1);
           Engine.ensureTechEquip(S);
           Engine.saveState(S);
-          showChapter('残魂考验', ['你未能通过考验，残魂叹道："缘分未到。"', '但先前传授的功法已然铭记于心。', '【' + t1.name + '】已习得！'], { subtitle: '考验未通过' }).then(function () { return duobaoRun(); }).then(advAdvance);
+          showChapter('残魂考验', ['你未能通过考验，残魂叹道："缘分未到。"', '但先前传授的功法已然铭记于心。', '【' + t1.name + '】已习得！'], { subtitle: '考验未通过' }).then(advAdvance);
         }
       } else {
-        duobaoRun().then(advAdvance);
+        advAdvance();
       }
     });
   }
 
-  /* ---- 夺宝：超品级装备引来的劫 ---- */
-  function duobaoRun() {
-    // 遗世仙踪秘境不触发夺宝
-    if (S.advType === 'xian') return Promise.resolve(false);
-    const pend = Engine.pendingDuobao(S);
-    if (!pend) return Promise.resolve(false);
-    const names = pend.map(function (id) {
-      const it = Engine.findEquip(id);
-      return it ? '【' + it.name + '】' : '';
-    }).join('、');
-    const spec = Engine.duobaoSpec(S);
-    const intro = [
-      '那缕宝光冲破云层，方圆数里之内的目光都被点亮了。',
-      spec.line.split('“')[0] + '”' + '一道身影踏着遁光落下，衣袂猎猎。',
-      '“怀璧其罪。把东西留下，本座饶你不死。”'
-    ];
-    return showChapter('夺宝 · 宝光引劫', intro, {
-      subtitle: '境界高你一个大境的强敌来夺',
-      toLog: true
-    }).then(function () {
-      return openBattle(spec, { title: '夺宝 · 强敌来夺' }).then(function (r) {
-        if (r.win) {
-          const kept = Engine.grantPendingEquip(S);
-          return showChapter('夺宝 · 剑下留宝', ['你摄起' + names + '，气血未定，冷冷目送那人远遁。'].concat(kept), {
-            subtitle: '守住了',
-            toLog: true
-          }).then(function () { return true; });
-        }
-        Engine.dropPendingEquip(S);
-        return showChapter('夺宝 · 技不如人', ['你护不住这烫手的宝物——' + names + '被强人当面夺走。', '筑基修仙路，向来是弱肉强食。'], {
-          subtitle: '宝物易主',
-          toLog: true
-        }).then(function () { return false; });
-      });
-    });
-  }
   function advShop(stock) {
     const ov = $('modal');
     const box = $('modal-body');
@@ -1252,13 +1209,6 @@
     if (typeof r === 'string' && r.indexOf('ok|') === 0) {
       const f = r.slice(3).split('、');
       log('宗门俸禄：' + f.join('、'), 'sect');
-    }
-    if (S.flags.pendingDuobaoYear && S.year >= S.flags.pendingDuobaoYear && Engine.pendingDuobao(S)) {
-      delete S.flags.pendingDuobaoYear;
-      Engine.saveState(S);
-      log('新年钟声刚落，一道遁光破窗而入——夺宝贼如期而至！', 'bad');
-      duobaoRun().then(function () { afterAction(); });
-      return;
     }
     if (S.sect && Math.random() < 0.25) {
       const bi = bigIdxOf(S);

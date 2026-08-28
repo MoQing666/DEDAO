@@ -556,7 +556,7 @@ const Engine = (function () {
     return null;
   }
 
-  /* ---------------- 品质与境界匹配（夺宝） ---------------- */
+  /* ---------------- 品质与境界匹配 ---------------- */
   const REALM_TIER_RANGE = [[1, 2], [2, 3], [3, 4], [4, 5]];
   function realmTierRange(bi) {
     const r = REALM_TIER_RANGE[Math.max(0, Math.min(3, bi))];
@@ -571,79 +571,11 @@ const Engine = (function () {
   function grantEquipChecked(s, id) {
     const it = findEquip(id);
     if (!it) return [];
-    if (equipAllowed(s, id)) return gainEquip(s, id);
-    if (!s.pendingDuobao) s.pendingDuobao = [];
-    if (s.pendingDuobao.indexOf(id) < 0) s.pendingDuobao.push(id);
-    return ['【' + it.name + '】宝光冲天而起，竟引得暗处强者窥伺——此物，怕是没有那么容易拿稳。'];
-  }
-  function pendingDuobao(s) {
-    return s.pendingDuobao && s.pendingDuobao.length ? s.pendingDuobao.slice() : null;
+    return gainEquip(s, id);
   }
   // 检查遗世仙踪是否可用（每10年出现一次）
   function isXianAdventureAvailable(s) {
     return s.year % 10 === 0 && bigIdxOf(s) >= 3;
-  }
-  function duobaoSpec(s) {
-    const bi = Math.min(bigIdxOf(s), 3);
-    const nbi = Math.min(bi + 1, 3);
-    const poolKeys = ['huang', 'xuan', 'di', 'tian'];
-    const poolKey = poolKeys[nbi] || 'huang';
-    // 安全检查：确保MONSTER_POOL和pool存在
-    if (typeof MONSTER_POOL === 'undefined') {
-      return {
-        name: '夺宝客',
-        line: '一道遁光落下，来人目光灼灼，直奔你怀中宝光而去。"此物与你有缘，与本座更有缘！"',
-        atk: Math.max(1, Math.round(s.hpMax / 6.5)),
-        hp: Math.round(s.atk * 6),
-        loot: {},
-        loseLoot: { stone: Math.round(s.stone * 0.15) },
-        bi: nbi,
-        duobao: true,
-        dunSpeed: nbi + 1
-      };
-    }
-    const pool = MONSTER_POOL[poolKey] || MONSTER_POOL.huang;
-    if (!pool || !pool.length) {
-      return {
-        name: '夺宝客',
-        line: '一道遁光落下，来人目光灼灼，直奔你怀中宝光而去。"此物与你有缘，与本座更有缘！"',
-        atk: Math.max(1, Math.round(s.hpMax / 6.5)),
-        hp: Math.round(s.atk * 6),
-        loot: {},
-        loseLoot: { stone: Math.round(s.stone * 0.15) },
-        bi: nbi,
-        duobao: true,
-        dunSpeed: nbi + 1
-      };
-    }
-    const m = pool[Math.floor(Math.random() * pool.length)];
-    const fate = 0.95 + nbi * 0.3;
-    return {
-      name: '夺宝客·' + m.name,
-      line: '一道遁光落下，' + (nbi >= 2 ? '衣袍猎猎，灵压如山。' : '来人目光灼灼，直奔你怀中宝光而去。') + '"此物与你有缘，与本座更有缘！"',
-      atk: Math.max(1, Math.round(s.hpMax / 6.5 * (nbi >= 2 ? 1.3 : 1.1))),
-      hp: Math.round(s.atk * (5.5 + nbi) * fate),
-      loot: {},
-      loseLoot: { stone: Math.round(s.stone * 0.15) },
-      bi: nbi,
-      duobao: true,
-      dunSpeed: nbi + 1
-    };
-  }
-  function grantPendingEquip(s) {
-    const list = pendingDuobao(s);
-    if (!list) return [];
-    const out = [];
-    list.forEach(function (id) {
-      out.push.apply(out, gainEquip(s, id));
-    });
-    delete s.pendingDuobao;
-    refreshStats(s); saveState(s);
-    return out;
-  }
-  function dropPendingEquip(s) {
-    delete s.pendingDuobao;
-    saveState(s);
   }
 
   /* ---------------- 回合制战斗 v2 ---------------- */
@@ -2017,9 +1949,8 @@ const Engine = (function () {
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
     fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,
     unlockField: unlockField, getMaxFields: getMaxFields, fieldPlots: fieldPlots,
-    grantEquipChecked: grantEquipChecked, pendingDuobao: pendingDuobao,
+    grantEquipChecked: grantEquipChecked,
     isXianAdventureAvailable: isXianAdventureAvailable,
-    duobaoSpec: duobaoSpec, grantPendingEquip: grantPendingEquip, dropPendingEquip: dropPendingEquip,
     shopStock: shopStock, buyStock: buyStock, sellMaterial: sellMaterial,
     startCraft: startCraft, accelerateCraft: accelerateCraft,
     giveGift: giveGift, getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,

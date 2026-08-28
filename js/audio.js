@@ -65,6 +65,18 @@ var AudioManager = (function () {
   function activate() {
     if (activated) return;
     initCtx();
+    // 确保AudioContext恢复运行
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().then(function() {
+        activated = true;
+        // 播放等待中的BGM
+        if (pendingBgm) {
+          playBgm(pendingBgm);
+          pendingBgm = null;
+        }
+      });
+      return;
+    }
     activated = true;
     // 播放等待中的BGM
     if (pendingBgm) {

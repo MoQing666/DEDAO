@@ -28,6 +28,10 @@
   }
   function sfx(kind) {
     if (typeof AudioManager !== 'undefined') {
+      // 确保音频已激活
+      if (!AudioManager.isInitialized()) {
+        AudioManager.activate();
+      }
       AudioManager.playSfx(kind);
     }
   }

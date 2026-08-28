@@ -587,7 +587,35 @@ const Engine = (function () {
     const bi = Math.min(bigIdxOf(s), 3);
     const nbi = Math.min(bi + 1, 3);
     const poolKeys = ['huang', 'xuan', 'di', 'tian'];
-    const pool = MONSTER_POOL[poolKeys[nbi]] || MONSTER_POOL.huang;
+    const poolKey = poolKeys[nbi] || 'huang';
+    // 安全检查：确保MONSTER_POOL和pool存在
+    if (typeof MONSTER_POOL === 'undefined') {
+      return {
+        name: '夺宝客',
+        line: '一道遁光落下，来人目光灼灼，直奔你怀中宝光而去。"此物与你有缘，与本座更有缘！"',
+        atk: Math.max(1, Math.round(s.hpMax / 6.5)),
+        hp: Math.round(s.atk * 6),
+        loot: {},
+        loseLoot: { stone: Math.round(s.stone * 0.15) },
+        bi: nbi,
+        duobao: true,
+        dunSpeed: nbi + 1
+      };
+    }
+    const pool = MONSTER_POOL[poolKey] || MONSTER_POOL.huang;
+    if (!pool || !pool.length) {
+      return {
+        name: '夺宝客',
+        line: '一道遁光落下，来人目光灼灼，直奔你怀中宝光而去。"此物与你有缘，与本座更有缘！"',
+        atk: Math.max(1, Math.round(s.hpMax / 6.5)),
+        hp: Math.round(s.atk * 6),
+        loot: {},
+        loseLoot: { stone: Math.round(s.stone * 0.15) },
+        bi: nbi,
+        duobao: true,
+        dunSpeed: nbi + 1
+      };
+    }
     const m = pool[Math.floor(Math.random() * pool.length)];
     const fate = 0.95 + nbi * 0.3;
     return {

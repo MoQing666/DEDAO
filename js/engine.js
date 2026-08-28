@@ -9,7 +9,7 @@ const Engine = (function () {
 
   /* ---------------- 档案 ---------------- */
   function defaultMeta() {
-    return { points: 0, lives: 0, reinc: {}, achievements: {}, flown: false };
+    return { points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0 };
   }
   function loadMeta() {
     try {
@@ -204,6 +204,18 @@ const Engine = (function () {
     if (s.linggen && s.linggen.body && s.linggen.body.atk) a += s.linggen.body.atk;
     if (s.arts.indexOf('qingfeng') >= 0) a += 20;
     if (s.sect && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
+    // 命格攻击加成
+    var talentAtkMul = 0;
+    s.talents.forEach(function (tid) {
+      var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
+      if (t && t.apply && t.apply.atkMul) talentAtkMul += t.apply.atkMul;
+    });
+    if (talentAtkMul > 0) a *= (1 + talentAtkMul);
+    // 仙品全属性加成
+    s.talents.forEach(function (tid) {
+      var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
+      if (t && t.apply && t.apply.allMul) a *= (1 + t.apply.allMul);
+    });
     a += s.extraAtk || 0;
     a += equipStats(s).atk;
     return Math.round(a);
@@ -221,6 +233,18 @@ const Engine = (function () {
     else if (s.flags.pet) g *= 1.05;
     g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
     g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
+    // 命格修炼加成
+    var talentCultMul = 0;
+    s.talents.forEach(function (tid) {
+      var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
+      if (t && t.apply && t.apply.cultMul) talentCultMul += t.apply.cultMul;
+    });
+    if (talentCultMul > 0) g *= (1 + talentCultMul);
+    // 仙品全属性加成
+    s.talents.forEach(function (tid) {
+      var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
+      if (t && t.apply && t.apply.allMul) g *= (1 + t.apply.allMul);
+    });
     // 五行灵体：修炼五行心法时速度+10% per level
     if (s.reinc && s.reinc.wuxingCultMul && s.techEquip && s.techEquip.xinfa) {
       var xf = TECHNIQUES[s.techEquip.xinfa];
@@ -304,6 +328,35 @@ const Engine = (function () {
     }
     return out;
   }
+  function rollMingge(n, jie) {
+    var weights = JIE_TIER_WEIGHTS[jie] || JIE_TIER_WEIGHTS[0];
+    var pools = {};
+    TIER_KEYS.forEach(function (tk, i) {
+      pools[tk] = TALENTS.filter(function (t) { return t.tier === tk; });
+    });
+    var out = [];
+    var used = {};
+    var attempts = 0;
+    while (out.length < n && attempts < 200) {
+      attempts++;
+      var total = 0;
+      weights.forEach(function (w) { total += w; });
+      var r = Math.random() * total;
+      var tierIdx = 0;
+      for (var i = 0; i < weights.length; i++) {
+        r -= weights[i];
+        if (r <= 0) { tierIdx = i; break; }
+      }
+      var tierKey = TIER_KEYS[tierIdx];
+      var tierPool = pools[tierKey];
+      if (!tierPool || !tierPool.length) continue;
+      var t = tierPool[Math.floor(Math.random() * tierPool.length)];
+      if (used[t.id]) continue;
+      used[t.id] = true;
+      out.push(t);
+    }
+    return out;
+  }
   function applyReinc(s, meta) {
     s.reinc.cult = meta.reinc.cult || 0;
     s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
@@ -350,11 +403,12 @@ const Engine = (function () {
       endReason: null, lifeMax: 70, reinc: {},
       equip: { head: null, body: null, leg: null, treasure: [] },
       trib: null, field: [], mine: { depth: 0 },
-      inventory: [], battle: null, adv: null
+      inventory: [], battle: null, adv: null,
+      jie: meta.nextJie || 0
     };
     meta.lives++;
     const egg = (s.name && s.name.trim()) ? EASTER_EGGS[s.name.trim()] : null;
-    const talentRolled = rollTalents(egg && egg.effect.linggen ? 2 : 3);
+    const talentRolled = rollMingge(egg && egg.effect.linggen ? 2 : 3, s.jie);
     s.talentRoll = talentRolled;
     s.easterEgg = egg || null;
     s.linggenRaw = egg && egg.effect.linggen ? LINGGEN_POOL.filter(function (l) { return l.id === egg.effect.linggen; })[0] : null;
@@ -380,6 +434,10 @@ const Engine = (function () {
       if (t.apply.wu) s.wu += t.apply.wu;
       if (t.apply.ti) s.ti += t.apply.ti;
       if (t.apply.life) s.lifeMax += t.apply.life;
+      if (t.apply.stone) s.stone += t.apply.stone;
+      if (t.apply.atk) s.extraAtk += t.apply.atk;
+      if (t.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + t.apply.hpMax;
+      if (t.apply.mo) s.moMaxBonus = (s.moMaxBonus || 0) + t.apply.mo;
     }
     if (s.bg && s.bg.flavor.stone) s.stone += s.bg.flavor.stone;
     if (s.bg && s.bg.flavor.wu) s.wu += s.bg.flavor.wu;
@@ -770,9 +828,11 @@ const Engine = (function () {
     const m = pool[Math.floor(Math.random() * pool.length)];
     const elite = tag === 'elite', boss = tag === 'boss' || tag === 'final';
     const bi = ADVENTURE_GRADE[advKey] || 0;
+    const jie = s.jie || 0;
+    const jieDiff = JIE_DATA[jie] ? JIE_DATA[jie].diff : 1;
     const hits = (elite ? 4.5 : 3.2) + depth * 0.4;
-    const hp = Math.round(s.atk * hits * (boss ? 1.7 : 1));
-    const atk = Math.max(1, Math.round(s.hpMax / (boss ? 11 : (6 + depth * 0.5)) * (elite ? 1.25 : 1)));
+    const hp = Math.round(s.atk * hits * (boss ? 1.7 : 1) * jieDiff);
+    const atk = Math.max(1, Math.round(s.hpMax / (boss ? 11 : (6 + depth * 0.5)) * (elite ? 1.25 : 1) * jieDiff));
     const realmM = 1 + bi * 0.6;
     const loot = { stone: Math.round((30 + depth * 25) * realmM * (elite ? 1.6 : 1) * (boss ? 3 : 1)) };
     // 产出对应等级灵材
@@ -1862,6 +1922,8 @@ const Engine = (function () {
     pts += Math.min(10, Math.floor(s.broken / 3));
     const ach = checkAchievements(s, meta);
     ach.forEach(function (a) { if (a.new) pts += ACHIEVEMENTS[a.id].pts; });
+    var jie = s.jie || 0;
+    pts = Math.round(pts * (1 + jie * 0.2)) + jie * 2;
     s.earnedPoints = pts;
     return ach;
   }
@@ -1893,6 +1955,7 @@ const Engine = (function () {
     const meta = loadMeta();
     const ach = earnPoints(s, meta);
     meta.points += s.earnedPoints || 0;
+    if ((s.jie || 0) > (meta.maxJie || 0)) meta.maxJie = s.jie;
     saveMeta(meta);
     clearState();
     return { meta: meta, ach: ach };
@@ -1959,6 +2022,7 @@ const Engine = (function () {
     bigIdxOf: bigIdxOf,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION,
-    logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, checkAchievements: checkAchievements
+    logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, checkAchievements: checkAchievements,
+    rollMingge: rollMingge
   };
 })();

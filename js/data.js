@@ -274,16 +274,70 @@ const LINGGEN_POOL = [
   { id: 'hundun',   name: '混沌灵体',   desc: '鸿蒙未判之气加身，万法归宗！', w: 1, qiMul: 2.0, body: { trib: 0.08, atk: 10 } }
 ];
 
-/* ---------------- 开局天赋 ---------------- */
+/* ---------------- 开局命格（品质分级） ---------------- */
+const TIER_COLORS = { white: '#b0b0bc', green: '#4ec9a0', blue: '#5ac8fa', purple: '#c06ae0', gold: '#e8c15a' };
+const TIER_NAMES = { white: '凡品', green: '良品', blue: '上品', purple: '极品', gold: '仙品' };
 const TALENTS = [
-  { id: 'daoti',   name: '天生道体',   desc: '天地灵气亲近你，修炼速度 +10%。',  apply: { cultMul: 0.1 } },
-  { id: 'dujie',   name: '天劫不侵',   desc: '天生抗劫体质，渡劫成功率 +10%。',  apply: { trib: 0.1 } },
-  { id: 'fuyuan',  name: '福缘深厚',   desc: '财源广进，获得灵石时 +10%。',      apply: { stoneMul: 0.10 } },
-  { id: 'kejian',  name: '天生剑胚',   desc: '剑心通明，攻击 +20%。',           apply: { atkMul: 0.2 } },
-  { id: 'shengji', name: '生生不息',   desc: '寿元 +40 载。',                   apply: { life: 40 } },
-  { id: 'tongmei', name: '大智若愚',   desc: '大智若愚，初始悟性 +2。',         apply: { wu: 2 } },
-  { id: 'qixue',   name: '气血充足',   desc: '先天体魄强健，体魄 +2。',         apply: { ti: 2 } }
+  // 凡品（白）
+  { id: 'ti_plus',   name: '铜皮铁骨',   tier: 'white', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
+  { id: 'wu_plus',   name: '心思澄明',   tier: 'white', desc: '心思澄明，悟性 +2。',                   apply: { wu: 2 } },
+  { id: 'hp_plus',   name: '气血旺盛',   tier: 'white', desc: '气血旺盛，气血上限 +50。',              apply: { hpMax: 50 } },
+  { id: 'atk_plus',  name: '力大无穷',   tier: 'white', desc: '力大无穷，攻击 +10。',                  apply: { atk: 10 } },
+  { id: 'stone_plus',name: '财运亨通',   tier: 'white', desc: '财运亨通，出生灵石 +200。',             apply: { stone: 200 } },
+  // 良品（绿）
+  { id: 'daoti',     name: '天生道体',   tier: 'green', desc: '天地灵气亲近你，修炼速度 +10%。',       apply: { cultMul: 0.1 } },
+  { id: 'kejian',    name: '天生剑胚',   tier: 'green', desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
+  { id: 'shengji',   name: '生生不息',   tier: 'green', desc: '寿元 +40 载。',                        apply: { life: 40 } },
+  { id: 'fuyuan',    name: '福缘深厚',   tier: 'green', desc: '财源广进，获得灵石时 +10%。',           apply: { stoneMul: 0.10 } },
+  { id: 'dujie',     name: '天劫不侵',   tier: 'green', desc: '天生抗劫体质，渡劫成功率 +10%。',       apply: { trib: 0.1 } },
+  { id: 'qixue',     name: '气血充足',   tier: 'green', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
+  // 上品（蓝）
+  { id: 'tongmei',   name: '大智若愚',   tier: 'blue',  desc: '大智若愚，悟性 +2，修炼速度 +5%。',    apply: { wu: 2, cultMul: 0.05 } },
+  { id: 'lingqu',    name: '灵气亲和',   tier: 'blue',  desc: '灵气亲和，灵力上限 +30，修炼速度 +8%。', apply: { mo: 30, cultMul: 0.08 } },
+  { id: 'baoti',     name: '宝体',       tier: 'blue',  desc: '宝体天成，气血上限 +100，体魄 +1。',   apply: { hpMax: 100, ti: 1 } },
+  { id: 'jianxin',   name: '剑心通明',   tier: 'blue',  desc: '剑心通明，攻击 +15%。',                apply: { atkMul: 0.15 } },
+  { id: 'fenghuo',   name: '风火轮',     tier: 'blue',  desc: '身法如风，攻击 +8%。',                 apply: { atkMul: 0.08 } },
+  // 极品（紫）
+  { id: 'tianling',  name: '天灵根',     tier: 'purple',desc: '天灵根，修炼速度 +20%，灵力 +50。',    apply: { cultMul: 0.2, mo: 50 } },
+  { id: 'hunti',     name: '混元体',     tier: 'purple',desc: '混元体，气血 +150，攻击 +25，渡劫 +8%。', apply: { hpMax: 150, atk: 25, trib: 0.08 } },
+  { id: 'xuanbing',  name: '玄冰之体',   tier: 'purple',desc: '玄冰之体，攻击 +20，渡劫 +15%，灵力 +30。', apply: { atk: 20, trib: 0.15, mo: 30 } },
+  { id: 'leishen',   name: '雷灵之体',   tier: 'purple',desc: '雷灵之体，渡劫 +20%，攻击 +15。',      apply: { trib: 0.2, atk: 15 } },
+  { id: 'wuxing',    name: '五行灵体',   tier: 'purple',desc: '五行灵体，五行心法速度 +25%。',        apply: { wuxingCultMul: 0.25 } },
+  // 仙品（金）
+  { id: 'jiutian',   name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
+  { id: 'hunyuan',   name: '混沌之体',   tier: 'gold',  desc: '混沌之体，修炼 +30%，气血 +200，攻击 +30。', apply: { cultMul: 0.3, hpMax: 200, atk: 30 } },
+  { id: 'dijun',     name: '帝君命格',   tier: 'gold',  desc: '帝君命格，所有获取 +20%。',            apply: { allGain: 0.2 } },
+  { id: 'xianzun',   name: '仙尊转世',   tier: 'gold',  desc: '仙尊转世，出生自带随机仙品心法。',     apply: { randomTech: true } },
+  { id: 'tianming',  name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%。',          apply: { trib: 0.25 } }
 ];
+
+/* ---------------- 劫轮回系统 ---------------- */
+const JIE_DATA = [
+  { jie: 0, name: '凡尘轮回', diff: 1.0,  unlock: 0,  desc: '默认轮回' },
+  { jie: 1, name: '初劫',     diff: 1.15, unlock: 1,  desc: '完成1次0劫轮回' },
+  { jie: 2, name: '二劫',     diff: 1.30, unlock: 2,  desc: '完成1次1劫轮回' },
+  { jie: 3, name: '三劫',     diff: 1.50, unlock: 3,  desc: '完成1次2劫轮回' },
+  { jie: 4, name: '四劫',     diff: 1.75, unlock: 4,  desc: '完成1次3劫轮回' },
+  { jie: 5, name: '五劫',     diff: 2.00, unlock: 5,  desc: '完成1次4劫轮回' },
+  { jie: 6, name: '六劫',     diff: 2.40, unlock: 6,  desc: '完成1次5劫轮回' },
+  { jie: 7, name: '七劫',     diff: 2.80, unlock: 7,  desc: '完成1次6劫轮回' },
+  { jie: 8, name: '八劫',     diff: 3.30, unlock: 8,  desc: '完成1次7劫轮回' },
+  { jie: 9, name: '九劫',     diff: 4.00, unlock: 9,  desc: '完成1次8劫轮回' }
+];
+// 命格品质权重表 [白, 绿, 蓝, 紫, 金]
+const JIE_TIER_WEIGHTS = [
+  [40, 35, 20, 5, 0],    // 0劫
+  [35, 35, 22, 8, 0],    // 1劫
+  [30, 33, 25, 12, 0],   // 2劫
+  [25, 30, 28, 15, 2],   // 3劫
+  [20, 28, 30, 18, 4],   // 4劫
+  [15, 25, 30, 22, 8],   // 5劫
+  [10, 20, 30, 28, 12],  // 6劫
+  [5, 15, 28, 32, 20],   // 7劫
+  [0, 10, 25, 35, 30],   // 8劫
+  [0, 5, 20, 35, 40]     // 9劫
+];
+const TIER_KEYS = ['white', 'green', 'blue', 'purple', 'gold'];
 
 /* ---------------- 名字彩蛋 ---------------- */
 const EASTER_EGGS = {

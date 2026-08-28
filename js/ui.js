@@ -1320,9 +1320,46 @@
       (bd.ach ? '<div class="settle-row"><span>新解锁成就</span><span class="gold">+' + bd.ach + '</span></div>' : '') +
       '<div class="settle-total"><span>合计</span><span class="gold">' + sp.total + '</span></div>';
     wrap.appendChild(secPts);
+    const currentJie = S.jie || 0;
+    const maxJie = M.maxJie || 0;
+    const jieData = JIE_DATA[currentJie] || JIE_DATA[0];
+    const secJie = document.createElement('div');
+    secJie.className = 'settle-section';
+    secJie.innerHTML = '<h4>劫轮回</h4>' +
+      '<div class="settle-row"><span>当前劫数</span><span class="gold">' + jieData.name + '（' + currentJie + '劫）</span></div>' +
+      '<div class="settle-row"><span>难度倍率</span><span>' + jieData.diff + 'x</span></div>' +
+      '<div class="settle-row"><span>历史最高</span><span class="gold">' + maxJie + '劫</span></div>';
+    wrap.appendChild(secJie);
     showScreen('settlement');
-    $('settle-reborn').onclick = function () { Engine.clearState(); showScreen('game'); startNewLife(); };
-    $('settle-title').onclick = function () { Engine.clearState(); renderTitle(); showScreen('title'); };
+    const nextJie = Math.min(9, currentJie + 1);
+    const nextJieData = JIE_DATA[nextJie];
+    const canJie = nextJie > currentJie;
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:12px;';
+    const btnReborn = document.createElement('button');
+    btnReborn.className = 'btn-main';
+    btnReborn.textContent = '再入轮回';
+    btnReborn.onclick = function () { Engine.clearState(); showScreen('game'); startNewLife(); };
+    const btnJie = document.createElement('button');
+    btnJie.className = 'btn-main';
+    btnJie.textContent = canJie ? '应劫轮回（' + nextJie + '劫）' : '已达九劫';
+    btnJie.disabled = !canJie;
+    btnJie.onclick = function () {
+      var m = Engine.loadMeta();
+      m.nextJie = nextJie;
+      Engine.saveMeta(m);
+      Engine.clearState();
+      showScreen('game');
+      startNewLife();
+    };
+    const btnTitle = document.createElement('button');
+    btnTitle.className = 'btn-main ghost';
+    btnTitle.textContent = '返回标题';
+    btnTitle.onclick = function () { Engine.clearState(); renderTitle(); showScreen('title'); };
+    btnRow.appendChild(btnReborn);
+    btnRow.appendChild(btnJie);
+    btnRow.appendChild(btnTitle);
+    wrap.appendChild(btnRow);
   }
   function actReborn() {
     showScreen('game');
@@ -1375,14 +1412,18 @@
         return showChapter('第 一 章 · 灵根天成', lines, { subtitle: '天机垂询' });
       }).then(function () {
         const pool = S.talentRoll;
+        const jie = S.jie || 0;
+        const jieName = (JIE_DATA[jie] || JIE_DATA[0]).name;
         return showChapter('第 一 章 · 命格', [
           '命数无形，却时时刻刻都在书写。',
-          '“人各有命，成道与不成道者，差的往往只是一个抉择。”',
+          '当前劫数：' + jieName + '（' + jie + '劫）',
           '那么——你要成为什么样的人？'
         ], {
           subtitle: '天机垂询',
           choices: pool.map(function (t) {
-            return { t: '【' + t.name + '】' + t.desc, hint: t.desc, talentId: t.id };
+            const tierName = TIER_NAMES[t.tier] || '凡品';
+            const tierColor = TIER_COLORS[t.tier] || '#b0b0bc';
+            return { t: '【' + t.name + '】' + t.desc, hint: '【' + tierName + '】' + t.desc, talentId: t.id };
           })
         });
       }).then(function (r) {
@@ -1475,7 +1516,9 @@
         const x = TALENTS.filter(function (y) { return y.id === t; })[0];
         if (!x) return;
         const p = document.createElement('p');
-        p.innerHTML = '<b style="color:#e8c15a">' + x.name + '</b> — ' + x.desc;
+        const tierName = TIER_NAMES[x.tier] || '凡品';
+        const tierColor = TIER_COLORS[x.tier] || '#b0b0bc';
+        p.innerHTML = '<b style="color:' + tierColor + '">【' + tierName + '】' + x.name + '</b> — ' + x.desc;
         wrap.appendChild(p);
       });
     } else {
@@ -3125,7 +3168,10 @@
     M = Engine.loadMeta();
     const hasSave = !!validSave(Engine.loadState());
     $('t-continue').style.display = hasSave ? 'inline-block' : 'none';
-    $('t-points').textContent = M.points ? '轮回点累计 ' + M.points : '';
+    const nextJie = M.nextJie || 0;
+    const maxJie = M.maxJie || 0;
+    const jieInfo = nextJie > 0 ? ' · ' + nextJie + '劫轮回' : '';
+    $('t-points').textContent = M.points ? '轮回点累计 ' + M.points + jieInfo : (jieInfo ? jieInfo.slice(3) : '');
   }
   function actContinue() {
     S = Engine.loadState();

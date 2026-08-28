@@ -416,8 +416,24 @@ const Engine = (function () {
           out.push('灵石 ' + (sv > 0 ? '+' : '') + sv);
           break;
         }
-        case 'herb': s.herb += v; out.push('灵草 ' + (v > 0 ? '+' : '') + v); break;
-        case 'iron': s.iron += v; out.push('灵铁 ' + (v > 0 ? '+' : '') + v); break;
+        case 'herb': {
+          // 根据境界给予对应等级灵草
+          if (!s.materials) s.materials = {};
+          var herbGrades = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'];
+          var herbKey = herbGrades[bigIdxOf(s)] || 'herb_huang';
+          s.materials[herbKey] = (s.materials[herbKey] || 0) + v;
+          out.push(MATERIALS[herbKey].name + ' ' + (v > 0 ? '+' : '') + v);
+          break;
+        }
+        case 'iron': {
+          // 根据境界给予对应等级灵铁
+          if (!s.materials) s.materials = {};
+          var ironGrades = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+          var ironKey = ironGrades[bigIdxOf(s)] || 'iron_huang';
+          s.materials[ironKey] = (s.materials[ironKey] || 0) + v;
+          out.push(MATERIALS[ironKey].name + ' ' + (v > 0 ? '+' : '') + v);
+          break;
+        }
         case 'life': s.lifeMax += v; out.push('寿元 ' + (v > 0 ? '+' : '') + v); break;
         case 'wu': gainWu(s, v); out.push('悟性 +' + v); break;
         case 'ti': s.ti += v; out.push('体魄 +' + v); break;

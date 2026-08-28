@@ -135,14 +135,28 @@ button:disabled { opacity: .4; cursor: default; }
 .hud-btns .bag-btn { margin: 0; }
 .bag-btn { margin: 0; padding: 5px 10px; font-size: 13px; }
 
-/* ---------------- 功法页 / 结缘页 ---------------- */
-#screen-tech, #screen-favor { overflow-y: auto; min-height: 0; }
-.tech-body, .favor-body { overflow-y: auto; flex: 1; min-height: 0; }
-.tech-body h4, .favor-body h4 { color: var(--gold); margin: 12px 0 6px; font-size: 14px; }
+/* ---------------- 子页面通用样式 ---------------- */
+#screen-gear, #screen-tech, #screen-favor, #screen-crafts, #screen-bag {
+  overflow-y: auto;
+  min-height: 0;
+}
+.gear-head { text-align: center; flex: none; }
+.gear-footer { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex: none; }
+.gear-footer .btn-main { flex: 1; max-width: 220px; }
+
+/* 功法页 / 结缘页 / 百艺页 / 储物袋页 */
+.tech-body, .favor-body, .crafts-body, .bag-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.tech-body h4, .favor-body h4, .crafts-body h4, .bag-body h4 {
+  color: var(--gold);
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
 
 /* ---------------- 装备页 ---------------- */
-#screen-gear { overflow-y: auto; min-height: 0; }
-.gear-head { text-align: center; flex: none; }
 .gear-slots {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

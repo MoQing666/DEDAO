@@ -278,37 +278,38 @@ const LINGGEN_POOL = [
 const TIER_COLORS = { white: '#b0b0bc', green: '#4ec9a0', blue: '#5ac8fa', purple: '#c06ae0', gold: '#e8c15a' };
 const TIER_NAMES = { white: '凡命', green: '本命', blue: '奇命', purple: '极命', gold: '仙命' };
 const TALENTS = [
-  // 凡品（白）
-  { id: 'ti_plus',   name: '铜皮铁骨',   tier: 'white', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
-  { id: 'wu_plus',   name: '心思澄明',   tier: 'white', desc: '心思澄明，悟性 +2。',                   apply: { wu: 2 } },
-  { id: 'hp_plus',   name: '气血旺盛',   tier: 'white', desc: '气血旺盛，气血上限 +50。',              apply: { hpMax: 50 } },
-  { id: 'atk_plus',  name: '力大无穷',   tier: 'white', desc: '力大无穷，攻击 +10。',                  apply: { atk: 10 } },
-  { id: 'stone_plus',name: '财运亨通',   tier: 'white', desc: '财运亨通，出生灵石 +200。',             apply: { stone: 200 } },
-  // 良品（绿）
-  { id: 'daoti',     name: '天生道体',   tier: 'green', desc: '天地灵气亲近你，修炼速度 +10%。',       apply: { cultMul: 0.1 } },
-  { id: 'kejian',    name: '天生剑胚',   tier: 'green', desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
-  { id: 'shengji',   name: '生生不息',   tier: 'green', desc: '寿元 +40 载。',                        apply: { life: 40 } },
-  { id: 'fuyuan',    name: '福缘深厚',   tier: 'green', desc: '财源广进，获得灵石时 +10%。',           apply: { stoneMul: 0.10 } },
-  { id: 'dujie',     name: '天劫不侵',   tier: 'green', desc: '天生抗劫体质，渡劫成功率 +10%。',       apply: { trib: 0.1 } },
-  { id: 'qixue',     name: '气血充足',   tier: 'green', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
-  // 上品（蓝）
-  { id: 'tongmei',   name: '大智若愚',   tier: 'blue',  desc: '大智若愚，悟性 +2，修炼速度 +5%。',    apply: { wu: 2, cultMul: 0.05 } },
-  { id: 'lingqu',    name: '灵气亲和',   tier: 'blue',  desc: '灵气亲和，灵力上限 +30，修炼速度 +8%。', apply: { mo: 30, cultMul: 0.08 } },
-  { id: 'baoti',     name: '宝体',       tier: 'blue',  desc: '宝体天成，气血上限 +100，体魄 +1。',   apply: { hpMax: 100, ti: 1 } },
-  { id: 'jianxin',   name: '剑心通明',   tier: 'blue',  desc: '剑心通明，攻击 +15%。',                apply: { atkMul: 0.15 } },
-  { id: 'fenghuo',   name: '风火轮',     tier: 'blue',  desc: '身法如风，攻击 +8%。',                 apply: { atkMul: 0.08 } },
-  // 极品（紫）
-  { id: 'tianling',  name: '天灵根',     tier: 'purple',desc: '天灵根，修炼速度 +20%，灵力 +50。',    apply: { cultMul: 0.2, mo: 50 } },
-  { id: 'hunti',     name: '混元体',     tier: 'purple',desc: '混元体，气血 +150，攻击 +25，渡劫 +8%。', apply: { hpMax: 150, atk: 25, trib: 0.08 } },
-  { id: 'xuanbing',  name: '玄冰之体',   tier: 'purple',desc: '玄冰之体，攻击 +20，渡劫 +15%，灵力 +30。', apply: { atk: 20, trib: 0.15, mo: 30 } },
-  { id: 'leishen',   name: '雷灵之体',   tier: 'purple',desc: '雷灵之体，渡劫 +20%，攻击 +15。',      apply: { trib: 0.2, atk: 15 } },
-  { id: 'wuxing',    name: '五行灵体',   tier: 'purple',desc: '五行灵体，五行心法速度 +25%。',        apply: { wuxingCultMul: 0.25 } },
-  // 仙品（金）
-  { id: 'jiutian',   name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
-  { id: 'hunyuan',   name: '混沌之体',   tier: 'gold',  desc: '混沌之体，修炼 +30%，气血 +200，攻击 +30。', apply: { cultMul: 0.3, hpMax: 200, atk: 30 } },
-  { id: 'dijun',     name: '帝君命格',   tier: 'gold',  desc: '帝君命格，所有获取 +20%。',            apply: { allGain: 0.2 } },
-  { id: 'xianzun',   name: '仙尊转世',   tier: 'gold',  desc: '仙尊转世，出生自带随机仙品心法。',     apply: { randomTech: true } },
-  { id: 'tianming',  name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%。',          apply: { trib: 0.25 } }
+  // 凡命（白）— 基础属性
+  { id: 'ti_plus',     name: '铜皮铁骨',   tier: 'white', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
+  { id: 'wu_plus',     name: '心思澄明',   tier: 'white', desc: '心思澄明，悟性 +2。',                   apply: { wu: 2 } },
+  { id: 'hp_plus',     name: '气血旺盛',   tier: 'white', desc: '气血旺盛，气血上限 +50。',              apply: { hpMax: 50 } },
+  { id: 'atk_plus',    name: '力大无穷',   tier: 'white', desc: '力大无穷，攻击 +10。',                  apply: { atk: 10 } },
+  { id: 'stone_plus',  name: '财运亨通',   tier: 'white', desc: '财运亨通，出生灵石 +200。',             apply: { stone: 200 } },
+  // 本命（绿）— 战斗被动
+  { id: 'counter',     name: '以牙还牙',   tier: 'green', desc: '受击时 20% 概率反击，造成 50% 攻击伤害。', apply: { counter: 0.2 } },
+  { id: 'lifesteal',   name: '吸血体质',   tier: 'green', desc: '攻击时回复造成伤害 10% 的气血。',       apply: { lifesteal: 0.1 } },
+  { id: 'crit',        name: '暴击本能',   tier: 'green', desc: '攻击时 15% 概率暴击，伤害翻倍。',       apply: { crit: 0.15 } },
+  { id: 'dodge',       name: '身法灵活',   tier: 'green', desc: '战斗中 12% 概率闪避攻击。',             apply: { dodge: 0.12 } },
+  { id: 'thorns',      name: '荆棘之体',   tier: 'green', desc: '受击时反弹 20% 伤害给敌人。',           apply: { thorns: 0.2 } },
+  { id: 'daoti',       name: '天生道体',   tier: 'green', desc: '天地灵气亲近你，修炼速度 +10%。',       apply: { cultMul: 0.1 } },
+  // 奇命（蓝）— 进阶战斗
+  { id: 'doublehit',   name: '连击',       tier: 'blue',  desc: '攻击时 20% 概率追加一次攻击。',         apply: { doubleHit: 0.2 } },
+  { id: 'stun',        name: '震慑',       tier: 'blue',  desc: '攻击时 12% 概率眩晕敌人一回合。',       apply: { stun: 0.12 } },
+  { id: 'bleed',       name: '破甲斩',     tier: 'blue',  desc: '攻击时 25% 概率附加流血，每回合损 5% 气血。', apply: { bleed: 0.25 } },
+  { id: 'shield',      name: '护体罡气',   tier: 'blue',  desc: '战斗开始时获得等于气血上限 15% 的护盾。', apply: { shield: 0.15 } },
+  { id: 'frenzy',      name: '狂战之心',   tier: 'blue',  desc: '气血低于 30% 时攻击 +40%。',            apply: { frenzy: 0.4 } },
+  { id: 'kejian',      name: '天生剑胚',   tier: 'blue',  desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
+  // 极命（紫）— 强力战斗
+  { id: 'execute',     name: '斩杀',       tier: 'purple',desc: '攻击时对气血低于 20% 的敌人直接斩杀。', apply: { execute: 0.2 } },
+  { id: 'berserk',     name: '狂暴之血',   tier: 'purple',desc: '每损失 10% 气血，攻击 +8%。',           apply: { berserk: 0.08 } },
+  { id: 'absorb',      name: '吞噬',       tier: 'purple',desc: '击杀敌人后回复 30% 最大气血。',         apply: { absorbKill: 0.3 } },
+  { id: 'multicast',   name: '三连击',     tier: 'purple',desc: '攻击时 10% 概率连续攻击三次。',         apply: { multiHit: 0.1 } },
+  { id: 'tianling',    name: '天灵根',     tier: 'purple',desc: '天灵根，修炼速度 +20%，灵力 +50。',     apply: { cultMul: 0.2, mo: 50 } },
+  // 仙命（金）— 终极效果
+  { id: 'invincible',  name: '不死之身',   tier: 'gold',  desc: '每场战斗首次致命伤害时保留 1 点气血。', apply: { undying: 1 } },
+  { id: 'copycat',     name: '以彼之道',   tier: 'gold',  desc: '战斗中 15% 概率复制敌人的攻击反击。',   apply: { copyAtk: 0.15 } },
+  { id: 'jiutian',     name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
+  { id: 'hunyuan',     name: '混沌之体',   tier: 'gold',  desc: '混沌之体，修炼 +30%，气血 +200，攻击 +30。', apply: { cultMul: 0.3, hpMax: 200, atk: 30 } },
+  { id: 'tianming',    name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%，全属性 +10%。', apply: { trib: 0.25, allMul: 0.1 } }
 ];
 
 /* ---------------- 劫轮回系统 ---------------- */

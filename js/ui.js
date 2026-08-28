@@ -607,18 +607,18 @@
       return;
     }
     if (res.type === 'final') {
-      openBattle(res.spec, { title: '决战 · 洞天之主' }).then(function (r) {
+      openBattle(res.spec, { title: '决战 · ' + res.spec.name }).then(function (r) {
         const b = S.battle;
         if (r.win) {
           const extra = Engine.advClearReward(S);
-          showChapter('洞天既开', ['洞天之主化作流光消散，藏于深处的秘藏尽数显现！']
+          showChapter('秘境通关', [res.spec.name + '化作流光消散，藏于深处的秘藏尽数显现！']
             .concat(extra), { subtitle: '通关秘藏' }).then(function () {
               return duobaoRun();
             }).then(function () { advFinish('通关'); });
         } else if (r.lost) {
           advFinish('战败');
         } else {
-          showChapter('洞天之外', ['你终究没敢直面那位洞天之主，转身退了出来。']).then(function () { advFinish('撤退'); });
+          showChapter('秘境撤退', ['你终究没敢直面' + res.spec.name + '，转身退了出来。']).then(function () { advFinish('撤退'); });
         }
       });
       return;

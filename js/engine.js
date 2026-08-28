@@ -896,18 +896,24 @@ const Engine = (function () {
       return { type: 'plain', lines: lines.concat(g) };
     }
     if (node.type === 'herb') {
+      if (!s.materials) s.materials = {};
       const h = 2 + d + Math.floor(Math.random() * bi);
-      s.herb += h;
-      s.adv.gains.push('灵草 +' + h);
+      const herbGrades = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'];
+      const herbKey = herbGrades[bi] || 'herb_huang';
+      s.materials[herbKey] = (s.materials[herbKey] || 0) + h;
+      s.adv.gains.push(MATERIALS[herbKey].name + ' +' + h);
       refreshStats(s); saveState(s);
-      return { type: 'plain', lines: ['你小心拨开草叶，将年份最足的灵草一株株采下。', '灵草 +' + h] };
+      return { type: 'plain', lines: ['你小心拨开草叶，将年份最足的灵草一株株采下。', MATERIALS[herbKey].name + ' +' + h] };
     }
     if (node.type === 'iron') {
+      if (!s.materials) s.materials = {};
       const i2 = 3 + d + (Math.random() < 0.25 ? 2 : 0);
-      s.iron += i2;
-      s.adv.gains.push('灵铁 +' + i2);
+      const ironGrades = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+      const ironKey = ironGrades[bi] || 'iron_huang';
+      s.materials[ironKey] = (s.materials[ironKey] || 0) + i2;
+      s.adv.gains.push(MATERIALS[ironKey].name + ' +' + i2);
       refreshStats(s); saveState(s);
-      return { type: 'plain', lines: ['矿脉露出地表，半截石壁闪着金属光泽。你抡起矿镐，凿下一块块坚硬的灵铁。', '灵铁 +' + i2] };
+      return { type: 'plain', lines: ['矿脉露出地表，半截石壁闪着金属光泽。你抡起矿镐，凿下一块块坚硬的灵铁。', MATERIALS[ironKey].name + ' +' + i2] };
     }
     if (node.type === 'shop') {
       return { type: 'shop', stock: shopStock(s) };

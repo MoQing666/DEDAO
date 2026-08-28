@@ -918,14 +918,71 @@ const Engine = (function () {
       return { type: 'shop', stock: shopStock(s) };
     }
     if (node.type === 'event') {
-      const pool = EVENTS.mijing.filter(function (ev) {
-        return ev.min <= s.idx && ev.max >= s.idx && (!ev.once || !s.seen[ev.id]);
-      });
-      const ev = pool.length ? pickWeighted(pool) : null;
-      if (ev && !s.seen[ev.id]) s.seen[ev.id] = 1;
-      return { type: 'event', ev: ev };
+      // 遇到昔日修士残魂
+      return genRemnantSoulEvent(s, d, bi, advType);
     }
     return { type: 'plain', lines: ['你环顾四周，空无一物——正好歇歇脚。'] };
+  }
+  
+  // 残魂事件生成
+  function genRemnantSoulEvent(s, d, bi, advType) {
+    // 根据秘境等级选择可学习的法术
+    var spellPool = [];
+    if (advType === 'huang' || advType === 'xuan') {
+      spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
+    } else if (advType === 'di') {
+      spellPool = ['jinguang', 'muyuling', 'hanbing', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia'];
+    } else {
+      spellPool = ['wanjian', 'shengjiayang', 'xuanbing', 'tianhuo', 'shanyue', 'potian', 'wanmu', 'bingfeng', 'fantian', 'dadi'];
+    }
+    // 过滤掉玩家已有的法术
+    spellPool = spellPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
+    if (spellPool.length < 2) {
+      return { type: 'plain', lines: ['迷雾散去，空无一物。你摇了摇头，继续前行。'] };
+    }
+    // 随机选择2个法术
+    var shuffled = spellPool.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+    }
+    var spell1 = shuffled[0];
+    var spell2 = shuffled[1];
+    return {
+      type: 'remnant_soul',
+      spell1: spell1,
+      spell2: spell2,
+      lines: [
+        '迷雾深处，一道虚幻的身影盘坐于石台之上。',
+        '那是一位昔日修士的残魂，周身灵光黯淡，却仍保持着生前的威严。',
+        '他缓缓睁开眼，望向你：',
+        '"后来者……吾乃此间洞府旧主，坐化于此已有千年。"',
+        '"吾生前精研法术，今将毕生所学留待有缘。"',
+        '"你可择一法术修炼，若欲多学，便需通过吾之考验。"'
+      ]
+    };
+  }
+  
+  // 残魂事件处理
+  function advResolveRemnantSoul(spell1, spell2) {
+    var t1 = TECHNIQUES[spell1];
+    var t2 = TECHNIQUES[spell2];
+    return showChapter('残魂传承', [
+      '迷雾深处，一道虚幻的身影盘坐于石台之上。',
+      '那是一位昔日修士的残魂，周身灵光黯淡，却仍保持着生前的威严。',
+      '他缓缓睁开眼，望向你：',
+      '"后来者……吾乃此间洞府旧主，坐化于此已有千年。"',
+      '"吾生前精研法术，今将毕生所学留待有缘。"',
+      '"你可择一法术修炼，若欲多学，便需通过吾之考验。"'
+    ], {
+      subtitle: '残魂传承',
+      choices: [
+        { t: '修炼【' + t1.name + '】\n' + t1.desc + '\n威力 ' + t1.dmg + '× 攻击', spell: spell1, lines: ['你盘膝而坐，静心感悟残魂传授的法诀。', '一道灵光自残魂指尖飞出，没入你的眉心——', '【' + t1.name + '】已习得！'] },
+        { t: '修炼【' + t2.name + '】\n' + t2.desc + '\n威力 ' + t2.dmg + '× 攻击', spell: spell2, lines: ['你盘膝而坐，静心感悟残魂传授的法诀。', '一道灵光自残魂指尖飞出，没入你的眉心——', '【' + t2.name + '】已习得！'] },
+        { t: '两种都想学\n挑战残魂的考验', fight: true, spell1: spell1, spell2: spell2, lines: ['残魂微微点头："贪心，但有胆识。"', '"那就让老夫试试，你是否有这个资格。"', '残魂缓缓站起，周身灵光骤然暴涨！'] },
+        { t: '婉言谢绝\n继续前行', lines: ['你拱手一礼："前辈好意，晚辈心领。"', '残魂叹道："也罢，缘法不可强求。"', '身影渐渐消散于迷雾之中。'] }
+      ]
+    });
   }
   function advAdvance(s) {
     s.adv.depth += 1;

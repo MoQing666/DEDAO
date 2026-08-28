@@ -598,6 +598,10 @@
       return;
     }
     if (res.type === 'shop') { advShop(res.stock); return; }
+    if (res.type === 'remnant_soul') {
+      advResolveRemnantSoul(res.spell1, res.spell2);
+      return;
+    }
     if (res.type === 'event') {
       if (res.ev) {
         runEvent(res.ev).then(function () { return duobaoRun(); }).then(advAdvance);
@@ -635,6 +639,41 @@
       chapterTitle = '灵矿';
     }
     showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(function () { return duobaoRun(); }).then(advAdvance);
+  }
+
+  /* ---- 残魂传承事件 ---- */
+  function advResolveRemnantSoul(spell1, spell2) {
+    var t1 = TECHNIQUES[spell1];
+    var t2 = TECHNIQUES[spell2];
+    showChapter('残魂传承', [
+      '迷雾深处，一道虚幻的身影盘坐于石台之上。',
+      '那是一位昔日修士的残魂，周身灵光黯淡，却仍保持着生前的威严。',
+      '他缓缓睁开眼，望向你：',
+      '"后来者……吾乃此间洞府旧主，坐化于此已有千年。"',
+      '"吾生前精研法术，今将毕生所学留待有缘。"',
+      '"你可择一法术修炼，若欲多学，便需通过吾之考验。"'
+    ], {
+      subtitle: '残魂传承',
+      choices: [
+        { t: '修炼【' + t1.name + '】\n' + t1.desc + '\n威力 ' + t1.dmg + '× 攻击', lines: ['你盘膝而坐，静心感悟残魂传授的法诀。', '一道灵光自残魂指尖飞出，没入你的眉心——', '【' + t1.name + '】已习得！'], effect: { tech: spell1 } },
+        { t: '修炼【' + t2.name + '】\n' + t2.desc + '\n威力 ' + t2.dmg + '× 攻击', lines: ['你盘膝而坐，静心感悟残魂传授的法诀。', '一道灵光自残魂指尖飞出，没入你的眉心——', '【' + t2.name + '】已习得！'], effect: { tech: spell2 } },
+        { t: '两种都想学\n挑战残魂的考验', fight: { name: '残魂考验', atk: Math.round(S.atk * 0.8), hp: Math.round(S.hpMax * 0.6), loot: { tech: spell2 } }, resultWin: '残魂散去前微微点头："你有这个资格。"', resultLose: '你未能通过考验，残魂叹道："缘分未到。"' },
+        { t: '婉言谢绝\n继续前行', lines: ['你拱手一礼："前辈好意，晚辈心领。"', '残魂叹道："也罢，缘法不可强求。"', '身影渐渐消散于迷雾之中。'] }
+      ]
+    }).then(function (r) {
+      if (r && r.pick && r.pick.fight) {
+        // 如果选择了战斗，先获得第一个法术
+        if (r.win) {
+          // 战斗胜利，获得第二个法术
+          showChapter('残魂考验', ['残魂散去前微微点头："你有这个资格。"', '两道灵光同时飞入你的眉心——', '【' + t1.name + '】和【' + t2.name + '】已习得！'], { subtitle: '考验通过' }).then(function () { return duobaoRun(); }).then(advAdvance);
+        } else {
+          // 战斗失败，只获得第一个法术
+          showChapter('残魂考验', ['你未能通过考验，残魂叹道："缘分未到。"', '但先前传授的法术已然铭记于心。', '【' + t1.name + '】已习得！'], { subtitle: '考验未通过' }).then(function () { return duobaoRun(); }).then(advAdvance);
+        }
+      } else {
+        duobaoRun().then(advAdvance);
+      }
+    });
   }
 
   /* ---- 夺宝：超品级装备引来的劫 ---- */

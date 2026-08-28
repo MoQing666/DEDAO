@@ -1411,28 +1411,140 @@
         ]);
         return showChapter('第 一 章 · 灵根天成', lines, { subtitle: '天机垂询' });
       }).then(function () {
-        const pool = S.talentRoll;
-        const jie = S.jie || 0;
-        const jieName = (JIE_DATA[jie] || JIE_DATA[0]).name;
-        return showChapter('第 一 章 · 命格', [
-          '命数无形，天机为你抽出五道命格——',
-          '当前劫数：' + jieName + '（' + jie + '劫）',
-          '选择一条你认同的命数：'
-        ], {
-          subtitle: '天机垂询',
-          choices: pool.map(function (t) {
-            const tierName = TIER_NAMES[t.tier] || '凡命';
-            const tierColor = TIER_COLORS[t.tier] || '#b0b0bc';
-            return { t: '【' + t.name + '】' + t.desc, hint: '【' + tierName + '】' + t.desc, talentId: t.id };
-          })
-        });
-      }).then(function (r) {
-        const chosenId = (r && r.pick && r.pick.talentId) || S.talentRoll[0].id;
-        Engine.commitStart(S, chosenId);
-        showScreen('game');
-        initGame();
+        minggeSelect();
       });
     });
+  }
+  function minggeSelect() {
+    const jie = S.jie || 0;
+    const pickCount = jie >= 6 ? 3 : (jie >= 3 ? 2 : 1);
+    const lockMax = jie >= 9 ? 2 : (jie >= 3 ? 1 : 0);
+    const jieName = (JIE_DATA[jie] || JIE_DATA[0]).name;
+    let pool = S.talentRoll;
+    let selected = [];
+    let locked = [];
+    function render() {
+      const ov = $('modal');
+      const box = $('modal-body');
+      ov.style.display = 'flex';
+      box.innerHTML = '';
+      const h = document.createElement('h3');
+      h.textContent = '命格选择 · ' + jieName + '（' + jie + '劫）';
+      box.appendChild(h);
+      const tip = document.createElement('p');
+      tip.className = 'dim';
+      tip.textContent = '可选 ' + pickCount + ' 个' + (lockMax > 0 ? '，可锁 ' + lockMax + ' 个' : '') + '。已选 ' + selected.length + '/' + pickCount;
+      box.appendChild(tip);
+      pool.forEach(function (t, idx) {
+        const tierName = TIER_NAMES[t.tier] || '凡命';
+        const tierColor = TIER_COLORS[t.tier] || '#b0b0bc';
+        const isLocked = locked.indexOf(idx) >= 0;
+        const isSelected = selected.indexOf(idx) >= 0;
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:8px;margin:4px 0;border:1px solid ' + (isSelected ? '#e8c15a' : isLocked ? '#5ac8fa' : '#3a3450') + ';border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;';
+        if (isSelected) row.style.background = 'rgba(232,193,90,0.15)';
+        if (isLocked) row.style.background = 'rgba(90,200,250,0.1)';
+        const badge = document.createElement('span');
+        badge.style.cssText = 'color:' + tierColor + ';font-size:12px;min-width:36px;';
+        badge.textContent = '【' + tierName + '】';
+        const name = document.createElement('b');
+        name.style.color = tierColor;
+        name.textContent = t.name;
+        const desc = document.createElement('span');
+        desc.className = 'dim';
+        desc.style.fontSize = '12px';
+        desc.textContent = t.desc;
+        row.appendChild(badge);
+        row.appendChild(name);
+        row.appendChild(desc);
+        if (isLocked) {
+          const lk = document.createElement('span');
+          lk.style.cssText = 'margin-left:auto;color:#5ac8fa;font-size:11px;';
+          lk.textContent = '[锁定]';
+          row.appendChild(lk);
+        }
+        row.onclick = function () {
+          if (isLocked) {
+            locked = locked.filter(function (i) { return i !== idx; });
+          } else if (isSelected) {
+            selected = selected.filter(function (i) { return i !== idx; });
+          } else if (selected.length < pickCount) {
+            selected.push(idx);
+          }
+          render();
+        };
+        if (lockMax > 0 && !isSelected) {
+          const lockBtn = document.createElement('button');
+          lockBtn.className = 'btn-main ghost';
+          lockBtn.style.cssText = 'margin-left:auto;padding:2px 8px;font-size:11px;';
+          lockBtn.textContent = isLocked ? '解锁' : '锁定';
+          lockBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (isLocked) {
+              locked = locked.filter(function (i) { return i !== idx; });
+            } else if (locked.length < lockMax) {
+              locked.push(idx);
+            }
+            render();
+          };
+          row.appendChild(lockBtn);
+        }
+        box.appendChild(row);
+      });
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center;';
+      const btnRefresh = document.createElement('button');
+      btnRefresh.className = 'btn-main ghost';
+      btnRefresh.textContent = '重新抽签';
+      btnRefresh.onclick = function () {
+        const lockedTalents = locked.map(function (i) { return pool[i]; });
+        const newPool = Engine.rollMingge(5 - lockedTalents.length, jie);
+        const finalPool = lockedTalents.concat(newPool);
+        pool = finalPool;
+        S.talentRoll = finalPool;
+        selected = [];
+        var newLocked = [];
+        locked.forEach(function (oldIdx) {
+          var oldT = pool[locked.indexOf(oldIdx)];
+          for (var i = 0; i < pool.length; i++) {
+            if (pool[i] === oldT && newLocked.indexOf(i) < 0) { newLocked.push(i); break; }
+          }
+        });
+        locked = newLocked;
+        render();
+      };
+      const btnConfirm = document.createElement('button');
+      btnConfirm.className = 'btn-main';
+      btnConfirm.textContent = '确认选择';
+      btnConfirm.disabled = selected.length === 0;
+      btnConfirm.onclick = function () {
+        const chosenIds = selected.map(function (i) { return pool[i].id; });
+        Engine.commitStart(S, chosenIds[0]);
+        for (var k = 1; k < chosenIds.length; k++) {
+          S.talents.push(chosenIds[k]);
+          var t2 = TALENTS.filter(function (x) { return x.id === chosenIds[k]; })[0];
+          if (t2 && t2.apply) {
+            if (t2.apply.wu) S.wu += t2.apply.wu;
+            if (t2.apply.ti) S.ti += t2.apply.ti;
+            if (t2.apply.life) S.lifeMax += t2.apply.life;
+            if (t2.apply.stone) S.stone += t2.apply.stone;
+            if (t2.apply.atk) S.extraAtk += t2.apply.atk;
+            if (t2.apply.hpMax) S.hpMaxBonus = (S.hpMaxBonus || 0) + t2.apply.hpMax;
+            if (t2.apply.mo) S.moMaxBonus = (S.moMaxBonus || 0) + t2.apply.mo;
+          }
+        }
+        Engine.refreshStats(S);
+        Engine.saveState(S);
+        ov.style.display = 'none';
+        showScreen('game');
+        initGame();
+      };
+      btnRow.appendChild(btnRefresh);
+      btnRow.appendChild(btnConfirm);
+      box.appendChild(btnRow);
+      $('modal-close').onclick = function () {};
+    }
+    render();
   }
   function rollLinggenPreview(S) {
     if (S.linggenRaw) return S.linggenRaw;

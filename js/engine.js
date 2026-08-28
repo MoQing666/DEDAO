@@ -837,7 +837,6 @@ const Engine = (function () {
     add('iron', 1);
     add('shop', 3);
     add('event', 1);
-    add('trap', d >= 3 ? 1 : 0);
     shuffle(pool);
     const picks = [];
     pool.forEach(function (t) {
@@ -925,27 +924,6 @@ const Engine = (function () {
       const ev = pool.length ? pickWeighted(pool) : null;
       if (ev && !s.seen[ev.id]) s.seen[ev.id] = 1;
       return { type: 'event', ev: ev };
-    }
-    if (node.type === 'trap') {
-      const r = Math.random();
-      if (r < 0.5) {
-        const dmg = Math.round(s.hpMax * 0.12);
-        s.hp -= dmg; refreshStats(s); saveState(s);
-        return { type: 'plain', lines: ['脚下石板突然塌陷，你跌入陷阱，气血 -' + dmg + '。', '此地不宜久留。'] };
-      }
-      if (r < 0.8) {
-        const lose = Math.min(s.stone, Math.round(15 + d * 10));
-        s.stone -= lose; refreshStats(s); saveState(s);
-        return { type: 'plain', lines: ['一只鬼手卷走你的钱袋，你追了两步，它已没入黑暗。', '灵石 -' + lose] };
-      }
-      return { type: 'plain', lines: ['你听到窸窣声，屏息凝神等了半晌——只是一只大老鼠。虚惊一场。'] };
-    }
-    if (node.type === 'rest') {
-      const heal = Math.round(s.hpMax * 0.55) + 25;
-      s.hp = Math.min(s.hpMax, s.hp + heal);
-      const mg = moGain(s, 0.8);
-      refreshStats(s); saveState(s);
-      return { type: 'plain', lines: ['你靠着岩壁坐下，生火取暖，气血恢复 ' + heal + '，灵力回复 ' + mg + '。'] };
     }
     return { type: 'plain', lines: ['你环顾四周，空无一物——正好歇歇脚。'] };
   }

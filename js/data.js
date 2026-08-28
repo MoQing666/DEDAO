@@ -206,8 +206,8 @@ const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05
 const ARTIFACTS = {
   // 黄级法宝
   qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
-  yuewang_sword: { name: '越王勾践剑', type: '攻', grade: '天', desc: '千古名剑，锋芒毕露，斩妖除魔。', effect: '攻击 +50' },
   // 地级法宝
+  yuewang_sword: { name: '越王勾践剑', type: '攻', grade: '地', desc: '千古名剑，锋芒毕露，斩妖除魔。', effect: '攻击 +50' },
   xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
   juling_art: { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +5%' },
   // 天级法宝

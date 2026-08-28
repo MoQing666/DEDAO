@@ -2236,10 +2236,12 @@
       // 功法和法宝
       const gear = document.createElement('div');
       gear.innerHTML = '<h4>功法</h4>' + (S.techs.length ? S.techs.map(function (t) {
+        if (!TECHNIQUES[t]) return '';
         const g = TECHNIQUES[t].grade;
         return '<p><b style="color:' + GRADE_COLOR[g] + '">' + TECHNIQUES[t].name + '</b><span class="dim"> · ' + TECHNIQUES[t].desc + '</span></p>';
       }).join('') : '<p class="dim">无</p>') +
         '<h4>法宝</h4>' + (S.arts.length ? S.arts.map(function (a) {
+          if (!ARTIFACTS[a]) return '';
           return '<p><b>' + ARTIFACTS[a].name + '</b><span class="dim"> · ' + ARTIFACTS[a].effect + '</span></p>';
         }).join('') : '<p class="dim">无</p>');
       box.appendChild(gear);
@@ -2599,7 +2601,7 @@
     const h1 = document.createElement('h4');
     h1.textContent = '心法（修炼倍率）';
     wrap.appendChild(h1);
-    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t].cls === 'xinfa'; });
+    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa'; });
     if (!xinfa.length) {
       const p = document.createElement('p');
       p.className = 'dim';
@@ -2625,7 +2627,7 @@
     const usedN = (eq.shufa || []).length;
     h2.textContent = '法术（法术位 ' + usedN + '/' + ap + '）';
     wrap.appendChild(h2);
-    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t].cls === 'shufa'; });
+    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa'; });
     if (!shufa.length) {
       const p = document.createElement('p');
       p.className = 'dim';
@@ -2653,7 +2655,7 @@
     const h3 = document.createElement('h4');
     h3.textContent = '遁术（身法）';
     wrap.appendChild(h3);
-    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t].cls === 'dunshu'; });
+    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu'; });
     if (!dunshu.length) {
       const p = document.createElement('p');
       p.className = 'dim';

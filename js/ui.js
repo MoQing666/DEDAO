@@ -2608,81 +2608,146 @@
     const h1 = document.createElement('h4');
     h1.textContent = '心法（修炼倍率）';
     wrap.appendChild(h1);
-    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa'; });
-    if (!xinfa.length) {
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '尚无任何心法。';
-      wrap.appendChild(p);
+    
+    // 显示当前装备的心法
+    const currentXinfa = eq.xinfa && TECHNIQUES[eq.xinfa] ? TECHNIQUES[eq.xinfa] : null;
+    if (currentXinfa) {
+      const currentRow = document.createElement('div');
+      currentRow.className = 'formula-row';
+      currentRow.style.borderColor = '#e8c15a';
+      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
+        '<br><span class="dim">' + esc(currentXinfa.desc) + '</span></div>';
+      wrap.appendChild(currentRow);
+    } else {
+      const emptyRow = document.createElement('div');
+      emptyRow.className = 'formula-row';
+      emptyRow.innerHTML = '<div class="dim">[空槽位] 尚未装备心法</div>';
+      wrap.appendChild(emptyRow);
     }
-    xinfa.forEach(function (t) {
-      const x = TECHNIQUES[t];
-      const active = eq.xinfa === t;
-      const row = mkRow(x, '修炼 +' + Math.round((x.mult - 1) * 100) + '%' + (x.mo ? ' · 灵力 +' + x.mo : ''));
-      const b = mkBtn(active ? '修行中' : '修行', active ? 'btn-small maxed' : 'btn-small', function () {
-        Engine.setXinfa(S, t);
-        sfx('good');
-        log('你改修【' + x.name + '】，从此专精此道。', 'good');
-        renderTechPage();
+    
+    // 显示其他可用心法
+    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa' && t !== eq.xinfa; });
+    if (xinfa.length) {
+      const switchTitle = document.createElement('p');
+      switchTitle.className = 'dim';
+      switchTitle.textContent = '可切换心法：';
+      switchTitle.style.marginTop = '8px';
+      wrap.appendChild(switchTitle);
+      
+      xinfa.forEach(function (t) {
+        const x = TECHNIQUES[t];
+        const row = mkRow(x, '修炼 +' + Math.round((x.mult - 1) * 100) + '%' + (x.mo ? ' · 灵力 +' + x.mo : ''));
+        const b = mkBtn('切换', 'btn-small', function () {
+          Engine.setXinfa(S, t);
+          sfx('good');
+          log('你改修【' + x.name + '】，从此专精此道。', 'good');
+          renderTechPage();
+        });
+        row.appendChild(b);
+        wrap.appendChild(row);
       });
-      b.disabled = active;
-      row.appendChild(b);
-      wrap.appendChild(row);
-    });
+    }
 
     const h2 = document.createElement('h4');
     const usedN = (eq.shufa || []).length;
     h2.textContent = '法术（法术位 ' + usedN + '/' + ap + '）';
     wrap.appendChild(h2);
-    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa'; });
-    if (!shufa.length) {
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '尚未习得法术。';
-      wrap.appendChild(p);
-    }
-    shufa.forEach(function (t) {
-      const x = TECHNIQUES[t];
-      const active = (eq.shufa || []).indexOf(t) >= 0;
-      const row = mkRow(x, (x.slow ? '缚敌之霜' : '威力 ' + x.dmg + '× 攻击') + ' · 耗灵 ' + (x.cost || 0));
-      const b = mkBtn(active ? '卸下' : '装备', active ? 'btn-small maxed' : 'btn-small', function () {
-        const ok = Engine.toggleShufa(S, t);
-        if (!ok) {
-          log('法术位已满，请先卸下一门法术。', 'bad');
-          return;
-        }
-        sfx('click');
-        log(active ? '你撤下了【' + x.name + '】。' : '你把【' + x.name + '】纳入法术位。', 'good');
-        renderTechPage();
+    
+    // 显示已装备的法术
+    const equippedShufa = (eq.shufa || []).filter(function(t) { return TECHNIQUES[t]; });
+    if (equippedShufa.length) {
+      equippedShufa.forEach(function (t) {
+        const x = TECHNIQUES[t];
+        const row = document.createElement('div');
+        row.className = 'formula-row';
+        row.style.borderColor = '#e8c15a';
+        row.innerHTML = '<div><b style="color:#e8c15a">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
+          '<br><span class="dim">' + esc(x.desc) + '</span></div>';
+        const b = mkBtn('卸下', 'btn-small', function () {
+          Engine.toggleShufa(S, t);
+          sfx('click');
+          log('你撤下了【' + x.name + '】。', 'good');
+          renderTechPage();
+        });
+        row.appendChild(b);
+        wrap.appendChild(row);
       });
-      row.appendChild(b);
-      wrap.appendChild(row);
-    });
+    } else {
+      const emptyRow = document.createElement('div');
+      emptyRow.className = 'formula-row';
+      emptyRow.innerHTML = '<div class="dim">[空槽位] 尚未装备法术</div>';
+      wrap.appendChild(emptyRow);
+    }
+    
+    // 显示可用法术
+    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa' && (eq.shufa || []).indexOf(t) < 0; });
+    if (shufa.length) {
+      const switchTitle = document.createElement('p');
+      switchTitle.className = 'dim';
+      switchTitle.textContent = '可装备法术：';
+      switchTitle.style.marginTop = '8px';
+      wrap.appendChild(switchTitle);
+      
+      shufa.forEach(function (t) {
+        const x = TECHNIQUES[t];
+        const row = mkRow(x, (x.slow ? '缚敌之霜' : '威力 ' + x.dmg + '× 攻击') + ' · 耗灵 ' + (x.cost || 0));
+        const b = mkBtn('装备', 'btn-small', function () {
+          const ok = Engine.toggleShufa(S, t);
+          if (!ok) {
+            log('法术位已满，请先卸下一门法术。', 'bad');
+            return;
+          }
+          sfx('click');
+          log('你把【' + x.name + '】纳入法术位。', 'good');
+          renderTechPage();
+        });
+        row.appendChild(b);
+        wrap.appendChild(row);
+      });
+    }
 
     const h3 = document.createElement('h4');
     h3.textContent = '遁术（身法）';
     wrap.appendChild(h3);
-    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu'; });
-    if (!dunshu.length) {
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '尚无遁术。';
-      wrap.appendChild(p);
+    
+    // 显示当前装备的遁术
+    const currentDunshu = eq.dunshu && TECHNIQUES[eq.dunshu] ? TECHNIQUES[eq.dunshu] : null;
+    if (currentDunshu) {
+      const currentRow = document.createElement('div');
+      currentRow.className = 'formula-row';
+      currentRow.style.borderColor = '#e8c15a';
+      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
+        '<br><span class="dim">' + esc(currentDunshu.desc) + '</span></div>';
+      wrap.appendChild(currentRow);
+    } else {
+      const emptyRow = document.createElement('div');
+      emptyRow.className = 'formula-row';
+      emptyRow.innerHTML = '<div class="dim">[空槽位] 尚未装备遁术</div>';
+      wrap.appendChild(emptyRow);
     }
-    dunshu.forEach(function (t) {
-      const x = TECHNIQUES[t];
-      const active = eq.dunshu === t;
-      const row = mkRow(x, '逃脱 ' + Math.round((x.flee || 0) * 100) + '% · 减伤 ' + Math.round((x.guard || 0) * 100) + '%');
-      const b = mkBtn(active ? '修行中' : '修行', active ? 'btn-small maxed' : 'btn-small', function () {
-        Engine.setDunshu(S, t);
-        sfx('good');
-        log('你身法焕然一新，习演【' + x.name + '】。', 'good');
-        renderTechPage();
+    
+    // 显示可用遁术
+    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu' && t !== eq.dunshu; });
+    if (dunshu.length) {
+      const switchTitle = document.createElement('p');
+      switchTitle.className = 'dim';
+      switchTitle.textContent = '可切换遁术：';
+      switchTitle.style.marginTop = '8px';
+      wrap.appendChild(switchTitle);
+      
+      dunshu.forEach(function (t) {
+        const x = TECHNIQUES[t];
+        const row = mkRow(x, '逃脱 ' + Math.round((x.flee || 0) * 100) + '% · 减伤 ' + Math.round((x.guard || 0) * 100) + '%');
+        const b = mkBtn('切换', 'btn-small', function () {
+          Engine.setDunshu(S, t);
+          sfx('good');
+          log('你身法焕然一新，习演【' + x.name + '】。', 'good');
+          renderTechPage();
+        });
+        row.appendChild(b);
+        wrap.appendChild(row);
       });
-      b.disabled = active;
-      row.appendChild(b);
-      wrap.appendChild(row);
-    });
+    }
     body.appendChild(wrap);
     $('tech-back').onclick = function () { showScreen('game'); refresh(); };
   }

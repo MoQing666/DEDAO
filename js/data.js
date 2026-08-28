@@ -124,6 +124,7 @@ const TECHNIQUES = {
   // --- 仙级心法 ---
   kaitian:   { name: '开天篇',   cls: 'xinfa', grade: '仙', mult: 3.00, desc: '盘古遗篇，一斧开天。' },
   // --- 通用心法（商店/掉落） ---
+  tunai:    { name: '吐纳术',   cls: 'xinfa', grade: '黄', mult: 1.10, desc: '最基础的吐纳之法，引气入体。' },
   shengong:  { name: '生息功',   cls: 'xinfa', grade: '黄', mult: 1.15, desc: '吐纳生息，气机绵长。' },
   taixuan:   { name: '太玄经',   cls: 'xinfa', grade: '地', mult: 1.80, desc: '太玄妙法，道法自然。' },
   hundun:    { name: '混沌诀',   cls: 'xinfa', grade: '天', mult: 2.30, desc: '混沌初开，万法归宗。' },

@@ -209,7 +209,8 @@ const Engine = (function () {
     return Math.round(a);
   }
   function cultGain(s) {
-    let g = (60 + s.wu * 10) * (1 + 0.3 * bigIdxOf(s));
+    const CULT_REALM = [0, 1, 5, 6]; // 炼气=0, 筑基=1, 金丹=5, 元婴=6
+    let g = (60 + s.wu * 10) * (1 + 0.3 * CULT_REALM[bigIdxOf(s)]);
     if (s.wu >= 10) g *= 1.1;
     g *= techMult(s);
     if (s.linggen) g *= (s.linggen.qiMul || 1);
@@ -245,7 +246,7 @@ const Engine = (function () {
     if (s.idx >= 9) n++;
     return n;
   }
-  function cultCost(s) { return s.idx >= 3 ? 2 : 1; }
+  function cultCost(s) { return s.idx >= 6 ? 2 : 1; }
 
   function useElixir(s, id) {
     const e = ELIXIRS[id];

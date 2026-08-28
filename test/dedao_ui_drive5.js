@@ -155,13 +155,12 @@ async function ride(untilFn, max, where) {
 
 (async function () {
   check('new-life', (await click('t-new', 'new')) === true);
-  $('name-input').value = 'duobao';
+  $('name-input').value = 'explorer';
   await click('name-ok', 'name-ok');
   ctx._Spatch(s => {
     s.atk = 99999; s.hpMax = 6000; s.hp = 30000; s.def = 99999; s.stone = 900;
     s.equip = { head: 'xuantie_kuijia', body: null, leg: null, treasure: null };
     s.inventory = [];
-    s.pendingDuobao = null;
     s.actionsLeft = 6;
   });
   await click('btn-explore', 'explore-enter');
@@ -182,32 +181,6 @@ async function ride(untilFn, max, where) {
   check('探险中打开功法', $('modal').style.display === 'flex' && ($('modal-body').textContent || '').indexOf('功法') >= 0);
   await click('modal-close', 'tech-close');
   check('功法面板关闭', $('modal').style.display === 'none');
-
-  ctx._Spatch(s => { s.pendingDuobao = ['xuantie_kuijia']; });
-  let introSeen = false;
-  await ride(() => {
-    introSeen = ($('chapter').style.display === 'flex') && (($('chapter-title').textContent || '').indexOf('夺宝') >= 0);
-    return introSeen;
-  }, 40, 'intro');
-  check('夺宝引劫章节出现', introSeen);
-  if (introSeen) { await click('chapter-actions', 'intro-next'); await sleep(10); }
-  console.log('  [intro-after] battle=' + $('battle').style.display + ' title=[' + $('chapter-title').textContent + ']');
-
-  const pendChecked = () => ctx._Spatch(s => !s.pendingDuobao || s.pendingDuobao.length === 0);
-  await ride(pendChecked, 60, 'fight2');
-  const stA = ctx._Spatch(s => s);
-  const dbgLog = (logTxt() || '').split(' | ').slice(-14).join(' | ');
-  console.log('  [duobao-end] battle=' + $('battle').style.display + ' chapter=' + $('chapter').style.display +
-    ' title=[' + $('chapter-title').textContent + '] pending=' + JSON.stringify(stA.pendingDuobao) +
-    ' inv=' + JSON.stringify(stA.inventory || []) + ' equip=' + JSON.stringify(stA.equip));
-  console.log('  [log-tail] ' + dbgLog);
-  check('守宝后队列清空', pendChecked());
-  const invHas = (stA.inventory || []).indexOf('xuantie_kuijia') >= 0;
-  const chTitle = ($('chapter-title').textContent || '');
-  const ended = chTitle.indexOf('技不如人') >= 0 || (logTxt() || '').indexOf('夺走') >= 0;
-  check('秘宝归我(入库)或易主(被夺)', invHas || ended);
-  if (invHas) console.log('  玄铁战盔已收入行囊');
-  else if (ended) console.log('  宝物被强人夺走');
 
   await ride(() => { const st = ctx._Spatch(s => s); return !(st.adv && st.adv.status === 'running'); }, 160, 'settle');
   for (let pass = 0; pass < 3; pass++) {

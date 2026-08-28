@@ -1426,7 +1426,6 @@ const ADVENTURE_CONFIG = {
     monsters: MONSTER_POOL.tian,
     boss: { name: '仙人残念', line: '一缕仙人残念，金光万丈，威压如山。' },
     drops: { herb: 'herb_tian', iron: 'iron_tian' },
-    noDuobao: true,
     isSpecial: true
   }
 };

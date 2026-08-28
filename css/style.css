@@ -502,3 +502,35 @@ button:disabled { opacity: .4; cursor: default; }
 .bottom-text {
   line-height: 1;
 }
+
+/* 更新提示 */
+.update-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  color: var(--text);
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 99999;
+  transition: transform 0.3s ease;
+  font-family: 'YuYang', serif;
+}
+.update-toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+.update-toast button {
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'YuYang', serif;
+  font-weight: bold;
+}

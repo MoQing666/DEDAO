@@ -3249,6 +3249,24 @@
       showScreen('title');
     };
     saveCfg();
+
+    // Service Worker更新提示
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+          showUpdateToast();
+        }
+      });
+    }
   }
+
+  function showUpdateToast() {
+    var toast = document.createElement('div');
+    toast.className = 'update-toast';
+    toast.innerHTML = '<span>发现新版本</span><button onclick="location.reload()">点击更新</button>';
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.classList.add('show'); }, 100);
+  }
+
   document.addEventListener('DOMContentLoaded', boot);
 })();

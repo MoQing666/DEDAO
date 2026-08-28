@@ -191,33 +191,18 @@ c += `probe=(function(){
     const it = E.findEquip(id);
     tiersSeen[it.tier] = (tiersSeen[it.tier] || 0) + 1;
   }
-  fail('炼气随机装备 仅出现1/2/3品(超品为夺宝前奏)', tiersSeen[1] > 0 && tiersSeen[2] > 0 && !tiersSeen[4] && !tiersSeen[5]);
+  fail('炼气随机装备 仅出现1/2/3品', tiersSeen[1] > 0 && tiersSeen[2] > 0 && !tiersSeen[4] && !tiersSeen[5]);
   fail('炼气出超品(3)概率存在', !!tiersSeen[3]);
   fail('炼气许配凡/良品', E.equipAllowed(te, 'ling_toujin') === true && E.equipAllowed(te, 'wenyao_guan') === true);
   fail('炼气拒绝上品', E.equipAllowed(te, 'xuantie_kuijia') === false);
 
-  // ---- 夺宝队列 ----
+  // ---- 装备直接入库 ----
   te.equip = { head: null, body: null, leg: null, treasure: null };
   te.inventory = [];
   const gq = E.grantEquipChecked(te, 'xuantie_kuijia');
-  fail('超品入队不入库', gq.length === 1 && gq[0].indexOf('宝光') >= 0 && te.inventory.length === 0);
-  fail('pendingDuobao 记录', E.pendingDuobao(te) && E.pendingDuobao(te).join() === 'xuantie_kuijia');
+  fail('超品直接入库', gq.length === 1 && te.inventory.indexOf('xuantie_kuijia') >= 0);
   const inInv = E.grantEquipChecked(te, 'ling_toujin');
   fail('匹配品质直接上身', inInv.length === 1 && !!te.equip.head && te.equip.head === 'ling_toujin');
-  const spec = E.duobaoSpec(te);
-  fail('夺宝敌高一境(bi=1)且有高强数值', spec.bi === 1 && spec.atk > 0 && spec.hp > spec.atk);
-  const kept = E.grantPendingEquip(te);
-  fail('守宝成功入库且清队列', kept.length === 1 && te.inventory.indexOf('xuantie_kuijia') >= 0 && !E.pendingDuobao(te));
-  te.inventory = [];
-  te.equip.head = null;
-  E.grantEquipChecked(te, 'xuantie_kuijia');
-  E.dropPendingEquip(te);
-  fail('失宝清队列不入库', !E.pendingDuobao(te) && te.inventory.indexOf('xuantie_kuijia') < 0);
-  te.inventory = [];
-  te.equip.head = null;
-  const gop = E.applyOps(te, { equip: 'xuantie_kuijia' });
-  fail('applyOps 装备走品质门禁', gop.length === 1 && E.pendingDuobao(te) !== null);
-  te.pendingDuobao = [];
 
   // ---- 一年一秘境 ----
   const sy = E.startLife('一年一秘');

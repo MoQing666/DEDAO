@@ -1,4 +1,4 @@
-const CACHE = 'dedao-v17';
+const CACHE = 'dedao-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -28,6 +28,12 @@ self.addEventListener('activate', function (e) {
       return Promise.all(
         names.filter(function (n) { return n !== CACHE; }).map(function (n) { return caches.delete(n); })
       );
+    }).then(function () {
+      return self.clients.matchAll().then(function (clients) {
+        clients.forEach(function (client) {
+          client.postMessage({ type: 'UPDATE_AVAILABLE' });
+        });
+      });
     })
   );
   self.clients.claim();

@@ -1865,6 +1865,16 @@ const Engine = (function () {
       if (f.iron) { s.iron += f.iron; parts.push('灵铁 +' + f.iron); }
       fenglu = parts;
     }
+    // 成长性命格：每年累积属性
+    if (s.talents) {
+      s.talents.forEach(function (tid) {
+        var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
+        if (t && t.apply) {
+          if (t.apply.growWu) { s.wu += t.apply.growWu; }
+          if (t.apply.growTi) { s.ti += t.apply.growTi; }
+        }
+      });
+    }
     refreshStats(s); saveState(s);
     return fenglu ? 'ok|' + fenglu.join('、') : 'ok';
   }

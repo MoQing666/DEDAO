@@ -292,23 +292,20 @@ const TALENTS = [
   { id: 'thorns',      name: '荆棘之体',   tier: 'green', desc: '受击时反弹 20% 伤害给敌人。',           apply: { thorns: 0.2 } },
   { id: 'daoti',       name: '天生道体',   tier: 'green', desc: '天地灵气亲近你，修炼速度 +10%。',       apply: { cultMul: 0.1 } },
   // 奇命（蓝）— 进阶战斗
-  { id: 'doublehit',   name: '连击',       tier: 'blue',  desc: '攻击时 20% 概率追加一次攻击。',         apply: { doubleHit: 0.2 } },
-  { id: 'stun',        name: '震慑',       tier: 'blue',  desc: '攻击时 12% 概率眩晕敌人一回合。',       apply: { stun: 0.12 } },
-  { id: 'bleed',       name: '破甲斩',     tier: 'blue',  desc: '攻击时 25% 概率附加流血，每回合损 5% 气血。', apply: { bleed: 0.25 } },
   { id: 'shield',      name: '护体罡气',   tier: 'blue',  desc: '战斗开始时获得等于气血上限 15% 的护盾。', apply: { shield: 0.15 } },
-  { id: 'frenzy',      name: '狂战之心',   tier: 'blue',  desc: '气血低于 30% 时攻击 +40%。',            apply: { frenzy: 0.4 } },
   { id: 'kejian',      name: '天生剑胚',   tier: 'blue',  desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
+  { id: 'lingqu',      name: '灵气亲和',   tier: 'blue',  desc: '灵气亲和，灵力上限 +30，修炼速度 +8%。', apply: { mo: 30, cultMul: 0.08 } },
+  { id: 'baoti',       name: '宝体',       tier: 'blue',  desc: '宝体天成，气血上限 +100，体魄 +1。',   apply: { hpMax: 100, ti: 1 } },
   // 极命（紫）— 强力战斗
   { id: 'execute',     name: '斩杀',       tier: 'purple',desc: '攻击时对气血低于 20% 的敌人直接斩杀。', apply: { execute: 0.2 } },
-  { id: 'berserk',     name: '狂暴之血',   tier: 'purple',desc: '每损失 10% 气血，攻击 +8%。',           apply: { berserk: 0.08 } },
   { id: 'absorb',      name: '吞噬',       tier: 'purple',desc: '击杀敌人后回复 30% 最大气血。',         apply: { absorbKill: 0.3 } },
-  { id: 'multicast',   name: '三连击',     tier: 'purple',desc: '攻击时 10% 概率连续攻击三次。',         apply: { multiHit: 0.1 } },
   { id: 'tianling',    name: '天灵根',     tier: 'purple',desc: '天灵根，修炼速度 +20%，灵力 +50。',     apply: { cultMul: 0.2, mo: 50 } },
-  // 仙命（金）— 终极效果
+  { id: 'hunti',       name: '混元体',     tier: 'purple',desc: '混元体，气血 +150，攻击 +25，渡劫 +8%。', apply: { hpMax: 150, atk: 25, trib: 0.08 } },
+  // 仙命（金）— 成长性
+  { id: 'grow_wu',     name: '道心渐明',   tier: 'gold',  desc: '道心渐明，每年悟性 +0.5（永久累积）。', apply: { growWu: 0.5 } },
+  { id: 'grow_ti',     name: '肉身成圣',   tier: 'gold',  desc: '肉身成圣，每年体魄 +0.5（永久累积）。', apply: { growTi: 0.5 } },
   { id: 'invincible',  name: '不死之身',   tier: 'gold',  desc: '每场战斗首次致命伤害时保留 1 点气血。', apply: { undying: 1 } },
-  { id: 'copycat',     name: '以彼之道',   tier: 'gold',  desc: '战斗中 15% 概率复制敌人的攻击反击。',   apply: { copyAtk: 0.15 } },
   { id: 'jiutian',     name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
-  { id: 'hunyuan',     name: '混沌之体',   tier: 'gold',  desc: '混沌之体，修炼 +30%，气血 +200，攻击 +30。', apply: { cultMul: 0.3, hpMax: 200, atk: 30 } },
   { id: 'tianming',    name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%，全属性 +10%。', apply: { trib: 0.25, allMul: 0.1 } }
 ];
 

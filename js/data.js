@@ -283,19 +283,16 @@ const TALENTS = [
   { id: 'wu_plus',     name: '心思澄明',   tier: 'white', desc: '心思澄明，悟性 +2。',                   apply: { wu: 2 } },
   { id: 'hp_plus',     name: '气血旺盛',   tier: 'white', desc: '气血旺盛，气血上限 +50。',              apply: { hpMax: 50 } },
   { id: 'atk_plus',    name: '力大无穷',   tier: 'white', desc: '力大无穷，攻击 +10。',                  apply: { atk: 10 } },
-  { id: 'stone_plus',  name: '财运亨通',   tier: 'white', desc: '财运亨通，出生灵石 +200。',             apply: { stone: 200 } },
+  { id: 'stone_plus',  name: '财运亨通',   tier: 'white', desc: '财运亨通，出生灵石 +500。',             apply: { stone: 500 } },
   // 本命（绿）— 战斗被动
   { id: 'counter',     name: '以牙还牙',   tier: 'green', desc: '受击时 20% 概率反击，造成 50% 攻击伤害。', apply: { counter: 0.2 } },
   { id: 'lifesteal',   name: '吸血体质',   tier: 'green', desc: '攻击时回复造成伤害 10% 的气血。',       apply: { lifesteal: 0.1 } },
-  { id: 'crit',        name: '暴击本能',   tier: 'green', desc: '攻击时 15% 概率暴击，伤害翻倍。',       apply: { crit: 0.15 } },
-  { id: 'dodge',       name: '身法灵活',   tier: 'green', desc: '战斗中 12% 概率闪避攻击。',             apply: { dodge: 0.12 } },
   { id: 'thorns',      name: '荆棘之体',   tier: 'green', desc: '受击时反弹 20% 伤害给敌人。',           apply: { thorns: 0.2 } },
   { id: 'daoti',       name: '天生道体',   tier: 'green', desc: '天地灵气亲近你，修炼速度 +10%。',       apply: { cultMul: 0.1 } },
   // 奇命（蓝）— 进阶战斗
-  { id: 'shield',      name: '护体罡气',   tier: 'blue',  desc: '战斗开始时获得等于气血上限 15% 的护盾。', apply: { shield: 0.15 } },
   { id: 'kejian',      name: '天生剑胚',   tier: 'blue',  desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
   { id: 'lingqu',      name: '灵气亲和',   tier: 'blue',  desc: '灵气亲和，灵力上限 +30，修炼速度 +8%。', apply: { mo: 30, cultMul: 0.08 } },
-  { id: 'baoti',       name: '宝体',       tier: 'blue',  desc: '宝体天成，气血上限 +100，体魄 +1。',   apply: { hpMax: 100, ti: 1 } },
+  { id: 'baoti',       name: '宝体',       tier: 'blue',  desc: '宝体天成，气血上限 +100，体魄 +5。',   apply: { hpMax: 100, ti: 5 } },
   // 极命（紫）— 强力战斗
   { id: 'execute',     name: '斩杀',       tier: 'purple',desc: '攻击时对气血低于 20% 的敌人直接斩杀。', apply: { execute: 0.2 } },
   { id: 'absorb',      name: '吞噬',       tier: 'purple',desc: '击杀敌人后回复 30% 最大气血。',         apply: { absorbKill: 0.3 } },
@@ -304,7 +301,7 @@ const TALENTS = [
   // 仙命（金）— 成长性
   { id: 'grow_wu',     name: '道心渐明',   tier: 'gold',  desc: '道心渐明，每年悟性 +0.5（永久累积）。', apply: { growWu: 0.5 } },
   { id: 'grow_ti',     name: '肉身成圣',   tier: 'gold',  desc: '肉身成圣，每年体魄 +0.5（永久累积）。', apply: { growTi: 0.5 } },
-  { id: 'invincible',  name: '不死之身',   tier: 'gold',  desc: '每场战斗首次致命伤害时保留 1 点气血。', apply: { undying: 1 } },
+  { id: 'invincible',  name: '不死之身',   tier: 'gold',  desc: '不死之身，每回合回复 10% 最大气血。',   apply: { regen: 0.1 } },
   { id: 'jiutian',     name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
   { id: 'tianming',    name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%，全属性 +10%。', apply: { trib: 0.25, allMul: 0.1 } }
 ];

@@ -1415,9 +1415,9 @@
         const jie = S.jie || 0;
         const jieName = (JIE_DATA[jie] || JIE_DATA[0]).name;
         return showChapter('第 一 章 · 命格', [
-          '命数无形，却时时刻刻都在书写。',
+          '命数无形，天机为你抽出五道命格——',
           '当前劫数：' + jieName + '（' + jie + '劫）',
-          '那么——你要成为什么样的人？'
+          '选择一条你认同的命数：'
         ], {
           subtitle: '天机垂询',
           choices: pool.map(function (t) {

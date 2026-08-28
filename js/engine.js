@@ -408,7 +408,7 @@ const Engine = (function () {
     };
     meta.lives++;
     const egg = (s.name && s.name.trim()) ? EASTER_EGGS[s.name.trim()] : null;
-    const talentRolled = rollMingge(egg && egg.effect.linggen ? 2 : 3, s.jie);
+    const talentRolled = rollMingge(egg && egg.effect.linggen ? 4 : 5, s.jie);
     s.talentRoll = talentRolled;
     s.easterEgg = egg || null;
     s.linggenRaw = egg && egg.effect.linggen ? LINGGEN_POOL.filter(function (l) { return l.id === egg.effect.linggen; })[0] : null;

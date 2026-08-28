@@ -89,22 +89,22 @@ async function clickUntilClosed(id, max) {
   }
 }
 async function run() {
-  // ---- Phase 1: 轮回塔 ----
+  // ---- Phase 1: 轮回�?----
   await click('t-rebirth', 't-rebirth');
   const list = $('rb-list');
-  console.log('rebirth cards: ' + list.children.length + ' | 轮回点=' + $('rb-points').textContent);
+  console.log('rebirth cards: ' + list.children.length + ' | 轮回�?' + $('rb-points').textContent);
   for (let i = 0; i < 4; i++) {
-    const card = list.children.find(x => (x.innerHTML || '').indexOf('见面礼') >= 0);
-    if (!card) { console.log('REBIRTH: 见面礼 card missing'); break; }
+    const card = list.children.find(x => (x.innerHTML || '').indexOf('见面�?) >= 0);
+    if (!card) { console.log('REBIRTH: 见面�?card missing'); break; }
     const btns = card.children.filter(x => x.id === '<button>');
     if (!btns.length || btns[0].disabled) break;
     const before = $('rb-points').textContent;
     await click(btns[0], 'rb-buy#' + i);
-    console.log('  买了第' + (i + 1) + '次: ' + before + ' -> ' + $('rb-points').textContent + ' | btn=[' + btns[0].textContent + ']');
+    console.log('  买了�? + (i + 1) + '�? ' + before + ' -> ' + $('rb-points').textContent + ' | btn=[' + btns[0].textContent + ']');
   }
   await click('rb-back', 'rb-back');
 
-  // ---- Phase 2: 新一世 ----
+  // ---- Phase 2: 新一�?----
   await click('t-new', 't-new');
   if ($('name-input')) $('name-input').value = '青崖';
   await click('name-ok', 'name-ok');
@@ -117,7 +117,7 @@ async function run() {
     await clickUntilClosed('chapter-actions', 8);
   }
 
-  // ---- Phase 3: 炼丹 / 炼器 / 储物袋 ----
+  // ---- Phase 3: 炼丹 / 炼器 / 储物�?----
   const formulaRows = () => {
     const out = [];
     const walk = (el) => {
@@ -172,7 +172,7 @@ async function run() {
   await click('modal-close', 'modal-close');
   console.log('bag closed: modal-open=' + (m1.style.display === 'flex'));
 
-  // ---- Phase 3.5: 突破结算流程（0 行动点也可突破） ----
+  // ---- Phase 3.5: 突破结算流程�? 行动点也可突破） ----
   ctx._Spatch(s => { s.actionsLeft = 0; s.qi = 99999; });
   await click('btn-cult', 'btn-cult(refresh)');
   const realmBefore = ctx._Spatch(s => s.idx);
@@ -213,11 +213,11 @@ async function run() {
       const hpText = $('st-hp').textContent;
       const hpPct = parseFloat(hpText) > 0 ? parseFloat(hpText.split('/')[0]) / parseFloat(hpText.split('/')[1]) : 1;
       let btn = null;
-      for (const kid of picks.children) { if ((kid.textContent || '').indexOf('坊') >= 0) { btn = kid; break; } }
+      for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } }
       if (!btn && hpPct < 0.75) {
-        for (const kid of picks.children) { if ((kid.textContent || '').indexOf('岩') >= 0 || (kid.textContent || '').indexOf('歇') >= 0) { btn = kid; break; } }
+        for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0 || (kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } }
       }
-      if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('战') >= 0) { btn = kid; break; } } }
+      if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } } }
       if (!btn) btn = picks.children[0];
       console.log('  -> chose (' + hpText + ') ' + (btn.textContent || '').split('\n')[0].slice(0, 14));
       await click(btn, 'choice-layer' + layer);
@@ -250,7 +250,7 @@ async function run() {
             const stoneAfter = ctx._Spatch(s => s.stone);
             console.log('  after-buy: [' + buy0.textContent + '] disabled=' + buy0.disabled + ' 灵石 ' + stoneBefore + '->' + stoneAfter + (stoneBefore - stoneAfter > 0 ? ' (扣款正确)' : ' (!)'));
             shopTested = true;
-          } else { console.log('  (nothing buyable — skipped this adv)'); }
+          } else { console.log('  (nothing buyable �?skipped this adv)'); }
           const leave = body.children[body.children.length - 1];
           if (leave && leave.onclick) { leave.onclick(); await sleep(5); }
         }

@@ -1281,7 +1281,7 @@ const Engine = (function () {
       return { ok: false, msg: MATERIALS[costKey].name + '不足，需要 ' + costAmount + ' 株' };
     }
     s.materials[costKey] -= costAmount;
-    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.talents.indexOf('liancai') >= 0 ? 0.2 : 0) + (s.sect === 'dpxia' ? 0.2 : 0));
+    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.sect === 'dpxia' ? 0.2 : 0));
     if (Math.random() < chance) {
       s.elixirs[f.out] = (s.elixirs[f.out] || 0) + 1;
       refreshStats(s); saveState(s);
@@ -1346,7 +1346,8 @@ const Engine = (function () {
       mode = 'trib'; trib = nxt.realm;
       base = 0.55;
       let body = s.linggen.body || {};
-      base += (body.trib || 0) + (s.sect === 'xuantian' ? 0.05 : 0) + (s.arts.indexOf('jinylv') >= 0 ? 0.1 : 0);
+      let dujieBonus = (s.talents && s.talents.indexOf('dujie') >= 0) ? 0.1 : 0;
+      base += (body.trib || 0) + dujieBonus + (s.sect === 'xuantian' ? 0.05 : 0) + (s.arts.indexOf('jinylv') >= 0 ? 0.1 : 0);
       const eid = BREAK_ELIXIR[nxt.realm];
       if (eid && (s.elixirs[eid] || 0) > 0) { base += 0.25; desc = '你摸出一枚【' + ELIXIRS[eid].name + '】含入口中。'; }
       if (trib === '金丹') base = Math.min(base, 0.9);

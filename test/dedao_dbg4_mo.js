@@ -16,7 +16,7 @@ for (const f of ['data.js', 'engine.js']) c += fs.readFileSync('D:/opencode/DEDA
 c += `probe=(function(){
   const E = Engine;
   const stb = E.startLife('渡劫测试');
-  E.commitStart(stb, 'liancai');
+  E.commitStart(stb, 'dujie');
   stb.qi = 1e9;
   E.breakthrough(stb);
   while (stb.idx < 5 && stb.idx < 14) { stb.qi = 1e9; if (!E.breakthrough(stb).ok) break; }

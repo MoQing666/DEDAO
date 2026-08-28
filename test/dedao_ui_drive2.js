@@ -77,7 +77,7 @@ async function run() {
     await click(chc.children[0], 'talent-choice');
     await clickUntilClosed('chapter-actions', 8);
   }
-  // should be in game now â€” explore
+  // should be in game now â€?explore
   console.log('explore button onclick? ' + ($('btn-explore').onclick ? 'yes' : 'no'));
   await click('btn-explore', 'btn-explore');
   await sleep(10);
@@ -85,11 +85,11 @@ async function run() {
   // now choices for layer 1
   for (let layer = 1; layer <= 8; layer++) {
     const ch = $('chapter');
-    if (!ch || ch.style.display !== 'flex') { console.log('chapter hidden at layer ' + layer + ' â€” adventure over'); break; }
+    if (!ch || ch.style.display !== 'flex') { console.log('chapter hidden at layer ' + layer + ' â€?adventure over'); break; }
     await sleep(10);
     const picks = $('chapter-choices');
     if (!picks || !picks.children.length) {
-      console.log('NO CHOICES at layer ' + layer + ' â€” likely final chapter, clicking through');
+      console.log('NO CHOICES at layer ' + layer + ' â€?likely final chapter, clicking through');
       await clickUntilClosed('chapter-actions', 6);
       const battle2 = $('battle');
       if (battle2.style.display === 'flex') {
@@ -109,11 +109,11 @@ async function run() {
     const hpText = $('st-hp').textContent;
     const hpPct = parseFloat(hpText) > 0 ? parseFloat(hpText.split('/')[0]) / parseFloat(hpText.split('/')[1]) : 1;
     let btn = null;
-    for (const kid of picks.children) { if ((kid.textContent || '').indexOf('åŠ') >= 0) { btn = kid; break; } }
+    for (const kid of picks.children) { if ((kid.textContent || '').indexOf('å?) >= 0) { btn = kid; break; } }
     if (!btn && hpPct < 0.75) {
-      for (const kid of picks.children) { if ((kid.textContent || '').indexOf('å²©') >= 0 || (kid.textContent || '').indexOf('æ­‡') >= 0) { btn = kid; break; } }
+      for (const kid of picks.children) { if ((kid.textContent || '').indexOf('å²?) >= 0 || (kid.textContent || '').indexOf('æ­?) >= 0) { btn = kid; break; } }
     }
-    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('æˆ˜') >= 0) { btn = kid; break; } } }
+    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('æˆ?) >= 0) { btn = kid; break; } } }
     if (!btn) btn = picks.children[0];
     console.log('  -> chose: ' + (btn.textContent || '').split('\n')[0].slice(0, 14) + ' (hp ' + hpText + ')');
     await click(btn, 'choice-layer' + layer);

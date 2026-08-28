@@ -30,10 +30,10 @@ c += `probe=(function(){
     else if (r.lost) losses++;
     else if (r.fled) flights++;
     roundsSum += r.rounds;
-    if (r.done !== true) out.push('未结束! #' + i);
-    if (i === 0) out.push('样例: ' + (r.win ? '胜' : r.lost ? '败' : '逃') + ' 回合=' + r.rounds + ' 余HP=' + s.hp + '/' + s.hpMax + ' 行数=' + r.lines.length);
+    if (r.done !== true) out.push('未结�? #' + i);
+    if (i === 0) out.push('样例: ' + (r.win ? '�? : r.lost ? '�? : '�?) + ' 回合=' + r.rounds + ' 余HP=' + s.hp + '/' + s.hpMax + ' 行数=' + r.lines.length);
   }
-  out.push('50场AI代打: 胜 ' + wins + ' / 败 ' + losses + ' / 逃 ' + flights + ' 平均回合 ' + (roundsSum / 50).toFixed(1) + ' 胜者灵石总入+' + totalGain);
+  out.push('50场AI代打: �?' + wins + ' / �?' + losses + ' / �?' + flights + ' 平均回合 ' + (roundsSum / 50).toFixed(1) + ' 胜者灵石总入+' + totalGain);
   return out.join('\\n');
 })();`;
 vm.runInContext(c, ctx, { filename: 'b.js' });

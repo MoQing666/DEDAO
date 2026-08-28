@@ -16,7 +16,7 @@ for (const f of ['data.js', 'engine.js']) c += fs.readFileSync('D:/opencode/DEDA
 c += `probe=(function(){
   const E = Engine;
   const s = E.startLife('x');
-  E.commitStart(s, 'liancai');
+  E.commitStart(s, 'dujie');
   s.actionsLeft = 10;
   s.herb = 20;
   console.log('FIELDS', typeof FIELD_SEEDS, JSON.stringify(FIELD_SEEDS && Object.keys(FIELD_SEEDS)));

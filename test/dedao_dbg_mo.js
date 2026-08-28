@@ -16,7 +16,7 @@ for (const f of ['data.js', 'engine.js']) c += fs.readFileSync('D:/opencode/DEDA
 c += `probe=(function(){
   const E = Engine;
   const s = E.startLife('t');
-  E.commitStart(s, 'liancai');
+  E.commitStart(s, 'dujie');
   s.techs = ['tunai', 'changchun', 'yuhuo', 'hanshuang'];
   E.ensureTechEquip(s);
   E.toggleShufa(s, 'yuhuo');
@@ -29,7 +29,7 @@ c += `probe=(function(){
   s.mo = 0;
   const r3 = E.combatAct(s, 'spell', 'yuhuo');
   console.log('r3 |', JSON.stringify(r3.lines));
-  const s2 = E.startLife('t2'); E.commitStart(s2, 'liancai');
+  const s2 = E.startLife('t2'); E.commitStart(s2, 'dujie');
   console.log('moMax', s2.moMax, 'mo', s2.mo);
   const cu = E.cultivate(s2);
   console.log('cultivate:', cu.slice(0, 30), 'mo now', s2.mo);

@@ -131,14 +131,14 @@ function check(label, cond, extra) {
 }
 
 async function run() {
-  // ---- Phase 1: 标题页 存档入口 ----
+  // ---- Phase 1: 标题�?存档入口 ----
   await click('t-load', 't-load');
   check('标题可开存档面板', $('modal').style.display === 'flex');
-  check('自动档+三槽 共4行', rows().length === 4);
-  check('初始无覆盖存档按钮(非游戏态)', btnOf($('modal-body'), '覆盖').length === 0);
+  check('自动�?三槽 �?�?, rows().length === 4);
+  check('初始无覆盖存档按�?非游戏�?', btnOf($('modal-body'), '覆盖').length === 0);
   await click('modal-close', 'modal-close');
 
-  // ---- Phase 2: 新一世 ----
+  // ---- Phase 2: 新一�?----
   await click('t-new', 't-new');
   if ($('name-input')) $('name-input').value = '青崖';
   await click('name-ok', 'name-ok');
@@ -159,13 +159,13 @@ async function run() {
   // ---- Phase 3: 功法面板 ----
   await click('btn-tech', 'btn-tech');
   const techTxt = bodyText();
-  check('功法面板含三大区块', techTxt.indexOf('心法') >= 0 && techTxt.indexOf('法术位') >= 0 && techTxt.indexOf('遁术') >= 0);
+  check('功法面板含三大区�?, techTxt.indexOf('心法') >= 0 && techTxt.indexOf('法术�?) >= 0 && techTxt.indexOf('遁术') >= 0);
   const techRows = rows();
-  const xinfaRow = techRows.find(x => (x.textContent || '').indexOf('生息功') >= 0);
+  const xinfaRow = techRows.find(x => (x.textContent || '').indexOf('生息�?) >= 0);
   check('心法行含 修行 按钮', !!xinfaRow && btnOf(xinfaRow, '修行').length > 0);
   const xinfaBtn = btnOf(xinfaRow, '修行')[0];
   await click(xinfaBtn, 'xinfa-switch');
-  check('换心法生效', ctx._Spatch(s => s.techEquip.xinfa) === 'shengong');
+  check('换心法生�?, ctx._Spatch(s => s.techEquip.xinfa) === 'shengong');
   $('modal').style.display = 'none';
 
   // 装备两门法术
@@ -174,7 +174,7 @@ async function run() {
   const fRows = rows();
   const shufaRow = fRows.find(x => (x.textContent || '').indexOf('御火诀') >= 0);
   const unShufaRow = fRows.find(x => (x.textContent || '').indexOf('凝霜诀') >= 0);
-  check('法术行(fire)有装备钮', !!unShufaRow && btnOf(unShufaRow, '装备').length > 0);
+  check('法术�?fire)有装备钮', !!unShufaRow && btnOf(unShufaRow, '装备').length > 0);
   const eqBtn = btnOf(shufaRow, '装备')[0];
   const takedownBtn = btnOf(shufaRow, '卸下')[0];
   check('已装法术显示"卸下"', !!takedownBtn);
@@ -183,7 +183,7 @@ async function run() {
   $('modal').style.display = 'none';
 
   ctx._Spatch(s => { s.techEquip.shufa = ['yuhuo', 'hanshuang']; });
-  check('预装2法术(行动点3上限)', ctx._Spatch(s => s.techEquip.shufa).length === 2);
+  check('预装2法术(行动�?上限)', ctx._Spatch(s => s.techEquip.shufa).length === 2);
   $('modal').style.display = 'none';
 
   // ---- Phase 4: 连炼（炼到材料尽或行动点尽） ----
@@ -196,37 +196,37 @@ async function run() {
   const batchBtn = btnOf(aRows[0])[1];
   await click(batchBtn, 'alchemy-batch');
   const sA = ctx._Spatch(s => s);
-  check('连炼后材料耗尽或行动点尽', sA.herb < 40 && (sA.herb < 3 || sA.actionsLeft <= 0));
-  check('连炼扣了行动点', sA.actionsLeft < 10);
-  check('日志含连炼结算', logTxt().indexOf('连炼') >= 0);
+  check('连炼后材料耗尽或行动点�?, sA.herb < 40 && (sA.herb < 3 || sA.actionsLeft <= 0));
+  check('连炼扣了行动�?, sA.actionsLeft < 10);
+  check('日志含连炼结�?, logTxt().indexOf('连炼') >= 0);
   $('modal').style.display = 'none';
 
   // ---- Phase 5: 设置 / 暂停 / 存档 ----
   await click('btn-settings', 'btn-settings');
   const setTxt = bodyText();
-  check('设置面板含控件', setTxt.indexOf('音效') >= 0 && setTxt.indexOf('音量') >= 0 && setTxt.indexOf('节奏') >= 0 && setTxt.indexOf('特效') >= 0);
-  check('设置面板含 暂停/存读/退出', setTxt.indexOf('暂停') >= 0 && setTxt.indexOf('存') >= 0 && setTxt.indexOf('退出') >= 0);
+  check('设置面板含控�?, setTxt.indexOf('音效') >= 0 && setTxt.indexOf('音量') >= 0 && setTxt.indexOf('节奏') >= 0 && setTxt.indexOf('特效') >= 0);
+  check('设置面板�?暂停/存读/退�?, setTxt.indexOf('暂停') >= 0 && setTxt.indexOf('�?) >= 0 && setTxt.indexOf('退�?) >= 0);
 
   const sButtons = btnOf($('modal-body'));
   const pauseBtn = btnOf($('modal-body'), '暂停')[0];
   await click(pauseBtn, 'settings-pause');
   check('暂停层打开且有信息', $('pause').style.display === 'flex' && ($('pause-info').textContent || '').indexOf('青崖') >= 0);
   await click('pause-resume', 'pause-resume');
-  check('恢复修行关闭暂停层', $('pause').style.display === 'none');
+  check('恢复修行关闭暂停�?, $('pause').style.display === 'none');
 
   // 存档
-  const saveBtn = btnOf($('modal-body'), '存')[0];
+  const saveBtn = btnOf($('modal-body'), '�?)[0];
   await click(saveBtn, 'settings-savepanel');
-  check('游戏态存读面板有覆盖钮', btnOf($('modal-body'), '覆盖').length > 0);
+  check('游戏态存读面板有覆盖�?, btnOf($('modal-body'), '覆盖').length > 0);
   const autoRow = rows()[0];
   const ovBtn = btnOf(autoRow, '覆盖')[0];
   await click(ovBtn, 'save-auto-slot0');
   const inf0 = ctx.__Engine.slotInfo(0);
-  check('手存槽0=青崖', inf0 && inf0.name === '青崖');
-  check('自动档同步镜像', ctx.__Engine.slotInfo(null).name === '青崖');
+  check('手存�?=青崖', inf0 && inf0.name === '青崖');
+  check('自动档同步镜�?, ctx.__Engine.slotInfo(null).name === '青崖');
   await click('modal-close', 'modal-close');
 
-  // ---- Phase 6: 战斗法术条 ----
+  // ---- Phase 6: 战斗法术�?----
   let battleTested = false;
   let yearGateTested = false;
   for (let advN = 1; advN <= 4 && !battleTested; advN++) {
@@ -235,7 +235,7 @@ async function run() {
       await click('btn-explore', 'btn-explore');
       await sleep(10);
       const gateLog = $('log-inner').textContent;
-      check('一年一次拒绝提示', gateLog.indexOf('一年') >= 0);
+      check('一年一次拒绝提�?, gateLog.indexOf('一�?) >= 0);
       yearGateTested = true;
       ctx._Spatch(s => { s.year = 1; s.adventuredYear = undefined; });
       const chk = $('chapter').style.display;
@@ -252,7 +252,7 @@ async function run() {
       const picks = $('chapter-choices');
       if (!picks || !picks.children.length) { await clickUntilClosed('chapter-actions', 5); break; }
       let btn = null;
-      for (const kid of picks.children) if ((kid.textContent || '').indexOf('战') >= 0) { btn = kid; break; }
+      for (const kid of picks.children) if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; }
       if (!btn) btn = picks.children[0];
       await click(btn, 'adv-choice-l' + layer);
       await sleep(8);
@@ -261,25 +261,25 @@ async function run() {
       if (battle.style.display === 'flex') {
         console.log('BATTLE OPENED layer=' + layer);
         check('战斗界面有逃跑按钮', !!$('b-flee') && $('b-flee').onclick !== null);
-        check('战斗界面有一键代打', !!$('b-auto') && $('b-auto').onclick !== null);
+        check('战斗界面有一键代�?, !!$('b-auto') && $('b-auto').onclick !== null);
         for (let i = 0; i < 30 && battle.style.display === 'flex'; i++) await click('b-auto', 'b-auto');
         battleTested = true;
         await clickUntilClosed('chapter-actions', 6);
       }
     }
   }
-  check('战斗法术条实测完成', battleTested);
+  check('战斗法术条实测完�?, battleTested);
 
   // ---- Phase 7: 退出到主页 + 继续 + 读档 ----
   await click('btn-settings', 'btn-settings');
-  const exitBtn = btnOf($('modal-body'), '退出')[0];
+  const exitBtn = btnOf($('modal-body'), '退�?)[0];
   await click(exitBtn, 'settings-exit');
   check('退回标题页', $('screen-game').style.display === 'none' && $('screen-title').style.display === 'flex');
   check('标题页显示继续钮', $('t-continue').style.display !== 'none');
   const yearAtExit = ctx.__Engine.slotInfo(null).year;
   await click('t-continue', 't-continue');
-  check('继续后回到游戏', $('screen-game').style.display === 'flex');
-  check('年份一致', ctx._Spatch(s => s.year) === yearAtExit);
+  check('继续后回到游�?, $('screen-game').style.display === 'flex');
+  check('年份一�?, ctx._Spatch(s => s.year) === yearAtExit);
 
   await click('t-load', 't-load');
   const row0 = rows()[0];

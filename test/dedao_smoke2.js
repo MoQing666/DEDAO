@@ -16,7 +16,7 @@ for (const f of ['data.js', 'engine.js', 'ui.js']) c += fs.readFileSync('D:/open
 c += `probe=(function(){
   const out = [];
   const E = Engine;
-  let s = E.startLife('测试者');
+  let s = E.startLife('测试�?);
   s.year = 1;
   E.commitStart(s, 'dayili');
   out.push('1. 开局 realm=' + s.realm + ' idx=' + s.idx);
@@ -25,22 +25,22 @@ c += `probe=(function(){
   E.applyOps(s, { equip: 'ling_toujin' });
   out.push('2. 装备上身 head=' + s.equip.head + ' inv=' + JSON.stringify(s.inventory));
   E.applyOps(s, { equip: 'wenyao_guan' });
-  out.push('3. 重复获取入库存 inv=' + JSON.stringify(s.inventory));
+  out.push('3. 重复获取入库�?inv=' + JSON.stringify(s.inventory));
   E.wearEquip(s, 'wenyao_guan');
   out.push('4. 换装 head=' + s.equip.head + ' inv=' + JSON.stringify(s.inventory));
   const g = E.sellEquip(s, 'ling_toujin');
   out.push('5. 出售 head=' + s.equip.head + ' inv=' + JSON.stringify(s.inventory) + ' stone=' + s.stone + ' gain=' + g);
   const es = E.equipStats(s);
-  out.push('6. 装备属性 hpMax+' + es.hpMax + ' atk+' + es.atk);
+  out.push('6. 装备属�?hpMax+' + es.hpMax + ' atk+' + es.atk);
 
   // 功法
   E.applyOps(s, { tech: 'yuhuo' });
   E.applyOps(s, { tech: 'xiaoyao' });
-  out.push('7. 法术=' + (E.getBestShufa(s) ? E.getBestShufa(s).name : '无') + ' 遁术=' + JSON.stringify(E.getDunshu(s)));
+  out.push('7. 法术=' + (E.getBestShufa(s) ? E.getBestShufa(s).name : '�?) + ' 遁术=' + JSON.stringify(E.getDunshu(s)));
 
   // 战斗 v2
   s.hp = s.hpMax = 500;
-  let spec = { name: '青纹狼', atk: 30, hp: 120, loot: { stone: 50, herb: 2 } };
+  let spec = { name: '青纹�?, atk: 30, hp: 120, loot: { stone: 50, herb: 2 } };
   E.combatStart(s, spec);
   let r = E.combatAct(s, 'spell');
   out.push('8. 法术伤害后敌血=' + s.battle.hp + ' 结束=' + r.done);
@@ -50,7 +50,7 @@ c += `probe=(function(){
 
   // 冒险
   const st = E.startAdventure(s);
-  out.push('12. 冒险开始 ok=' + st.ok + ' depth=' + s.adv.depth + ' ap=' + s.actionsLeft);
+  out.push('12. 冒险开�?ok=' + st.ok + ' depth=' + s.adv.depth + ' ap=' + s.actionsLeft);
   let guard = 0;
   while (s.adv && s.adv.status === 'running' && guard < 20) {
     guard++;
@@ -61,10 +61,10 @@ c += `probe=(function(){
       let rr = E.combatAct(s, 'spell');
       let i = 0;
       while (!rr.done && i < 12) { rr = E.combatAct(s, 'atk'); i++; }
-      out.push('13. boss 战 win=' + rr.win + ' 敌血=' + (s.battle ? s.battle.hp : '-'));
-      if (rr.win) { const ex = E.advClearReward(s); out.push('14. 通关奖励 ' + ex.length + ' 条'); E.advEnd(s, 'done'); }
+      out.push('13. boss �?win=' + rr.win + ' 敌血=' + (s.battle ? s.battle.hp : '-'));
+      if (rr.win) { const ex = E.advClearReward(s); out.push('14. 通关奖励 ' + ex.length + ' �?); E.advEnd(s, 'done'); }
       else E.advEnd(s, 'lost');
-      out.push('15. 冒险结束 lostMsg=' + (s.adv.lostMsg || '无') + ' gains=' + s.adv.gains.length + '条 stone=' + s.stone);
+      out.push('15. 冒险结束 lostMsg=' + (s.adv.lostMsg || '�?) + ' gains=' + s.adv.gains.length + '�?stone=' + s.stone);
       break;
     }
     const node = layer.choices[Math.floor(Math.random() * layer.choices.length)];
@@ -77,7 +77,7 @@ c += `probe=(function(){
       if (rr.lost) { E.advEnd(s, 'lost'); out.push('16. 中层战败 lostMsg=' + s.adv.lostMsg); break; }
     } else if (node.type === 'shop') {
       const res = E.advResolve(s, node);
-      out.push('17. 坊市商品 ' + res.stock.length + ' 件 首件=' + res.stock[0].name + ' 价格' + res.stock[0].price);
+      out.push('17. 坊市商品 ' + res.stock.length + ' �?首件=' + res.stock[0].name + ' 价格' + res.stock[0].price);
       const rr = E.buyStock(s, res.stock[0]);
       out.push('18. 购买 ' + (rr.ok ? '成功 ' + rr.lines.join('|') : '失败' + rr.msg));
     } else {
@@ -95,7 +95,7 @@ c += `probe=(function(){
 
   // 出售材料
   const g2 = E.sellMaterial(s, 'herb', 5);
-  out.push('22. 卖灵草5株 stone+' + g2 + ' herb=' + s.herb);
+  out.push('22. 卖灵�?�?stone+' + g2 + ' herb=' + s.herb);
 
   return out.join('\\n');
 })();`;

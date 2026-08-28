@@ -130,9 +130,9 @@ async function stepOnce(where, prefShop) {
   const picks = $('chapter-choices');
   if (picks && picks.children.length) {
     let btn = null;
-    if (prefShop) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('坊') >= 0) { btn = kid; break; } } }
-    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('战') >= 0) { btn = kid; break; } } }
-    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('前') >= 0) { btn = kid; break; } } }
+    if (prefShop) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } } }
+    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } } }
+    if (!btn) { for (const kid of picks.children) { if ((kid.textContent || '').indexOf('�?) >= 0) { btn = kid; break; } } }
     if (!btn) btn = picks.children[0];
     await click(btn, where + '-choice');
     return 'choice';
@@ -165,12 +165,12 @@ async function ride(untilFn, max, where) {
   });
   await click('btn-explore', 'explore-enter');
   check('秘境章节打开', $('chapter').style.display === 'flex');
-  check('探索工具条可见', $('adv-tools').style.display === 'flex');
+  check('探索工具条可�?, $('adv-tools').style.display === 'flex');
 
   await click('adv-bag', 'adv-bag');
-  check('探险中打开储物袋', $('modal').style.display === 'flex' && ($('modal-body').textContent || '').indexOf('储物袋') >= 0);
+  check('探险中打开储物�?, $('modal').style.display === 'flex' && ($('modal-body').textContent || '').indexOf('储物�?) >= 0);
   await click('modal-close', 'bag-close');
-  check('储物袋关闭', $('modal').style.display === 'none');
+  check('储物袋关�?, $('modal').style.display === 'none');
   await click('adv-gear', 'adv-gear');
   const gearTxt = $('modal-body').textContent || '';
   check('探险中打开行装', gearTxt.indexOf('随身行装') >= 0);
@@ -204,7 +204,7 @@ async function ride(untilFn, max, where) {
   await sleep(20);
   const logAll = logTxt() || '';
   console.log('  [settle] log has 本次收获? ' + (logAll.indexOf('本次收获') >= 0));
-  check('归途结算汇总(本次收获)', logAll.indexOf('本次收获') >= 0 || logAll.indexOf('一无所获') >= 0);
+  check('归途结算汇�?本次收获)', logAll.indexOf('本次收获') >= 0 || logAll.indexOf('一无所�?) >= 0);
 
   const st3 = ctx._Spatch(s => s);
   if (st3.adv && st3.adv.status !== 'running') {
@@ -214,7 +214,7 @@ async function ride(untilFn, max, where) {
     await click('btn-explore', 'explore-again');
     await sleep(10);
     console.log('  [year-gate] log tail: ' + (logTxt() || '').split(' | ').slice(-3).join(' | '));
-    check('一年一次: 二次探索被拒', (logTxt() || '').indexOf('一年') >= 0 && $('chapter').style.display !== 'flex');
+    check('一年一�? 二次探索被拒', (logTxt() || '').indexOf('一�?) >= 0 && $('chapter').style.display !== 'flex');
   }
 
   let shopModalSeen = false;
@@ -249,7 +249,7 @@ async function ride(untilFn, max, where) {
     }
   }
   check('本趟遇到坊市', shopModalSeen);
-  check('坊市关闭后继续探索(未卡死)', shopResume);
+  check('坊市关闭后继续探�?未卡�?', shopResume);
 
   console.log('== DRIVE5 DONE. fail=' + fail + ' ==');
   process.exit(fail ? 1 : 0);

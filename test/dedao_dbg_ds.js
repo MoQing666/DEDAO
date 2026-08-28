@@ -16,7 +16,7 @@ for (const f of ['data.js', 'engine.js']) c += fs.readFileSync('D:/opencode/DEDA
 c += `probe=(function(){
   const E = Engine;
   const s = E.startLife('t');
-  E.commitStart(s, 'liancai');
+  E.commitStart(s, 'dujie');
   console.log('init ds', s.dunSpeed, 'idx', s.idx, 'realm', s.realm);
   s.qi = 1e9;
   const r1 = E.breakthrough(s);

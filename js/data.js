@@ -277,7 +277,7 @@ const LINGGEN_POOL = [
 /* ---------------- 开局天赋 ---------------- */
 const TALENTS = [
   { id: 'daoti',   name: '天生道体',   desc: '天地灵气亲近你，修炼速度 +10%。',  apply: { cultMul: 0.1 } },
-  { id: 'liancai', name: '炼丹奇才',   desc: '丹火亲和，炼丹成功率 +20%。',      apply: { alchemyMul: 0.2 } },
+  { id: 'dujie',   name: '天劫不侵',   desc: '天生抗劫体质，渡劫成功率 +10%。',  apply: { trib: 0.1 } },
   { id: 'fuyuan',  name: '福缘深厚',   desc: '财源广进，获得灵石时 +10%。',      apply: { stoneMul: 0.10 } },
   { id: 'kejian',  name: '天生剑胚',   desc: '剑心通明，攻击 +20%。',           apply: { atkMul: 0.2 } },
   { id: 'shengji', name: '生生不息',   desc: '寿元 +40 载。',                   apply: { life: 40 } },

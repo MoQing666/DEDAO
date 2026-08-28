@@ -3184,9 +3184,13 @@
     showScreen('title');
     renderTitle();
     
-    // 用户交互后激活音频
+    // 自动激活音频
+    if (typeof AudioManager !== 'undefined') {
+      AudioManager.activate();
+    }
+    // 用户交互时重试激活（应对浏览器自动播放限制）
     function onFirstInteract() {
-      if (typeof AudioManager !== 'undefined') {
+      if (typeof AudioManager !== 'undefined' && !AudioManager.isInitialized()) {
         AudioManager.activate();
       }
       document.removeEventListener('click', onFirstInteract);

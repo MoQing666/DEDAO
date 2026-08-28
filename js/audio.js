@@ -61,7 +61,7 @@ var AudioManager = (function () {
     }
   }
 
-  // 激活音频（用户交互后调用）
+  // 激活音频（自动调用，用户交互后重试）
   function activate() {
     if (activated) return;
     initCtx();
@@ -74,6 +74,8 @@ var AudioManager = (function () {
           playBgm(pendingBgm);
           pendingBgm = null;
         }
+      }).catch(function() {
+        // 自动激活失败，等待用户交互后重试
       });
       return;
     }

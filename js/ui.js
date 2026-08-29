@@ -1202,6 +1202,91 @@
   }
   function doYearEnd() {
     const r = Engine.endYear(S);
+    if (r === 'death_event') {
+      var dev = S.pendingDeathEvent;
+      S.seen['death_' + dev.year] = 1;
+      delete S.pendingDeathEvent;
+      showChapter(dev.title, dev.lines, { subtitle: '生死之战' }).then(function () {
+        return openBattle(dev.fight, { title: dev.title });
+      }).then(function (br) {
+        if (br.win) {
+          showChapter('劫后余生', [dev.resultWin].concat(br.gains || [])).then(function () {
+            Engine.saveState(S);
+            doYearEnd();
+          });
+        } else {
+          S.dead = true;
+          S.endReason = dev.title + '陨落';
+          Engine.saveState(S);
+          endLifeFlow();
+        }
+      });
+      return;
+    }
+    if (r === 'mainline') {
+      var ml = S.pendingMainline;
+      S.seen['ml_' + S.idx] = 1;
+      delete S.pendingMainline;
+      if (ml.fight) {
+        showChapter(ml.title, ml.lines, { subtitle: '主线剧情' }).then(function () {
+          return openBattle(ml.fight, { title: ml.title });
+        }).then(function (br) {
+          if (br.win) {
+            showChapter(ml.title + '·胜', [ml.resultWin].concat(br.gains || [])).then(function () {
+              if (ml.effect) Engine.applyOps(S, ml.effect);
+              Engine.saveState(S);
+              doYearEnd();
+            });
+          } else {
+            showChapter(ml.title + '·败', [ml.resultLose || '你重伤退走。']).then(function () {
+              Engine.saveState(S);
+              doYearEnd();
+            });
+          }
+        });
+      } else if (ml.choices) {
+        showChapter(ml.title, ml.lines, { subtitle: '主线剧情', choices: ml.choices }).then(function (cr) {
+          if (cr && cr.pick) {
+            if (cr.pick.effect) Engine.applyOps(S, cr.pick.effect);
+            if (cr.pick.fight) {
+              openBattle(cr.pick.fight, { title: ml.title }).then(function (br) {
+                if (br.win) {
+                  showChapter('胜', [cr.pick.resultWin || '你技高一筹。'].concat(br.gains || [])).then(function () {
+                    Engine.saveState(S);
+                    doYearEnd();
+                  });
+                } else {
+                  showChapter('败', [cr.pick.resultLose || '你败了。']).then(function () {
+                    Engine.saveState(S);
+                    doYearEnd();
+                  });
+                }
+              });
+            } else {
+              if (cr.pick.lines) {
+                showChapter('结果', cr.pick.lines).then(function () {
+                  Engine.saveState(S);
+                  doYearEnd();
+                });
+              } else {
+                Engine.saveState(S);
+                doYearEnd();
+              }
+            }
+          } else {
+            Engine.saveState(S);
+            doYearEnd();
+          }
+        });
+      } else {
+        if (ml.effect) Engine.applyOps(S, ml.effect);
+        showChapter(ml.title, ml.lines, { subtitle: '主线剧情' }).then(function () {
+          Engine.saveState(S);
+          doYearEnd();
+        });
+      }
+      return;
+    }
     if (r === 'end') { endLifeFlow(); return; }
     if (r === 'fate') { fateFlow(); return; }
     logSection('第 ' + S.year + ' 年 · ' + S.age + ' 岁');

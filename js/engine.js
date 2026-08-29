@@ -1852,6 +1852,29 @@ const Engine = (function () {
     if (s.age >= 200) return 'fate';
     if (s.idx >= 15) return 'end';
     s.year += 1;
+    // 20年死劫检查
+    var deathEv = null;
+    for (var di = 0; di < DEATH_EVENTS.length; di++) {
+      if (s.year >= DEATH_EVENTS[di].year && !s.seen['death_' + DEATH_EVENTS[di].year]) {
+        deathEv = DEATH_EVENTS[di];
+        break;
+      }
+    }
+    if (deathEv) {
+      s.pendingDeathEvent = deathEv;
+      saveState(s);
+      return 'death_event';
+    }
+    // 主线境界触发检查
+    if (!s.seen['ml_' + s.idx]) {
+      for (var mi = 0; mi < MAINLINE.length; mi++) {
+        if (MAINLINE[mi].idx === s.idx && !s.seen['ml_' + s.idx]) {
+          s.pendingMainline = MAINLINE[mi];
+          saveState(s);
+          return 'mainline';
+        }
+      }
+    }
     s.actionsLeft = actionPoints(s);
     s.hp = s.hpMax;
     s.cultedThisYear = false;

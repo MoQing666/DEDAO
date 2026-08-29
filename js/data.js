@@ -752,6 +752,292 @@ E('shejiao', {
   result: '烟火气回了血。'
 });
 
+/* ================ 金丹期机缘（idx 6-8） ================ */
+E('jiyuan', {
+  id: 'jd_jianzhong_canhun', title: '剑冢残魂', chapter: true, weight: 6, min: 6, max: 8, once: true,
+  lines: [
+    '你在剑冢深处发现一缕残魂，那是千年前陨落的剑修。',
+    '残魂凝视你片刻，忽然开口："你的剑意……还差一味。"',
+    '他伸手在你眉心一点——一道剑光直冲识海。'
+  ],
+  choices: [
+    { t: '静心感悟剑意', effect: { wu: 2 }, lines: ['剑光在识海中翻涌三日，你悟得剑意真谛。（悟性+2）'] },
+    { t: '以剑意淬体', effect: { atk: 15 }, lines: ['剑意灌注经脉，你的剑锋更加凌厉。（攻击+15）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'jd_danlu_yibian', title: '丹炉异变', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  lines: [
+    '你在丹房炼丹时，炉火忽然变色。',
+    '炉中竟自行凝出一枚丹药，丹纹流转，灵光四溢。',
+    '你从未见过如此异象。'
+  ],
+  choices: [
+    { t: '取出丹药', effect: { elixirs: { wudao: 1 } }, lines: ['丹药入手温热，竟是传说中的悟道丹！（获得悟道丹）'] },
+    { t: '研究炉火异变', effect: { wu: 1, qi: function (s) { return Math.round(requireNeed(s) * 0.2); } }, lines: ['你参悟炉火异变，道心通明。（悟性+1，修为+）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'jd_tianjiang_jiyuan', title: '天降机缘', chapter: true, weight: 5, min: 6, max: 8,
+  lines: [
+    '一道金光自天际坠落，砸在你洞府门前。',
+    '金光散去，一枚古朴玉简静静躺在碎石中。',
+    '你以神识探入——竟是一门上古心法。'
+  ],
+  choices: [
+    { t: '研习心法', effect: { tech: 'taixuan' }, lines: ['心法玄奥，你参悟数日，竟是《太玄经》残篇！（习得太玄经）'] },
+    { t: '以玉简换取灵石', effect: { stone: 300 }, lines: ['你将玉简售出，换得大量灵石。（灵石+300）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'jd_guren_laifang', title: '故人来访', chapter: true, weight: 4, min: 6, max: 8, once: true,
+  req: { flags: { beggar_kind: 1 } },
+  lines: [
+    '一位故人叩响你的洞府。',
+    '正是当年那个老乞丐——此刻他一身仙风道骨，笑呵呵道："小子，当年那顿烧鸡，今日来还。"'
+  ],
+  choices: [
+    { t: '恭敬相迎', effect: { wu: 3 }, lines: ['他与你论道三日，字字珠玑。临别时他拍拍你的肩："好好修，天劫见。"（悟性+3）'] },
+    { t: '请教天劫之事', effect: { trib: 0.05 }, lines: ['他传授你一些渡劫心得，让你受益匪浅。（渡劫+5%）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'jd_danxia_micang', title: '丹霞密藏', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  lines: [
+    '你在丹霞谷深处发现一间密室。',
+    '室内只有一口古井，井水泛着七彩光芒。',
+    '井底似乎沉着什么东西。'
+  ],
+  choices: [
+    { t: '潜入井底', fight: { name: '井底灵蛟', atk: 80, hp: 350, loot: { herb: 20, stone: 200 } },
+      resultWin: '灵蛟伏诛，你从井底捞出大量灵草与灵石。',
+      resultLose: '灵蛟一尾将你拍飞，你狼狈逃出密室。（气血受损）' },
+    { t: '以灵力探取', effect: { hpMax: 100 }, lines: ['你以灵力探入井中，井水化作一股暖流涌入经脉。（气血上限+100）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'jd_jianyi_gongming', title: '剑意共鸣', chapter: true, weight: 5, min: 6, max: 8,
+  lines: [
+    '你在崖边练剑，忽然感到天地间一股剑意与你共鸣。',
+    '那剑意来自千里之外的某处——一位隐世剑修在向你发出邀请。'
+  ],
+  choices: [
+    { t: '循剑意而去', effect: { atk: 20 }, lines: ['你御剑千里，在深山中找到那位剑修。他与你切磋三日，你的剑法大进。（攻击+20）'] },
+    { t: '在原地感悟', effect: { wu: 1, atk: 10 }, lines: ['你在崖边静坐三日，将那股剑意融入己身。（悟性+1，攻击+10）'] }
+  ]
+});
+
+/* ================ 金丹期游历（idx 6-8） ================ */
+E('shejiao', {
+  id: 'jd_jiuzhou_xingshang', title: '九州行商', chapter: true, weight: 6, min: 6, max: 8,
+  lines: [
+    '一队行商邀请你随行护送。',
+    '商队穿越三州，沿途风景各异，奇人异事层出不穷。',
+    '临别时，商队首领赠你一袋灵石。'
+  ],
+  effect: { stone: 200 },
+  result: '你望着商队远去的背影，忽然觉得这九州之大，远超想象。（灵石+200）'
+});
+E('shejiao', {
+  id: 'jd_gusha_zhongsheng', title: '古刹钟声', chapter: true, weight: 5, min: 6, max: 8,
+  lines: [
+    '你路过一座荒废古刹，钟声忽然自鸣。',
+    '钟声中蕴含一丝道韵，你驻足倾听，道心微动。'
+  ],
+  choices: [
+    { t: '静听钟声', effect: { wu: 1, qi: 80 }, lines: ['你听了半日钟声，道心通明。（悟性+1，修为+）'] },
+    { t: '探索古刹', fight: { name: '古刹怨灵', atk: 70, hp: 280, loot: { stone: 120 } },
+      resultWin: '怨灵散去，你在佛像后发现一袋灵石。',
+      resultLose: '怨灵缠身，你费了好大功夫才脱身。（气血受损）' }
+  ]
+});
+E('shejiao', {
+  id: 'jd_hepan_diaoyu', title: '河畔垂钓', chapter: true, weight: 5, min: 6, max: 8,
+  lines: [
+    '你在河边垂钓，鱼钩忽然被巨力拉扯。',
+    '你用力一拽——竟钓上来一柄生锈的古剑。',
+    '古剑虽锈，剑意犹存。'
+  ],
+  choices: [
+    { t: '以灵力洗剑', effect: { atk: 12 }, lines: ['你以灵力洗去锈迹，古剑重现锋芒。（攻击+12）'] },
+    { t: '以古剑换灵石', effect: { stone: 250 }, lines: ['你将古剑售出，换得大量灵石。（灵石+250）'] }
+  ]
+});
+E('shejiao', {
+  id: 'jd_shanzhong_yinshi', title: '山中隐士', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  lines: [
+    '你寻访到一位隐居山中的老者。',
+    '他自称千年前的散修，因厌倦争斗而隐居。',
+    '他与你论道三日，临别赠你一枚玉简。'
+  ],
+  choices: [
+    { t: '收下玉简', effect: { wu: 2 }, lines: ['玉简中记载着一门玄奥心法。（悟性+2）'] },
+    { t: '请教修行之道', effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.3); } }, lines: ['老者传授你修行心得，你修为大涨。'] }
+  ]
+});
+E('shejiao', {
+  id: 'jd_yuexia_duzhuo', title: '月下独酌', chapter: true, weight: 5, min: 6, max: 8,
+  lines: [
+    '你在月下独酌，忽然听见远处传来琴声。',
+    '循声而去，一位白衣修士正在月下抚琴。',
+    '他见你来，微微一笑："知音难觅。"'
+  ],
+  effect: { mo: 30, wu: 0.5 },
+  result: '你们饮酒论道至天明，临别时他赠你一枚音律玉简。（灵力+30，悟性微涨）'
+});
+E('shejiao', {
+  id: 'jd_huangye_qiusheng', title: '荒野求生', chapter: true, weight: 4, min: 6, max: 8,
+  lines: [
+    '你在荒野中迷路，灵力耗尽。',
+    '三天三夜后，你终于找到出路。',
+    '这段经历让你的意志更加坚定。'
+  ],
+  effect: { ti: 2, hpMax: 50 },
+  result: '你在绝境中磨砺了意志，肉身也更加强韧。（体魄+2，气血上限+50）'
+});
+
+/* ================ 元婴期机缘（idx 9-11） ================ */
+E('jiyuan', {
+  id: 'yy_tianjie_yuzhao', title: '天劫预兆', chapter: true, weight: 5, min: 9, max: 11, once: true,
+  lines: [
+    '你在修炼时，忽然感应到一丝天劫的气息。',
+    '那是来自九天之上的威压——你的飞升之劫，已在酝酿。'
+  ],
+  choices: [
+    { t: '静心感悟天劫', effect: { trib: 0.05, wu: 2 }, lines: ['你静心感悟天劫气息，道心通明。（渡劫+5%，悟性+2）'] },
+    { t: '以天劫气息淬体', effect: { trib: 0.03, ti: 2 }, lines: ['你以天劫气息淬炼肉身，体魄更加强横。（渡劫+3%，体魄+2）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'yy_moyuan_diyu', title: '魔渊低语', chapter: true, weight: 5, min: 9, max: 11, once: true,
+  lines: [
+    '夜深人静时，你听见来自魔渊的低语。',
+    '那声音诱惑你堕入魔道，许以无上力量。',
+    '你紧守道心，将那声音驱散。'
+  ],
+  choices: [
+    { t: '以道心镇压', effect: { wu: 2 }, lines: ['你以道心镇压魔念，道心愈发坚定。（悟性+2）'] },
+    { t: '反探魔渊', effect: { atk: 15 }, lines: ['你以神识反探魔渊，从魔念中悟得一丝攻伐之道。（攻击+15）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'yy_xianjie_suipian', title: '仙界碎片', chapter: true, weight: 4, min: 9, max: 11, once: true,
+  lines: [
+    '你在虚空中拾得一块碎片。',
+    '碎片散发着不属于此界的气息——那是仙界的残片。'
+  ],
+  choices: [
+    { t: '炼化碎片', effect: { hpMax: 100, atk: 15 }, lines: ['你炼化碎片，肉身与攻击都得到提升。（气血上限+100，攻击+15）'] },
+    { t: '参悟碎片', effect: { wu: 3 }, lines: ['你参悟碎片中的道韵，悟性大增。（悟性+3）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'yy_guren_chongfeng2', title: '故人重逢', chapter: true, weight: 3, min: 9, max: 11, once: true,
+  req: { flags: { beggar_kind: 1 } },
+  lines: [
+    '你在九州游历时，遇见一位故人。',
+    '正是当年那个老乞丐——此刻他已飞升成仙，只留一缕分身在此等你。'
+  ],
+  choices: [
+    { t: '请教飞升之道', effect: { trib: 0.10 }, lines: ['他传授你飞升心得，你受益匪浅。（渡劫+10%）'] },
+    { t: '求赐仙宝', effect: { atk: 25 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+25）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'yy_tianjige_chuancheng', title: '天机阁传承', chapter: true, weight: 4, min: 9, max: 11, once: true,
+  lines: [
+    '你寻到传说中的天机阁遗址。',
+    '阁中机关重重，最终你来到阁顶，发现一枚金色玉简。'
+  ],
+  choices: [
+    { t: '研习玉简', effect: { wu: 4 }, lines: ['玉简中记载着天机阁的阵道传承。（悟性+4）'] },
+    { t: '以玉简换取资源', effect: { stone: 500, iron: 30 }, lines: ['你将玉简售出，换得大量资源。（灵石+500，灵铁+30）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'yy_mozu_huashen', title: '魔祖化身', chapter: true, weight: 4, min: 9, max: 11, once: true,
+  lines: [
+    '一道黑影拦住你的去路。',
+    '那是魔祖的一缕化身，他冷笑道："你就是那个要飞升的人？"'
+  ],
+  choices: [
+    { t: '拔剑迎战', fight: { name: '魔祖化身', atk: 180, hp: 800, loot: { stone: 300, wu: 2 } },
+      resultWin: '魔祖化身消散，留下一件魔道秘宝。',
+      resultLose: '魔祖化身太强，你重伤退走。（气血大损）' },
+    { t: '以道心化解', effect: { wu: 2 }, lines: ['你以道心化解魔念，魔祖化身自行消散。（悟性+2）'] }
+  ]
+});
+
+/* ================ 元婴期游历（idx 9-11） ================ */
+E('shejiao', {
+  id: 'yy_jiuzhou_menghui', title: '九州盟会', chapter: true, weight: 6, min: 9, max: 11, once: true,
+  lines: [
+    '九州修士齐聚，共商对抗魔渊之策。',
+    '你作为元婴修士，被推举为盟主之一。'
+  ],
+  choices: [
+    { t: '担任盟主', effect: { hpMax: 80, atk: 10 }, lines: ['你担任盟主，威望大增。（气血上限+80，攻击+10）'] },
+    { t: '推辞不就', effect: { wu: 2 }, lines: ['你推辞不就，专心修炼。（悟性+2）'] }
+  ]
+});
+E('shejiao', {
+  id: 'yy_tianguan_zhenshou', title: '天关镇守', chapter: true, weight: 5, min: 9, max: 11,
+  lines: [
+    '北境天关告急，你前往镇守。',
+    '在关墙上，你看见历代守关人的遗愿。'
+  ],
+  choices: [
+    { t: '镇守天关一年', effect: { hpMax: 100, ti: 2 }, lines: ['你在天关镇守一年，肉身更加强横。（气血上限+100，体魄+2）'] },
+    { t: '主动出击', effect: { atk: 15, stone: 100 }, lines: ['你主动出击，斩杀大量魔物。（攻击+15，灵石+100）'] }
+  ]
+});
+E('shejiao', {
+  id: 'yy_xinghai_guanxing', title: '星海观星', chapter: true, weight: 5, min: 9, max: 11,
+  lines: [
+    '你登上九州最高的星台，观星悟道。',
+    '漫天星辰仿佛在向你诉说宇宙的奥秘。'
+  ],
+  choices: [
+    { t: '静观三日', effect: { wu: 3 }, lines: ['你静观三日，悟性大增。（悟性+3）'] },
+    { t: '引星力入体', effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.4); } }, lines: ['你引星力入体，修为大涨。'] }
+  ]
+});
+E('shejiao', {
+  id: 'yy_xukong_tansuo', title: '虚空探索', chapter: true, weight: 5, min: 9, max: 11,
+  lines: [
+    '你深入虚空裂缝，探索未知世界。',
+    '在虚空中，你发现了一座漂浮的仙宫。'
+  ],
+  choices: [
+    { t: '进入仙宫', fight: { name: '仙宫守护者', atk: 160, hp: 700, loot: { stone: 400, wu: 2 } },
+      resultWin: '你击败守护者，获得仙宫中的宝物。',
+      resultLose: '守护者太强，你被迫退出虚空。（气血受损）' },
+    { t: '在外围探索', effect: { stone: 200, iron: 20 }, lines: ['你在虚空外围探索，收获颇丰。（灵石+200，灵铁+20）'] }
+  ]
+});
+E('shejiao', {
+  id: 'yy_moyuan_qianxian', title: '魔渊前线', chapter: true, weight: 5, min: 9, max: 11,
+  lines: [
+    '魔渊裂隙扩大，黑潮涌动。',
+    '你带领修士军团，在前线与魔物激战。'
+  ],
+  choices: [
+    { t: '身先士卒', effect: { atk: 20, hp: -50 }, lines: ['你身先士卒，斩杀大量魔物。（攻击+20）'] },
+    { t: '坐镇指挥', effect: { wu: 2, hpMax: 60 }, lines: ['你坐镇指挥，运筹帷幄。（悟性+2，气血上限+60）'] }
+  ]
+});
+E('shejiao', {
+  id: 'yy_feisheng_yuzhao', title: '飞升预兆', chapter: true, weight: 4, min: 9, max: 11, once: true,
+  lines: [
+    '你在修炼时，忽然看见天门的幻影。',
+    '那是飞升的预兆——你的道，即将圆满。'
+  ],
+  choices: [
+    { t: '静心感悟', effect: { trib: 0.15, wu: 2 }, lines: ['你静心感悟天门，道心通明。（渡劫+15%，悟性+2）'] },
+    { t: '以天门之力淬体', effect: { trib: 0.10, hpMax: 100, atk: 15 }, lines: ['你以天门之力淬炼肉身，实力大增。（渡劫+10%，气血上限+100，攻击+15）'] }
+  ]
+});
+
 
 E('mijing', {
   id: 'wu_valley', title: '青云雾谷', chapter: true, weight: 8, min: 0, max: 2, needRealm: '炼气',

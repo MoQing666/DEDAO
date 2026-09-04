@@ -8,11 +8,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道 DEDAO</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=34">
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js');
-    }
+    // 暂时禁用SW，调试后恢复
+    // if ('serviceWorker' in navigator) {
+    //   navigator.serviceWorker.register('./sw.js');
+    // }
   </script>
 </head>
 <body>
@@ -37,6 +38,56 @@
     </div>
   </div>
 
+  <!-- ============ 进入页面（命格抽取+轮回选择） ============ -->
+  <div class="screen" id="screen-enter" style="display:none">
+    <div class="enter-wrap">
+      <div class="enter-header">
+        <h2 class="tower-title">天命抉择</h2>
+      </div>
+
+      <!-- 轮回选择 -->
+      <div class="enter-section" id="enter-rebirth-section">
+        <h4 class="enter-section-title">轮回</h4>
+        <div class="rebirth-selector">
+          <button id="enter-jie-minus" class="btn-small">-</button>
+          <div class="rebirth-info">
+            <div class="rebirth-name" id="enter-jie-name">凡尘</div>
+            <div class="rebirth-status" id="enter-jie-status"></div>
+            <div class="rebirth-reward" id="enter-jie-reward"></div>
+          </div>
+          <button id="enter-jie-plus" class="btn-small">+</button>
+        </div>
+      </div>
+
+      <!-- 起名（上移） -->
+      <div class="enter-section">
+        <h4 class="enter-section-title">你的姓名</h4>
+        <div class="name-input-row">
+          <input type="text" id="enter-name-input" class="name-input" placeholder="输入名字..." maxlength="6">
+          <button id="enter-name-random" class="btn-small">随机</button>
+        </div>
+        <div class="name-hint" id="enter-name-hint"></div>
+      </div>
+
+      <!-- 命格抽取 -->
+      <div class="enter-section">
+        <h4 class="enter-section-title" id="enter-destiny-title">3选1</h4>
+        <div class="destiny-pool-wrap">
+          <div class="destiny-pool" id="enter-destiny-pool"></div>
+        </div>
+        <div class="destiny-actions">
+          <button id="enter-reroll" class="btn-small">重新抽取 (1点)</button>
+        </div>
+      </div>
+
+      <!-- 开始按钮 -->
+      <div class="enter-footer">
+        <button id="enter-back" class="btn-main">返回山门</button>
+        <button id="enter-start" class="btn-main">开始这一世</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ 游戏主界面 ============ -->
   <div class="screen" id="screen-game" style="display:none">
     <header class="hud">
@@ -45,28 +96,43 @@
           <span id="h-name" class="name">修行者</span>
           <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
         </div>
-        <div class="hud-btns">
-          <button id="btn-attrs" class="bag-btn">属性</button>
-          <button id="btn-tech" class="bag-btn">功法</button>
-          <button id="btn-gear" class="bag-btn">装备</button>
-          <button id="btn-bag" class="bag-btn">储物袋</button>
-          <button id="btn-settings" class="bag-btn">设置</button>
-        </div>
+        <div class="hud-destiny"><span class="destiny-label">【命格】</span><span id="h-destiny" class="destiny-text">无</span></div>
       </div>
-      <div class="hud-line"><span id="h-actions" class="aps"></span><span id="h-year">第1年 · 16岁 / 70寿</span><span id="h-stone" class="res"><span class="chip">灵石 50</span></span></div>
-      <div class="hud-line"><span class="lcap">气血</span><span class="lbar"><i id="bar-hp" style="width:100%"></i></span><span id="hp-val" class="hp-num"></span></div>
-      <div class="hud-line"><span class="lcap">灵力</span><span class="lbar"><i id="bar-mo" style="width:100%"></i></span><span id="mo-val" class="hp-num"></span></div>
     </header>
 
     <section class="stats panel">
+      <!-- 上方：六维 + 行动/灵石 -->
+      <div class="stats-top-row">
+        <div class="six-dim-wrap">
+          <div class="stat-grid six-dim">
+            <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
+            <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
+            <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
+          </div>
+          <div class="stat-grid six-dim">
+            <div class="kv"><label>神识</label><b id="st-shen">0</b></div>
+            <div class="kv"><label>道心</label><b id="st-dao">0</b></div>
+            <div class="kv"><label>福源</label><b id="st-fu">0</b></div>
+          </div>
+        </div>
+        <div class="action-info-col">
+          <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
+          <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">50</b></div>
+        </div>
+      </div>
+      <!-- 下方：战斗属性（攻击/防御/气血/几岁 + 暴击/闪避/灵力/寿元） -->
+      <div class="stat-grid combat-stats combat-full">
+        <div class="kv"><label>攻击</label><b id="st-atk">10</b></div>
+        <div class="kv"><label>防御</label><b id="st-def">0</b></div>
+        <div class="kv"><label>气血</label><b id="st-hp">100</b></div>
+        <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
+        <div class="kv"><label>暴击</label><b id="st-crit">1%</b></div>
+        <div class="kv"><label>闪避</label><b id="st-dodge">1%</b></div>
+        <div class="kv"><label>灵力</label><b id="st-mo">0</b></div>
+        <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
+      </div>
       <div class="stat-row">
         <label>修为</label><div class="bar-box"><div class="bar-fill" id="bar-qi" style="width:0%"></div></div><span id="qi-val" class="num">0 / 60</span>
-      </div>
-      <div class="stat-grid">
-        <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
-        <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
-        <div class="kv"><label>攻击</label><b id="st-atk">10</b></div>
-        <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
       </div>
     </section>
 
@@ -76,10 +142,10 @@
       <div class="act-grid">
         <button id="btn-cult" class="act"><span id="btn-cult-label">修炼（1点）</span></button>
         <button id="btn-explore" class="act"><span>秘境（2点）</span></button>
-        <button id="btn-arts" class="act"><span>血炼（1点）</span></button>
+        <button id="btn-arts" class="act"><span>锻体（1点）</span></button>
         <button id="btn-social" class="act"><span id="btn-social-label">游历（1点）</span></button>
         <button id="btn-sect" class="act" disabled><span id="btn-sect-label">宗门（未加入）</span></button>
-        <button id="btn-fate" class="act"><span id="btn-fate-label">机缘（1点）</span></button>
+        <button id="btn-baiyi" class="act" disabled><span id="btn-baiyi-label">百艺（未解锁）</span></button>
       </div>
       <div class="year-row">
         <button id="btn-break" class="btn-break"><span id="btn-break-label">突破（修为未满）</span></button>
@@ -90,17 +156,13 @@
 
   <!-- 底部栏 -->
   <nav class="bottom-bar" id="bottom-bar" style="display:none">
+    <button id="btn-char-bottom" class="bottom-btn">
+      <span class="bottom-icon">👤</span>
+      <span class="bottom-text">角色</span>
+    </button>
     <button id="btn-bag-bottom" class="bottom-btn">
       <span class="bottom-icon">📦</span>
       <span class="bottom-text">储物袋</span>
-    </button>
-    <button id="btn-gear-bottom" class="bottom-btn">
-      <span class="bottom-icon">⚔️</span>
-      <span class="bottom-text">装备</span>
-    </button>
-    <button id="btn-tech-bottom" class="bottom-btn">
-      <span class="bottom-icon">📖</span>
-      <span class="bottom-text">功法</span>
     </button>
     <button id="btn-favor" class="bottom-btn">
       <span class="bottom-icon">💕</span>
@@ -114,7 +176,53 @@
       <span class="bottom-icon">📜</span>
       <span class="bottom-text">事件</span>
     </button>
+    <button id="btn-settings-bottom" class="bottom-btn">
+      <span class="bottom-icon">⚙️</span>
+      <span class="bottom-text">设置</span>
+    </button>
   </nav>
+
+  <!-- ============ 角色页 ============ -->
+  <div class="screen" id="screen-char" style="display:none">
+    <div class="panel char-head">
+      <div class="char-header">
+        <div class="char-info">
+          <h2 class="tower-title" id="char-name">修行者</h2>
+          <p class="dim" id="char-realm">Ⅰ 炼气 前期</p>
+          <p class="dim" id="char-age">16岁 / 70寿</p>
+        </div>
+        <div class="char-destiny">
+          <label>命格</label>
+          <span id="char-destiny-list" class="destiny-list">无</span>
+        </div>
+      </div>
+      <div class="char-tabs">
+        <button class="char-tab active" data-tab="attr">属性</button>
+        <button class="char-tab" data-tab="equip">装备</button>
+        <button class="char-tab" data-tab="treasure">法宝</button>
+        <button class="char-tab" data-tab="tech">功法</button>
+      </div>
+    </div>
+    <div class="char-body" id="char-body">
+      <div class="char-tab-content active" id="tab-attr">
+        <div id="char-attr-content"></div>
+      </div>
+      <div class="char-tab-content" id="tab-equip">
+        <div class="equip-slots" id="char-equip-slots"></div>
+        <h4 style="color:var(--gold);margin:12px 0 8px">储物袋装备</h4>
+        <div id="char-equip-inv"></div>
+      </div>
+      <div class="char-tab-content" id="tab-treasure">
+        <div class="treasure-slots" id="char-treasure-slots"></div>
+      </div>
+      <div class="char-tab-content" id="tab-tech">
+        <div class="tech-list" id="char-tech-list"></div>
+      </div>
+    </div>
+    <div class="gear-footer">
+      <button id="char-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
 
   <!-- ============ 轮回塔 ============ -->
   <div class="screen" id="screen-rebirth" style="display:none">
@@ -262,7 +370,6 @@
           <div class="hp-row"><span class="who">敌</span><span class="hp-bar"><i id="b-enemy-bar" style="width:100%;background:#e0604a"></i></span><span class="hp-num" id="b-enemy-num"></span></div>
           <p style="text-align:center"><span class="chap-npc small" id="b-me-name">『修行者』</span></p>
           <div class="hp-row"><span class="who">我</span><span class="hp-bar"><i id="b-me-bar" style="width:100%;background:#4ec9a0"></i></span><span class="hp-num" id="b-me-num"></span></div>
-          <div class="hp-row"><span class="who">灵</span><span class="hp-bar"><i id="b-me-mo" style="width:100%;background:#7d5cff"></i></span><span class="hp-num" id="b-me-mo-num"></span></div>
         </div>
         <div id="battle-log" class="battle-log"></div>
       </div>
@@ -301,9 +408,9 @@
     </div>
   </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/data.js?v=30"></script>
+  <script src="js/engine.js?v=30"></script>
+  <script src="js/audio.js?v=30"></script>
+  <script src="js/ui.js?v=30"></script>
 </body>
 </html>

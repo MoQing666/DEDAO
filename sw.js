@@ -1,4 +1,4 @@
-const CACHE = 'dedao-v18';
+const CACHE = 'dedao-v57';
 const ASSETS = [
   './',
   './index.html',
@@ -41,16 +41,10 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   e.respondWith(
-    caches.match(e.request).then(function (cached) {
-      return cached || fetch(e.request).then(function (response) {
-        if (response.status === 200 && response.type === 'basic') {
-          var clone = response.clone();
-          caches.open(CACHE).then(function (cache) { cache.put(e.request, clone); });
-        }
-        return response;
-      });
+    fetch(e.request).then(function (response) {
+      return response;
     }).catch(function () {
-      return caches.match('./index.html');
+      return caches.match(e.request);
     })
   );
 });

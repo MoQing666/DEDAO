@@ -14,7 +14,7 @@ const Engine = (function () {
   function loadMeta() {
     try {
       const m = JSON.parse(localStorage.getItem(LS_META));
-      if (m && m.achievements) return m;
+      if (m && m.reinc) return m;
     } catch (e) {}
     return defaultMeta();
   }
@@ -25,6 +25,7 @@ const Engine = (function () {
   function loadState(slot) {
     try {
       const s = JSON.parse(localStorage.getItem(slotKey(slot)));
+      if (!s) return null;
       ensureTechEquip(s);
       // 迁移旧材料系统到分级材料系统
       if (s && !s.materials) {
@@ -36,6 +37,19 @@ const Engine = (function () {
         };
         s.herb = 0;
         s.iron = 0;
+      }
+      // 兼容旧存档：确保新属性存在
+      if (s) {
+        if (s.wu === undefined) s.wu = 0;
+        if (s.ti === undefined) s.ti = 0;
+        if (s.dun === undefined) s.dun = 0;
+        if (s.shen === undefined) s.shen = 0;
+        if (s.dao === undefined) s.dao = 0;
+        if (s.fu === undefined) s.fu = 0;
+        if (!s.destinies) s.destinies = [];
+        if (!s.destinySlots) s.destinySlots = 1;
+        if (!s.equip) s.equip = { head: null, body: null, leg: null, weapon: null, accessory: null, treasure: [] };
+        if (s.equip.treasure === undefined) s.equip.treasure = [];
       }
       return s;
     } catch (e) {}
@@ -196,6 +210,9 @@ const Engine = (function () {
     if (s.sect && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
     m += s.hpMaxBonus || 0;
     m += equipStats(s).hpMax;
+    // 命格体魄加成
+    m += (s.ti || 0) * 10;
+    m += getDestinyAttrBonus(s, 'ti') * 10;
     return m;
   }
   function calcAtk(s) {
@@ -211,6 +228,8 @@ const Engine = (function () {
       if (t && t.apply && t.apply.atkMul) talentAtkMul += t.apply.atkMul;
     });
     if (talentAtkMul > 0) a *= (1 + talentAtkMul);
+    // 命格战斗攻击加成
+    a *= getDestinyAttrMult(s, 'atk');
     // 仙品全属性加成
     s.talents.forEach(function (tid) {
       var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
@@ -245,13 +264,7 @@ const Engine = (function () {
       var t = TALENTS.filter(function (x) { return x.id === tid; })[0];
       if (t && t.apply && t.apply.allMul) g *= (1 + t.apply.allMul);
     });
-    // 五行灵体：修炼五行心法时速度+10% per level
-    if (s.reinc && s.reinc.wuxingCultMul && s.techEquip && s.techEquip.xinfa) {
-      var xf = TECHNIQUES[s.techEquip.xinfa];
-      if (xf && xf.element) {
-        g *= 1 + s.reinc.wuxingCultMul;
-      }
-    }
+
     g *= 1 + equipStats(s).cult;
     if (s.sect && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
     let note = '';
@@ -284,27 +297,10 @@ const Engine = (function () {
   }
 
   /* ---------------- 属性基础 ---------------- */
-  function calcMoMax(s) {
-    let m = 30 + bigIdxOf(s) * 50 + s.wu * 4;
-    const lg = s.linggen && s.linggen.body;
-    if (lg && lg.mo) m += lg.mo;
-    const xf = s.techEquip && s.techEquip.xinfa && TECHNIQUES[s.techEquip.xinfa];
-    if (xf && xf.mo) m += xf.mo;
-    m += s.moMaxBonus || 0;
-    return Math.max(12, m);
-  }
-  function moGain(s, pct) {
-    const g = Math.max(1, Math.round(calcMoMax(s) * pct));
-    s.mo = Math.min(calcMoMax(s), s.mo + g);
-    return g;
-  }
   function refreshStats(s) {
     const m = calcHpMax(s);
     s.hpMax = m;
     s.atk = calcAtk(s);
-    const mm = calcMoMax(s);
-    s.moMax = mm;
-    if (s.mo > mm) s.mo = mm;
     if (s.hp > m) s.hp = m;
   }
 
@@ -357,6 +353,50 @@ const Engine = (function () {
     }
     return out;
   }
+
+  /* ---------------- 命格系统 ---------------- */
+  function getDestinyBonus(s, type) {
+    let bonus = 0;
+    (s.destinies || []).forEach(function(d) {
+      const dest = DESTINIES[d];
+      if (dest && dest.type === 'combat' && dest.effect && dest.effect[type] !== undefined) {
+        bonus += dest.effect[type];
+      }
+    });
+    return bonus;
+  }
+
+  function getDestinyAttrBonus(s, attr) {
+    let bonus = 0;
+    (s.destinies || []).forEach(function(d) {
+      const dest = DESTINIES[d];
+      if (dest && dest.attr && dest.attr[attr] !== undefined) {
+        bonus += dest.attr[attr];
+      }
+    });
+    return bonus;
+  }
+
+  function getDestinyAttrMult(s, attr) {
+    let mult = 1;
+    (s.destinies || []).forEach(function(d) {
+      const dest = DESTINIES[d];
+      if (dest && dest.type === 'combat' && dest.effect && dest.effect[attr + 'Mul']) {
+        mult *= (1 + dest.effect[attr + 'Mul']);
+      }
+    });
+    return mult;
+  }
+
+  function applyDestinyYearly(s) {
+    (s.destinies || []).forEach(function(d) {
+      const dest = DESTINIES[d];
+      if (!dest || !dest.effect) return;
+      if (dest.effect.wuPerYear) s.wu = (s.wu || 0) + dest.effect.wuPerYear;
+      if (dest.effect.tiPerYear) s.ti = (s.ti || 0) + dest.effect.tiPerYear;
+    });
+  }
+
   function applyReinc(s, meta) {
     s.reinc.cult = meta.reinc.cult || 0;
     s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
@@ -364,7 +404,8 @@ const Engine = (function () {
     s.reinc.shesheng = meta.reinc.shesheng || 0;
     s.reinc.herbGrowReduce = meta.reinc.lvling_bottle || 0;
     s.reinc.extraField = meta.reinc.extra_field || 0;
-    s.reinc.wuxingCultMul = meta.reinc.wuxing_body || 0;
+    s.reinc.destinySlot = meta.reinc.destiny_slot || 0;
+    s.reinc.extraDestiny = meta.reinc.extra_destiny || 0;
     const list = REINCARNATION;
     list.forEach(function (r) {
       const n = meta.reinc[r.id] || 0;
@@ -372,12 +413,21 @@ const Engine = (function () {
       for (let i = 0; i < n; i++) {
         if (r.id === 'wu') s.wu++;
         else if (r.id === 'ti') s.ti++;
-        else if (r.id === 'stone') s.stone += 1000;
-        else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 6;
-        else if (r.id === 'tech0') { if (s.techs.indexOf('shengong') < 0) s.techs.push('shengong'); }
+        else if (r.id === 'dun') s.dun = (s.dun || 0) + 1;
+        else if (r.id === 'shen') s.shen = (s.shen || 0) + 1;
+        else if (r.id === 'dao') s.dao = (s.dao || 0) + 1;
+        else if (r.id === 'fu') s.fu = (s.fu || 0) + 1;
+        else if (r.id === 'stone') s.stone += 100;
+        else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 3;
         else if (r.id === 'life20') s.lifeMax += 20;
       }
     });
+    // 初始化命格系统
+    if (!s.destinies) s.destinies = [];
+    if (s.destinySlots === undefined || s.destinySlots === null) s.destinySlots = 1;
+    s.destinySlots += (s.reinc.destinySlot || 0);
+    if (s.extraDestiny === undefined || s.extraDestiny === null) s.extraDestiny = 0;
+    s.extraDestiny += (s.reinc.extraDestiny || 0);
     // 初始化灵田（基础1块 + 随身灵田天赋）
     var fieldCount = 1 + (s.reinc.extraField || 0);
     while (s.field.length < fieldCount) {
@@ -391,10 +441,11 @@ const Engine = (function () {
       linggen: null, talents: [],
       realm: '炼气', idx: 0, qi: 0,
       hp: 100, hpMax: 100, atk: 10, hpMaxBonus: 0,
-      mo: 40, moMax: 40, moMaxBonus: 0,
       dunSpeed: 1,
       wu: 2 + Math.floor(Math.random() * 5), wuAcc: 0,
       ti: 2 + Math.floor(Math.random() * 5),
+      dun: 0, shen: 0, dao: 0, fu: 0,
+      destinies: [], destinySlots: 1, extraDestiny: 0,
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
@@ -437,11 +488,18 @@ const Engine = (function () {
       if (t.apply.stone) s.stone += t.apply.stone;
       if (t.apply.atk) s.extraAtk += t.apply.atk;
       if (t.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + t.apply.hpMax;
-      if (t.apply.mo) s.moMaxBonus = (s.moMaxBonus || 0) + t.apply.mo;
     }
-    if (s.bg && s.bg.flavor.stone) s.stone += s.bg.flavor.stone;
-    if (s.bg && s.bg.flavor.wu) s.wu += s.bg.flavor.wu;
-    if (s.bg && s.bg.flavor.life) s.lifeMax += s.bg.flavor.life;
+    if (s.bg && s.bg.flavor) {
+      const f = s.bg.flavor;
+      if (f.stone) s.stone += f.stone;
+      if (f.wu) s.wu += f.wu;
+      if (f.ti) s.ti += f.ti;
+      if (f.dun) s.dun += f.dun;
+      if (f.shen) s.shen += f.shen;
+      if (f.dao) s.dao += f.dao;
+      if (f.fu) s.fu += f.fu;
+      if (f.life) s.lifeMax += f.life;
+    }
     applyReinc(s, meta);
     s.actionsLeft = actionPoints(s);
     refreshStats(s);
@@ -460,7 +518,7 @@ const Engine = (function () {
     if (!ops) return out;
     if (typeof ops === 'function') ops = ops(s);
     if (!ops) return out;
-    ['qi', 'hp', 'stone', 'herb', 'iron', 'life', 'wu', 'ti', 'atk', 'art', 'tech', 'elixirs', 'flags', 'sect', 'hpMax', 'equip', 'inv'].forEach(function (k) {
+    ['qi', 'hp', 'stone', 'herb', 'iron', 'life', 'wu', 'ti', 'atk', 'art', 'tech', 'elixirs', 'flags', 'sect', 'hpMax', 'equip', 'inv', 'trib', 'mo', 'dao', 'fu'].forEach(function (k) {
       let v = ops[k];
       if (v === undefined || v === null) return;
       if (typeof v === 'function') v = v(s);
@@ -517,6 +575,9 @@ const Engine = (function () {
         case 'inv': (Array.isArray(v) ? v : [v]).forEach(function (id) {
           out.push.apply(out, grantEquipChecked(s, id));
         }); break;
+        case 'trib': if (!s.linggen) s.linggen = {}; if (!s.linggen.body) s.linggen.body = {}; s.linggen.body.trib = (s.linggen.body.trib || 0) + v; out.push('渡劫 +' + Math.round(v * 100) + '%'); break;
+        case 'dao': s.dao = (s.dao || 0) + v; out.push('道心 +' + v); break;
+        case 'fu': s.fu = (s.fu || 0) + v; out.push('福源 +' + v); break;
       }
     });
     refreshStats(s);
@@ -641,9 +702,8 @@ const Engine = (function () {
   // eslint-disable-next-line no-redeclare
   function combatStart(s, spec) {
     refreshStats(s);
-    // 进入战斗时血量和灵力自动补满
+    // 进入战斗时血量自动补满
     s.hp = s.hpMax;
-    s.mo = s.moMax;
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;
@@ -663,7 +723,9 @@ const Engine = (function () {
       spellUsed: false, noFlee: !!spec.noFlee, done: false, win: false, fled: false, lost: false,
       gains: [], hpLost: 0,
       spellList: spellList,
-      spellName: spellList.length ? spellList[0].name : null
+      spellName: spellList.length ? spellList[0].name : null,
+      firstStrike: (s.dun || 0) * 0.01 + getDestinyBonus(s, 'firstStrike'),
+      round: 0
     };
     saveState(s);
     return s.battle;
@@ -672,6 +734,7 @@ const Engine = (function () {
     const b = s.battle;
     const out = [];
     if (!b || b.done) return { done: true, lines: ['战斗已经结束。'] };
+    b.round = (b.round || 0) + 1;
     const enemyAtkRoll = function () {
       let d = b.atk; // 基础伤害 = 敌方攻击力（无随机）
       if (b.slow) { d = Math.round(d * 0.6); b.slow = false; } // 减速当回合生效后移除
@@ -681,9 +744,32 @@ const Engine = (function () {
     };
     const counter = function () {
       const d = enemyAtkRoll();
+      // 闪避判定
+      const dodgeRate = (s.dun || 0) * 0.005 + getDestinyBonus(s, 'dodgeRate');
+      if (Math.random() < dodgeRate) {
+        out.push('你身形灵动，闪避了『' + b.name + '』的攻击！');
+        b.guarded = false;
+        return;
+      }
       s.hp -= d;
       b.hpLost += d;
       out.push('『' + b.name + '』反手回击，你气血 -' + d + '。');
+      // 反伤效果
+      const thorns = getDestinyBonus(s, 'thorns');
+      if (thorns > 0) {
+        const thornDmg = Math.round(d * thorns);
+        b.hp -= thornDmg;
+        out.push('反伤效果触发，『' + b.name + '』受到 ' + thornDmg + ' 点反伤。');
+        if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反伤致死。'); }
+      }
+      // 反击效果
+      const counterRate = (s.dun || 0) * 0.01 + getDestinyBonus(s, 'counterRate');
+      if (Math.random() < counterRate && !b.done) {
+        const counterDmg = Math.max(1, s.atk);
+        b.hp -= counterDmg;
+        out.push('你趁势反击，对『' + b.name + '』造成 ' + counterDmg + ' 点伤害。');
+        if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反击致死。'); }
+      }
       if (s.hp <= 0) {
         s.hp = 1;
         b.done = true; b.lost = true;
@@ -702,26 +788,75 @@ const Engine = (function () {
       }
     } else if (act === 'guard') {
       b.guarded = true;
-      const mg = moGain(s, 0.08);
-      out.push('你凝神守御，灵力尽数护于周身（灵力 +' + mg + '）。');
+      out.push('你凝神守御，气血护于周身。');
       counter();
     } else if (act === 'spell') {
       let sp = spellId ? TECHNIQUES[spellId] : null;
       if (!sp || sp.cls !== 'shufa') sp = getBestShufa(s);
       if (!sp) return { done: false, lines: ['你并未习得任何法术。'] };
-      const cost = sp.cost || 0;
-      if (s.mo < cost) return { done: false, lines: ['灵力不足（' + s.mo + '/' + s.moMax + '），术法难以催动。'] };
-      s.mo -= cost;
       const dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
-      b.hp -= dmg;
-      out.push('你施展【' + sp.name + '】，' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』造成 ' + dmg + ' 点伤害！');
+      // 暴击判定
+      let finalDmg = dmg;
+      const critRate = (s.shen || 0) * 0.01 + getDestinyBonus(s, 'critRate');
+      if (Math.random() < critRate) {
+        finalDmg = Math.round(dmg * 2);
+        out.push('暴击！伤害翻倍！');
+      }
+      // 斩杀加成
+      const executeBonus = getDestinyBonus(s, 'executeBonus');
+      if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
+        finalDmg = Math.round(finalDmg * (1 + executeBonus));
+        out.push('斩杀效果触发，伤害提升！');
+      }
+      b.hp -= finalDmg;
+      out.push('你施展【' + sp.name + '】，' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』造成 ' + finalDmg + ' 点伤害！');
+      // 吸血效果
+      const lifesteal = getDestinyBonus(s, 'lifesteal');
+      if (lifesteal > 0) {
+        const heal = Math.round(finalDmg * lifesteal);
+        s.hp = Math.min(s.hpMax, s.hp + heal);
+        out.push('吸血效果触发，气血 +' + heal + '。');
+      }
+      // 先手加成
+      if (b.round === 1 && b.firstStrike > 0) {
+        const firstDmg = Math.round(finalDmg * b.firstStrike);
+        b.hp -= firstDmg;
+        out.push('先手突袭，额外造成 ' + firstDmg + ' 点伤害。');
+      }
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
       if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
       else counter();
     } else {
       const dmg = Math.max(1, s.atk); // 无随机
-      b.hp -= dmg;
-      out.push('你出手如电，对『' + b.name + '』造成 ' + dmg + ' 点伤害。');
+      // 暴击判定
+      let finalDmg = dmg;
+      const critRate = (s.shen || 0) * 0.01 + getDestinyBonus(s, 'critRate');
+      if (Math.random() < critRate) {
+        finalDmg = Math.round(dmg * 2);
+        out.push('暴击！伤害翻倍！');
+      }
+      // 斩杀加成
+      const executeBonus = getDestinyBonus(s, 'executeBonus');
+      if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
+        finalDmg = Math.round(finalDmg * (1 + executeBonus));
+        out.push('斩杀效果触发，伤害提升！');
+
+      }
+      b.hp -= finalDmg;
+      out.push('你出手如电，对『' + b.name + '』造成 ' + finalDmg + ' 点伤害。');
+      // 吸血效果
+      const lifesteal = getDestinyBonus(s, 'lifesteal');
+      if (lifesteal > 0) {
+        const heal = Math.round(finalDmg * lifesteal);
+        s.hp = Math.min(s.hpMax, s.hp + heal);
+        out.push('吸血效果触发，气血 +' + heal + '。');
+      }
+      // 先手加成
+      if (b.round === 1 && b.firstStrike > 0) {
+        const firstDmg = Math.round(finalDmg * b.firstStrike);
+        b.hp -= firstDmg;
+        out.push('先手突袭，额外造成 ' + firstDmg + ' 点伤害。');
+      }
       if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
       else counter();
     }
@@ -830,11 +965,11 @@ const Engine = (function () {
     const bi = ADVENTURE_GRADE[advKey] || 0;
     const jie = s.jie || 0;
     const jieDiff = JIE_DATA[jie] ? JIE_DATA[jie].diff : 1;
-    const hits = (elite ? 4.5 : 3.2) + depth * 0.4;
-    const hp = Math.round(s.atk * hits * (boss ? 1.7 : 1) * jieDiff);
-    const atk = Math.max(1, Math.round(s.hpMax / (boss ? 11 : (6 + depth * 0.5)) * (elite ? 1.25 : 1) * jieDiff));
+    const hits = (elite ? 5.0 : 4.0) + depth * 0.5;
+    const hp = Math.round(s.atk * hits * (boss ? 2.0 : 1) * jieDiff);
+    const atk = Math.max(1, Math.round(s.hpMax / (boss ? 9 : (5 + depth * 0.4)) * (elite ? 1.3 : 1) * jieDiff));
     const realmM = 1 + bi * 0.6;
-    const loot = { stone: Math.round((30 + depth * 25) * realmM * (elite ? 1.6 : 1) * (boss ? 3 : 1)) };
+    const loot = { stone: Math.round((10 + depth * 10) * realmM * (elite ? 1.5 : 1) * (boss ? 2 : 1)) };
     // 产出对应等级灵材
     const herbKey = advConfig.drops.herb;
     const ironKey = advConfig.drops.iron;
@@ -849,7 +984,7 @@ const Engine = (function () {
       if (tech) loot.tech = tech;
     }
     // 装备掉落按秘境等级
-    if (Math.random() < (boss ? 1 : 0.15 + depth * 0.06)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
+    if (Math.random() < (boss ? 0.8 : 0.10 + depth * 0.04)) loot.equip = randomEquip(bi, depth + (boss ? 2 : 0));
     // BOSS掉落灵物
     if (boss || tag === 'final') {
       const spiritMap = { huang: 'shangpin_lingjing', xuan: 'shangpin_yaodan', di: 'dongxu_micui', tian: 'mohex_suibian' };
@@ -1136,7 +1271,12 @@ const Engine = (function () {
     });
     if (techPool.length && Math.random() < 0.9) stock.push(pick(techPool));
     const eid = randomEquip(biOfSafe(s), d);
-    if (eid) stock.push({ id: 'EQUIP:' + eid, name: '装备·' + findEquip(eid).name, price: findEquip(eid).price, equip: eid });
+    if (eid) {
+      const eq = findEquip(eid);
+      if (eq && eq.price > 0) {
+        stock.push({ id: 'EQUIP:' + eid, name: '装备·' + eq.name, price: eq.price, equip: eid });
+      }
+    }
     return stock;
   }
   function biOfSafe(s) { return bigIdxOf(s); }
@@ -1192,7 +1332,6 @@ const Engine = (function () {
     const r = cultGain(s);
     const actual = Math.min(r.gain, need - s.qi);
     s.qi += actual;
-    const mg = moGain(s, 0.25);
     s.cultedThisYear = true;
     spend(s, cultCost(s));
     let note2 = '';
@@ -1203,7 +1342,7 @@ const Engine = (function () {
     }
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);
-    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '，灵力 +' + mg + '。' + (r.note ? r.note : '') + note2;
+    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '。' + (r.note ? r.note : '') + note2;
   }
   function canAction(s, n) { return s.actionsLeft >= n && !s.dead; }
 
@@ -1229,7 +1368,8 @@ const Engine = (function () {
       s.seen[ev.id] = 1;
       return ev;
     }
-    const pool = EVENTS.shejiao.concat(EVENTS.mijing).filter(evOK(s, 1));
+    // 游历池包含社交+秘境+机缘事件
+    const pool = EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).filter(evOK(s, 1));
     if (!pool.length) { spend(s, 1); return '这一带没有值得交谈的人，你独自练剑半日。'; }
     spend(s, 1);
     const ev = pickWeighted(pool);
@@ -1267,7 +1407,6 @@ const Engine = (function () {
         lines: ['你在道庭开讲，座下弟子满堂。你深吸一口气，开口论道。', '今日你可选讲的主题：'],
         choices: [
           { t: '讲气血运行之道', effect: { hp: 80 }, lines: ['你讲述气血运行之理，座下弟子频频点头。讲毕，你自觉气血充沛了不少。（气血 +80）'] },
-          { t: '讲灵力凝聚之法', effect: { mo: Math.round(calcMoMax(s) * 0.1) }, lines: ['你阐述灵力凝聚之法，声音回荡在道庭之中。讲毕，你灵力恢复了不少。'] },
           { t: '讲道心修炼之悟', effect: { wu: 0.3 }, lines: ['你分享道心修炼的感悟，座下弟子若有所思。讲毕，你对道的领悟又深了一层。（悟性 +0.3）'] },
           { t: '讲体魄淬炼之术', effect: { ti: 0.3 }, lines: ['你讲述体魄淬炼之术，弟子们摩拳擦掌。讲毕，你自觉体魄更加强韧。（体魄 +0.3）'] }
         ] };
@@ -1459,7 +1598,6 @@ const Engine = (function () {
     // 应用灵物效果
     const spirit = SPIRIT_ITEMS[spiritId];
     if (spirit && spirit.apply) {
-      if (spirit.apply.moMax) s.moMaxBonus = (s.moMaxBonus || 0) + spirit.apply.moMax;
       if (spirit.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + spirit.apply.hpMax;
       if (spirit.apply.doubleCult) s.doubleCultChance = (s.doubleCultChance || 0) + spirit.apply.doubleCult;
       if (spirit.apply.doubleDmg) s.doubleDmgChance = (s.doubleDmgChance || 0) + spirit.apply.doubleDmg;
@@ -1501,7 +1639,6 @@ const Engine = (function () {
       s.idx += 1;
       s.broken += 1;
       s.hp = calcHpMax(s);
-      s.mo = calcMoMax(s);
       const oldLife = s.lifeMax;
       s.lifeMax = Math.max(oldLife, REALM_META[info.nxt.realm].life);
       s.realm = info.nxt.realm;
@@ -1583,7 +1720,6 @@ const Engine = (function () {
       s.endReason = '飞升';
       s.broken += 1;
       s.hp = calcHpMax(s);
-      s.mo = calcMoMax(s);
       s.dunSpeed = 1 + bigIdxOf(s);
       logLife(s, 'feisheng', '渡劫飞升，得道成仙');
       refreshStats(s); saveState(s);
@@ -1592,7 +1728,6 @@ const Engine = (function () {
     s.idx += 1;
     s.broken += 1;
     s.hp = calcHpMax(s);
-    s.mo = calcMoMax(s);
     const oldLife = s.lifeMax;
     s.lifeMax = Math.max(oldLife, REALM_META[info.nxt.realm].life);
     s.realm = info.nxt.realm;
@@ -1852,33 +1987,18 @@ const Engine = (function () {
     if (s.age >= 200) return 'fate';
     if (s.idx >= 15) return 'end';
     s.year += 1;
-    // 20年死劫检查
-    var deathEv = null;
-    for (var di = 0; di < DEATH_EVENTS.length; di++) {
-      if (s.year >= DEATH_EVENTS[di].year && !s.seen['death_' + DEATH_EVENTS[di].year]) {
-        deathEv = DEATH_EVENTS[di];
-        break;
+    // 命格年度效果
+    applyDestinyYearly(s);
+    // 命格灵石年度效果
+    (s.destinies || []).forEach(function(d) {
+      const dest = DESTINIES[d];
+      if (dest && dest.effect && dest.effect.stonePerYear) {
+        s.stone += dest.effect.stonePerYear;
       }
-    }
-    if (deathEv) {
-      s.pendingDeathEvent = deathEv;
-      saveState(s);
-      return 'death_event';
-    }
-    // 主线境界触发检查
-    if (!s.seen['ml_' + s.idx]) {
-      for (var mi = 0; mi < MAINLINE.length; mi++) {
-        if (MAINLINE[mi].idx === s.idx && !s.seen['ml_' + s.idx]) {
-          s.pendingMainline = MAINLINE[mi];
-          saveState(s);
-          return 'mainline';
-        }
-      }
-    }
+    });
     s.actionsLeft = actionPoints(s);
     s.hp = s.hpMax;
     s.cultedThisYear = false;
-    s.mo = calcMoMax(s);
     let fenglu = null;
     if (s.sect && SECT_FENGLU[s.sect]) {
       const f = SECT_FENGLU[s.sect];
@@ -1901,13 +2021,33 @@ const Engine = (function () {
     refreshStats(s); saveState(s);
     return fenglu ? 'ok|' + fenglu.join('、') : 'ok';
   }
+  function checkYearEvents(s) {
+    // 20年死劫检查
+    for (var di = 0; di < DEATH_EVENTS.length; di++) {
+      if (s.year >= DEATH_EVENTS[di].year && !s.seen['death_' + DEATH_EVENTS[di].year]) {
+        s.pendingDeathEvent = DEATH_EVENTS[di];
+        saveState(s);
+        return 'death_event';
+      }
+    }
+    // 主线剧情触发检查
+    for (var mi = 0; mi < MAINLINE.length; mi++) {
+      var ml = MAINLINE[mi];
+      if (ml.idx <= s.idx && !s.seen['ml_' + ml.id]) {
+        s.pendingMainline = ml;
+        saveState(s);
+        return 'mainline';
+      }
+    }
+    return null;
+  }
   function fateBattle(s) {
     const winChance = { '炼气': 0.02, '筑基': 0.08, '金丹': 0.22, '元婴': 0.5 }[s.realm] || 0.02;
     const win = Math.random() < winChance;
     s.dead = true;
-    s.endReason = win ? '镇魔渊' : '魔渊之战陨落';
+    s.endReason = win ? '飞升' : '天劫陨落';
     s.fateWin = win;
-    if (win) logLife(s, 'moyuan', '以身镇魔渊，舍身成仁');
+    if (win) logLife(s, 'feisheng', '渡劫飞升，证道成仙');
     refreshStats(s); saveState(s);
     return win;
   }
@@ -1925,12 +2065,10 @@ const Engine = (function () {
     var agePts = s.age >= 200 ? 2 : 0;
     var specPts = 0;
     if (s.endReason === '飞升') specPts = 10;
-    else if (s.endReason === '镇魔渊') specPts = 8;
     var achPts = 0;
     ach.forEach(function (a) { if (a.new) achPts += ACHIEVEMENTS[a.id].pts; });
     var top5 = [];
     if (s.endReason === '飞升') top5.push({ text: '渡劫飞升，得道成仙', pts: 10, cls: 'gold' });
-    if (s.endReason === '镇魔渊') top5.push({ text: '以身镇魔渊，舍身成仁', pts: 8, cls: 'gold' });
     if (s.flags.daoLu) top5.push({ text: '感悟大道真意', pts: 0, cls: 'gold' });
     if (s.idx >= 9) top5.push({ text: '凝出元婴，阳神出窍', pts: 0, cls: 'realm' });
     if (s.idx >= 6) top5.push({ text: '结成金丹，踏入金丹大道', pts: 0, cls: 'realm' });
@@ -1969,7 +2107,6 @@ const Engine = (function () {
       feisheng: s.idx >= 15 || s.endReason === '飞升',
       daolu: !!s.flags.daoLu,
       shou_zhong: s.endReason === '寿元耗尽',
-      mo_yuan: s.endReason === '镇魔渊',
       binjie_3: s.broken >= 3,
       ai_renzi: s.age >= 200
     };
@@ -2032,7 +2169,7 @@ const Engine = (function () {
     perfectBreakthrough: perfectBreakthrough, normalBreakthrough: normalBreakthrough,
     sectCombat: sectCombat, sectLecture: sectLecture,
     cultCost: cultCost, actionPoints: actionPoints,
-    endYear: endYear, fateBattle: fateBattle,
+    endYear: endYear, checkYearEvents: checkYearEvents, fateBattle: fateBattle,
     endLife: endLife, useElixir: useElixir,
     runEvent: runEvent, applyOps: applyOps,
     combatStart: combatStart, combatAct: combatAct, combatAuto: combatAuto,
@@ -2042,7 +2179,7 @@ const Engine = (function () {
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,
     enemyGen: enemyGen, randomEquip: randomEquip,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
-    calcMoMax: calcMoMax, moGain: moGain, refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure,
+    refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure,
     xinmoSpec: xinmoSpec, tianjieSpec: tianjieSpec,
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
     fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,
@@ -2056,6 +2193,9 @@ const Engine = (function () {
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, checkAchievements: checkAchievements,
-    rollMingge: rollMingge
+    rollMingge: rollMingge,
+    getDestinyBonus: getDestinyBonus, getDestinyAttrBonus: getDestinyAttrBonus,
+    getDestinyAttrMult: getDestinyAttrMult, applyDestinyYearly: applyDestinyYearly,
+    DESTINIES: DESTINIES
   };
 })();

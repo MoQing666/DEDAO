@@ -50,8 +50,8 @@ const SPIRIT_ITEMS = {
     name: '上品灵晶',
     grade: '黄',
     desc: '蕴含纯净灵气的晶石，突破筑基时使用可完美突破。',
-    effect: '灵力上限 +100',
-    apply: { moMax: 100 }
+    effect: '气血上限 +100',
+    apply: { hpMax: 100 }
   },
   shangpin_yaodan: {
     name: '上品妖丹',
@@ -146,21 +146,21 @@ const TECHNIQUES = {
 
   /* ========== 法术：战斗招式 ========== */
   // --- 黄级法术 ---
-  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 3.0,  cost: 15, desc: '金气化刃，斩敌经脉。' },
-  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 2.5,  cost: 12, debuff: { atkDown: 20, duration: 2 }, desc: '藤蔓缠绕，令敌行动迟缓。' },
-  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 2.8,  cost: 14, desc: '水气凝聚，化弹击敌。' },
-  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 2.5,  cost: 13, buff: { atkUp: 20, duration: 3 }, desc: '火球焚身，烈焰加护。' },
-  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 2.5,  cost: 13, buff: { defUp: 20, duration: 2 }, desc: '巨石压顶，土气护体。' },
-  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 2.5,  cost: 13, desc: '御火之术，焚尽万物。' },
-  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 2.5,  cost: 13, desc: '凝霜化冰，寒气逼人。' },
-  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.5,  cost: 13, desc: '雷音震耳，破敌心神。' },
-  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '金', dmg: 3.0,  cost: 15, desc: '剑气纵横，斩敌百步。' },
+  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, desc: '金气化刃，斩敌经脉。' },
+  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 12, debuff: { atkDown: 20, duration: 2 }, desc: '藤蔓缠绕，令敌行动迟缓。' },
+  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 14, desc: '水气凝聚，化弹击敌。' },
+  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 20, duration: 3 }, desc: '火球焚身，烈焰加护。' },
+  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 13, buff: { defUp: 20, duration: 2 }, desc: '巨石压顶，土气护体。' },
+  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, desc: '御火之术，焚尽万物。' },
+  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 13, desc: '凝霜化冰，寒气逼人。' },
+  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 13, desc: '雷音震耳，破敌心神。' },
+  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, desc: '剑气纵横，斩敌百步。' },
   // --- 玄级法术（攻击） ---
-  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 4.0,  cost: 25, desc: '金光化剑，锐不可当。' },
+  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 25, desc: '金光化剑，锐不可当。' },
   muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.30, desc: '木灵之力，治愈创伤。' },
-  hanbing:   { name: '寒冰刺',   cls: 'shufa', grade: '玄', element: '水', dmg: 3.5,  cost: 28, freeze: 1, desc: '寒冰刺骨，冻彻心扉。' },
-  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.5,  cost: 22, buff: { atkUp: 20, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
-  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 3.5,  cost: 26, desc: '巨岩轰击，势大力沉。' },
+  hanbing:   { name: '寒冰刺',   cls: 'shufa', grade: '玄', element: '水', dmg: 2.5,  cost: 28, freeze: 1, desc: '寒冰刺骨，冻彻心扉。' },
+  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0,  cost: 22, buff: { atkUp: 20, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
+  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.5,  cost: 26, desc: '巨岩轰击，势大力沉。' },
   // --- 玄级法术（抵御/恢复） ---
   jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 18, buff: { defUp: 30, duration: 3 }, desc: '金光护体，刀枪不入。' },
   shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 0,   cost: 18, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势。' },
@@ -168,16 +168,16 @@ const TECHNIQUES = {
   huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 18, buff: { defUp: 25, duration: 2 }, desc: '烈焰护盾，焚尽攻击。' },
   yanjia:     { name: '岩甲术',   cls: 'shufa', grade: '玄', element: '土', dmg: 0,   cost: 20, buff: { defUp: 40, duration: 3 }, desc: '岩石护甲，固若金汤。' },
   // --- 地级法术 ---
-  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '金', dmg: 5.5,  cost: 45, desc: '万剑齐鸣，天地失色。' },
+  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '金', dmg: 4.0,  cost: 45, desc: '万剑齐鸣，天地失色。' },
   shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 40, heal: 0.50, desc: '生机盎然，枯木回春。' },
-  xuanbing:   { name: '玄冰阵',   cls: 'shufa', grade: '地', element: '水', dmg: 4.0,  cost: 42, freeze: 2, desc: '玄冰大阵，冻彻天地。' },
-  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 5.5,  cost: 45, desc: '天火降世，焚尽万物。' },
-  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.5,  cost: 38, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方。' },
+  xuanbing:   { name: '玄冰阵',   cls: 'shufa', grade: '地', element: '水', dmg: 3.0,  cost: 42, freeze: 2, desc: '玄冰大阵，冻彻天地。' },
+  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 4.0,  cost: 45, desc: '天火降世，焚尽万物。' },
+  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.0,  cost: 38, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方。' },
   // --- 天级法术 ---
-  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '金', dmg: 7.0,  cost: 70, desc: '金光破天，一击必杀。' },
+  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '金', dmg: 4.5,  cost: 70, desc: '金光破天，一击必杀。' },
   wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 65, heal: 0.80, desc: '万木回春，枯木逢生。' },
-  bingfeng:   { name: '冰封千里', cls: 'shufa', grade: '天', element: '水', dmg: 5.0,  cost: 75, freeze: 3, desc: '冰封千里，万物凝固。' },
-  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 7.0,  cost: 70, desc: '焚天灭地，烈焰滔天。' },
+  bingfeng:   { name: '冰封千里', cls: 'shufa', grade: '天', element: '水', dmg: 3.5,  cost: 75, freeze: 3, desc: '冰封千里，万物凝固。' },
+  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 4.5,  cost: 70, desc: '焚天灭地，烈焰滔天。' },
   dadi:       { name: '大地守护', cls: 'shufa', grade: '天', element: '土', dmg: 0,    cost: 60, buff: { defUp: 50, duration: 3 }, desc: '大地守护，万邪不侵。' },
 
   /* ========== 遁术：逃跑与防御 ========== */
@@ -265,12 +265,12 @@ const LINGGEN_POOL = [
   { id: 'shuang2',  name: '土木双灵根', desc: '中正平和，胜在扎实。',      w: 30, qiMul: 1.05, body: null },
   { id: 'jin',      name: '金灵根',     desc: '锐金之气，攻伐凌厉。',      w: 6,  qiMul: 1.25, body: { atk: 15 } },
   { id: 'mu',       name: '木灵根',     desc: '青木生机，生机勃勃。',      w: 6,  qiMul: 1.25, body: { hpMax: 80 } },
-  { id: 'shui',     name: '水灵根',     desc: '润泽万灵，渡劫有福。',      w: 6,  qiMul: 1.25, body: { trib: 0.08, mo: 40 } },
+  { id: 'shui',     name: '水灵根',     desc: '润泽万灵，渡劫有福。',      w: 6,  qiMul: 1.25, body: { trib: 0.08 } },
   { id: 'huo',      name: '火灵根',     desc: '烈焰焚天，攻伐凌厉。',      w: 6,  qiMul: 1.25, body: { atk: 15 } },
   { id: 'tu',       name: '土灵根',     desc: '厚重如山，肉身强横。',      w: 6,  qiMul: 1.25, body: { hpMax: 80 } },
   { id: 'lei',      name: '雷灵根',     desc: '先天雷脉！渡劫天雷反成补益。', w: 3, qiMul: 1.5, body: { trib: 0.15 } },
   { id: 'feng',     name: '风灵根',     desc: '身随清风，轻灵缥缈。',      w: 3,  qiMul: 1.5, body: { quirk: 'feng' } },
-  { id: 'bing',     name: '冰灵根',     desc: '玄冰彻骨，举世罕见。',      w: 3,  qiMul: 1.5, body: { atk: 20, trib: 0.05, mo: 30 } },
+  { id: 'bing',     name: '冰灵根',     desc: '玄冰彻骨，举世罕见。',      w: 3,  qiMul: 1.5, body: { atk: 20, trib: 0.05 } },
   { id: 'hundun',   name: '混沌灵体',   desc: '鸿蒙未判之气加身，万法归宗！', w: 1, qiMul: 2.0, body: { trib: 0.08, atk: 10 } }
 ];
 
@@ -278,31 +278,39 @@ const LINGGEN_POOL = [
 const TIER_COLORS = { white: '#b0b0bc', green: '#4ec9a0', blue: '#5ac8fa', purple: '#c06ae0', gold: '#e8c15a' };
 const TIER_NAMES = { white: '凡命', green: '本命', blue: '奇命', purple: '极命', gold: '仙命' };
 const TALENTS = [
-  // 凡命（白）— 基础属性
-  { id: 'ti_plus',     name: '铜皮铁骨',   tier: 'white', desc: '先天体魄强健，体魄 +2。',               apply: { ti: 2 } },
-  { id: 'wu_plus',     name: '灵台清明',   tier: 'white', desc: '灵台清明，悟性 +2。',                   apply: { wu: 2 } },
-  { id: 'hp_plus',     name: '气血充盈',   tier: 'white', desc: '气血充盈，气血上限 +50。',              apply: { hpMax: 50 } },
-  { id: 'atk_plus',    name: '神力加身',   tier: 'white', desc: '神力加身，攻击 +10。',                  apply: { atk: 10 } },
-  { id: 'stone_plus',  name: '财星高照',   tier: 'white', desc: '财星高照，出生灵石 +500。',             apply: { stone: 500 } },
-  // 本命（绿）— 战斗被动
-  { id: 'counter',     name: '以彼之道',   tier: 'green', desc: '受击时 20% 概率反击，造成 50% 攻击伤害。', apply: { counter: 0.2 } },
-  { id: 'lifesteal',   name: '噬血诀',     tier: 'green', desc: '攻击时回复造成伤害 10% 的气血。',       apply: { lifesteal: 0.1 } },
-  { id: 'thorns',      name: '玄甲反噬',   tier: 'green', desc: '受击时反弹 20% 伤害给敌人。',           apply: { thorns: 0.2 } },
-  { id: 'daoti',       name: '道体天成',   tier: 'green', desc: '道体天成，修炼速度 +10%。',             apply: { cultMul: 0.1 } },
-  // 奇命（蓝）— 进阶战斗
-  { id: 'kejian',      name: '剑心通明',   tier: 'blue',  desc: '剑心通明，攻击 +20%。',                 apply: { atkMul: 0.2 } },
-  { id: 'lingqu',      name: '灵气亲和',   tier: 'blue',  desc: '灵气亲和，灵力上限 +30，修炼速度 +8%。', apply: { mo: 30, cultMul: 0.08 } },
-  { id: 'baoti',       name: '琉璃宝体',   tier: 'blue',  desc: '琉璃宝体，气血上限 +100，体魄 +5。',   apply: { hpMax: 100, ti: 5 } },
-  // 极命（紫）— 强力战斗
-  { id: 'execute',     name: '一剑封喉',   tier: 'purple',desc: '攻击时对气血低于 20% 的敌人一击毙命。', apply: { execute: 0.2 } },
-  { id: 'tianling',    name: '天灵根',     tier: 'purple',desc: '天灵根，修炼速度 +20%，灵力 +50。',     apply: { cultMul: 0.2, mo: 50 } },
-  { id: 'hunti',       name: '混元道体',   tier: 'purple',desc: '混元道体，气血 +150，攻击 +25，渡劫 +8%。', apply: { hpMax: 150, atk: 25, trib: 0.08 } },
-  // 仙命（金）— 成长性
-  { id: 'grow_wu',     name: '道心渐明',   tier: 'gold',  desc: '道心渐明，每年悟性 +0.5（永久累积）。', apply: { growWu: 0.5 } },
-  { id: 'grow_ti',     name: '肉身成圣',   tier: 'gold',  desc: '肉身成圣，每年体魄 +0.5（永久累积）。', apply: { growTi: 0.5 } },
-  { id: 'invincible',  name: '生生不息',   tier: 'gold',  desc: '生生不息，每回合回复 10% 最大气血。',   apply: { regen: 0.1 } },
-  { id: 'jiutian',     name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全属性 +15%，渡劫 +15%。',   apply: { allMul: 0.15, trib: 0.15 } },
-  { id: 'tianming',    name: '天命之子',   tier: 'gold',  desc: '天命之子，渡劫成功率 +25%，全属性 +10%。', apply: { trib: 0.25, allMul: 0.1 } }
+  // ==================== 凡命（白）—— 单维+2 ====================
+  { id: 't_wu2',    name: '灵台清明',   tier: 'white', desc: '灵台清明，悟性 +2。',           apply: { wu: 2 } },
+  { id: 't_ti2',    name: '铜皮铁骨',   tier: 'white', desc: '铜皮铁骨，体魄 +2。',           apply: { ti: 2 } },
+  { id: 't_dun2',   name: '踏雪无痕',   tier: 'white', desc: '踏雪无痕，遁速 +2。',           apply: { dun: 2 } },
+  { id: 't_shen2',  name: '洞察秋毫',   tier: 'white', desc: '洞察秋毫，神识 +2。',           apply: { shen: 2 } },
+  { id: 't_dao2',   name: '心如止水',   tier: 'white', desc: '心如止水，道心 +2。',           apply: { dao: 2 } },
+  { id: 't_fu2',    name: '财星高照',   tier: 'white', desc: '财星高照，福源 +2。',           apply: { fu: 2 } },
+  // ==================== 本命（绿）—— 属性+战斗 ====================
+  { id: 't_dati',   name: '道体天成',   tier: 'green', desc: '道体天成，悟性 +3，道心 +1。',   apply: { wu: 3, dao: 1 } },
+  { id: 't_jianxin',name: '剑心通明',   tier: 'green', desc: '剑心通明，神识 +3，悟性 +1。',   apply: { shen: 3, wu: 1 } },
+  { id: 't_xixue',  name: '噬血诀',     tier: 'green', desc: '攻击时回复伤害 10% 的气血。',   apply: { lifesteal: 0.10 } },
+  { id: 't_fanshe', name: '玄甲反噬',   tier: 'green', desc: '受击时反弹 15% 伤害给敌人。',   apply: { thorns: 0.15 } },
+  { id: 't_lianji', name: '疾风连击',   tier: 'green', desc: '攻击时 15% 概率追加一次攻击。', apply: { doubleHit: 0.15 } },
+  { id: 't_juxi',   name: '聚息养神',   tier: 'green', desc: '聚息养神，道心 +2，悟性 +2。',   apply: { dao: 2, wu: 2 } },
+  // ==================== 奇命（蓝）—— 属性放大+战斗 ====================
+  { id: 't_ti_amplify', name: '金刚不坏',  tier: 'blue', desc: '体魄对气血的影响翻倍。',     apply: { tiMul: 2 } },
+  { id: 't_dun_amplify',name: '风驰电掣',  tier: 'blue', desc: '遁速对闪避和额外攻击的影响翻倍。', apply: { dunMul: 2 } },
+  { id: 't_shen_amplify',name: '天眼通',   tier: 'blue', desc: '神识对暴击率的影响翻倍。',   apply: { shenMul: 2 } },
+  { id: 't_fu_amplify', name: '天赐财缘',  tier: 'blue', desc: '福源对灵石获取的影响翻倍。', apply: { fuMul: 2 } },
+  { id: 't_zhanmie',    name: '一剑封喉',  tier: 'blue', desc: '攻击时对气血低于 20% 的敌人直接斩杀。', apply: { execute: 0.20 } },
+  { id: 't_baoji_boost',name: '致命一击',  tier: 'blue', desc: '暴击伤害从 200% 提升至 300%。', apply: { critDmgBoost: 1.0 } },
+  // ==================== 极命（紫）—— 强力战斗+三维 ====================
+  { id: 't_tianling',name: '天灵根',    tier: 'purple',desc: '天灵根，悟性 +5，道心 +3，福源 +2。', apply: { wu: 5, dao: 3, fu: 2 } },
+  { id: 't_hunti',  name: '混元道体',   tier: 'purple',desc: '混元道体，体魄 +5，道心 +3，悟性 +2。', apply: { ti: 5, dao: 3, wu: 2 } },
+  { id: 't_leiling',name: '雷灵之体',   tier: 'purple',desc: '雷灵之体，遁速 +5，神识 +3，体魄 +2。', apply: { dun: 5, shen: 3, ti: 2 } },
+  { id: 't_xixue2', name: '血魔大法',   tier: 'purple',desc: '攻击时回复伤害 25% 的气血。',   apply: { lifesteal: 0.25 } },
+  { id: 't_fanshe2',name: '荆棘之体',   tier: 'purple',desc: '受击时反弹 30% 伤害给敌人。',   apply: { thorns: 0.30 } },
+  // ==================== 仙命（金）—— 逆天效果 ====================
+  { id: 't_jiutian',name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全六维 +3。',         apply: { wu: 3, ti: 3, dun: 3, shen: 3, dao: 3, fu: 3 } },
+  { id: 't_grow_wu',name: '道心渐明',   tier: 'gold',  desc: '道心渐明，每年悟性 +0.5（永久）。', apply: { growWu: 0.5 } },
+  { id: 't_grow_ti',name: '肉身成圣',   tier: 'gold',  desc: '肉身成圣，每年体魄 +0.5（永久）。', apply: { growTi: 0.5 } },
+  { id: 't_grow_dun',name: '御风化影',  tier: 'gold',  desc: '御风化影，每年遁速 +0.5（永久）。', apply: { growDun: 0.5 } },
+  { id: 't_tianming',name: '天命之子',  tier: 'gold',  desc: '天命之子，道心 +5，福源 +5，渡劫 +25%。', apply: { dao: 5, fu: 5, trib: 0.25 } }
 ];
 
 /* ---------------- 劫轮回系统 ---------------- */
@@ -361,32 +369,42 @@ const BACKGROUNDS = [
       '村东头有个疯癫的算命先生，见你路过总说："这娃儿，眉宇间有股子别样的气。"',
       '爹听了只当是疯话，笑呵呵塞给先生一个饼子。',
       '十六岁这年，春耕时你弯腰拔起一株野草，忽然间——',
-      '满山的朝霞流光都朝你涌了过来。'
+      '满山的朝霞流光都朝你涌了过来。',
+      '没过几天，一位身着打着补丁却洗的干净道袍的清瘦道士路过村子，他唤你走近，伸出两根枯瘦的手指搭在你腕上，闭目不语。',
+      '片刻后，他睁开眼，目光复杂，似是喜悦似是不忍："根骨不错，但...." 犹豫片刻后，他终究从怀中取出一枚玉符递给你。',
+      '你接过那隐约闪着灵光的玉符，指尖触及冰凉的玉石，一股暖流涌入体内——那就是说书先生口中的天地灵气吧！',
+      '"灵根既已觉醒，从今日起，你便不再是凡人了，这玉符之中有一段口诀，小娃娃，要好生修行啊！"'
     ],
-    flavor: { stone: 30 }
+    flavor: { stone: 30, ti: 3 }
   },
   {
     title: '世家庶子',
     lines: [
-      '你是青州城赵家的庶子。母亲原是侍女，你自幼便懂得看人眼色。',
+      '你是青州城赵家的庶子。母亲原是侍女，又在你幼时离世，全靠姨母照料方能长成，你自幼便懂得看人眼色。',
       '嫡兄的功课你替抄，嫡姐的婚事你来斟茶。族学里先生教过你《千字文》，其余皆靠你夜夜偷读。',
-      '你总觉着，这世道欠你一道门——一道能让你头也不回离开的门。',
+      '这世道似乎欠你一道门—，一道能让你头也不回离开的门。',
       '这日族中祭祖，祠堂里那根供奉百年的测灵柱忽然亮了一亮。',
-      '满堂寂静。所有人的目光，都落在了你身上。'
+      '霎时间，满堂寂静，而所有人的目光都落在了你身上。',
+      '一位路过的老道士挤进人群，伸出两根枯瘦的手指搭在你腕上，闭目不语。',
+      '片刻后，他睁开眼，目光复杂似是喜悦似是不忍："根骨不错，但...." 犹豫片刻后，他终究从怀中取出一枚玉符递给你。',
+      '你接过那隐约闪着灵光的玉符，指尖触及冰凉的玉石，一股暖流涌入体内——那就是古书中的天地灵气吧！',
+      '"灵根已觉醒。从今日起，你便不再是凡人了，这玉符之中有一段口诀，小娃娃，要好生修行啊！"'
     ],
-    flavor: { wu: 1, stone: 50 }
+    flavor: { wu: 1, stone: 50, dao: 1 }
   },
   {
-    title: '遗孤',
+    title: '道门遗孤',
     lines: [
       '你不知自己生来何处。残破襁褓、一枚褪色玉佩，是你在道观门口被拾起时仅有的一切。',
       '老道士把你养大，教你读经、煮药、治病救人，观星看命。他说你根骨清奇，又说你命数缠劫。',
-      '十八岁这年，老道士将一碗水泼在你头顶，笑呵呵道：',
-      '"水往低处流，人往高处走。去吧，去找你的来处，也找你的去处。"',
-      '你背着那枚玉佩下了山。山脚下第一缕朝阳照在身上时，你忽然觉得——',
-      '下了山的红尘，有趣得很。'
+      '十六岁这年，那养你十余载的老人神情复杂，似是喜悦似是不忍，',
+      '犹豫片刻后，他终究从怀中取出一枚玉符递给你："该到的还是要到啊，娃娃，下山去吧，也是时候去找你的来处，也找你的去处了。"',
+      '你接过那隐约闪着灵光的玉符，一股暖流涌入体内——那是老道士口中的天地灵气，你也曾在入静之时感受过，',
+      '此刻，你只觉生活多年的青翠山野间实则灵压流转气势磅礴，如一粒蜉蝣，得见真天地。',
+      '"娃娃，你的灵根已觉醒。从今日起，你便是名副其实的修真者了，道门戒律你要谨记，更要对得起自己的心，去吧，去吧！"',
+      '山脚下第一缕朝阳照在身上时，少年剑已佩妥，下山便入江湖。'
     ],
-    flavor: { stone: 20, life: 20 }
+    flavor: { stone: 20, life: 20, shen: 1, dao: 1 }
   }
 ];
 
@@ -455,119 +473,324 @@ const FATE_EVENT = {
 
 /* ---------------- 主线剧情（境界触发） ---------------- */
 const MAINLINE = [
-  { id: 'ml_join_sect', idx: 2, title: '拜入仙门', chapter: true,
+  // 第一章：灵根觉醒（炼气前期 idx 0，第1-3年）
+  { id: 'ml_0_2', idx: 0, title: '初修功法', chapter: true,
+    lines: [
+      '跟随玉符指引，你来到了一处山野之地，附近也有村落，你拿起玉符，感应其中道士教你的吐纳之法。',
+      '宏大而平和的声音响起："修真之本，得道成真。灵气为根，淬体修身...."',
+      '在宁静的内心与周围活跃的灵气交感之中，你闭目打坐，感受一缕缕灵气丝自天地引入体内流转，由此壮大，壮大....'
+    ],
+    choices: [
+      { t: '专心修炼（修为+100）', effect: { qi: 100 }, lines: ['你沉心静气，修为精进。'] },
+      { t: '四处看看（体魄+0.5）', effect: { ti: 0.5 }, lines: ['你走出茅屋，望着远山，心中若有所悟，灵气也随着你的心情波动而入体，你感觉身体坚韧了一些。'] }
+    ] },
+  { id: 'ml_0_3', idx: 0, title: '村庄危机', chapter: true,
+    lines: [
+      '修炼三月有余，你已能感应方圆百米的灵气。',
+      '忽然，附近的村中传来惨叫！你飞奔过去，竟是一头妖兽正在袭击村中人！旁边地上还躺着村里的猪，身上有三条巨大的创口！',
+      '你握紧拳头，冲了出去，若是身怀灵气还躲躲藏藏导致村人惨死，这修的还是仙么！'
+    ],
+    fight: { name: '妖兽', atk: 30, hp: 150, loot: { stone: 20 } },
+    resultWin: '你一拳击退妖兽，村民围着你叽叽喳喳，那老农跪下给你磕头，你赶忙避开，这天村里敲锣打鼓，好不热闹。',
+    resultLose: '妖兽太强，你被打得吐血——但村民得救了。' },
+  { id: 'ml_0_4', idx: 0, title: '离乡修行', chapter: true,
+    lines: [
+      '妖兽事件后，你知道这小小山野与村庄已容不下你的修行。',
+      '你救过的村人含泪塞给你一袋干粮："恩人，这是俺自家烙出来的油馍，抗饿，你带着，慢点走。"',
+      '你背起行囊，踏上远游修行之路。'
+    ],
+    effect: { stone: 50 } },
+
+  { id: 'ml_0_5', idx: 0, title: '城中老乞丐', chapter: true,
+    lines: [
+      '城隍庙前，一个老乞丐蜷在墙角，双手揣着，面前破碗里干干净净。',
+      '他穿着一身破烂的袄子，头发花白凌乱，满脸褶子。你路过时，他忽然抬起头，浑浊的眼睛越过你，望向天边。',
+      '"小娃娃。"他开口了，声音沙哑得像砂纸磨过木板，"给老头子点吃的吧。"',
+      '你愣了片刻，此时是年关，这老人独自在城隍庙前过年，不合常理，但你没多想，只是一口吃的。'
+    ],
+    choices: [
+      { t: '买只烧鸡给他（50灵石）', req: { stone: 50 },
+        effect: { stone: -50, flags: { beggar_kind: 1 } },
+        lines: [
+          '你从摊上买了只肥鸡递过去。老乞丐愣了愣，忽然笑了："行，是个心善的。"',
+          '他撕下一只鸡腿，吃得满嘴流油。吃完了，他抹抹嘴，从怀里摸出一枚铜钱递给你：',
+          '"拿着。老头我没什么值钱的东西，就这枚铜钱跟了我一辈子。你别嫌少。"',
+          '你接过铜钱——入手微沉。你看了看他，他已经在打瞌睡了。'
+        ] },
+      { t: '施舍一个热馒头',
+        effect: { flags: { beggar_cold: 1 } },
+        lines: [
+          '你到路边买了个热气腾腾的馒头，轻轻放在他手边。',
+          '他看了你很久，点了点头："好孩子。"',
+          '他掰开馒头，慢慢吃完。吃完后，他闭上眼，像是睡着了。',
+          '你站了一会儿，转身离去。身后传来他的声音："小娃娃，以后别走夜路。"',
+          '你回头一看，他还是那副昏昏欲睡的样子。'
+        ] }
+    ] },
+
+  { id: 'ml_0_6', idx: 0, title: '青梅往事', chapter: true,
+    setFlags: { lin: 1, linChildhood: 1 },
+    lines: [
+      '你在城中闲逛，忽然看见一棵老槐树。',
+      '那槐树少说也有百年了，树干粗壮，枝叶繁茂。你走近，看见树干上刻着两个小字——是你小时候刻的。旁边还有一个歪歪扭扭的名字：林婉儿。',
+      '你伸手触摸那两个名字，指尖传来粗糙的触感。那是岁月的痕迹。',
+      '你想起许多年前，有个小女孩总是跟在你身后，叽叽喳喳说个不停。',
+      '"你说过要带我去修仙的。你忘了？"'
+    ],
+    effect: { dao: 0.5, hp: 15 },
+    result: '你站在槐树下很久。那些年的画面，一帧帧闪过脑海。（道心+0.5，气血+15）' },
+
+  // 第二章：初窥门径（炼气中后期 idx 1-2，第4-9年）
+  { id: 'ml_1_0', idx: 1, title: '云游散修', chapter: true,
+    lines: [
+      '你游历三年，见识了修仙世界的残酷与精彩。',
+      '在一座破庙中，你遇见一位受伤的散修。',
+      '他奄奄一息，手中紧握一枚玉简。'
+    ],
+    choices: [
+      { t: '救治散修（体魄≥3）', req: { ti: 3 }, effect: { stone: 100 }, lines: ['你以灵力为他疗伤，他醒来后取出一百灵石递给你："多谢道友，这点灵石作为救命之恩的一点心意。"'] },
+      { t: '取走玉简', effect: { stone: 50, dao: -1 }, lines: ['你犹豫片刻，最终取走了玉简。散修叹了口气，决绝闭目而逝，你手中的玉简也随之碎裂。'] }
+    ] },
+  { id: 'ml_1_1', idx: 1, title: '坊市偶遇', chapter: true,
+    lines: [
+      '你来到一座修仙坊市，琳琅满目的丹药法宝让你目不暇接。',
+      '一位神秘商人拉住你："小友，我这有一件宝物，只需50灵石。"'
+    ],
+    choices: [
+      { t: '购买（灵石≥50）', req: { stone: 50 }, effect: { stone: -50, atk: 5 }, lines: ['你买下宝物，竟是一柄品质不错的飞剑。'] },
+      { t: '拒绝', effect: {}, lines: ['你摇摇头走了，那商人在你背后轻笑一声。'] }
+    ] },
+  { id: 'ml_1_2', idx: 1, title: '山中悟道', chapter: true,
+    lines: [
+      '你在一座深山中闭关修炼，感悟天地道韵。',
+      '三月后，你睁开眼，修为大进。'
+    ],
+    effect: { qi: 200, wu: 0.5 } },
+  { id: 'ml_1_3', idx: 1, title: '同道切磋', chapter: true,
+    lines: [
+      '你遇见一位同境界的修士，他邀你切磋。',
+      '"修仙之路，需以战养战。来吧！"'
+    ],
+    choices: [
+      { t: '全力应战', fight: { name: '同道修士', atk: 50, hp: 300, loot: { stone: 80 } }, resultWin: '你险胜一招，对方抱拳："道友果然厉害。"', resultLose: '你惜败，但收获颇丰。' },
+      { t: '婉拒', effect: { hp: 1 }, lines: ['你摇摇头："改日再战。"对方略显失望。'] }
+    ] },
+  { id: 'ml_1_4', idx: 1, title: '灵草采集', chapter: true,
+    lines: [
+      '你发现一片灵草丛生的山谷。',
+      '采集过程中，你发现一株千年灵草。'
+    ],
+    effect: { herb: 10, qi: 50 } },
+
+  // 第三章：宗门风云（筑基前期 idx 3，第10-15年）
+  { id: 'ml_2_0', idx: 2, title: '拜入仙门', chapter: true,
     lines: [
       '你修行数年，灵气初凝，已能御风而行。',
       '这一日，一道剑光自天际落下，一位青袍修士站在你面前。',
-      '"根骨不错。我青云剑宗缺个扫地的，你来不来？"'
+      '"我乃青云剑宗传法长老，观察了你几日，见你根骨不错，心性尚可，欲引你入青云，你看如何？"'
     ],
     choices: [
       { t: '恭敬拜师', effect: { sect: 'qingyunjian' }, lines: ['你躬身一礼："弟子愿往。"青袍修士大笑，携你御剑而去。'] },
-      { t: '婉言谢绝', effect: { stone: 50 }, lines: ['你拱手道："晚辈还想再游历几年。"他点点头，留下一袋灵石便走了。'] }
+      { t: '婉言谢绝', effect: { stone: 500 }, lines: ['你拱手道："晚辈还想再游历几年。"他点点头，留下一袋灵石便走了。'] }
     ] },
-  { id: 'ml_enter_sect', idx: 3, title: '初入宗门', chapter: true,
+  { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true,
     lines: [
       '你随青袍修士御剑飞行，脚下山河如棋盘。',
       '云海之上，一座浮空仙山赫然入目——那便是青云剑宗。',
       '山门前，掌门负手而立："来了就好。先去藏剑阁挑柄剑。"'
     ],
     effect: { hpMax: 30, atk: 5 } },
-  { id: 'ml_sect_dabi', idx: 5, title: '宗门大比', chapter: true,
+  { id: 'ml_2_2', idx: 3, title: '藏剑阁', chapter: true,
+    lines: [
+      '藏剑阁中，无数飞剑悬于壁上，剑气纵横。',
+      '你伸手取下一柄青锋剑，剑身嗡鸣，似在认主。'
+    ],
+    effect: { atk: 10 } },
+  { id: 'ml_2_3', idx: 3, title: '宗门任务', chapter: true,
+    lines: [
+      '长老派你下山执行任务：剿灭山下妖兽。',
+      '你带领几位师弟，前往妖兽巢穴。'
+    ],
+    fight: { name: '妖兽首领', atk: 80, hp: 400, loot: { stone: 120 } },
+    resultWin: '你斩杀妖兽首领，师弟们欢呼雀跃。',
+    resultLose: '妖兽凶猛，你受伤退走——但任务失败了。' },
+
+  // 第四章：金丹之路（筑基中后期 idx 4-5，第16-25年）
+  { id: 'ml_3_0', idx: 4, title: '秘境探索', chapter: true,
+    lines: [
+      '宗门开放秘境，你进入探索。',
+      '秘境中危机四伏，但也充满机缘。'
+    ],
+    choices: [
+      { t: '深入探索', fight: { name: '秘境守护者', atk: 150, hp: 800, loot: { stone: 200, herb: 5 } }, resultWin: '你击败守护者，获得秘境宝藏。', resultLose: '你重伤退出，但捡到一些灵草。' },
+      { t: '稳扎稳打', effect: { qi: 300 }, lines: ['你稳扎稳打，修为稳步提升。'] }
+    ] },
+  { id: 'ml_3_1', idx: 4, title: '宗门大比', chapter: true,
     lines: [
       '三年一度的宗门大比如期而至。',
       '擂台上剑光如雨，你连胜三场，终于站在了首席弟子面前。',
       '"出剑吧。"他说。'
     ],
     choices: [
-      { t: '全力一战', fight: { name: '首席弟子', atk: 120, hp: 500, loot: { stone: 200, atk: 10 } }, resultWin: '你一剑破防，首席弟子收剑而笑："好剑。"', resultLose: '你惜败一招，首席弟子拍拍你的肩："下次再战。"' },
-      { t: '认输请教', effect: { wu: 2 }, lines: ['你收剑抱拳："师兄剑法高明，愿请教。"他欣然指点。（悟性+2）'] }
+      { t: '全力一战', fight: { name: '首席弟子', atk: 180, hp: 1000, loot: { stone: 300, atk: 15 } }, resultWin: '你一剑破防，首席弟子收剑而笑："好剑。"', resultLose: '你惜败一招，首席弟子拍拍你的肩："下次再战。"' },
+      { t: '认输请教', effect: { atk: 5 }, lines: ['你收剑抱拳："师兄剑法高明，愿请教。"他欣然指点。（攻击+5）'] }
     ] },
-  { id: 'ml_travel', idx: 6, title: '九州游历', chapter: true,
+
+  { id: 'ml_3_2', idx: 5, title: '故人重逢', chapter: true,
+    req: { flags: { lin: 1 } },
+    setFlags: { lin2: 1 },
+    lines: [
+      '宗门大比结束后，你在山间小径上独行。',
+      '忽然，一个熟悉的身影出现在前方——是林婉儿。',
+      '她穿着一身青色道袍，手持长剑，朝你微微一笑："呆子，好久不见。"',
+      '她拔剑出鞘，剑光如水——这些年，她也没闲着。'
+    ],
+    choices: [
+      { t: '擂台切磋', fight: { name: '林婉儿', atk: 50, hp: 200, loot: { stone: 100 } },
+        resultWin: '你一剑挑飞她的长剑，她跌坐在地，气鼓鼓地瞪你："你赢了。"但她眼中分明带着笑意。',
+        resultLose: '她的剑比你快半招，你输了。她扶你起来："下次再来。"你闻到她身上淡淡的药香。' },
+      { t: '台下叙旧', effect: { fu: 0.5, hp: 30 },
+        lines: ['你跳下擂台，和她坐在角落里聊天。她给你讲这些年走南闯北的故事，你给她讲修行中的趣事。不知不觉，天就黑了。'] }
+    ] },
+
+  { id: 'ml_3_3', idx: 5, title: '道侣之约', chapter: true,
+    req: { flags: { lin2: 1 } },
+    setFlags: { daoLu: 1 },
+    lines: [
+      '月色如水，你和林婉儿坐在山巅。',
+      '她忽然开口："你说，我们能修到飞升吗？"',
+      '你没有回答。',
+      '她笑了笑："飞升不了也没关系。有你在，哪里都是家。"',
+      '她从怀里摸出一张泛黄的纸条递给你。你打开一看——是小时候你写给她的那张"修仙保证书"，歪歪扭扭的字迹，上面还画着一个不成人形的小人。',
+      '"你……一直留着？"你愣住了。',
+      '她抢回纸条，塞进怀里，耳根泛红："谁让你写得那么丑。我留着是想等你出名了拿去卖钱。"'
+    ],
+    effect: { hp: 40, qi: 50, dao: 0.5 },
+    result: '有一个人等你回家的感觉，让这漫长修行路都轻快了几分。（道心+0.5）' },
+
+  // 第五章：九州风云（金丹前期 idx 6，第26-35年）
+  { id: 'ml_4_0', idx: 6, title: '九州游历', chapter: true,
     lines: [
       '你辞别宗门，踏上九州游历之路。',
       '青州的剑修豪爽，一言不合便拔剑论道；徐州的丹师温婉，炼丹时如绣花般细致；冀州的阵师古板，布阵规矩森严，错一步便全盘皆输。',
       '你路过南疆的蛊寨，见蛊师与毒虫同眠同食；你登上北境的冰原，见雪修在暴风雪中打坐，浑身结满冰霜。',
       '最难忘是东海之滨——一位渔夫打扮的老者坐在礁石上垂钓，你走近才发现，他钓的不是鱼，是潮汐中的天地道韵。'
     ],
-    effect: { wu: 2, stone: 100 } },
-  { id: 'ml_moxiu', idx: 8, title: '魔修现世', chapter: true,
+    effect: { wu: 0.5, stone: 100 } },
+
+  // 第六章：魔劫降临（金丹中后期 idx 7-8，第36-55年）
+  { id: 'ml_5_0', idx: 7, title: '魔修现世', chapter: true,
     lines: [
       '你游历至北境，忽然看见天边一道黑气冲天。',
       '那是魔修的气息——沉寂千年的魔道，终于按捺不住了。',
       '一个浑身缠绕黑雾的魔修拦住你的去路，他双眼赤红，声音沙哑："正道的蝼蚁，今日便是你的死期。"'
     ],
-    fight: { name: '魔修先锋', atk: 120, hp: 600, loot: { stone: 150 } },
+    fight: { name: '魔修先锋', atk: 250, hp: 1200, loot: { stone: 200 } },
     resultWin: '你一剑斩开黑雾，魔修惨叫一声化为飞灰。远处传来更多魔气——这只是先锋。',
     resultLose: '魔气侵入经脉，你重伤退走——但你知道，更大的风暴即将来临。' },
-  { id: 'ml_tianqi', idx: 9, title: '天地棋局', chapter: true,
+
+  { id: 'ml_5_1', idx: 8, title: '道侣危机', chapter: true,
+    req: { flags: { daoLu: 1 } },
+    setFlags: { linCrisisDone: 1 },
+    lines: [
+      '林婉儿忽然吐血倒地，你冲过去扶住她。',
+      '她的经脉中有一股暗伤在蔓延——那是多年前她独自面对心魔时留下的。',
+      '"我没事……"她勉强笑了笑，"别担心。"'
+    ],
+    choices: [
+      { t: '以灵力救治', effect: { hp: -50, flags: { linHealed: 1 } },
+        lines: ['你将灵力灌入她体内，一点一点修复她的经脉。三个时辰后，她终于沉沉睡去。你守在床边，一夜未眠。'] },
+      { t: '寻找天材地宝', req: { stone: 300 },
+        effect: { stone: -300, flags: { linHealed: 1 } },
+        lines: ['你花了三百灵石买来续脉丹，喂她服下。她缓缓睁开眼，看见你憔悴的脸，伸手摸了摸："傻子......"'] }
+    ] },
+
+  { id: 'ml_5_2', idx: 8, title: '并肩御敌', chapter: true,
+    req: { flags: { daoLu: 1 } },
+    setFlags: { linBattle: 1 },
+    lines: [
+      '魔修突袭宗门，你和林婉儿并肩站在城墙上。',
+      '她拔出长剑，剑光如水："今天，我们一起守。"',
+      '魔修如潮水般涌来，你们背靠背，剑光交织。'
+    ],
+    choices: [
+      { t: '并肩作战', fight: { name: '魔修先锋', atk: 130, hp: 600, loot: { stone: 200, atk: 10 } },
+        resultWin: '你们联手斩杀魔修先锋，魔修溃退。她靠在你肩上，大口喘气："我们赢了。"你握紧她的手。',
+        resultLose: '魔修太强，你们被迫撤退。她的手臂被划伤，你为她包扎时，手在发抖。' },
+      { t: '让她断后', effect: { atk: 15, dao: 0.5 },
+        lines: ['你冲入敌阵，她在身后掩护。你斩杀数十魔修，回头时，看见她独自面对三倍的敌人——她的眼神告诉你：我能行。'] }
+    ] },
+
+  // 第七章：元婴之路（元婴前期 idx 9，第56-70年）
+  { id: 'ml_6_0', idx: 9, title: '天地棋局', chapter: true,
     lines: [
       '你站在九州最高的山巅，俯瞰天下。',
       '一位白发老者在山巅摆了一盘棋，棋盘上黑白子交错，竟隐隐映出九州山河。',
       '"小友，"老者拈起一子，"这盘棋，你可敢接？"'
     ],
     choices: [
-      { t: '执黑先行，以攻代守', effect: { atk: 15 }, lines: ['你落子如剑，步步紧逼。老者连连点头："好棋。攻伐之道，你已得其髓。"（攻击+15）'] },
-      { t: '执白后手，以守待攻', effect: { hpMax: 80 }, lines: ['你稳扎稳打，步步为营。老者捋须微笑："善。守御之道，在于不动如山。"（气血上限+80）'] },
-      { t: '推棋不弈，直言请教', effect: { wu: 3 }, lines: ['你推开棋盘："前辈，魔渊将开，天下将乱，晚辈无心弈棋。"老者大笑："好，这才是正道修士该说的话。"（悟性+3）'] }
+      { t: '执黑先行，以攻代守', effect: { atk: 20 }, lines: ['你落子如剑，步步紧逼。老者连连点头："好棋。攻伐之道，你已得其髓。"（攻击+20）'] },
+      { t: '执白后手，以守待攻', effect: { hpMax: 100 }, lines: ['你稳扎稳打，步步为营。老者捋须微笑："善。守御之道，在于不动如山。"（气血上限+100）'] },
+      { t: '推棋不弈，直言请教', effect: { wu: 0.5 }, lines: ['你推开棋盘："前辈，魔渊将开，天下将乱，晚辈无心弈棋。"老者大笑："好，这才是正道修士该说的话。"（悟性+0.5）'] }
     ] },
-  { id: 'ml_final', idx: 11, title: '宿命之战', chapter: true,
+
+  // 第八章：宿命决战（元婴中后期 idx 10-11，第71-100年）
+  { id: 'ml_7_0', idx: 10, title: '最终决战', chapter: true,
     lines: [
       '魔渊终于裂开了。',
       '七十二道魔气冲天而起，遮天蔽日。你站在魔渊边缘，身后是整个九州。',
       '"这一战，不是为了成仙，是为了让他们活下去。"',
       '你拔剑，踏入黑暗。'
     ],
-    fight: { name: '魔祖化身', atk: 400, hp: 4000, loot: { stone: 500 } },
+    fight: { name: '魔祖化身', atk: 500, hp: 5000, loot: { stone: 600 } },
     resultWin: '你将魔祖化身按回魔渊深处，天地重归宁静。',
     resultLose: '魔气贯穿胸膛，你缓缓闭目——终究，差了一步。' }
 ];
 
-/* ---------------- 20年死劫 ---------------- */
+/* ---------------- 死劫事件（血量×150%） ---------------- */
 const DEATH_EVENTS = [
+  { year: 10, title: '妖兽袭击', chapter: true,
+    lines: ['一头妖兽突然出现在村庄外……'],
+    fight: { name: '妖兽头领', atk: 60, hp: 600 } },
   { year: 20, title: '劫修围杀', chapter: true,
-    lines: [
-      '你采药归途，忽然天降杀机。',
-      '一群劫修从四面八方围来，为首者冷笑："听说你身上有不少好东西？"'
-    ],
-    fight: { name: '劫修头领', atk: 240, hp: 1200, loot: { stone: 300 } },
-    resultWin: '你一剑斩杀劫修头领，余众四散而逃。',
-    resultLose: '双拳难敌四手，你被劫修围杀——陨落。' },
+    lines: ['一群劫修从四面八方围来……'],
+    fight: { name: '劫修头领', atk: 120, hp: 1200 } },
+  { year: 30, title: '毒瘴侵袭', chapter: true,
+    lines: ['一片毒瘴笼罩了你修炼的山谷……'],
+    fight: { name: '毒瘴蛊王', atk: 200, hp: 1800 } },
   { year: 40, title: '妖兽潮', chapter: true,
-    lines: [
-      '北境妖兽忽然暴动，潮水般涌向人族城池。',
-      '你站在城墙上，看着漫山遍野的妖兽，握紧了手中的剑。',
-      '"守住城门！"'
-    ],
-    fight: { name: '妖兽王', atk: 450, hp: 2400, loot: { stone: 600 } },
-    resultWin: '你斩杀妖兽王，兽潮退去，城池保全。',
-    resultLose: '妖兽王一爪拍来，你跌下城墙——城破人亡，陨落于兽潮。' },
+    lines: ['北境妖兽忽然暴动，潮水般涌向人族城池……'],
+    fight: { name: '妖兽王', atk: 300, hp: 2700 } },
+  { year: 50, title: '魔修刺客', chapter: true,
+    lines: ['一位魔修刺客潜入你的修炼之地……'],
+    fight: { name: '魔修杀手', atk: 400, hp: 3600 } },
   { year: 60, title: '魔修入侵', chapter: true,
-    lines: [
-      '魔修大军忽然出现在九州边境。',
-      '他们浑身散发着腐蚀的气息，所过之处，寸草不生。',
-      '你带领修士军团，迎上魔修先锋。'
-    ],
-    fight: { name: '魔修将领', atk: 750, hp: 4500, loot: { stone: 900 } },
-    resultWin: '你斩杀魔修将领，魔军溃退。',
-    resultLose: '魔修将领一戟刺穿你的胸膛——陨落于战场。' },
+    lines: ['魔修大军忽然出现在九州边境……'],
+    fight: { name: '魔修将领', atk: 500, hp: 4500 } },
+  { year: 70, title: '心魔入侵', chapter: true,
+    lines: ['你修炼至关键时刻，心魔忽然入侵……'],
+    fight: { name: '心魔化身', atk: 600, hp: 5400 } },
   { year: 80, title: '天劫降临', chapter: true,
-    lines: [
-      '你修炼至瓶颈，天劫忽然降临。',
-      '九天之上，雷云翻涌，一道紫色雷柱劈下。',
-      '"来吧。"你盘坐峰顶，直面天威。'
-    ],
-    fight: { name: '天劫化身', atk: 1050, hp: 7500, loot: { stone: 1200 } },
-    resultWin: '雷光散去，你浑身焦黑，却笑出了声——天劫已渡。',
-    resultLose: '天雷灌体，经脉寸断——天劫陨落。' },
+    lines: ['你修炼至瓶颈，天劫忽然降临……'],
+    fight: { name: '天劫化身', atk: 700, hp: 6300 } },
+  { year: 90, title: '古魔苏醒', chapter: true,
+    lines: ['远古魔将从沉睡中苏醒……'],
+    fight: { name: '远古魔将', atk: 800, hp: 7500 } },
   { year: 100, title: '魔渊决战', chapter: true,
-    lines: [
-      '这是最后的机会。',
-      '魔渊已经裂开，无数魔物涌出。你站在魔渊边缘，身后是整个九州。',
-      '"这一战，不成功便成仁。"'
-    ],
-    fight: { name: '魔祖化身', atk: 1500, hp: 15000, loot: { stone: 1500 } },
-    resultWin: '你以凡人之躯，镇住了魔渊。从此九州传唱你的名字。',
-    resultLose: '魔气贯穿胸膛——魔渊之战陨落。' }
+    lines: ['这是最后的机会……'],
+    fight: { name: '魔祖化身', atk: 1000, hp: 9000 } },
+  { year: 110, title: '天道考验', chapter: true,
+    lines: ['天道化身出现在你面前……'],
+    fight: { name: '天道化身', atk: 1200, hp: 10500 } },
+  { year: 120, title: '仙界试炼', chapter: true,
+    lines: ['仙界守卫出现在你面前……'],
+    fight: { name: '仙界守卫', atk: 1400, hp: 12000 } },
+  { year: 130, title: '飞升之劫', chapter: true,
+    lines: ['飞升天劫降临……'],
+    fight: { name: '飞升天劫', atk: 1600, hp: 15000 } },
+  { year: 140, title: '终极之战', chapter: true,
+    lines: ['隐藏死劫出现……'],
+    fight: { name: '魔祖仙帝', atk: 2000, hp: 22500 } }
 ];
 
 /* ---------------- 普通事件库 ---------------- */
@@ -577,10 +800,10 @@ function E(tag, ev) { ev.tag = tag; EVENTS[tag].push(ev); return ev; }
 
 /* ================ 机缘 ================ */
 E('jiyuan', {
-  id: 'jishi_book', title: '集市旧书摊', chapter: true, weight: 8, min: 0, max: 2,
+  id: 'jishi_book', title: '集市旧书摊', chapter: true, weight: 8, min: 0, max: 2, once: true,
   lines: [
     '城中集市，一个破旧书摊前，掌柜正双目放光地盯着来往行人。',
-    '你随手翻开一本纸页发黄的《引气初解》，书页间竟夹着一枚泛着微光的玉简。',
+    '你随手翻开一本纸页发黄的《御火诀》，书页间竟夹着一枚泛着微光的玉简。',
     '掌柜瞥了一眼："五十灵石，爱要不要。"'
   ],
   effect: { stone: -50, tech: function (s) {
@@ -594,7 +817,7 @@ E('jiyuan', {
   id: 'leiyu_wudao', title: '雷雨悟道', chapter: true, weight: 6, min: 0, max: 14,
   lines: [
     '夜半雷雨大作，你披着蓑衣立在崖边，看闪电撕开夜幕。',
-    '雷光将落的刹那，你忽然看懂了雨水的轨迹、风的呼啸、山间草木的一呼一吸。',
+          '雷光将落的刹那，你看懂了雨水的轨迹、风的呼啸、山间草木的一呼一吸。',
     '天地之间，自有大道。'
   ],
   effect: { qiMul: function () { return 1; }, qi: function (s) { return Math.round(requireNeed(s) * 0.25); } },
@@ -670,45 +893,59 @@ E('jiyuan', {
   id: 'lao_qigai', title: '城中老乞丐', chapter: true, weight: 6, min: 0, max: 2, once: true,
   setFlags: { beggar: 1 },
   lines: [
-    '城隍庙前，一个老乞丐蜷在墙角，面前破碗里干干净净。',
-    '他抬起头，浑浊的眼睛越过你，望向天边："小娃娃，你那脑门上，有气。"',
-    '说完便不再理你，只是轻轻咳了两声。'
+    '城隍庙前，一个老乞丐蜷在墙角，双手揣着，面前破碗里干干净净。',
+    '他穿着一身破烂的袄子，头发花白凌乱，满脸褶子。你路过时，他忽然抬起头，浑浊的眼睛越过你，望向天边。',
+    '"小娃娃。"他开口了，声音沙哑得像砂纸磨过木板，"给老头子点吃的吧。"',
+    '你愣了片刻，此时是年关，这老人独自在城隍庙前过年，不合常理，但你没多想，只是一口吃的。'
   ],
   choices: [
-    { t: '买只烧鸡给他（10灵石）', req: { stone: 10 },
-      effect: { stone: -10, flags: { beggar_kind: 1 } },
-      lines: ['你从摊上买了只肥鸡递过去。老乞丐愣了愣，忽然笑了："行，是个心善的。"'] },
+    { t: '买只烧鸡给他（50灵石）', req: { stone: 50 },
+      effect: { stone: -50, flags: { beggar_kind: 1 } },
+      lines: [
+        '你从摊上买了只肥鸡递过去。老乞丐愣了愣，忽然笑了："行，是个心善的。"',
+        '他撕下一只鸡腿，吃得满嘴流油。吃完了，他抹抹嘴，从怀里摸出一枚铜钱递给你：',
+        '"拿着。老头我没什么值钱的东西，就这枚铜钱跟了我一辈子。你别嫌少。"',
+        '你接过铜钱——入手微沉。你看了看他，他已经在打瞌睡了。'
+      ] },
     { t: '施舍一个热馒头',
-      effect: { flags: { beggar_kind: 1 } },
-      lines: ['你到路边粥铺买了个热气腾腾的馒头，轻轻放在他手边。他看了你很久，点了点头。'] },
-    { t: '绕道走开',
       effect: { flags: { beggar_cold: 1 } },
-      lines: ['你摇摇头走开。身后传来一声若有若无的叹息。'] }
+      lines: [
+        '你到路边买了个热气腾腾的馒头，轻轻放在他手边。',
+        '他看了你很久，点了点头："好孩子。"',
+        '他掰开馒头，慢慢吃完。吃完后，他闭上眼，像是睡着了。',
+        '你站了一会儿，转身离去。身后传来他的声音："小娃娃，以后别走夜路。"',
+        '你回头一看，他还是那副昏昏欲睡的样子。'
+      ] }
   ]
 });
 E('jiyuan', {
-  id: 'beggar_return', title: '老乞丐的回报', chapter: true, weight: 100, min: 5, max: 14, once: true,
+  id: 'beggar_return', title: '老乞丐的回报', chapter: true, weight: 100, min: 6, max: 8, once: true,
   req: { flags: { beggar_kind: 1 } },
   setFlags: { beggar_repaid: 1 },
   lines: [
     '多年后，你再次路过那座城隍庙。',
-    '老乞丐还躺在老地方，仿佛这些年从未动过。这一次，他往你手里塞了一个布袋：',
-    '"老头我捡破烂捡了一辈子，攒了点碎银子。拿去吧，别嫌少。"'
+    '老乞丐还躺在老地方，仿佛这些年从未动过。你走近，他睁开眼，看了你半晌，忽然笑了："哟，是你这小娃娃。"',
+    '他颤巍巍地站起来，从怀里摸出一枚古朴的铜钱——和你当年接过的那枚一模一样。',
+    '"老头我捡破烂捡了一辈子，攒了点碎银子。拿去吧，别嫌少。"',
+    '他将铜钱塞进你手里。你低头一看——那铜钱在你掌心分化重组，化作一柄古朴的铜钱小剑，通体玄黑，上面刻着密密麻麻的古文。',
+    '"这是……"你愣住了。',
+    '"小玩意。"他打了个哈欠，"老头我年轻时用的。现在老了，用不动了。你拿去吧。"',
+    '你抬头想说什么，他已经又缩回墙角，开始打瞌睡了。你收起那柄铜钱小剑，对着老人一拜，回头离开。'
   ],
-  effect: { stone: 100 },
-  result: '你接过沉甸甸的布袋，里面装满了灵石。他朝你挥挥手，像赶一只聒噪的乌鸦。'
+  effect: { equip: 'tongqian_jian' },
+  result: '你收起铜钱小剑，入手沉甸甸的，剑身上古文流转。（获得法宝：铜钱剑）'
 });
 E('jiyuan', {
-  id: 'beggar_cold_return', title: '一个馒头的遗憾', chapter: true, weight: 100, min: 9, max: 14, once: true,
+  id: 'beggar_cold_return', title: '一个馒头的遗憾', chapter: true, weight: 100, min: 9, max: 11, once: true,
   req: { flags: { beggar_cold: 1 } },
   setFlags: { beggar_cold_done: 1 },
   lines: [
     '多年后你故地重游，城隍庙的墙垣已塌了大半。',
-    '墙角不剩下什么。看庙的老人口里念叨：那位老神仙，三年前就走了。',
-    '你在原地站了很久，终究什么都没说。'
+    '墙角不剩下什么。看庙的老人口里念叨：那位老神仙，三年前就走了。走的时候身边什么都没带，就带了一壶酒。',
+    '你心念微动，似是错过什么，思索一番，也是无愧道心，便继续前行。'
   ],
-  effect: { wu: 1 },
-  result: '你忽然想明白许多事。有些缘分，错过就是错过了。（悟性 +1）'
+  effect: { dao: 0.5 },
+  result: '道心+0.5'
 });
 E('jiyuan', {
   id: 'xinzang_shuji', title: '古卷遗页', chapter: false, weight: 4, min: 4, max: 14, once: true,
@@ -878,8 +1115,8 @@ E('jiyuan', {
     '他伸手在你眉心一点——一道剑光直冲识海。'
   ],
   choices: [
-    { t: '静心感悟剑意', effect: { wu: 2 }, lines: ['剑光在识海中翻涌三日，你悟得剑意真谛。（悟性+2）'] },
-    { t: '以剑意淬体', effect: { atk: 15 }, lines: ['剑意灌注经脉，你的剑锋更加凌厉。（攻击+15）'] }
+    { t: '静心感悟剑意', effect: { wu: 1 }, lines: ['剑光在识海中翻涌三日，你悟得剑意真谛。（悟性+1）'] },
+    { t: '以剑意淬体', effect: { atk: 5 }, lines: ['剑意灌注经脉，你的剑锋更加凌厉。（攻击+5）'] }
   ]
 });
 E('jiyuan', {
@@ -914,7 +1151,7 @@ E('jiyuan', {
     '正是当年那个老乞丐——此刻他一身仙风道骨，笑呵呵道："小子，当年那顿烧鸡，今日来还。"'
   ],
   choices: [
-    { t: '恭敬相迎', effect: { wu: 3 }, lines: ['他与你论道三日，字字珠玑。临别时他拍拍你的肩："好好修，天劫见。"（悟性+3）'] },
+    { t: '恭敬相迎', effect: { wu: 1 }, lines: ['他与你论道三日，字字珠玑。临别时他拍拍你的肩："好好修，天劫见。"（悟性+1）'] },
     { t: '请教天劫之事', effect: { trib: 0.05 }, lines: ['他传授你一些渡劫心得，让你受益匪浅。（渡劫+5%）'] }
   ]
 });
@@ -929,7 +1166,7 @@ E('jiyuan', {
     { t: '潜入井底', fight: { name: '井底灵蛟', atk: 80, hp: 350, loot: { herb: 20, stone: 200 } },
       resultWin: '灵蛟伏诛，你从井底捞出大量灵草与灵石。',
       resultLose: '灵蛟一尾将你拍飞，你狼狈逃出密室。（气血受损）' },
-    { t: '以灵力探取', effect: { hpMax: 100 }, lines: ['你以灵力探入井中，井水化作一股暖流涌入经脉。（气血上限+100）'] }
+    { t: '以灵力探取', effect: { hpMax: 50 }, lines: ['你以灵力探入井中，井水化作一股暖流涌入经脉。（气血上限+50）'] }
   ]
 });
 E('jiyuan', {
@@ -939,8 +1176,8 @@ E('jiyuan', {
     '那剑意来自千里之外的某处——一位隐世剑修在向你发出邀请。'
   ],
   choices: [
-    { t: '循剑意而去', effect: { atk: 20 }, lines: ['你御剑千里，在深山中找到那位剑修。他与你切磋三日，你的剑法大进。（攻击+20）'] },
-    { t: '在原地感悟', effect: { wu: 1, atk: 10 }, lines: ['你在崖边静坐三日，将那股剑意融入己身。（悟性+1，攻击+10）'] }
+    { t: '循剑意而去', effect: { atk: 10 }, lines: ['你御剑千里，在深山中找到那位剑修。他与你切磋三日，你的剑法大进。（攻击+10）'] },
+    { t: '在原地感悟', effect: { wu: 1 }, lines: ['你在崖边静坐三日，将那股剑意融入己身。（悟性+1）'] }
   ]
 });
 
@@ -999,8 +1236,8 @@ E('shejiao', {
     '循声而去，一位白衣修士正在月下抚琴。',
     '他见你来，微微一笑："知音难觅。"'
   ],
-  effect: { mo: 30, wu: 0.5 },
-  result: '你们饮酒论道至天明，临别时他赠你一枚音律玉简。（灵力+30，悟性微涨）'
+  effect: { wu: 0.5 },
+  result: '你们饮酒论道至天明，临别时他赠你一枚音律玉简。（悟性微涨）'
 });
 E('shejiao', {
   id: 'jd_huangye_qiusheng', title: '荒野求生', chapter: true, weight: 4, min: 6, max: 8,
@@ -1021,7 +1258,7 @@ E('jiyuan', {
     '那是来自九天之上的威压——你的飞升之劫，已在酝酿。'
   ],
   choices: [
-    { t: '静心感悟天劫', effect: { trib: 0.05, wu: 2 }, lines: ['你静心感悟天劫气息，道心通明。（渡劫+5%，悟性+2）'] },
+    { t: '静心感悟天劫', effect: { trib: 0.05, wu: 1 }, lines: ['你静心感悟天劫气息，道心通明。（渡劫+5%，悟性+1）'] },
     { t: '以天劫气息淬体', effect: { trib: 0.03, ti: 2 }, lines: ['你以天劫气息淬炼肉身，体魄更加强横。（渡劫+3%，体魄+2）'] }
   ]
 });
@@ -1033,8 +1270,8 @@ E('jiyuan', {
     '你紧守道心，将那声音驱散。'
   ],
   choices: [
-    { t: '以道心镇压', effect: { wu: 2 }, lines: ['你以道心镇压魔念，道心愈发坚定。（悟性+2）'] },
-    { t: '反探魔渊', effect: { atk: 15 }, lines: ['你以神识反探魔渊，从魔念中悟得一丝攻伐之道。（攻击+15）'] }
+    { t: '以道心镇压', effect: { wu: 1 }, lines: ['你以道心镇压魔念，道心愈发坚定。（悟性+1）'] },
+    { t: '反探魔渊', effect: { atk: 10 }, lines: ['你以神识反探魔渊，从魔念中悟得一丝攻伐之道。（攻击+10）'] }
   ]
 });
 E('jiyuan', {
@@ -1044,8 +1281,8 @@ E('jiyuan', {
     '碎片散发着不属于此界的气息——那是仙界的残片。'
   ],
   choices: [
-    { t: '炼化碎片', effect: { hpMax: 100, atk: 15 }, lines: ['你炼化碎片，肉身与攻击都得到提升。（气血上限+100，攻击+15）'] },
-    { t: '参悟碎片', effect: { wu: 3 }, lines: ['你参悟碎片中的道韵，悟性大增。（悟性+3）'] }
+    { t: '炼化碎片', effect: { hpMax: 50, atk: 5 }, lines: ['你炼化碎片，肉身与攻击都得到提升。（气血上限+50，攻击+5）'] },
+    { t: '参悟碎片', effect: { wu: 1 }, lines: ['你参悟碎片中的道韵，悟性大增。（悟性+1）'] }
   ]
 });
 E('jiyuan', {
@@ -1057,7 +1294,7 @@ E('jiyuan', {
   ],
   choices: [
     { t: '请教飞升之道', effect: { trib: 0.10 }, lines: ['他传授你飞升心得，你受益匪浅。（渡劫+10%）'] },
-    { t: '求赐仙宝', effect: { atk: 25 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+25）'] }
+    { t: '求赐仙宝', effect: { atk: 10 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+10）'] }
   ]
 });
 E('jiyuan', {
@@ -1067,7 +1304,7 @@ E('jiyuan', {
     '阁中机关重重，最终你来到阁顶，发现一枚金色玉简。'
   ],
   choices: [
-    { t: '研习玉简', effect: { wu: 4 }, lines: ['玉简中记载着天机阁的阵道传承。（悟性+4）'] },
+    { t: '研习玉简', effect: { wu: 1 }, lines: ['玉简中记载着天机阁的阵道传承。（悟性+1）'] },
     { t: '以玉简换取资源', effect: { stone: 500, iron: 30 }, lines: ['你将玉简售出，换得大量资源。（灵石+500，灵铁+30）'] }
   ]
 });
@@ -1078,10 +1315,10 @@ E('jiyuan', {
     '那是魔祖的一缕化身，他冷笑道："你就是那个要飞升的人？"'
   ],
   choices: [
-    { t: '拔剑迎战', fight: { name: '魔祖化身', atk: 180, hp: 800, loot: { stone: 300, wu: 2 } },
+    { t: '拔剑迎战', fight: { name: '魔祖化身', atk: 180, hp: 800, loot: { stone: 300, wu: 1 } },
       resultWin: '魔祖化身消散，留下一件魔道秘宝。',
       resultLose: '魔祖化身太强，你重伤退走。（气血大损）' },
-    { t: '以道心化解', effect: { wu: 2 }, lines: ['你以道心化解魔念，魔祖化身自行消散。（悟性+2）'] }
+    { t: '以道心化解', effect: { wu: 1, atk: 5 }, lines: ['你以道心化解魔念，魔祖化身自行消散。（悟性+1，攻击+5）'] }
   ]
 });
 
@@ -1093,8 +1330,8 @@ E('shejiao', {
     '你作为元婴修士，被推举为盟主之一。'
   ],
   choices: [
-    { t: '担任盟主', effect: { hpMax: 80, atk: 10 }, lines: ['你担任盟主，威望大增。（气血上限+80，攻击+10）'] },
-    { t: '推辞不就', effect: { wu: 2 }, lines: ['你推辞不就，专心修炼。（悟性+2）'] }
+    { t: '担任盟主', effect: { hpMax: 100, atk: 5 }, lines: ['你担任盟主，威望大增。（气血上限+100，攻击+5）'] },
+    { t: '推辞不就', effect: { wu: 1 }, lines: ['你推辞不就，专心修炼。（悟性+1）'] }
   ]
 });
 E('shejiao', {
@@ -1203,7 +1440,7 @@ E('mijing', {
           { t: '留作炼器之用', effect: { iron: 25 }, lines: ['你以玉匣封存冰髓。这世上最好的冰系炼器材料，值得等一个最好的炉子。'] }
         ]
       } },
-    { t: '以灵草敬奉，舍髓而去', effect: { herb: 10, stone: 80 }, lines: ['你将灵草投入蛟口，冰蛟竟温顺下来，拱了拱你的手。它额头缺了一角——旧伤仍在。你忽然想起那句"修行，修的也是慈悲"。'] }
+    { t: '以灵草敬奉，舍髓而去', effect: { herb: 10, stone: 80 }, lines: ['你将灵草投入蛟口，冰蛟竟温顺下来，拱了拱你的手。它额头缺了一角——旧伤仍在。你想起那句"修行，修的也是慈悲"。'] }
   ]
 });
 E('mijing', {
@@ -1305,7 +1542,7 @@ E('mijing', {
         ]
       } },
     { t: '放归山林', effect: { wu: 0.5 },
-      lines: ['你解开兽夹，退开十步。幼狐回头看了你很久，才一瘸一拐钻进林间。你忽然觉得心口很软。'] },
+      lines: ['你解开兽夹，退开十步。幼狐回头看了你很久，才一瘸一拐钻进林间。你觉得心口很软。'] },
     { t: '不理会，绕道走', effect: { flags: { petCold: 1 } },
       lines: ['你走了。身后那呜呜的叫声，在风里散了。'] }
   ]
@@ -1475,11 +1712,304 @@ E('mijing', {
   ]
 });
 
+/* ================ 搜神记灵感事件 ================ */
+E('jiyuan', {
+  id: 'ssj_huqi_baoen', title: '狐妻报恩', chapter: true, weight: 5, min: 0, max: 2, once: true,
+  setFlags: { foxGraced: 1 },
+  lines: [
+    '你在山中救了一只被猎夹困住的白狐，替它包扎伤口后放归山林。',
+    '当夜，洞府外响起叩门声。一位白衣女子立在月光下，眉眼如画，身后拖着一条雪白的狐尾。',
+    '"恩公，小女子白素，特来报救命之恩。"她从袖中取出一只沉甸甸的灵石袋。'
+  ],
+  choices: [
+    { t: '收下灵石', effect: { stone: 80 },
+      lines: ['你接过灵石袋，她朝你盈盈一拜，化作一道白光消失在夜色中。那灵石袋上，还带着淡淡的桃花香。'] },
+    { t: '婉拒，只求她平安', effect: { dao: 0.5 },
+      lines: ['你摆手道："举手之劳，不必挂怀。"她愣了愣，忽然红了眼眶："恩公……"说完消失在夜色中。'] }
+  ]
+});
+E('jiyuan', {
+  id: 'ssj_canma_yao', title: '蚕马妖', chapter: true, weight: 4, min: 3, max: 5, once: true,
+  lines: [
+    '南疆密林深处，一座破败的蚕神庙前，你看见一位白衣少年正对着蚕茧哭泣。',
+    '他转过头，眼中满是哀伤："我娘……被困在茧里了。求你救救她。"',
+    '你走近蚕茧，里面传出微弱的呼吸声——那不是妖，是人。'
+  ],
+  choices: [
+    { t: '斩开蚕茧', fight: { name: '蚕马妖', atk: 55, hp: 240, loot: { equip: 'canjia' } },
+      resultWin: '蚕茧裂开，里面是一位昏厥的妇人。少年抱着母亲痛哭。你收好蚕马妖留下的蚕丝甲——柔软如水，坚韧如铁。',
+      resultLose: '蚕丝缠住你的手腕，越勒越紧。你奋力挣脱，掌心已被勒出血痕。（气血受损）' },
+    { t: '倾听少年的故事', effect: { dao: 0.5, qi: 80 },
+      lines: ['少年说，他母亲本是蚕神，因触犯天条被打落凡间，被仇家困在茧中。你静静听完，心中若有所悟。（悟性+1，修为+）'] },
+    { t: '焚香三拜，转身离去', effect: { herb: 5, stone: 60 },
+      lines: ['你以香火礼敬蚕神，取了庙中供奉的灵草与灵石便走。身后传来少年的哭声，在密林中回荡。'] }
+  ]
+});
+E('jiyuan', {
+  id: 'ssj_ganjiang_moye', title: '干将莫邪', chapter: true, weight: 4, min: 6, max: 8, once: true,
+  lines: [
+    '你寻访到一处古铸剑炉，炉火虽灭，炉中仍有一股不甘的剑意。',
+    '炉前石壁上刻着两行字："干将莫邪，以身殉剑，剑成则人亡，人亡则剑灵。"',
+    '炉底沉着一柄残剑，剑身已断，却仍散发着惊人的锋芒。'
+  ],
+  choices: [
+    { t: '以血祭剑，重铸锋芒', effect: { atk: 5 },
+      lines: ['你割破掌心，鲜血滴在断剑上。剑身嗡鸣，裂纹渐渐愈合——一柄完整的古剑在你掌中重生。你感到剑与你血脉相连。（攻击+5）'] },
+    { t: '参悟铸剑之道', effect: { dao: 0.5, atk: 5 },
+      lines: ['你盘坐炉前，参悟三日三夜。铸剑之道，亦是修行之道。你悟得"人剑合一"之理。（道心+0.5，攻击+5）'] }
+  ]
+});
+E('jiyuan', {
+  id: 'ssj_fox_accessory', title: '灵狐配饰', chapter: false, weight: 100, min: 3, max: 14, once: true,
+  req: { flags: { foxGraced: 1 } },
+  lines: [
+    '白素再次出现在你洞府前。',
+    '这一次她没有带灵石，只带来一件精致的配饰——一枚赤红的狐毛编织成的坠子，在月光下泛着淡淡的银光。',
+    '"恩公。"她盈盈下拜，"上次匆忙，只来得及给你一枚信物。这一次，小女子正式将这枚灵狐配饰赠予恩公。"',
+    '她将配饰递给你，指尖微微颤抖。',
+    '"这配饰以我自己的尾毛编织，又以千年灵力温养。戴在身上，可保不受妖邪迷惑。"',
+    '她顿了顿，轻声说，"恩公……保重。"'
+  ],
+  effect: { equip: 'linghu_pei' },
+  result: '你接过灵狐配饰，入手温热，能感到一股柔和的灵力在其中流转。她朝你笑了笑，化作白光消散。（获得法宝：灵狐配饰）'
+});
+
+/* ================ 聊斋志异灵感事件 ================ */
+E('shejiao', {
+  id: 'lzh_yingning', title: '婴宁笑缘', chapter: true, weight: 5, min: 3, max: 5, once: true,
+  req: { flags: { lin: 1 } },
+  setFlags: { yingning: 1 },
+  lines: [
+    '你在山间小径上，忽然听见银铃般的笑声。',
+    '一个梳着双丫髻的少女蹲在花丛中，对着一朵野花笑个不停。',
+    '她看见你，非但不避，反而指着花说："你看它，它也在笑呢！"'
+  ],
+  choices: [
+    { t: '与她同笑', effect: { fu: 0.5, hp: 20 },
+      lines: ['你蹲下来，和她一起笑。笑够了，她从花丛中摘下一朵别在你耳边："送你。你笑起来也好看。"'] },
+    { t: '赠她一株灵花', req: { stone: 200 }, effect: { stone: -200, fu: 1 },
+      lines: ['你从储物袋中取出一株品相最好的灵花递给她。她眼睛亮了，小心翼翼地捧着花，像捧着全世界。'] }
+  ]
+});
+E('shejiao', {
+  id: 'lzh_lianxiang', title: '莲香情劫', chapter: true, weight: 4, min: 6, max: 8, once: true,
+  setFlags: { lianxiang: 1 },
+  lines: [
+    '你在月下独行，忽然闻到一股异香。',
+    '一位红衣女子坐在莲池边，手中捻着一朵血红的莲花。她转过头，眼中满是哀伤。',
+    '"少侠，我本是千年莲精，如今劫数将至，恐怕……活不过今夜了。"'
+  ],
+  choices: [
+    { t: '助她渡劫', fight: { name: '莲香之劫', atk: 80, hp: 350, loot: { herb: 15, stone: 120, flags: { lianxiang_saved: 1 } } },
+      resultWin: '你以剑气斩碎天劫，莲精化为人形，盈盈下拜："少侠大恩，来世再报。"你收好她留下的莲子——那是千年道行的结晶。',
+      resultLose: '天劫太强，你被震退。莲精在劫火中渐渐消散，最后朝你笑了笑。（气血大损）' },
+    { t: '无力相助，黯然离去', effect: { dao: -0.5 },
+      lines: ['你看着劫火中的她，无能为力。那一夜，你在莲池边坐了很久。次日，池中多了一朵永不凋谢的白莲。'] }
+  ]
+});
+E('shejiao', {
+  id: 'lzh_lianxiang_return', title: '莲香归来', chapter: true, weight: 100, min: 6, max: 14, once: true,
+  req: { flags: { lianxiang_saved: 1 } },
+  setFlags: { lianxiang_done: 1 },
+  lines: [
+    '你在莲池边打坐，忽然闻到一股熟悉的异香。',
+    '睁开眼，一位红衣女子站在你面前。她比上次更美了——肌肤如雪，眉眼如画，周身灵气流转，显然修为大进。',
+    '"少侠。"她盈盈下拜，"莲香归来，特来报恩。"',
+    '你扶她起来："不必多礼。你渡劫成功了？"',
+    '她点头："多亏少侠相助。莲香修行千年，今日终于化形成功。"',
+    '她从袖中取出一枚通体碧绿的莲子递给你，"这是千年道行的结晶——碧莲子。服下可增寿二十年，百毒不侵。"',
+  ],
+  effect: { life: 20 },
+  result: '你服下碧莲子，感到寿元大增，百毒不侵。（寿元+20）'
+});
+E('shejiao', {
+  id: 'lzh_nie_xiaoqian', title: '聂小倩往生', chapter: true, weight: 4, min: 3, max: 5, once: true,
+  setFlags: { xiaolian: 1 },
+  lines: [
+    '你在古寺中歇脚，月光下忽然出现一位青衣女子。',
+    '她面容姣好，却浑身散发着阴冷的气息。"公子，我本是聂小倩，含冤而死，魂魄困于此地。"',
+    '"求公子助我往生，来世必报大恩。"'
+  ],
+  choices: [
+    { t: '以道力送她往生', effect: { dao: 0.5, qi: 100 },
+      lines: ['你盘坐诵经，以道力超度她的亡魂。她含笑消散，化作点点荧光飞向天际。古寺中回荡着一声轻叹："多谢公子……"'] },
+    { t: '收留她，为她塑灵位', req: { stone: 200 }, effect: { stone: -200, flags: { xiaolianStay: 1 }, hp: -20 },
+      lines: ['你花了两百灵石为她塑了一座灵位，日日供奉。她的魂魄渐渐凝实，偶尔会在月下现身，与你对坐饮茶。'] }
+  ]
+});
+E('shejiao', {
+  id: 'lzh_nie_xiaoqian_return', title: '小倩报恩', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  req: { flags: { xiaolianStay: 1 } },
+  setFlags: { xiaolianDone: 1 },
+  lines: [
+    '你在灵位前打坐，忽然感到一股熟悉的阴冷气息。睁开眼，聂小倩站在你面前——',
+    '她的身形比从前凝实了许多，眉眼间多了一丝生气。',
+    '"公子。"她盈盈下拜，"这些日子，我日夜守护公子的洞府。今夜特来现身，有一事相告。"',
+    '她告诉你，古寺之下埋着一枚"冥灵珠"，那是她生前的本命法宝。她已将其炼化，如今可助公子一臂之力。',
+    '"公子收留之恩，小倩无以为报。这枚冥灵珠，便赠予公子吧。"'
+  ],
+  effect: { shen: 1, dao: 0.5 },
+  result: '你接过冥灵珠，感到一股阴柔的灵力涌入体内。小倩朝你微微一笑，化作青烟消散在月光中。（神识+1，道心+0.5）'
+});
+E('mijing', {
+  id: 'lzh_huapi', title: '画皮之祸', chapter: true, weight: 4, min: 6, max: 8, once: true,
+  lines: [
+    '你在城中遇见一位美貌女子，她楚楚可怜地向你诉苦。',
+    '"妾身被恶人追杀，求少侠收留。她只有你了。"你正要答应，忽然看见她眼角有一丝不自然的褶皱——',
+    '那不是皱纹，是画皮的接缝。'
+  ],
+  choices: [
+    { t: '揭穿妖物', req: { shen: 3 }, effect: { shen: 0.5 },
+      lines: ['你凝神细观，一眼看穿画皮之下青面獠牙的真容。妖物惊觉被识破，惨叫着逃走。（神识+0.5）'] },
+    { t: '以道心洞察', req: { dao: 3 }, effect: { dao: 0.5, hpMax: 50 },
+      lines: ['你闭目凝神，以道心洞察虚实。画皮在道力面前无所遁形，化作一缕青烟散去。（道心+0.5，气血上限+50）'] },
+    { t: '勉强应对', fight: { name: '画皮妖', atk: 90, hp: 400, loot: { stone: 200 } },
+      resultWin: '你一剑划破她的画皮，露出底下青面獠牙的真容。妖物惨叫着逃走，留下两百灵石。',
+      resultLose: '妖物突然暴起，你被利爪划伤。她冷笑着消失在夜色中。（气血受损）' }
+  ]
+});
+
+/* ================ 山海经灵感事件 ================ */
+
+E('jiyuan', {
+  id: 'shj_bifang', title: '毕方现世', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  setFlags: { bifang: 1 },
+  lines: [
+    '你在丹霞谷深处看见一只独脚的火鸟，通体赤红，立于枯木之上。',
+    '那是毕方——传闻它出现之处，必有大火。但此刻它静静立着，眼中没有敌意，只有疲惫。',
+    '它的翅膀受了伤，正在滴血。'
+  ],
+  choices: [
+    { t: '炼化它的火源', fight: { name: '受伤毕方', atk: 85, hp: 380, loot: { stone: 200, herb: 10 } },
+      resultWin: '毕方挣扎片刻，终于倒下。你从它体内取出一枚火红的内丹——毕方火源。你感到体内灵力涌动。',
+      resultLose: '毕方一口真火喷来，你被烧得满身焦黑，仓皇逃出谷外。（气血大损）' },
+    { t: '为它疗伤', effect: { dun: 1, hpMax: 60 },
+      lines: ['你取出灵药敷在它的伤口上。它低头看了你很久，忽然用喙衔下一枚赤红的羽毛递给你——那是毕方的翎羽，火系至宝。（遁速+1，气血上限+60）'] }
+  ]
+});
+
+E('jiyuan', {
+  id: 'shj_xiwangmu', title: '西王母赐桃', chapter: true, weight: 3, min: 9, max: 11, once: true,
+  lines: [
+    '你在昆仑山巅看见一座仙宫，宫门半开，里面传出淡淡的桃香。',
+    '一位雍容华贵的女子坐在玉座上，手中托着一枚散发着金光的仙桃。',
+    '"你来了。"她微微一笑，"我等你很久了。"'
+  ],
+  choices: [
+    { t: '求长生', effect: { life: 50, hpMax: 80 },
+      lines: ['她将仙桃递给你："吃了这枚桃子，可增寿五十年。但记住——长生不是目的，而是修行的开始。"仙桃入口即化，你感到寿元大增。'] },
+    { t: '求大道', effect: { dao: 0.5, qi: 300 },
+      lines: ['她看着你，眼中露出赞许："好，有志气。"她伸出手指在你眉心一点——大道真意灌入识海。（道心+0.5，修为大进）'] }
+  ]
+});
+
+E('shejiao', {
+  id: 'lin_childhood', title: '青梅往事', chapter: true, weight: 8, min: 0, max: 2, once: true,
+  req: { flags: { lin: 1 } },
+  setFlags: { linChildhood: 1 },
+  lines: [
+    '你在城中闲逛，忽然看见一棵老槐树。',
+    '树下刻着两个小字——是你小时候刻的。旁边还有一个歪歪扭扭的名字：林婉儿。',
+    '你想起许多年前，有个小女孩总是跟在你身后，叽叽喳喳说个不停。',
+    '"你说过要带我去修仙的。你忘了？"'
+  ],
+  effect: { dao: 0.5, hp: 15 },
+  result: '你站在槐树下很久。那些年的画面，一帧帧闪过脑海。（道心+0.5，气血+15）'
+});
+E('shejiao', {
+  id: 'lin_dabi', title: '宗门大比·再遇', chapter: true, weight: 7, min: 3, max: 5, once: true,
+  req: { flags: { lin2: 1 } },
+  setFlags: { linDabi: 1 },
+  lines: [
+    '宗门大比，你站在擂台上，忽然看见对面站着一个熟悉的身影。',
+    '林婉儿穿着一身青色道袍，手持长剑，朝你微微一笑："呆子，好久不见。"',
+    '她拔剑出鞘，剑光如水——这些年，她也没闲着。'
+  ],
+  choices: [
+    { t: '擂台切磋', fight: { name: '林婉儿', atk: 50, hp: 200, loot: { stone: 100 } },
+      resultWin: '你一剑挑飞她的长剑，她跌坐在地，气鼓鼓地瞪你："你赢了。"但她眼中分明带着笑意。',
+      resultLose: '她的剑比你快半招，你输了。她扶你起来："下次再来。"你闻到她身上淡淡的药香。' },
+    { t: '台下叙旧', effect: { fu: 0.5, hp: 30 },
+      lines: ['你跳下擂台，和她坐在角落里聊天。她给你讲这些年走南闯北的故事，你给她讲修行中的趣事。不知不觉，天就黑了。'] }
+  ]
+});
+E('shejiao', {
+  id: 'lin_rain', title: '道侣日常·雨夜', chapter: true, weight: 6, min: 6, max: 8, once: true,
+  req: { flags: { daoLu: 1 } },
+  setFlags: { linRain: 1 },
+  lines: [
+    '洞府外下着大雨，你和林婉儿坐在檐下，温了一壶灵酒。',
+    '她靠在你肩上，轻声说："你说，我们能修到飞升吗？"',
+    '你没有回答。她笑了笑："飞升不了也没关系。有你在，哪里都是家。"'
+  ],
+  effect: { hp: 40, qi: 50 },
+  result: '雨声如琴，酒香如故。这漫长修行路，有一个人等你回家，便已足够。（气血+40，修为+）'
+});
+E('shejiao', {
+  id: 'lin_crisis', title: '道侣危机·旧伤', chapter: true, weight: 5, min: 6, max: 8, once: true,
+  req: { flags: { daoLu: 1 } },
+  setFlags: { linCrisisDone: 1 },
+  lines: [
+    '林婉儿忽然吐血倒地，你冲过去扶住她。',
+    '她的经脉中有一股暗伤在蔓延——那是多年前她独自面对心魔时留下的。',
+    '"我没事……"她勉强笑了笑，"别担心。"'
+  ],
+  choices: [
+    { t: '以灵力救治', effect: { hp: -50, flags: { linHealed: 1 } },
+      lines: ['你将灵力灌入她体内，一点一点修复她的经脉。三个时辰后，她终于沉沉睡去。你守在床边，一夜未眠。'] },
+    { t: '寻找天材地宝', req: { stone: 300 },
+      effect: { stone: -300, flags: { linHealed: 1 } },
+      lines: ['你花了三百灵石买来续脉丹，喂她服下。她缓缓睁开眼，看见你憔悴的脸，伸手摸了摸："傻子......"'] }
+  ]
+});
+E('shejiao', {
+  id: 'lin_battle', title: '并肩御敌', chapter: true, weight: 5, min: 9, max: 11, once: true,
+  req: { flags: { daoLu: 1 } },
+  setFlags: { linBattle: 1 },
+  lines: [
+    '魔修突袭宗门，你和林婉儿并肩站在城墙上。',
+    '她拔出长剑，剑光如水："今天，我们一起守。"',
+    '魔修如潮水般涌来，你们背靠背，剑光交织。'
+  ],
+  choices: [
+    { t: '并肩作战', fight: { name: '魔修先锋', atk: 130, hp: 600, loot: { stone: 200, atk: 10 } },
+      resultWin: '你们联手斩杀魔修先锋，魔修溃退。她靠在你肩上，大口喘气："我们赢了。"你握紧她的手。',
+      resultLose: '魔修太强，你们被迫撤退。她的手臂被划伤，你为她包扎时，手在发抖。' },
+    { t: '让她断后', effect: { atk: 15, dao: 0.5 },
+      lines: ['你冲入敌阵，她在身后掩护。你斩杀数十魔修，回头时，看见她独自面对三倍的敌人——她的眼神告诉你：我能行。'] }
+  ]
+});
+E('shejiao', {
+  id: 'lin_reunion', title: '前缘再续', chapter: true, weight: 4, min: 9, max: 11, once: true,
+  req: { flags: { daoLu: 1 } },
+  setFlags: { linReunion: 1 },
+  lines: [
+    '你在洞府中打坐，忽然看见一个画面——',
+    '那是前世的记忆：你和她站在奈何桥头，她含泪喝下孟婆汤，回头看了你最后一眼。',
+    '"来世，我还要遇见你。"',
+    '你睁开眼，发现林婉儿正坐在对面，静静地看着你。她的眼中，也闪着泪光。'
+  ],
+  effect: { wu: 0.5, dao: 1, hpMax: 60, qi: 200 },
+  result: '原来你们的缘分，不止这一世。（悟性+0.5，道心+1，气血上限+60，修为大进）'
+});
+E('shejiao', {
+  id: 'lin_ascend', title: '并肩飞升', chapter: true, weight: 3, min: 9, max: 11, once: true,
+  req: { flags: { daoLu: 1, linReunion: 1 } },
+  setFlags: { linAscend: 1 },
+  lines: [
+    '天劫降临，九道天雷劈下。你站在峰顶，林婉儿站在你身旁。',
+    '"我说过——天劫，我们一起扛。"',
+    '她握住你的手。你们一起踏入雷海。'
+  ],
+  effect: { trib: 0.20, wu: 1, dao: 1, hpMax: 100 },
+  result: '天劫虽强，你们的道心更强。雷海中，你们携手飞升。（渡劫+20%，悟性+1，道心+1，气血上限+100）'
+});
+
 /* ================ 年岁小事件（年末广播） ================ */
 E('year', { id: 'y_pinghe', title: '岁月静好', weight: 5, lines: '这一年过得平顺。春来播种，秋来收丹，冬日你在檐下看雪，觉得"长生"二字，也没那么急。' });
 E('year', { id: 'y_fengshou', title: '丰年', weight: 4, lines: '灵田丰收，灵石入库。你清点家底时，嘴角不自觉地翘了起来。', effect: { stone: 40 } });
 E('year', { id: 'y_drough', title: '大旱之年', weight: 3, lines: '大旱三月，凡间颗粒无收。你夜施甘霖，救了一方百姓。香火虽无形，心却安。' });
-E('year', { id: 'y_xiaye', title: '夏夜萤火', weight: 4, lines: '夏夜，萤火漫天。你忽然想起许多年前那个和你在屋檐下躲雨的人。' });
+E('year', { id: 'y_xiaye', title: '夏夜萤火', weight: 4, lines: '夏夜，萤火漫天。你想起许多年前那个和你在屋檐下躲雨的人。' });
 
 /* ---------------- 宗门剧情（拜入后触发） ---------------- */
 /* min/max 为“大境界序号”：0炼气 1筑基 2金丹 3元婴 */
@@ -1712,21 +2242,85 @@ const ACHIEVEMENTS = {
 
 /* ---------------- 轮回天赋（局外成长） ---------------- */
 const REINCARNATION = [
-  { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 3, max: 5,  apply: { wu: 1 } },
+  { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 6, max: 5,  apply: { wu: 1 } },
   { id: 'ti',         name: '强体',     desc: '体魄 +1（肉身根基）',            cost: 3, max: 5,  apply: { ti: 1 } },
-  { id: 'stone',      name: '殷实',     desc: '出生时灵石 +1000',               cost: 2, max: 4,  apply: { stone: 1000 } },
-  { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 1, max: 3,  apply: { elixirs: { juling: 3 } } },
+  { id: 'stone',      name: '殷实',     desc: '出生时灵石 +100',                cost: 2, max: 4,  apply: { stone: 100 } },
+  { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 3, max: 3,  apply: { elixirs: { juling: 3 } } },
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
   { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
   { id: 'forge',      name: '器魂',     desc: '炼器时间 -1年',                   cost: 3, max: 3,  apply: { forgeTimeReduce: 1 } },
-  { id: 'tech0',      name: '家传心法', desc: '出生自带黄阶功法《生息功》',     cost: 3, max: 1,  apply: { tech: 'shengong' } },
-  { id: 'sword0',     name: '祖传宝剑', desc: '出生自带法宝【越王勾践剑】',     cost: 6, max: 1,  apply: { art: 'yuewang_sword' } },
+  { id: 'dun',        name: '灵步',     desc: '遁速 +1（先天身法）',            cost: 3, max: 5,  apply: { dun: 1 } },
+  { id: 'shen',       name: '神念',     desc: '神识 +1（先天感知）',            cost: 3, max: 5,  apply: { shen: 1 } },
+  { id: 'dao',        name: '定心',     desc: '道心 +1（先天心境）',            cost: 6, max: 5,  apply: { dao: 1 } },
+  { id: 'fu',         name: '招财',     desc: '福源 +1（先天福运）',            cost: 3, max: 5,  apply: { fu: 1 } },
   { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 2, max: 3,  apply: { life: 20 } },
   { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } },
   { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
   { id: 'extra_field',   name: '随身灵田', desc: '初始灵田 +1块',                cost: 3, max: 3,  apply: { extraField: 1 } },
-  { id: 'wuxing_body',   name: '五行灵体', desc: '修炼五行心法速度 +10%',        cost: 5, max: 3,  apply: { wuxingCultMul: 0.10 } }
+  { id: 'destiny_slot',  name: '我命由我', desc: '初始命格栏 +1格',                cost: 12, max: 1,  apply: { destinySlot: 1 } },
+  { id: 'extra_destiny', name: '大千命格', desc: '初始可抽取命格 +1',              cost: 5, max: 4,  apply: { extraDestiny: 1 } },
+  { id: 'destiny_lock', name: '天命锁定', desc: '可锁定1个命格后重新抽取',        cost: 12, max: 1,  apply: { destinyLock: 1 } }
 ];
+
+/* ---------------- 命格系统 ---------------- */
+const DESTINIES = {
+  /* ======== 凡命（白）—— 属性+1 / 战斗+3% ======== */
+  tongpi:       { name:'铜皮铁骨',   grade:'白', type:'attr',  attr:{ ti:1 }, desc:'肉身强健，不易受伤' },
+  lingtai:      { name:'灵台清明',   grade:'白', type:'attr',  attr:{ wu:1 }, desc:'心思澄澈，易于参悟' },
+  taxue:        { name:'踏雪无痕',   grade:'白', type:'attr',  attr:{ dun:1 }, desc:'身法轻盈，如履平地' },
+  dongcha:      { name:'洞察秋毫',   grade:'白', type:'attr',  attr:{ shen:1 }, desc:'目光如炬，明察秋毫' },
+  xinruzhishui: { name:'心如止水',   grade:'白', type:'attr',  attr:{ dao:1 }, desc:'心境平和，不受外扰' },
+  caixing:      { name:'财星高照',   grade:'白', type:'attr',  attr:{ fu:1 }, desc:'财运亨通，机缘不断' },
+  jianyi:       { name:'剑意初凝',   grade:'白', type:'combat', effect:{ atkMul:0.03 }, desc:'剑气初显，锋芒毕露' },
+  lingqi:       { name:'灵气护体',   grade:'白', type:'combat', effect:{ defMul:0.03 }, desc:'灵气自动护体' },
+  qingling:     { name:'轻灵之体',   grade:'白', type:'combat', effect:{ dodgeRate:0.02 }, desc:'身法灵动，难以捉摸' },
+  shafa:        { name:'杀伐果断',   grade:'白', type:'combat', effect:{ critRate:0.02 }, desc:'出手果断，一击致命' },
+
+  /* ======== 本命（绿）—— 属性+1~2 / 战斗+5~8% ======== */
+  daoti:        { name:'道体天成',   grade:'绿', type:'attr',  attr:{ wu:2, dao:1 }, desc:'天生道体，修行如饮水' },
+  jianxin:      { name:'剑心通明',   grade:'绿', type:'attr',  attr:{ shen:2, wu:1 }, desc:'剑心通明，万法皆可为剑' },
+  xuanjia:      { name:'玄甲反噬',   grade:'绿', type:'combat', attr:{ ti:2 }, effect:{ thorns:0.08 }, desc:'玄甲护体，敌伤我百，自损一千' },
+  shixue:       { name:'噬血诀',     grade:'绿', type:'combat', attr:{ ti:1 }, effect:{ lifesteal:0.03 }, desc:'攻击附带吸血效果' },
+  yibi:         { name:'以彼之道',   grade:'绿', type:'combat', attr:{ dun:1 }, effect:{ counterRate:0.05 }, desc:'以彼之道，还施彼身' },
+  tianshengsl:  { name:'天生神力',   grade:'绿', type:'combat', effect:{ atkMul:0.05, critRate:0.03 }, desc:'力大无穷，一力降十会' },
+  lingqiao:     { name:'灵巧之身',   grade:'绿', type:'attr',  attr:{ dun:2 }, effect:{ dodgeRate:0.03 }, desc:'身法灵动，闪避极高' },
+  houtu:        { name:'厚土之体',   grade:'绿', type:'attr',  attr:{ ti:2 }, effect:{ defMul:0.05 }, desc:'如大地般厚重坚韧' },
+  lingqinqinhe: { name:'灵气亲和',   grade:'绿', type:'attr',  attr:{ wu:1, dao:1 }, desc:'与天地灵气亲和' },
+  zhuifeng:     { name:'追风逐电',   grade:'绿', type:'combat', attr:{ dun:2 }, effect:{ firstStrike:0.10 }, desc:'速度如电，必定先手' },
+
+  /* ======== 奇命（蓝）—— 属性+2~3 / 战斗+8~13% ======== */
+  tianshengjp:  { name:'天生剑胚',   grade:'蓝', type:'attr',  attr:{ shen:2, wu:1 }, desc:'天生剑道奇才' },
+  liuli:        { name:'琉璃宝体',   grade:'蓝', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.08 }, desc:'肉身如琉璃，坚不可摧' },
+  zhuifeng2:    { name:'追风逐电',   grade:'蓝', type:'combat', attr:{ dun:3 }, effect:{ dodgeRate:0.05 }, desc:'速度极快，闪避极高' },
+  jubao:        { name:'聚宝盆',     grade:'蓝', type:'attr',  attr:{ fu:3, wu:1 }, desc:'财运极佳，机缘不断' },
+  shixuekuang:  { name:'嗜血狂徒',   grade:'蓝', type:'combat', effect:{ lifesteal:0.05, critRate:0.05 }, desc:'攻击附带吸血，暴击极高' },
+  fanshangdun:  { name:'反伤之盾',   grade:'蓝', type:'combat', effect:{ defMul:0.10, thorns:0.13 }, desc:'防御极高，反伤恐怖' },
+  xiantiandt:   { name:'先天道体',   grade:'蓝', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, fu:1 }, desc:'全面发展的先天体质' },
+  jiandaozs:    { name:'剑道宗师',   grade:'蓝', type:'combat', effect:{ atkMul:0.08, critRate:0.05 }, desc:'剑道大成，攻伐无双' },
+  linghunjr:    { name:'灵魂坚韧',   grade:'蓝', type:'attr',  attr:{ dao:1, shen:2 }, desc:'灵魂坚韧，难以动摇' },
+  tianshengfx:  { name:'天生福星',   grade:'蓝', type:'attr',  attr:{ fu:3 }, effect:{ stonePerYear:10 }, desc:'福运绵长，财源广进' },
+
+  /* ======== 极命（紫）—— 属性+3~4 / 战斗+13~18% ======== */
+  tianlinggen:  { name:'天灵根',     grade:'紫', type:'attr',  attr:{ wu:3, dao:2, fu:1 }, desc:'天生灵根，修行无瓶颈' },
+  hunyuan:      { name:'混元道体',   grade:'紫', type:'attr',  attr:{ ti:3, dao:2, wu:1 }, desc:'混元一体，万法皆通' },
+  leiling:      { name:'雷灵之体',   grade:'紫', type:'combat', attr:{ dun:3, shen:2, ti:1 }, desc:'雷霆之体，速度与力量兼备' },
+  shashen:      { name:'杀神转世',   grade:'紫', type:'combat', effect:{ critRate:0.05, lifesteal:0.05 }, desc:'杀神降世，挡我者死' },
+  bumie:        { name:'不灭金身',   grade:'紫', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.13, thorns:0.15 }, desc:'金身不灭，万法不侵' },
+  xiantijian:   { name:'先天剑体',   grade:'紫', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.08, critRate:0.06 }, desc:'先天剑体，剑道无双' },
+  tianming:     { name:'天命之子',   grade:'紫', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, fu:1 }, effect:{ stonePerYear:15 }, desc:'天命所归，万事亨通' },
+
+  /* ======== 仙命（金）—— 全维+2 / 战斗+18~25% ======== */
+  jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, desc:'九天之上，唯我独尊' },
+  daoxinjm:     { name:'道心渐明',   grade:'金', type:'attr',  effect:{ wuPerYear:0.3 }, desc:'道心通明，悟性渐增' },
+  roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:0.3, defMul:0.15 }, desc:'肉身成圣，万法不侵' },
+  tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, fu:3 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
+  shafadj:      { name:'杀伐果断',   grade:'金', type:'combat', effect:{ atkMul:0.15, critRate:0.13, executeBonus:0.10 }, desc:'一击必杀，挡我者死' },
+  wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', effect:{ defMul:0.18, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
+  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, effect:{ stonePerYear:25 }, desc:'先天道体，万法皆通' },
+  zhanshen:     { name:'战神降世',   grade:'金', type:'combat', effect:{ atkMul:0.18, critRate:0.15, lifesteal:0.08 }, desc:'战神降世，天下无敌' },
+  tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, effect:{ tribBonus:0.15, stonePerYear:20 }, desc:'天道眷顾，万事如意' },
+  wanjian:      { name:'万剑归宗',   grade:'金', type:'combat', effect:{ atkMul:0.20, critRate:0.18, techTypeBonus:{ xinfa:0.25 } }, desc:'万剑归宗，剑道巅峰' }
+};
 
 /* ---------------- 工具函数 ---------------- */
 function safeStage(s)     { return STAGES[s.idx] || STAGES[11]; }
@@ -1748,10 +2342,12 @@ const EQUIP_TIERS = {
   5: { name: '仙品', color: '#ff9d3c' }
 };
 const EQUIP_SLOTS = {
-  head:     { name: '头饰' },
-  body:     { name: '躯干' },
-  leg:      { name: '腿部' },
-  treasure: { name: '宝物' }
+  weapon:    { name: '武器' },
+  head:      { name: '头饰' },
+  body:      { name: '躯干' },
+  leg:       { name: '腿部' },
+  accessory: { name: '饰品' },
+  treasure:  { name: '法宝' }
 };
 
 /* ---------------- 装备库 ---------------- */
@@ -1768,7 +2364,8 @@ const EQUIPS = {
     linwen_ruanjia:  { name: '鳞纹软甲',   tier: 2, hpMax: 55,  atk: 5,      price: 180,  desc: '蛟鳞串成，贴身轻盈。' },
     xuanjing_zhongjia:{ name: '玄精重甲',  tier: 3, hpMax: 110, atk: 12,     price: 650,  desc: '玄精所铸，重逾千钧。' },
     jinluo_baoyi:    { name: '金络宝衣',   tier: 4, hpMax: 180, atk: 15, wu: 1, price: 2400, desc: '金丝络络，百邪不侵。' },
-    xinghe_fayi:     { name: '星河法衣',   tier: 5, hpMax: 250, ti: 2, price: 7200, desc: '衣上星辰自晦明，映照周天。' }
+    xinghe_fayi:     { name: '星河法衣',   tier: 5, hpMax: 250, ti: 2, price: 7200, desc: '衣上星辰自晦明，映照周天。' },
+    canjia:          { name: '蚕丝甲',     tier: 2, hpMax: 60,  atk: 8,  price: 80,  desc: '白素以千年蚕丝织成，柔软如水，坚韧如铁。' }
   },
   leg: {
     qingma_caoxie:   { name: '青麻草鞋',   tier: 1, hpMax: 8,   price: 30,   desc: '山野寻常物，走得稳当。' },
@@ -1789,7 +2386,10 @@ const EQUIPS = {
     yuewang_sword:   { name: '越王勾践剑', tier: 5, atk: 50,    price: 0,    desc: '千古名剑，锋芒毕露，斩妖除魔。' },
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
     juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.05, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
-    jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' }
+    jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' },
+    linghu_pei:      { name: '灵狐配饰',   tier: 2, dao: 3, price: 0, desc: '灵狐尾毛与感恩之心所成，持之不受迷惑。' },
+    dashen_bian:     { name: '打神鞭',     tier: 3, atk: 16, price: 0, desc: '古朴铜鞭，刻满古文，可破万法。' },
+    tongqian_jian:   { name: '铜钱剑',     tier: 3, atk: 5, price: 0, desc: '古朴铜钱所化小剑，看似寻常却蕴含深意。' }
   }
 };
 

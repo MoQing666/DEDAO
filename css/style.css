@@ -2,11 +2,6 @@
    DEDAO 得道 —— 像素风样式（类主机 / 移动端优先）
    ============================================================ */
 @font-face {
-  font-family: 'Zpix';
-  src: url('../assets/fonts/zpix.ttf') format('truetype');
-  font-display: swap;
-}
-@font-face {
   font-family: 'YuYang';
   src: url('../assets/fonts/TsangerYuYangT-W05.woff2') format('woff2');
   font-display: swap;

@@ -967,6 +967,16 @@
   function actAlchemy() { openModal('alchemy'); }
   function actForge() { openModal('forge'); }
   function actBreak() { breakthroughFlow(); }
+  function actArts() {
+    if (!S || S.dead) return;
+    if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
+    Engine.spend(S, 1);
+    S.ti = (S.ti || 0) + 0.5;
+    Engine.refreshStats(S);
+    Engine.saveState(S);
+    log('你苦修锻体，体魄 +0.5。', 'good');
+    refresh();
+  }
 
   /* ---------------- 突破 / 渡劫（人劫 · 天劫） ---------------- */
   function statSheet(s) {
@@ -4359,7 +4369,7 @@
     $('btn-arts').onclick = function () {
       if (!S || S.dead) return;
       sfx('click');
-      showXuelian();
+      actArts();
     };
     $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
     $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };

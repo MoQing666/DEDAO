@@ -56,7 +56,7 @@
     return null;
   }
   function showScreen(name) {
-    ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement', 'tech', 'favor', 'crafts', 'bag', 'char', 'enter'].forEach(function (n) {
+    ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement', 'tech', 'favor', 'crafts', 'duanti', 'bag', 'char', 'enter'].forEach(function (n) {
       $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
     });
     // 底部栏只在游戏页面显示
@@ -76,6 +76,7 @@
         'tech': 'game',
         'favor': 'game',
         'crafts': 'game',
+        'duanti': 'game',
         'enter': 'title'
       };
       if (bgmMap[name]) {
@@ -187,9 +188,12 @@
 
     $('btn-cult-label').textContent = S.cultedThisYear ? '修炼（今年已修炼）' : '修炼（' + Engine.cultCost(S) + '点）';
     $('btn-cult').classList.toggle('disabled', S.cultedThisYear || !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));
-    ['btn-arts', 'btn-social'].forEach(function (id) {
-      $(id).classList.toggle('disabled', !Engine.canAction(S, 1));
-    });
+    $('btn-social').classList.toggle('disabled', !Engine.canAction(S, 1));
+    // 锻体：进入页面不耗行动点；未解锁时按钮仍可点（给引导提示）
+    const duantiOn = !!(S.flags && S.flags.duanti);
+    $('btn-arts').disabled = false;
+    $('btn-arts').classList.remove('disabled');
+    $('btn-arts-label').textContent = duantiOn ? '锻体' : '锻体（未解锁）';
     $('btn-explore').classList.toggle('disabled', !Engine.canAction(S, 2));
     $('btn-social-label').textContent = '游历（1点）';
     const hasSect = !!S.sect;
@@ -969,12 +973,54 @@
   function actBreak() { breakthroughFlow(); }
   function actArts() {
     if (!S || S.dead) return;
-    if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
-    Engine.spend(S, 1);
-    S.ti = (S.ti || 0) + 0.5;
-    Engine.refreshStats(S);
-    Engine.saveState(S);
-    log('你苦修锻体，体魄 +0.5。', 'good');
+    if (!(S.flags && S.flags.duanti)) {
+      showChapter('锻体 · 未解之法', [
+        '你尚未习得《锻体诀》，无从锻体。',
+        '听闻上古炼体一脉的传承隐于名山大川，待修为臻至筑基后期，或有机缘可得。'
+      ], { subtitle: '未解之法', choices: [{ t: '且修前行，静待机缘' }] });
+      return;
+    }
+    renderDuantiPage();
+  }
+  /* ---------------- 锻体页（《锻体诀》习得后开放；进入不耗行动点） ---------------- */
+  function renderDuantiPage() {
+    showScreen('duanti');
+    const body = $('duanti-body');
+    body.innerHTML = '';
+    const info = Engine.duantiInfo(S);
+    const st = STAGES[S.idx] || { realm: S.realm, sub: '' };
+
+    const head = document.createElement('h4');
+    head.textContent = '《锻体诀》 · ' + st.realm + (st.sub ? ' · ' + st.sub : '');
+    body.appendChild(head);
+
+    const note = document.createElement('p');
+    note.className = 'dim';
+    note.textContent = '进入锻体不耗行动点。每一大境界，每种淬炼至多 ' + info.max +
+      ' 次，突破大境界后重置。当前行动点：' + S.actionsLeft;
+    body.appendChild(note);
+
+    const list = document.createElement('div');
+    info.types.forEach(function (tp) {
+      const used = info.counts[tp.key] || 0;
+      const left = info.max - used;
+      const maxed = left <= 0;
+      const rowEl = document.createElement('div');
+      rowEl.className = 'formula-row';
+      rowEl.innerHTML = '<div><b>[' + tp.verb + ']</b><br><span class="dim">' +
+        tp.cost + ' 行动点 → ' + tp.name + ' +0.5　|　本境界已淬 ' + used + '/' + info.max +
+        (maxed ? '（已至极限）' : '') + '</span></div><button>' + (maxed ? '已至极限' : '淬炼') + '</button>';
+      const btn = rowEl.querySelector('button');
+      btn.disabled = maxed || !Engine.canAction(S, tp.cost);
+      btn.onclick = function () {
+        const r = Engine.doDuanti(S, tp.key);
+        log(r.msg, r.ok ? 'good' : 'bad');
+        renderDuantiPage();
+        refresh();
+      };
+      list.appendChild(rowEl);
+    });
+    body.appendChild(list);
     refresh();
   }
 
@@ -3515,22 +3561,6 @@
       };
       list.appendChild(row2);
 
-      // 锻体
-      const row3 = document.createElement('div');
-      row3.className = 'formula-row';
-      row3.innerHTML = '<div><b>[锻体]</b><br><span class="dim">以矿为炉，锤炼肉身。体魄 +0.5</span></div><button>锻体</button>';
-      row3.querySelector('button').onclick = function () {
-        if (!Engine.canAction(S, 1)) { log('行动点不足。'); return; }
-        Engine.spend(S, 1);
-        S.ti = (S.ti || 0) + 0.5;
-        Engine.refreshStats(S);
-        Engine.saveState(S);
-        log('你苦修锻体，体魄 +0.5。', 'good');
-        renderArtsTab('mine', body);
-        refresh();
-      };
-      list.appendChild(row3);
-
       body.appendChild(list);
       return;
     }
@@ -4434,6 +4464,7 @@
     };
     $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
     $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
+    $('duanti-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('tech-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('favor-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('modal-close').onclick = function () { sfx('click'); closeModal(); };

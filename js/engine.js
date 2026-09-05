@@ -1346,6 +1346,51 @@ const Engine = (function () {
   }
   function canAction(s, n) { return s.actionsLeft >= n && !s.dead; }
 
+  /* ---------------- 锻体（《锻体诀》：ml_5_t3 筑基后期剧情解锁） ---------------- */
+  var DUANTI_MAX = 10;                            // 每个大境界，每种淬炼至多 10 次
+  var DUANTI_TYPES = [
+    { key: 'ti',   name: '体魄', verb: '淬体魄', cost: 1, attr: 'ti'   },
+    { key: 'dun',  name: '遁速', verb: '炼遁速', cost: 1, attr: 'dun'  },
+    { key: 'shen', name: '神识', verb: '凝神识', cost: 2, attr: 'shen' }
+  ];
+  function duantiState(s) {
+    var bi = bigIdxOf(s);
+    if (!s.duanti || s.duanti.realm !== bi) {
+      s.duanti = { realm: bi, counts: { ti: 0, dun: 0, shen: 0 } };
+    }
+    return s.duanti;
+  }
+  function duantiInfo(s) {
+    return {
+      unlocked: !!(s.flags && s.flags.duanti),
+      max: DUANTI_MAX,
+      types: DUANTI_TYPES,
+      realm: bigIdxOf(s),
+      counts: duantiState(s).counts
+    };
+  }
+  function doDuanti(s, type) {
+    s.flags = s.flags || {};
+    if (!s.flags.duanti) return { ok: false, msg: '你尚未习得《锻体诀》，无法锻体。' };
+    var tp = null;
+    for (var i = 0; i < DUANTI_TYPES.length; i++) if (DUANTI_TYPES[i].key === type) tp = DUANTI_TYPES[i];
+    if (!tp) return { ok: false, msg: '无此淬炼之法。' };
+    var st = duantiState(s);
+    if (st.counts[type] >= DUANTI_MAX) {
+      return { ok: false, msg: tp.name + '已淬炼 ' + DUANTI_MAX + ' 次，肉身至此境之限——待突破大境界后，方可再锻。' };
+    }
+    if (!canAction(s, tp.cost)) return { ok: false, msg: '行动点不足。' };
+    spend(s, tp.cost);
+    s[tp.attr] = (s[tp.attr] || 0) + 0.5;
+    st.counts[type]++;
+    refreshStats(s); saveState(s);
+    return {
+      ok: true,
+      msg: '你依《锻体诀》' + tp.verb + '，' + tp.name + ' +0.5。（' + tp.name + ' ' + st.counts[type] + '/' + DUANTI_MAX + '）',
+      left: DUANTI_MAX - st.counts[type]
+    };
+  }
+
   function explore(s) {
     if (!canAction(s, 2)) return false;
     const pool = EVENTS.mijing.filter(evOK(s, 2));
@@ -2190,6 +2235,7 @@ const Engine = (function () {
     startCraft: startCraft, accelerateCraft: accelerateCraft,
     giveGift: giveGift, getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,
     bigIdxOf: bigIdxOf,
+    duantiInfo: duantiInfo, doDuanti: doDuanti,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, checkAchievements: checkAchievements,

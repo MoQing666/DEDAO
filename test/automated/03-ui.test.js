@@ -265,5 +265,73 @@ module.exports = async function build() {
     if (real.length) t.fail('弹窗交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  S.case('锻体：未解锁时仅给引导，不进页面不耗行动点', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '锻体未解锁');
+    const apEl = doc.getElementById('h-actions-left');
+    const apBefore = apEl ? apEl.textContent : '';
+    t.ok(click(win, 'btn-arts'), 'btn-arts 不存在');
+    await new Promise(r => setTimeout(r, 200));
+    const bodyText = doc.body.textContent || '';
+    t.ok(/未解之法|锻体诀/.test(bodyText), '未解锁应显示锻体引导文案');
+    t.eq(visible(doc, 'screen-duanti'), false, '未解锁不应进入锻体页');
+    t.eq(apEl ? apEl.textContent : '', apBefore, '未解锁点击不应消耗行动点');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('未解锁锻体报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('锻体：解锁后进入页面，淬炼生效且计入次数', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '锻体解锁');
+    // 修改自动存档：解锁《锻体诀》并补足行动点
+    const raw = JSON.parse(win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(!!raw, '自动存档不存在');
+    if (!raw) return;
+    raw.flags = Object.assign({}, raw.flags, { duanti: 1 });
+    raw.actionsLeft = 6;
+    // jsdom 开局流程可能未选中命格导致 talents/linggen 为空，被 validSave 判为失效档，此处补齐
+    if (!raw.talents || !raw.talents.length) raw.talents = ['t_duanti_test'];
+    if (!raw.linggen) raw.linggen = { id: 'lg_duanti_test' };
+    win.localStorage.setItem('dedao_save', JSON.stringify(raw));
+    // 读档：存档弹窗 → 第一行“读档” → 自定义确认
+    click(win, 't-load');
+    await new Promise(r => setTimeout(r, 150));
+    const loadBtn = [...doc.querySelectorAll('#modal-body button')].find(b => b.textContent === '读档' && !b.disabled);
+    t.ok(!!loadBtn, '存档弹窗中无可用“读档”按钮');
+    if (!loadBtn) return;
+    loadBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+    const card = doc.getElementById('dialog-card');
+    const okBtn = card ? [...card.querySelectorAll('button')].find(b => /确定/.test(b.textContent)) : null;
+    t.ok(!!okBtn, '读档确认弹窗未出现');
+    if (!okBtn) return;
+    okBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // 解锁态按钮文案
+    t.eq((doc.getElementById('btn-arts-label') || {}).textContent, '锻体', '解锁后按钮文案应为「锻体」');
+    // 进入锻体页（进入不耗行动点）
+    const apEl = doc.getElementById('h-actions-left');
+    const apEnter = apEl ? apEl.textContent : '';
+    click(win, 'btn-arts');
+    await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-duanti'), true, '解锁后应进入锻体页');
+    t.eq(apEl ? apEl.textContent : '', apEnter, '进入锻体页不应消耗行动点');
+    const rows = [...doc.querySelectorAll('#duanti-body .formula-row')];
+    t.eq(rows.length, 3, '锻体页应有 3 种淬炼（体魄/遁速/神识）');
+    if (rows.length !== 3) return;
+    t.ok(/1 行动点/.test(rows[0].textContent) && /0\.5/.test(rows[0].textContent), '体魄淬炼应为 1点→+0.5');
+    t.ok(/2 行动点/.test(rows[2].textContent) && /0\.5/.test(rows[2].textContent), '神识淬炼应为 2点→+0.5');
+    // 淬炼体魄：行动点 -1，计数 1/10
+    const firstBtn = rows[0] && rows[0].querySelector('button');
+    t.ok(firstBtn && !firstBtn.disabled, '淬炼按钮应可用');
+    firstBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const rows2 = [...doc.querySelectorAll('#duanti-body .formula-row')];
+    t.ok(/已淬 1\/10/.test(rows2[0].textContent), '淬炼后应显示 已淬 1/10');
+    t.eq(apEl ? apEl.textContent : '', String(Number(apEnter) - 1), '淬炼体魄应消耗 1 行动点');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('锻体页交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

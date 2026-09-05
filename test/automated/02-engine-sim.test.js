@@ -320,6 +320,71 @@ module.exports = async function build() {
     t.gt(maxIdx, 0, '所有角色都停留在初始境界，突破链路可能失效');
   });
 
+  /* ---------- 锻体系统（《锻体诀》） ---------- */
+  S.case('doDuanti：未解锁拒绝，解锁后生效（+0.5 体魄）', (t) => {
+    const s = E.startLife('锻体甲');
+    E.commitStart(s, TALENTS[0].id);
+    s.flags = s.flags || {};
+    delete s.flags.duanti;
+    s.actionsLeft = 10;
+    const r0 = E.doDuanti(s, 'ti');
+    t.ok(!r0.ok, '未解锁《锻体诀》应拒绝锻体');
+    s.flags.duanti = 1;
+    const before = s.ti || 0;
+    const r1 = E.doDuanti(s, 'ti');
+    t.ok(r1.ok, '解锁后锻体应成功');
+    t.eq(s.ti, before + 0.5, '体魄应 +0.5');
+    t.eq(r1.left, 9, '首次锻体后剩余应为 9');
+  });
+
+  S.case('doDuanti：行动点消耗（体魄1/遁速1/神识2）', (t) => {
+    const s = E.startLife('锻体乙');
+    E.commitStart(s, TALENTS[0].id);
+    s.flags = { duanti: 1 };
+    s.actionsLeft = 10;
+    const a0 = s.actionsLeft;
+    E.doDuanti(s, 'ti');
+    t.eq(s.actionsLeft, a0 - 1, '淬体魄应耗 1 点');
+    E.doDuanti(s, 'dun');
+    t.eq(s.actionsLeft, a0 - 2, '炼遁速应耗 1 点');
+    E.doDuanti(s, 'shen');
+    t.eq(s.actionsLeft, a0 - 4, '凝神识应耗 2 点');
+    t.gte(s.dun || 0, 0.5, '遁速应 +0.5');
+    t.gte(s.shen || 0, 0.5, '神识应 +0.5');
+  });
+
+  S.case('doDuanti：每大境界每种至多10次，行动点不足拒绝', (t) => {
+    const s = E.startLife('锻体丙');
+    E.commitStart(s, TALENTS[0].id);
+    s.flags = { duanti: 1 };
+    s.actionsLeft = 100;
+    for (let i = 0; i < 10; i++) {
+      const r = E.doDuanti(s, 'ti');
+      t.ok(r.ok, `第 ${i + 1} 次淬体魄应成功`);
+    }
+    const r11 = E.doDuanti(s, 'ti');
+    t.ok(!r11.ok, '第 11 次应被大境界上限拒绝');
+    const info = E.duantiInfo(s);
+    t.eq(info.counts.ti, 10, '体魄计数应为 10/10');
+    s.actionsLeft = 0;
+    const rNo = E.doDuanti(s, 'dun');
+    t.ok(!rNo.ok, '行动点不足应拒绝');
+  });
+
+  S.case('doDuanti：突破大境界后次数重置', (t) => {
+    const s = E.startLife('锻体丁');
+    E.commitStart(s, TALENTS[0].id);
+    s.flags = { duanti: 1 };
+    s.actionsLeft = 100;
+    for (let i = 0; i < 10; i++) E.doDuanti(s, 'dun');
+    t.ok(!E.doDuanti(s, 'dun').ok, '筑基内 10 次后应拒绝');
+    s.idx = 6; // 金丹前期（大境界变更）
+    const info = E.duantiInfo(s);
+    t.eq(info.counts.dun, 0, '进入金丹后遁速计数应重置');
+    const r = E.doDuanti(s, 'dun');
+    t.ok(r.ok, '大境界突破后应可继续锻体');
+  });
+
   return S;
 };
 

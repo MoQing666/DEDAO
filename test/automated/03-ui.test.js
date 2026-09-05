@@ -240,5 +240,30 @@ module.exports = async function build() {
     t.note(`存档键: ${keys.join(', ')}`);
   });
 
+  S.case('自定义弹窗替代原生 confirm（WebView 不阻塞）', async (t) => {
+    const { win, doc, errors } = await boot();
+    if (!click(win, 't-settings')) { t.fail('找不到 t-settings 入口'); return; }
+    await new Promise(r => setTimeout(r, 200));
+    const clearBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /清除所有存档/.test(b.textContent));
+    if (!clearBtn) { t.fail('设置弹窗中未找到“清除所有存档”按钮'); return; }
+    clearBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const ov = doc.getElementById('dialog-overlay');
+    t.ok(!!ov, '点击清除存档后未生成自定义弹窗 dialog-overlay（说明仍依赖原生 confirm）');
+    if (!ov) return;
+    t.eq(ov.style.display, 'flex', '自定义弹窗未显示（display 应为 flex）');
+    const card = doc.getElementById('dialog-card');
+    t.ok(card && /清除所有存档/.test(card.textContent), '弹窗缺少确认文案');
+    const cancel = card && [...card.querySelectorAll('button')].find(b => /取消/.test(b.textContent));
+    t.ok(!!cancel, '弹窗缺少“取消”按钮');
+    if (cancel) {
+      cancel.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 120));
+      t.eq(ov.style.display, 'none', '点击取消后弹窗未关闭');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('弹窗交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

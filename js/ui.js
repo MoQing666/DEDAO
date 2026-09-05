@@ -1532,11 +1532,11 @@
     ov.style.display = 'flex';
     $('name-input').focus();
     $('name-input').select();
-    function confirm() {
+    function confirmName() {
       ov.style.display = 'none';
       onDone($('name-input').value);
     }
-    $('name-ok').onclick = confirm;
+    $('name-ok').onclick = confirmName;
     $('name-random').onclick = function () {
       $('name-input').value = randName();
       $('name-input').focus();
@@ -1547,7 +1547,7 @@
       onDone(null);
     };
     $('name-input').onkeydown = function (e) {
-      if (e.key === 'Enter') confirm();
+      if (e.key === 'Enter') confirmName();
     };
   }
 
@@ -1897,7 +1897,7 @@
   function rerollDestiny(maxJie) {
     const meta = Engine.loadMeta();
     if (meta.points < 1) {
-      alert('轮回点不足！');
+      uiAlert('轮回点不足！');
       return;
     }
     // 消耗1轮回点
@@ -4075,9 +4075,9 @@
     bClear.textContent = '清除所有存档';
     bClear.style.color = '#e0604a';
     bClear.style.borderColor = '#e0604a';
-    bClear.onclick = function() {
-      if (confirm('确定要清除所有存档吗？此操作不可恢复！')) {
-        if (confirm('再次确认：清除所有存档数据？')) {
+    bClear.onclick = async function() {
+      if (await uiConfirm('确定要清除所有存档吗？此操作不可恢复！')) {
+        if (await uiConfirm('再次确认：清除所有存档数据？')) {
           localStorage.removeItem('dedao_save');
           localStorage.removeItem('dedao_slot0');
           localStorage.removeItem('dedao_slot1');
@@ -4090,7 +4090,7 @@
           $('battle').style.display = 'none';
           showScreen('title');
           renderTitle();
-          alert('存档已清除，请刷新页面。');
+          await uiAlert('存档已清除，请刷新页面。');
           location.reload();
         }
       }
@@ -4115,8 +4115,11 @@
     return info.name + ' · ' + info.realm + (info.sect ? ' · ' + info.sect : '') + ' · 第' + info.year + '年 · ' + info.age + '岁' +
       (info.dead ? ' · <span style="color:#e0604a">已故</span>' : '');
   }
-  function doLoadSlot(slotIdx) {
-    if (S && S.name && !S.dead && typeof confirm === 'function' && !confirm('读档将覆盖当前这一世，确定？')) return;
+  async function doLoadSlot(slotIdx) {
+    if (S && S.name && !S.dead) {
+      const ok = await uiConfirm('读档将覆盖当前这一世，确定？');
+      if (!ok) return;
+    }
     const s = Engine.loadState(slotIdx);
     if (!s || !validSave(s)) {
       log('该存档已失效。', 'bad');
@@ -4155,6 +4158,63 @@
       $('log').scrollTop = $('log').scrollHeight;
     }
   }
+  /* ---------------- 自定义弹窗（替代原生 alert/confirm，避免 WebView 内嵌时阻塞宿主线程） ---------------- */
+  let _dlgOv = null, _dlgCard = null;
+  function ensureDialogOverlay() {
+    if (_dlgOv) return _dlgOv;
+    const ov = document.createElement('div');
+    ov.id = 'dialog-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:10000;';
+    const card = document.createElement('div');
+    card.id = 'dialog-card';
+    card.style.cssText = 'min-width:240px;max-width:80%;background:#1c1726;color:#e8e1d4;border:1px solid #4a3d5c;border-radius:12px;padding:18px 20px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:inherit;';
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    _dlgOv = ov; _dlgCard = card;
+    return ov;
+  }
+  function uiAlert(msg) {
+    return new Promise(function (resolve) {
+      const ov = ensureDialogOverlay();
+      const card = _dlgCard;
+      card.innerHTML = '';
+      const p = document.createElement('div');
+      p.style.cssText = 'margin-bottom:14px;line-height:1.5;white-space:pre-wrap;';
+      p.textContent = msg;
+      const btn = document.createElement('button');
+      btn.className = 'btn-main';
+      btn.textContent = '确定';
+      btn.style.cssText = 'display:block;margin-left:auto;';
+      btn.onclick = function () { ov.style.display = 'none'; resolve(); };
+      card.appendChild(p);
+      card.appendChild(btn);
+      ov.style.display = 'flex';
+    });
+  }
+  function uiConfirm(msg) {
+    return new Promise(function (resolve) {
+      const ov = ensureDialogOverlay();
+      const card = _dlgCard;
+      card.innerHTML = '';
+      const p = document.createElement('div');
+      p.style.cssText = 'margin-bottom:14px;line-height:1.5;white-space:pre-wrap;';
+      p.textContent = msg;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+      const no = document.createElement('button');
+      no.className = 'btn-main ghost';
+      no.textContent = '取消';
+      no.onclick = function () { ov.style.display = 'none'; resolve(false); };
+      const yes = document.createElement('button');
+      yes.className = 'btn-main';
+      yes.textContent = '确定';
+      yes.onclick = function () { ov.style.display = 'none'; resolve(true); };
+      row.appendChild(no); row.appendChild(yes);
+      card.appendChild(p); card.appendChild(row);
+      ov.style.display = 'flex';
+    });
+  }
+
   function openSaveModal(fromGame) {
     const ov = $('modal');
     const box = $('modal-body');
@@ -4180,8 +4240,11 @@
         const bSave = document.createElement('button');
         bSave.textContent = '覆盖存档';
         bSave.className = 'btn-small';
-        bSave.onclick = function () {
-          if (info && typeof confirm === 'function' && !confirm('覆盖 ' + SLOT_LABELS[i + 1] + ' 的旧档？')) return;
+        bSave.onclick = async function () {
+          if (info) {
+            const ok = await uiConfirm('覆盖 ' + SLOT_LABELS[i + 1] + ' 的旧档？');
+            if (!ok) return;
+          }
           Engine.saveState(S, slotIdx == null ? 0 : slotIdx);
           log('已写入' + SLOT_LABELS[i + 1] + '。', 'good');
           sfx('good');
@@ -4364,8 +4427,6 @@
     $('btn-sect').onclick = function () { sfx('click'); actSect(); };
     $('btn-break').onclick = function () { sfx('click'); actBreak(); };
     $('btn-year').onclick = function () { sfx('click'); actYearEnd(); };
-    if ($('btn-bag')) $('btn-bag').onclick = function () { sfx('click'); openBag(); };
-    if ($('btn-gear')) $('btn-gear').onclick = function () { sfx('click'); openGear(); };
     $('btn-arts').onclick = function () {
       if (!S || S.dead) return;
       sfx('click');
@@ -4379,7 +4440,6 @@
     $('modal').onclick = function (e) { if (e.target === $('modal')) { sfx('click'); closeModal(); } };
     $('t-load').onclick = function () { sfx('click'); openSaveModal(false); };
     $('t-settings').onclick = function () { sfx('click'); openSettings(); };
-    if ($('btn-settings')) $('btn-settings').onclick = function () { sfx('click'); openSettings(); };
 
     // 底部栏按钮事件
     $('btn-char-bottom').onclick = function () { if (!S) return; sfx('click'); openChar(); };

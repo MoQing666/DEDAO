@@ -30,25 +30,26 @@
 
 | 套件 | 通过 | 失败 | 风险 |
 |---|---:|---:|---:|
-| 01 静态一致性 & 数据完整性 | 14 | 0 | 2 |
+| 01 静态一致性 & 数据完整性 | 16 | 0 | 0 |
 | 02 引擎单元测试 & 长时模拟 | 15 | 0 | 0 |
-| 03 UI / DOM 层 | 7 | 0 | 0 |
-| **合计** | **36** | **0** | **2** |
+| 03 UI / DOM 层（含弹窗回归） | 8 | 0 | 0 |
+| **合计** | **39** | **0** | **0** |
 
-> 结果：**全量 36 用例通过**（加上 2 项非阻塞风险），原文"38/38 通过"含了复核用例计数。详见 `reports/test-report-*.md` 最新一份。
+> 结果：**全量 39 用例通过，0 风险**。详见 `reports/test-report-*.md` 最新一份。
 
 ## 四、本次发现并修复的缺陷（P0）
 
 | 缺陷 | 位置 | 影响 | 修复 |
 |---|---|---|---|
 | `showXuelian is not defined` | `js/ui.js` 主行动栏「锻体」按钮 `btn-arts` 的 onclick | 点击「锻体」直接抛 `ReferenceError`，按钮功能完全失效（空桩残留，对应注释「锻体系统UI（未实装）」） | 新增 `actArts()`，复用游戏中已存在的 inline 锻体逻辑（消耗 1 行动点、体魄 +0.5、刷新存档），并将 onclick 改为 `actArts()` |
+| 原生 `alert`/`confirm` 阻塞线程（WebView 发布阻断） | `js/ui.js` 的清档/读档/覆盖存档/轮回点提示共 6 处 | 浏览器下可用，但**WebView 内嵌（抖音/华为/TapTap）时原生弹窗会阻塞宿主线程；且 4119/4184 的 `typeof confirm` 守卫在 WebView 下反而变成"默认确认"，有覆盖存档的数据风险** | 新增 `uiAlert()` / `uiConfirm()`（`Promise` 化、基于独立 `#dialog-overlay` 浮层、不阻塞线程）；6 处全部改为 `async/await` 调用；顺带清理 3 处旧布局死代码分支 |
 
-## 五、风险项（非阻塞，上线前处理）
+## 五、已清零的风险项
 
-| 风险 | 位置 | 说明 | 建议 |
-|---|---|---|---|
-| 守护式死代码 | `js/ui.js` 的 `btn-bag` / `btn-gear` / `btn-settings` | 旧布局遗留引用，已用 `if ($('id'))` 守护，运行时不会触发，不影响功能 | 清理旧分支即可，优先级低 |
-| `alert` / `confirm` / `prompt` 共 8 处 | `js/ui.js` / `js/engine.js` | 浏览器下正常；但**WebView 内嵌（抖音/华为/TapTap）时原生弹窗会阻塞宿主线程**，是上架前必须处理的隐患 | 替换为自定义 DOM 弹窗（开发期已规划的统一 `platform.js` 抽象层内实现） |
+| 原风险 | 状态 | 处理 |
+|---|---|---|
+| 守护式死代码（`btn-bag`/`btn-gear`/`btn-settings` 旧分支） | ✅ 已清理 | 实际功能已由 `btn-bag-bottom` / `btn-settings-bottom` 等真实按钮接管，删除无影响 |
+| 原生 `alert`/`confirm` 阻塞 WebView | ✅ 已替换为 `uiAlert`/`uiConfirm` | 见第四节；静态扫描已归零 |
 
 ## 六、如何运行
 
@@ -71,5 +72,5 @@ DEDAO_ROOT=/d/opencode/DEDAO_test node test/automated/run.js
 ## 七、后续建议
 
 1. **补 Playwright E2E 缝**：在 `index.html` 暴露 `window.__TEST__`（`state()` / `seed()` / `ready`），可一键跑"开局→修炼→突破"关键流与截图回归，进一步防回归。
-2. **清掉死代码与替换原生弹窗**：消除第五节的 2 项风险，为 WebView 内嵌铺路。
+2. **~~清掉死代码与替换原生弹窗~~**：✅ 已完成（见第四/五节），WebView 内嵌的弹窗阻塞风险已清零。
 3. **接入 CI**：把 `run.js` 挂到 Git push 钩子 / 平台 CI，每次提交自动回归。

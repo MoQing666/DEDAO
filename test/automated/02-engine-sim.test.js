@@ -385,6 +385,61 @@ module.exports = async function build() {
     t.ok(r.ok, '大境界突破后应可继续锻体');
   });
 
+  /* ---------- 内容优化：灵材品级 / 坊市 / 出售装备 ---------- */
+  S.case('秘境灵材按秘境品级掉落（高境界刷黄级秘境得黄级灵草）', (t) => {
+    const s = E.startLife('灵材甲');
+    E.commitStart(s, TALENTS[0].id);
+    s.idx = 6; // 金丹前期，玩家境界为"地"
+    s.advType = 'huang'; // 黄级秘境
+    s.adv = { depth: 1, gains: [], maxDepth: 5, status: 'running', done: false, type: 'huang' };
+    s.materials = {};
+    const r = E.advResolve(s, { type: 'herb' });
+    t.ok(r && r.lines, 'advResolve 应返回剧情');
+    t.gte(s.materials.herb_huang || 0, 1, '黄级秘境应掉落黄级灵草');
+    t.eq(s.materials.herb_xuan || 0, 0, '黄级秘境不应掉落玄级灵草');
+    s.adv.depth = 2;
+    E.advResolve(s, { type: 'iron' });
+    t.gte(s.materials.iron_huang || 0, 1, '黄级秘境应掉落黄级灵铁');
+    t.eq(s.materials.iron_xuan || 0, 0, '黄级秘境不应掉落玄级灵铁');
+  });
+
+  S.case('坊市灵材按秘境品级出售且可正常购买', (t) => {
+    const s = E.startLife('坊市甲');
+    E.commitStart(s, TALENTS[0].id);
+    s.idx = 6;
+    s.advType = 'xuan'; // 玄级秘境
+    s.adv = { depth: 1, gains: [] };
+    const stock = E.shopStock(s);
+    const matRows = stock.filter(function (x) { return x.mat; });
+    t.eq(matRows.length, 2, '坊市应有灵草+灵铁两种灵材');
+    t.ok(matRows.every(function (x) { return x.mat.key === 'herb_xuan' || x.mat.key === 'iron_xuan'; }), '玄级秘境坊市应卖玄级灵材');
+    s.stone = 1000;
+    const r = E.buyStock(s, matRows[0]);
+    t.ok(r.ok, '购买应成功');
+    t.gte(s.materials[matRows[0].mat.key] || 0, 1, '买到的灵材应入分级材料库');
+    t.ok(s.stone < 1000, '购买应扣灵石');
+  });
+
+  S.case('出售装备：同名只卖一件，已穿戴的不受影响', (t) => {
+    const s = E.startLife('出售甲');
+    E.commitStart(s, TALENTS[0].id);
+    const eid = E.randomEquip(0, 1);
+    t.ok(!!eid && !!E.findEquip(eid), '应能生成合法装备');
+    s.inventory.push(eid, eid, eid); // 袋中三件同名
+    if (!Array.isArray(s.equip.treasure)) s.equip.treasure = [];
+    s.equip.treasure.push(eid);      // 法宝位也穿戴了同 ID
+    const stone0 = s.stone;
+    const g = E.sellEquip(s, eid);
+    t.eq(typeof g, 'number', '出售一件应返回灵石');
+    t.eq(s.inventory.filter(function (x) { return x === eid; }).length, 2, '应只剩两件同名');
+    t.eq(s.equip.treasure.indexOf(eid) >= 0, true, '已穿戴的法宝不应被卖掉');
+    t.eq(s.stone, stone0 + g, '灵石应增加半价');
+    const r = E.sellEquipAll(s, eid);
+    t.eq(r.count, 2, '全部出售应卖掉剩余两件');
+    t.eq(s.inventory.filter(function (x) { return x === eid; }).length, 0, '袋中同名应清空');
+    t.eq(s.equip.treasure.indexOf(eid) >= 0, true, '全部出售也不动已穿戴');
+  });
+
   return S;
 };
 

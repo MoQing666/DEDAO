@@ -649,19 +649,28 @@ const Engine = (function () {
     return true;
   }
   function sellEquip(s, id) {
+    // 只出售储物袋中的一件，绝不动已穿戴的装备
     const it = findEquip(id);
     if (!it) return false;
-    if (Array.isArray(s.equip.treasure)) {
-      const ti = s.equip.treasure.indexOf(id);
-      if (ti >= 0) {
-        s.equip.treasure.splice(ti, 1);
-      }
-    }
-    s.inventory = s.inventory.filter(function (x) { return x !== id; });
+    const i = s.inventory.indexOf(id);
+    if (i < 0) return false;
+    s.inventory.splice(i, 1);
     const g = Math.round(it.price * 0.5);
     s.stone += g;
     refreshStats(s); saveState(s);
     return g;
+  }
+  function sellEquipAll(s, id) {
+    // 出售储物袋中该装备的全部多余件（同样不动已穿戴）
+    const it = findEquip(id);
+    if (!it) return false;
+    let n = 0;
+    s.inventory = s.inventory.filter(function (x) { if (x === id) { n++; return false; } return true; });
+    if (!n) return false;
+    const g = Math.round(it.price * 0.5) * n;
+    s.stone += g;
+    refreshStats(s); saveState(s);
+    return { count: n, gain: g };
   }
   function randomEquip(bi, depth) {
     const range = realmTierRange(bi);
@@ -868,8 +877,17 @@ const Engine = (function () {
         s.stone += ls;
         gains.push('灵石 +' + ls);
       }
-      if (b.loot.herb) { s.herb += b.loot.herb; gains.push('灵草 +' + b.loot.herb); }
-      if (b.loot.iron) { s.iron += b.loot.iron; gains.push('灵铁 +' + b.loot.iron); }
+      if (b.loot.herb) { if (!s.materials) s.materials = {}; s.materials.herb_huang = (s.materials.herb_huang || 0) + b.loot.herb; gains.push('黄级灵草 +' + b.loot.herb); }
+      if (b.loot.iron) { if (!s.materials) s.materials = {}; s.materials.iron_huang = (s.materials.iron_huang || 0) + b.loot.iron; gains.push('黄级灵铁 +' + b.loot.iron); }
+      // 分级灵材掉落（loot.herb_xuan / iron_di 等按品级入库）
+      if (!s.materials) s.materials = {};
+      Object.keys(b.loot).forEach(function (k) {
+        if (k === 'herb' || k === 'iron') return;
+        if ((k.indexOf('herb_') === 0 || k.indexOf('iron_') === 0) && MATERIALS[k]) {
+          s.materials[k] = (s.materials[k] || 0) + b.loot[k];
+          gains.push(MATERIALS[k].name + ' +' + b.loot[k]);
+        }
+      });
       if (b.loot.elixirs) gains.push.apply(gains, applyOps(s, { elixirs: b.loot.elixirs }));
       if (b.loot.tech) gains.push.apply(gains, applyOps(s, { tech: b.loot.tech }));
       if (b.loot.equip) gains.push.apply(gains, applyOps(s, { equip: b.loot.equip }));
@@ -1050,6 +1068,7 @@ const Engine = (function () {
   function advResolve(s, node) {
     const d = s.adv.depth, bi = bigIdxOf(s), realmM = 1 + bi * 0.5;
     const advType = s.advType || 'huang';
+    const gi = ADVENTURE_GRADE[advType] || 0; // 秘境等级决定灵材品级（与玩家境界无关）
     if (node.type === 'combat') {
       return { type: 'battle', spec: enemyGen(s, 'combat', d, advType), title: '遭遇战！' };
     }
@@ -1080,11 +1099,11 @@ const Engine = (function () {
           const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1);
         }
       } else if (roll < 0.75) {
-        // 灵材
+        // 灵材（按秘境等级给品级，低级秘境可刷低级灵材）
         const matType = Math.random() < 0.5 ? 'herb' : 'iron';
         const matKey = matType === 'herb' ?
-          ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang' :
-          ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
+          ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][gi] || 'herb_huang' :
+          ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][gi] || 'iron_huang';
         const amount = 5 + d * 3;
         s.materials[matKey] = (s.materials[matKey] || 0) + amount;
         g.push(MATERIALS[matKey].name + ' +' + amount);
@@ -1100,9 +1119,9 @@ const Engine = (function () {
     }
     if (node.type === 'herb') {
       if (!s.materials) s.materials = {};
-      const h = 2 + d + Math.floor(Math.random() * bi);
+      const h = 2 + d + Math.floor(Math.random() * (gi + 1));
       const herbGrades = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'];
-      const herbKey = herbGrades[bi] || 'herb_huang';
+      const herbKey = herbGrades[gi] || 'herb_huang';
       s.materials[herbKey] = (s.materials[herbKey] || 0) + h;
       s.adv.gains.push(MATERIALS[herbKey].name + ' +' + h);
       refreshStats(s); saveState(s);
@@ -1112,7 +1131,7 @@ const Engine = (function () {
       if (!s.materials) s.materials = {};
       const i2 = 3 + d + (Math.random() < 0.25 ? 2 : 0);
       const ironGrades = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
-      const ironKey = ironGrades[bi] || 'iron_huang';
+      const ironKey = ironGrades[gi] || 'iron_huang';
       s.materials[ironKey] = (s.materials[ironKey] || 0) + i2;
       s.adv.gains.push(MATERIALS[ironKey].name + ' +' + i2);
       refreshStats(s); saveState(s);
@@ -1227,9 +1246,24 @@ const Engine = (function () {
     s.adv.status = 'done';
     s.adv.done = true;
     if (why === 'lost') {
-      const ls = Math.floor(s.stone / 2), lh = Math.floor(s.herb / 3), li = Math.floor(s.iron / 3);
-      s.stone -= ls; s.herb -= lh; s.iron -= li;
-      s.adv.lostMsg = '劫后余生：灵石 -' + ls + '，灵草 -' + lh + '，灵铁 -' + li + '。';
+      const ls = Math.floor(s.stone / 2);
+      s.stone -= ls;
+      const lostParts = ['灵石 -' + ls];
+      if (!s.materials) s.materials = {};
+      [['herb', ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'], '灵草'],
+       ['iron', ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'], '灵铁']].forEach(function (pair) {
+        var kind = pair[0], order = pair[1], cname = pair[2];
+        var total = order.reduce(function (a, k) { return a + (s.materials[k] || 0); }, 0);
+        var n = Math.floor(total / 3);
+        var remaining = n;
+        for (var i = 0; i < order.length && remaining > 0; i++) {
+          var have = s.materials[order[i]] || 0;
+          var deduct = Math.min(have, remaining);
+          if (deduct > 0) { s.materials[order[i]] -= deduct; remaining -= deduct; }
+        }
+        if (n > 0) lostParts.push(cname + ' -' + n);
+      });
+      s.adv.lostMsg = '劫后余生：' + lostParts.join('，') + '。';
     }
     refreshStats(s); saveState(s);
   }
@@ -1238,8 +1272,8 @@ const Engine = (function () {
     const gains = [];
     const s1 = Math.round((150 + 60 * bi) * realmM);
     s.stone += s1; gains.push('洞天秘藏 · 灵石 +' + s1);
-    const h = 3 + Math.floor(Math.random() * (4 + bi)); s.herb += h; gains.push('灵草 +' + h);
-    const i2 = 2 + Math.floor(Math.random() * 3); s.iron += i2; gains.push('灵铁 +' + i2);
+    const h = 3 + Math.floor(Math.random() * (4 + bi)); gains.push.apply(gains, applyOps(s, { herb: h }));
+    const i2 = 2 + Math.floor(Math.random() * 3); gains.push.apply(gains, applyOps(s, { iron: i2 }));
     const eid = randomEquip(bi, 4);
     if (eid) gains.push.apply(gains, grantEquipChecked(s, eid));
     const t = TECH_DROPS[bi][Math.floor(Math.random() * TECH_DROPS[bi].length)];
@@ -1255,8 +1289,14 @@ const Engine = (function () {
     const d = (s.adv && s.adv.depth) || 1;
     const stock = [];
     const pick = function (arr) { return arr[Math.floor(Math.random() * arr.length)]; };
-    const mats = SHOP_ITEMS.filter(function (i) { return i.id === 'herb5' || i.id === 'iron3'; });
-    stock.push(pick(mats));
+    // 灵材按秘境等级给品级（价格随品级上浮），保证任何境界都有买得起的实惠
+    const gi = ADVENTURE_GRADE[s.advType || 'huang'] || 0;
+    const herbKeys = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'];
+    const ironKeys = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+    const hKey = herbKeys[gi] || 'herb_huang', iKey = ironKeys[gi] || 'iron_huang';
+    const matPrice = 30 * (1 + gi);
+    stock.push({ id: 'mat_herb', name: MATERIALS[hKey].name + ' ×5', price: matPrice, mat: { key: hKey, n: 5 } });
+    stock.push({ id: 'mat_iron', name: MATERIALS[iKey].name + ' ×3', price: matPrice, mat: { key: iKey, n: 3 } });
     const danPool = SHOP_ITEMS.filter(function (i) {
       return i.give && i.give.elixirs && ['juling', 'zhuji', 'jiejin', 'zengshou'].indexOf(Object.keys(i.give.elixirs)[0]) >= 0;
     });
@@ -1286,6 +1326,11 @@ const Engine = (function () {
     s.stone -= si.price;
     si.sold = true;
     const out = ['支出灵石 ' + si.price];
+    if (si.mat) {
+      if (!s.materials) s.materials = {};
+      s.materials[si.mat.key] = (s.materials[si.mat.key] || 0) + si.mat.n;
+      out.push(MATERIALS[si.mat.key].name + ' +' + si.mat.n);
+    }
     if (si.give) out.push.apply(out, applyOps(s, si.give));
     if (si.tech) out.push.apply(out, applyOps(s, { tech: si.tech }));
     if (si.equip) out.push.apply(out, gainEquip(s, si.equip));
@@ -2049,8 +2094,8 @@ const Engine = (function () {
       const f = SECT_FENGLU[s.sect];
       const parts = [];
       if (f.stone) { s.stone += f.stone; parts.push('灵石 +' + f.stone); }
-      if (f.herb) { s.herb += f.herb; parts.push('灵草 +' + f.herb); }
-      if (f.iron) { s.iron += f.iron; parts.push('灵铁 +' + f.iron); }
+      if (f.herb) { var gh = applyOps(s, { herb: f.herb }); parts.push(gh[0] || ('灵草 +' + f.herb)); }
+      if (f.iron) { var gi2 = applyOps(s, { iron: f.iron }); parts.push(gi2[0] || ('灵铁 +' + f.iron)); }
       fenglu = parts;
     }
     // 成长性命格：每年累积属性
@@ -2219,7 +2264,7 @@ const Engine = (function () {
     runEvent: runEvent, applyOps: applyOps,
     combatStart: combatStart, combatAct: combatAct, combatAuto: combatAuto,
     equipStats: equipStats, cultGain: cultGain, getBestShufa: getBestShufa, getDunshu: getDunshu,
-    findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, gainEquip: gainEquip,
+    findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, sellEquipAll: sellEquipAll, gainEquip: gainEquip,
     startAdventure: startAdventure, advGenLayer: advGenLayer, advResolve: advResolve,
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,
     enemyGen: enemyGen, randomEquip: randomEquip,

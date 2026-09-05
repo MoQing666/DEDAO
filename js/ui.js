@@ -534,7 +534,7 @@
 
     const desc = document.createElement('p');
     desc.className = 'dim';
-    desc.textContent = '不同秘境产出不同品级的宝物。秘境一年只能进入一次。';
+    desc.textContent = '不同秘境产出不同品级的宝物与灵材——灵材品级随秘境等级而定，与你的境界无关；境界高了也可回头进低级秘境，刷取低级灵材。秘境一年只能进入一次。';
     desc.style.marginBottom = '16px';
     box.appendChild(desc);
 
@@ -3065,29 +3065,73 @@
     if (!S.inventory.length) {
       inv.innerHTML = '<p class="dim">袋中无多余装备。</p>';
     }
+    // 按部位分组：头/身/腿/法宝，组内按品级从高到低
+    var INV_SLOT_META = {
+      head: { name: '头部', icon: '⛑' },
+      body: { name: '身体', icon: '🥋' },
+      leg: { name: '腿部', icon: '👟' },
+      treasure: { name: '法宝', icon: '🔮' }
+    };
+    var groups = {};
     S.inventory.forEach(function (id) {
       const it = Engine.findEquip(id);
       if (!it) return;
-      const tc = EQUIP_TIERS[it.tier].color;
-      const d = document.createElement('div');
-      d.className = 'gear-item';
-      d.innerHTML = '<div style="color:' + tc + '">[' + EQUIP_TIERS[it.tier].name + ']' + esc(it.name) + '</div>' +
-        '<div class="dim" style="font-size:12px">' + equipStatStr(it) + '</div>' +
-        '<div class="g-actions">' +
-        '<button>穿戴</button><button>出售 ' + Math.round(it.price * 0.5) + ' 灵石</button>' +
-        '</div>';
-      const btns = d.querySelectorAll('button');
-      btns[0].onclick = function () {
-        Engine.wearEquip(S, id);
-        log('你换上了【' + it.name + '】。', 'good');
-        renderGear();
-      };
-      btns[1].onclick = function () {
-        const g = Engine.sellEquip(S, id);
-        log('你卖掉了【' + it.name + '】，得灵石 ' + g + '。', 'good');
-        renderGear();
-      };
-      inv.appendChild(d);
+      var slot = 'treasure';
+      Object.keys(EQUIPS).some(function (sk) {
+        if (EQUIPS[sk][id]) { slot = sk; return true; }
+        return false;
+      });
+      if (!groups[slot]) groups[slot] = [];
+      groups[slot].push({ id: id, it: it });
+    });
+    ['head', 'body', 'leg', 'treasure'].forEach(function (slot) {
+      var items = groups[slot];
+      if (!items || !items.length) return;
+      items.sort(function (a, b) { return (b.it.tier || 0) - (a.it.tier || 0); });
+      var head = document.createElement('h5');
+      head.style.cssText = 'margin:10px 0 4px;color:#c9a86a;letter-spacing:2px;';
+      head.textContent = '── ' + INV_SLOT_META[slot].name + '（' + items.length + '）──';
+      inv.appendChild(head);
+      // 同名合并显示：×n
+      var merged = [];
+      items.forEach(function (x) {
+        var last = merged[merged.length - 1];
+        if (last && last.id === x.id) last.n++;
+        else merged.push({ id: x.id, it: x.it, n: 1 });
+      });
+      merged.forEach(function (x) {
+        const it = x.it;
+        const tc = EQUIP_TIERS[it.tier].color;
+        const d = document.createElement('div');
+        d.className = 'gear-item';
+        d.innerHTML = '<div style="color:' + tc + '">[' + INV_SLOT_META[slot].name + '·' + EQUIP_TIERS[it.tier].name + ']' + esc(it.name) + (x.n > 1 ? ' ×' + x.n : '') + '</div>' +
+          '<div class="dim" style="font-size:12px">' + equipStatStr(it) + '</div>' +
+          '<div class="g-actions">' +
+          '<button>穿戴</button><button>出售一件 ' + Math.round(it.price * 0.5) + ' 灵石</button>' +
+          (x.n > 1 ? '<button class="ghost">全部出售 ' + x.n + '件→' + Math.round(it.price * 0.5) * x.n + '</button>' : '') +
+          '</div>';
+        const btns = d.querySelectorAll('button');
+        btns[0].onclick = function () {
+          Engine.wearEquip(S, x.id);
+          log('你换上了【' + it.name + '】。', 'good');
+          renderGear();
+        };
+        btns[1].onclick = function () {
+          const g = Engine.sellEquip(S, x.id);
+          if (g === false) { log('没有可出售的【' + it.name + '】。', 'bad'); return; }
+          log('你卖掉了一件【' + it.name + '】，得灵石 ' + g + '。（已穿戴的不受影响）', 'good');
+          renderGear();
+        };
+        if (btns[2]) {
+          btns[2].onclick = function () {
+            const r = Engine.sellEquipAll(S, x.id);
+            if (!r) { log('没有可出售的【' + it.name + '】。', 'bad'); return; }
+            log('你卖掉了 ' + r.count + ' 件【' + it.name + '】，共得灵石 ' + r.gain + '。（已穿戴的不受影响）', 'good');
+            renderGear();
+          };
+        }
+        inv.appendChild(d);
+      });
     });
     const hb = $('sell-herb');
     const ib = $('sell-iron');

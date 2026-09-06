@@ -592,6 +592,8 @@ const Engine = (function () {
         case 'life': s.lifeMax += v; out.push('寿元 ' + (v > 0 ? '+' : '') + v); break;
         case 'wu': gainWu(s, v); out.push('悟性 +' + v); break;
         case 'ti': s.ti += v; out.push('体魄 +' + v); break;
+        case 'shen': s.shen = (s.shen || 0) + v; out.push('神识 +' + v); break;
+        case 'dun': s.dun = (s.dun || 0) + v; out.push('遁速 +' + v); break;
         case 'atk': s.extraAtk += v; out.push('攻击 +' + v); break;
         case 'hpMax': s.hpMaxBonus = (s.hpMaxBonus || 0) + v; s.hp += v; out.push('气血上限 +' + v); break;
         case 'art': if (s.arts.indexOf(v) < 0) { s.arts.push(v); out.push('获得法宝【' + ARTIFACTS[v].name + '】'); } break;

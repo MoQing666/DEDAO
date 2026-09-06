@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道 DEDAO</title>
-  <link rel="stylesheet" href="css/style.css?v=35">
+  <link rel="stylesheet" href="css/style.css?v=36">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -405,10 +405,34 @@
         <button id="b-spell" class="btn-main ghost">法术</button>
         <button id="b-guard" class="btn-main ghost">防御</button>
         <button id="b-flee" class="btn-main ghost">逃跑</button>
+        <button id="b-elixir" class="btn-main ghost" style="display:none">服药</button>
         <button id="b-order" class="btn-main ghost">编排</button>
         <button id="b-auto" class="btn-main ghost wide">跳过战斗</button>
       </div>
       <div id="b-spellbar" class="b-spellbar" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ============ 秘境地图层（横版路径，参考杀戮尖塔） ============ -->
+  <div class="chapter-overlay" id="adv-screen" style="display:none">
+    <div class="chapter-inner adv-inner">
+      <div class="chapter-head">
+        <div id="adv-sub" class="chapter-sub"></div>
+        <div id="adv-title" class="chapter-title">秘境 · 探幽</div>
+      </div>
+      <div class="adv-hud">
+        <div class="adv-stamina">
+          <span class="who">体力</span>
+          <span class="hp-bar adv-bar"><i id="adv-stamina-bar" style="width:100%;background:#8a6bff"></i></span>
+          <span class="hp-num" id="adv-stamina-num"></span>
+        </div>
+        <div class="adv-items" id="adv-items"></div>
+      </div>
+      <div id="adv-map" class="adv-map"></div>
+      <div class="adv-foot">
+        <span id="adv-hint" class="dim"></span>
+        <button id="adv-retreat" class="btn-main ghost">撤退（保住收获）</button>
+      </div>
     </div>
   </div>
 
@@ -436,9 +460,9 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=30"></script>
-  <script src="js/engine.js?v=30"></script>
+  <script src="js/data.js?v=31"></script>
+  <script src="js/engine.js?v=31"></script>
   <script src="js/audio.js?v=30"></script>
-  <script src="js/ui.js?v=30"></script>
+  <script src="js/ui.js?v=31"></script>
 </body>
 </html>

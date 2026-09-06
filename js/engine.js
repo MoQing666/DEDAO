@@ -731,12 +731,14 @@ const Engine = (function () {
 
   /* ---------------- 回合制战斗 v2 ---------------- */
   // eslint-disable-next-line no-redeclare
-  function combatStart(s, spec) {
+  function combatStart(s, spec, opts) {
     refreshStats(s);
-    // 进入战斗时血量自动补满
-    s.hp = s.hpMax;
-    // 进入战斗前灵力条补满
-    s.mp = s.mpMax;
+    opts = opts || {};
+    // 进入战斗时血量自动补满（秘境模式不补满，血蓝跨节点延续）
+    if (!opts.adventure) {
+      s.hp = s.hpMax;
+      s.mp = s.mpMax;
+    }
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;
@@ -760,6 +762,8 @@ const Engine = (function () {
       spellName: spellList.length ? spellList[0].name : null,
       portraitEnemy: spec.portrait || 'foe',
       firstStrike: effAttr(s, 'dun') * 0.01 + getDestinyBonus(s, 'firstStrike'),
+      mechanic: spec.mechanic || null,
+      enraged: false,
       round: 0
     };
     saveState(s);
@@ -816,6 +820,12 @@ const Engine = (function () {
     const fx = [];
     if (!b || b.done) return { done: true, lines: ['战斗已经结束。'], fx: fx };
     b.round = (b.round || 0) + 1;
+    // 召唤：每隔数回合 boss 自行疗伤
+    if (b.mechanic === 'summon' && b.round > 1 && b.round % 3 === 0 && !b.done) {
+      const hl = Math.round(b.hpMax * 0.08);
+      b.hp = Math.min(b.hpMax, b.hp + hl);
+      out.push('『' + b.name + '』召唤援军，自行疗伤，气血 +' + hl + '。');
+    }
     const enemyAtkRoll = function () {
       let d = b.atk; // 基础伤害 = 敌方攻击力（无随机）
       if (b.slow) { d = Math.round(d * 0.6); b.slow = false; } // 减速当回合生效后移除
@@ -824,45 +834,72 @@ const Engine = (function () {
       return d;
     };
     const counter = function () {
-      const d = enemyAtkRoll();
-      // 闪避判定
-      const dodgeRate = getDodgeRate(s);
-      if (Math.random() < dodgeRate) {
-        out.push('你身形灵动，闪避了『' + b.name + '』的攻击！');
+      const hits = (b.mechanic === 'multicast') ? (2 + (Math.random() < 0.5 ? 1 : 0)) : 1;
+      for (let hix = 0; hix < hits; hix++) {
+        if (b.done) break;
+        const d = enemyAtkRoll();
+        // 闪避判定
+        const dodgeRate = getDodgeRate(s);
+        if (Math.random() < dodgeRate) {
+          out.push('你身形灵动，闪避了『' + b.name + '』的攻击！');
+          b.guarded = false;
+          continue;
+        }
+        const hpBefore = s.hp;
+        s.hp -= d;
+        b.hpLost += d;
+        out.push('『' + b.name + '』' + (hits > 1 ? '连击·' + (hix + 1) + '，' : '') + '反手回击，你气血 -' + d + '。');
+        fx.push({ side: 'me', kind: 'dmg', amount: hpBefore - s.hp });
+        // 吸血魔化：boss 吸取所造成伤害的一半回复自身
+        if (b.mechanic === 'lifesteal' && !b.done) {
+          const hl = Math.max(1, Math.round(d * 0.5));
+          b.hp = Math.min(b.hpMax, b.hp + hl);
+          out.push('魔化吸血，『' + b.name + '』气血 +' + hl + '。');
+        }
+        // 反伤效果（玩家天赋）
+        const thorns = getDestinyBonus(s, 'thorns');
+        if (thorns > 0) {
+          const thornDmg = Math.round(d * thorns);
+          b.hp -= thornDmg;
+          out.push('反伤效果触发，『' + b.name + '』受到 ' + thornDmg + ' 点反伤。');
+          fx.push({ side: 'enemy', kind: 'dmg', amount: thornDmg });
+          if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反伤致死。'); }
+        }
+        // 反击效果
+        const counterRate = (s.dun || 0) * 0.01 + getDestinyBonus(s, 'counterRate');
+        if (Math.random() < counterRate && !b.done) {
+          const counterDmg = Math.max(1, s.atk);
+          b.hp -= counterDmg;
+          out.push('你趁势反击，对『' + b.name + '』造成 ' + counterDmg + ' 点伤害。');
+          fx.push({ side: 'enemy', kind: 'dmg', amount: counterDmg });
+          if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反击致死。'); }
+        }
+        if (s.hp <= 0) {
+          s.hp = 1;
+          b.done = true; b.lost = true;
+          if (b.loseLoot) applyOps(s, b.loseLoot);
+          out.push('你重伤坠地，勉强捡回一条命。');
+          break;
+        }
         b.guarded = false;
-        return;
       }
-      const hpBefore = s.hp;
-      s.hp -= d;
-      b.hpLost += d;
-      out.push('『' + b.name + '』反手回击，你气血 -' + d + '。');
-      fx.push({ side: 'me', kind: 'dmg', amount: hpBefore - s.hp });
-      // 反伤效果
-      const thorns = getDestinyBonus(s, 'thorns');
-      if (thorns > 0) {
-        const thornDmg = Math.round(d * thorns);
-        b.hp -= thornDmg;
-        out.push('反伤效果触发，『' + b.name + '』受到 ' + thornDmg + ' 点反伤。');
-        fx.push({ side: 'enemy', kind: 'dmg', amount: thornDmg });
-        if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反伤致死。'); }
-      }
-      // 反击效果
-      const counterRate = (s.dun || 0) * 0.01 + getDestinyBonus(s, 'counterRate');
-      if (Math.random() < counterRate && !b.done) {
-        const counterDmg = Math.max(1, s.atk);
-        b.hp -= counterDmg;
-        out.push('你趁势反击，对『' + b.name + '』造成 ' + counterDmg + ' 点伤害。');
-        fx.push({ side: 'enemy', kind: 'dmg', amount: counterDmg });
-        if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反击致死。'); }
-      }
-      if (s.hp <= 0) {
-        s.hp = 1;
-        b.done = true; b.lost = true;
-        if (b.loseLoot) applyOps(s, b.loseLoot);
-        out.push('你重伤坠地，勉强捡回一条命。');
-      }
-      b.guarded = false;
     };
+    // 玩家出招后的 Boss 机制结算（反伤护盾 / 狂暴）
+    function applyBossPostStep(dealt) {
+      if (!b.done && b.mechanic === 'thorns' && dealt > 0) {
+        const rf = Math.max(1, Math.round(dealt * 0.15));
+        s.hp -= rf;
+        out.push('反伤护盾震荡，你被弹回 ' + rf + ' 点伤害！');
+        fx.push({ side: 'me', kind: 'dmg', amount: rf });
+        if (s.hp <= 0) { s.hp = 1; b.done = true; b.lost = true; out.push('你重伤坠地，勉强捡回一条命。'); }
+      }
+      if (!b.done && b.mechanic === 'enrage' && !b.enraged && b.hp < b.hpMax * 0.5) {
+        b.enraged = true;
+        const na = Math.round(b.atk * 2);
+        out.push('『' + b.name + '』仰天怒吼，气息暴涨，攻击力骤增！');
+        b.atk = na;
+      }
+    }
     if (act === 'flee') {
       if (Math.random() < b.flee) {
         b.done = true; b.fled = true;
@@ -887,15 +924,19 @@ const Engine = (function () {
       else { s.mp = 0; dmg = Math.round(dmg * 0.5); out.push('灵力不足，法术威力大减！'); }
       if (mpBefore - s.mp > 0) fx.push({ side: 'me', kind: 'mp', amount: mpBefore - s.mp, el: sp.grade });
       fx.push({ side: 'enemy', kind: 'spell', el: sp.grade });
+      const beforeHp = b.hp;
       const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true, fx);
       lines.forEach(function (l) { out.push(l); });
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
       if (!b.done) counter();
+      if (!b.done) applyBossPostStep(b.hpMax === b.hp ? 0 : (beforeHp - b.hp));
     } else {
       const dmg = Math.max(1, s.atk); // 无随机
+      const beforeHp = b.hp;
       const lines = playerHit(s, b, dmg, '你出手如电，对『' + b.name + '』', true, fx);
       lines.forEach(function (l) { out.push(l); });
       if (!b.done) counter();
+      if (!b.done) applyBossPostStep(beforeHp - b.hp);
     }
     if (b.win) {
       const gains = [];
@@ -1043,27 +1084,64 @@ const Engine = (function () {
     const bname = (tag === 'final') ? advConfig.boss.name : (boss ? advConfig.boss.name : m.name);
     const bline = (tag === 'final') ? advConfig.boss.line : (boss ? advConfig.boss.line : m.line);
     const portrait = (boss || tag === 'final') ? ('boss_' + advKey) : 'foe';
-    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait };
+    const mechanic = (boss || tag === 'final') ? (advConfig.boss.mechanic || null) : null;
+    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait, mechanic: mechanic };
   }
-  function startAdventure(s, advType) {
+  function getAdvItemCap(s) { return s.advCap || 2; }
+  function moveItemsToAdv(s, items) {
+    if (!s.adv.items) s.adv.items = [];
+    const cap = getAdvItemCap(s);
+    let total = s.adv.items.reduce(function (a, x) { return a + x.count; }, 0);
+    (items || []).forEach(function (it) {
+      if (total >= cap) return;
+      const el = ELIXIRS[it.id];
+      if (!el || !el.usableInAdv) return;
+      const have = s.elixirs[it.id] || 0;
+      const want = Math.min(have, it.count, cap - total);
+      if (want <= 0) return;
+      s.elixirs[it.id] -= want;
+      if (s.elixirs[it.id] <= 0) delete s.elixirs[it.id];
+      const ex = s.adv.items.find(function (x) { return x.id === it.id; });
+      if (ex) ex.count += want; else s.adv.items.push({ id: it.id, count: want });
+      total += want;
+    });
+  }
+  function returnUnusedAdvItems(s) {
+    if (!s.adv || !s.adv.items) return;
+    s.adv.items.forEach(function (it) { s.elixirs[it.id] = (s.elixirs[it.id] || 0) + it.count; });
+    s.adv.items = [];
+  }
+  function startAdventure(s, advType, opts) {
+    opts = opts || {};
+    const ap = (opts.ap === 3) ? 3 : 2;
     if (s.adventuredYear === s.year) return { ok: false, msg: '天地灵机有限，一年只能入秘境一次。' };
-    if (!canAction(s, 2)) return { ok: false, msg: '行动点不足' };
+    if (!canAction(s, ap)) return { ok: false, msg: '行动点不足' };
     // 秘境类型限制
     const advKey = advType || 'huang';
     const advConfig = ADVENTURE_CONFIG[advKey];
     if (!advConfig) return { ok: false, msg: '秘境不存在' };
     if (bigIdxOf(s) < advConfig.realmReq) return { ok: false, msg: '修为不足，需要' + BIG_REALMS[advConfig.realmReq] + '以上方可进入。' };
-    spend(s, 2);
+    spend(s, ap);
     s.adventuredYear = s.year;
     s.advType = advKey;
+    const map = genAdvMap(advKey);
     const settings = ADV_SETTINGS_MAP[advKey] || ADV_SETTINGS_HUANG;
+    const staminaMax = ap * (ap * 5 + 10); // 2行动=40，3行动=75
     s.adv = {
       grade: advKey,
-      depth: 1, maxDepth: 5,
+      depth: 1, maxDepth: map.normalCols,
       setting: settings[Math.floor(Math.random() * settings.length)],
-      gains: [], status: 'running', caught: false, done: false
+      gains: [], status: 'running', caught: false, done: false,
+      apSpent: ap, stamina: staminaMax, staminaMax: staminaMax,
+      map: map, nodeId: map.startId, items: [], itemsUsed: 0, cleared: false
     };
-    refreshStats(s); saveState(s);
+    if (map.byId[map.startId]) map.byId[map.startId].visited = true;
+    // 进入秘境时血蓝补满（仅此一次），之后跨节点延续，不再回满
+    refreshStats(s);
+    s.hp = s.hpMax;
+    s.mp = s.mpMax;
+    moveItemsToAdv(s, opts.items);
+    saveState(s);
     return { ok: true };
   }
   function shuffle(a) {
@@ -1100,9 +1178,11 @@ const Engine = (function () {
     }) };
   }
   function advResolve(s, node) {
+    if (node && node.col != null) s.adv.depth = node.col + 1;
     const d = s.adv.depth, bi = bigIdxOf(s), realmM = 1 + bi * 0.5;
     const advType = s.advType || 'huang';
     const gi = ADVENTURE_GRADE[advType] || 0; // 秘境等级决定灵材品级（与玩家境界无关）
+    if (node.type === 'rest') return { type: 'rest' };
     if (node.type === 'combat') {
       return { type: 'battle', spec: enemyGen(s, 'combat', d, advType), title: '遭遇战！' };
     }
@@ -1272,11 +1352,13 @@ const Engine = (function () {
     });
   }
   function advAdvance(s) {
-    s.adv.depth += 1;
+    const a = s.adv;
+    if (a && a.map && a.map.byId[a.nodeId]) a.depth = a.map.byId[a.nodeId].col + 1;
     saveState(s);
-    return s.adv.depth >= s.adv.maxDepth + 1;
+    return !!(a && a.done);
   }
   function advEnd(s, why) {
+    returnUnusedAdvItems(s);
     s.adv.status = 'done';
     s.adv.done = true;
     if (why === 'lost') {
@@ -1301,6 +1383,99 @@ const Engine = (function () {
     }
     refreshStats(s); saveState(s);
   }
+  /* ---------------- 秘境地图推进（横版路径） ---------------- */
+  function advNextChoices(s) {
+    const a = s.adv;
+    if (!a || a.done) return [];
+    const node = a.map && a.map.byId[a.nodeId];
+    if (!node) return [];
+    return node.next.map(function (id) {
+      const n = a.map.byId[id];
+      const meta = ADV_NODES[n.type] || { name: n.type, icon: '?', desc: '' };
+      return { id: id, type: n.type, name: meta.name, icon: meta.icon, desc: meta.desc, col: n.col, isBoss: n.type === 'final' };
+    });
+  }
+  function advMove(s, nodeId) {
+    const a = s.adv;
+    if (!a || a.done) return { ok: false, msg: '秘境已结束' };
+    const node = a.map && a.map.byId[nodeId];
+    if (!node) return { ok: false, msg: '节点不存在' };
+    const cur = a.map.byId[a.nodeId];
+    if (!cur || cur.next.indexOf(nodeId) < 0) return { ok: false, msg: '此路不通' };
+    const cost = (a.map && a.map.stepCost) || 5;
+    if (a.stamina < cost) return { ok: false, msg: '秘境体力不支，无法再前进' };
+    a.stamina -= cost;
+    a.nodeId = nodeId;
+    node.visited = true;
+    a.depth = node.col + 1;
+    saveState(s);
+    return { ok: true, node: node, final: node.type === 'final' };
+  }
+  function advCanMove(s) {
+    const a = s.adv;
+    if (!a || a.done) return false;
+    const cost = (a.map && a.map.stepCost) || 5;
+    if (a.stamina < cost) return false;
+    const node = a.map && a.map.byId[a.nodeId];
+    return !!(node && node.next && node.next.length);
+  }
+  function advRest(s, kind) {
+    const lines = [];
+    if (kind === 'hp' || kind === 'both') {
+      const h = Math.round(s.hpMax * 0.40);
+      s.hp = Math.min(s.hpMax, s.hp + h);
+      lines.push('打坐吐纳，气血 +' + h);
+    }
+    if (kind === 'mp' || kind === 'both') {
+      const m = Math.round(s.mpMax * 0.40);
+      s.mp = Math.min(s.mpMax, s.mp + m);
+      lines.push('调息运功，灵力 +' + m);
+    }
+    refreshStats(s); saveState(s);
+    return lines;
+  }
+  function useAdvElixir(s, id) {
+    const a = s.adv;
+    if (!a || !a.items) return { ok: false, msg: '不在秘境之中' };
+    const slot = a.items.find(function (x) { return x.id === id; });
+    if (!slot || slot.count <= 0) return { ok: false, msg: '没有该丹药' };
+    const el = ELIXIRS[id];
+    if (!el || !el.usableInAdv) return { ok: false, msg: '此丹药无法在秘境服用' };
+    const eff = el.adv || {};
+    const lines = [];
+    if (eff.hpPct) {
+      const h = Math.round(s.hpMax * eff.hpPct);
+      s.hp = Math.min(s.hpMax, s.hp + h);
+      lines.push('气血 +' + h);
+    }
+    if (eff.mpPct) {
+      const m = Math.round(s.mpMax * eff.mpPct);
+      s.mp = Math.min(s.mpMax, s.mp + m);
+      lines.push('灵力 +' + m);
+    }
+    if (eff.cure && s.battle && s.battle.buffs) {
+      s.battle.buffs = (s.battle.buffs || []).filter(function (bf) { return !bf.bad; });
+      lines.push('负面状态已解除');
+    }
+    slot.count -= 1;
+    if (slot.count <= 0) a.items = a.items.filter(function (x) { return x.id !== id; });
+    a.itemsUsed = (a.itemsUsed || 0) + 1;
+    refreshStats(s); saveState(s);
+    return { ok: true, lines: lines };
+  }
+  function advBossBonus(s) {
+    const advKey = s.advType || 'huang';
+    const spiritMap = { huang: 'shangpin_lingjing', xuan: 'shangpin_yaodan', di: 'dongxu_micui', tian: 'mohex_suibian', xian: 'mohex_suibian' };
+    const spirit = spiritMap[advKey] || 'shangpin_lingjing';
+    const tech = getRandomTechFromPools(advKey, s);
+    const sp = SPIRIT_ITEMS[spirit];
+    const techName = tech ? (TECHNIQUES[tech].name + '（' + (TECHNIQUES[tech].cls === 'xinfa' ? '心法' : TECHNIQUES[tech].cls === 'dunshu' ? '遁术' : '法术') + '）') : '（已学全）';
+    return [
+      { label: '夺·秘藏灵物', desc: sp ? (sp.name + '——' + sp.effect) : '灵物', apply: function () { return applyOps(s, { spirit: spirit }); } },
+      { label: '取·无上功法', desc: techName, apply: function () { return tech ? applyOps(s, { tech: tech }) : ['未获得新功法']; } }
+    ];
+  }
+
   function advClearReward(s) {
     const bi = bigIdxOf(s), realmM = 1 + bi * 0.8;
     const gains = [];
@@ -1351,6 +1526,11 @@ const Engine = (function () {
         stock.push({ id: 'EQUIP:' + eid, name: '装备·' + eq.name, price: eq.price, equip: eid });
       }
     }
+    // 秘境坊市：增售可在秘境中即时回复气血/灵力的丹药
+    if (s.adv && s.adv.status === 'running') {
+      stock.push({ id: 'adv_heal', name: '伤药（气血 +40%）', price: 40, adv: { hpPct: 0.40 } });
+      stock.push({ id: 'adv_mp', name: '灵泉（灵力 +40%）', price: 40, adv: { mpPct: 0.40 } });
+    }
     return stock;
   }
   function biOfSafe(s) { return bigIdxOf(s); }
@@ -1368,6 +1548,11 @@ const Engine = (function () {
     if (si.give) out.push.apply(out, applyOps(s, si.give));
     if (si.tech) out.push.apply(out, applyOps(s, { tech: si.tech }));
     if (si.equip) out.push.apply(out, gainEquip(s, si.equip));
+    if (si.adv) {
+      const eff = si.adv;
+      if (eff.hpPct) { const h = Math.round(s.hpMax * eff.hpPct); s.hp = Math.min(s.hpMax, s.hp + h); out.push('气血 +' + h); }
+      if (eff.mpPct) { const m = Math.round(s.mpMax * eff.mpPct); s.mp = Math.min(s.mpMax, s.mp + m); out.push('灵力 +' + m); }
+    }
     saveState(s);
     return { ok: true, lines: out };
   }
@@ -2302,6 +2487,9 @@ const Engine = (function () {
     startAdventure: startAdventure, advGenLayer: advGenLayer, advResolve: advResolve,
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,
     enemyGen: enemyGen, randomEquip: randomEquip,
+    advNextChoices: advNextChoices, advMove: advMove, advCanMove: advCanMove,
+    advRest: advRest, useAdvElixir: useAdvElixir, advBossBonus: advBossBonus,
+    getAdvItemCap: getAdvItemCap, returnUnusedAdvItems: returnUnusedAdvItems,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
     refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure, calcMpMax: calcMpMax,
     xinmoSpec: xinmoSpec, tianjieSpec: tianjieSpec,

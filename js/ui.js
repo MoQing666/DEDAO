@@ -435,11 +435,10 @@
         if (typeof AudioManager !== 'undefined') {
           AudioManager.playBgm('game');
         }
-        // 战斗结束后恢复血量为满
+        // 战斗结束后恢复状态；秘境模式下血蓝跨节点延续，不在此回满
         Engine.refreshStats(S);
-        S.hp = S.hpMax;
+        if (!opts.adventure) S.hp = S.hpMax;
         Engine.saveState(S);
-        console.log('[Battle] HP restored to', S.hp);
         resolve(r);
       }
       function doAct(act, spellId) {
@@ -470,6 +469,14 @@
       $('b-guard').onclick = function () { doAct('guard'); };
       $('b-flee').onclick = function () { doAct('flee'); };
       $('b-order').onclick = function () { openSpellOrder(); };
+      // 秘境模式下显示「服药」按钮（消耗携带丹药）
+      const elixirBtn = $('b-elixir');
+      if (opts.adventure && S.adv && S.adv.items && S.adv.items.length) {
+        elixirBtn.style.display = '';
+        elixirBtn.onclick = function () { openElixirMenu(); };
+      } else {
+        elixirBtn.style.display = 'none';
+      }
       $('b-auto').onclick = function () {
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
         const r = Engine.combatAuto(S);
@@ -523,6 +530,36 @@
           if (x.tip) s.title = x.tip;
           el.appendChild(s);
         });
+      }
+      function openElixirMenu() {
+        const ov = $('modal'); const box = $('modal-body');
+        ov.style.display = 'flex'; ov.onclick = null; box.innerHTML = '';
+        const title = document.createElement('h3'); title.textContent = '服用丹药';
+        box.appendChild(title);
+        const items = (S.adv && S.adv.items) || [];
+        if (!items.length) {
+          const p = document.createElement('p'); p.className = 'dim'; p.textContent = '未携带可用丹药。';
+          box.appendChild(p);
+        }
+        items.forEach(function (it) {
+          const el = ELIXIRS[it.id];
+          const row = document.createElement('div'); row.className = 'adv-prep-elixir';
+          const name = document.createElement('span'); name.className = 'ae-name';
+          name.textContent = (el ? el.name : it.id) + ' ×' + it.count;
+          const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = '服用';
+          btn.onclick = function () {
+            const r = Engine.useAdvElixir(S, it.id);
+            if (!r.ok) { log(r.msg, 'bad'); return; }
+            r.lines.forEach(function (l) { log(l, 'good'); });
+            ov.style.display = 'none';
+            renderBattle();
+          };
+          row.appendChild(name); row.appendChild(btn);
+          box.appendChild(row);
+        });
+        const close = document.createElement('button'); close.className = 'btn-main ghost'; close.textContent = '关闭';
+        close.onclick = function () { ov.style.display = 'none'; };
+        box.appendChild(close);
       }
     });
   }
@@ -703,22 +740,23 @@
         '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
         '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : '<b style="color:#e05a7a;"> 需要' + adv.realmName + '以上方可进入</b>') + '</p>' +
         '<div style="font-size:12px;color:#6a6a7a;">产出：' + adv.drops + '</div>';
-      const btn = document.createElement('button');
-      btn.className = 'btn-main';
-      btn.textContent = canEnter ? '进入' + adv.name : '境界不足';
-      btn.style.marginTop = '8px';
-      btn.style.borderColor = adv.color;
-      btn.disabled = !canEnter;
-      btn.onclick = function () {
-        ov.style.display = 'none';
-        const res = Engine.startAdventure(S, adv.key);
-        if (res.ok === false) { log(res.msg || '行动点不足'); afterAction(); return; }
-        if (typeof AudioManager !== 'undefined') {
-          AudioManager.playSfx('explore');
-        }
-        advIntro();
+      const btnWrap = document.createElement('div');
+      btnWrap.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+      const mkBtn = function (label, ap) {
+        const b = document.createElement('button');
+        b.className = 'btn-main';
+        b.textContent = label;
+        b.style.borderColor = adv.color;
+        b.disabled = !canEnter;
+        b.onclick = function () {
+          ov.style.display = 'none';
+          openAdvPrep(adv.key, ap);
+        };
+        return b;
       };
-      card.appendChild(btn);
+      btnWrap.appendChild(mkBtn('入秘境（2行动）', 2));
+      btnWrap.appendChild(mkBtn('深探（3行动）', 3));
+      card.appendChild(btnWrap);
       box.appendChild(card);
     });
 
@@ -734,8 +772,8 @@
     showChapter('秘境 · 轻身而入', [
       a.setting,
       '你放轻脚步，走入其中。传闻深处有洞天秘藏——但活着出去，才算赢。',
-      '每层三选一，随时可撤退，已有收获尽归己有。'
-    ], { subtitle: '第 1 层 · 深入 ' + a.maxDepth + ' 层可见洞天' }).then(advLayer);
+      '沿路径择路而行，每步消耗秘境体力；体力耗尽便无力再进，只能原路撤退。携带的丹药可在战斗或歇脚时服用。'
+    ], { subtitle: '秘境体力 ' + a.stamina + ' / ' + a.staminaMax + ' · 深入 ' + a.maxDepth + ' 层可见洞天' }).then(renderAdvMap);
   }
   const LAYER_FLAVOR = [
     null,
@@ -746,24 +784,202 @@
     { t: '第 5 层 · 洞天入口', l: '钟乳垂落如林，灵光若隐若现——洞天秘藏，就在前方。' },
     { t: '第 6 层 · 洞天深处', l: '石台之上那道身影缓缓睁眼。这不是岔路，而是终局。' }
   ];
-  function advLayer() {
+  function advLayer() { renderAdvMap(); }
+  /* ---------------- 秘境横版地图 ---------------- */
+  function renderAdvMap() {
     const a = S.adv;
-    if (!a || a.done || a.status !== 'running') return;
-    const layer = Engine.advGenLayer(S);
-    if (layer.final) { advFinal(); return; }
-    const f = LAYER_FLAVOR[a.depth] || LAYER_FLAVOR[5];
-    const choices = layer.choices.map(function (c) {
-      return { t: c.icon + ' ' + c.name + '\n' + c.desc, node: c };
+    if (!a || a.done) return;
+    const ov = $('adv-screen');
+    ov.style.display = 'flex';
+    const cfg = ADVENTURE_CONFIG[a.grade];
+    $('adv-title').textContent = (cfg ? cfg.name : '秘境') + ' · 探幽';
+    $('adv-sub').textContent = '第 ' + a.depth + ' 层 · 体力决定能走多远（已耗 ' + (a.staminaMax - a.stamina) + '）';
+    const sp = Math.max(0, Math.min(100, a.stamina / a.staminaMax * 100));
+    $('adv-stamina-bar').style.width = sp + '%';
+    $('adv-stamina-num').textContent = a.stamina + ' / ' + a.staminaMax;
+    const itemsEl = $('adv-items');
+    itemsEl.innerHTML = '';
+    if (a.items && a.items.length) {
+      a.items.forEach(function (it) {
+        const el = ELIXIRS[it.id];
+        const c = document.createElement('span');
+        c.className = 'adv-item-chip';
+        c.textContent = (el ? el.name : it.id) + ' ×' + it.count;
+        itemsEl.appendChild(c);
+      });
+    } else {
+      itemsEl.innerHTML = '<span class="dim" style="font-size:12px">未携丹药</span>';
+    }
+    const map = a.map;
+    const mapEl = $('adv-map');
+    mapEl.innerHTML = '';
+    const choices = Engine.advNextChoices(S);
+    const sel = {};
+    choices.forEach(function (c) { sel[c.id] = c; });
+    map.cols.forEach(function (col) {
+      const colEl = document.createElement('div');
+      colEl.className = 'adv-col';
+      col.forEach(function (n) {
+        const meta = ADV_NODES[n.type] || { name: n.type, icon: '?' };
+        const node = document.createElement('div');
+        let cls = 'adv-node ' + n.type;
+        if (n.visited) cls += ' visited';
+        if (a.nodeId === n.id) cls += ' current';
+        if (sel[n.id]) cls += ' selectable';
+        node.className = cls;
+        node.innerHTML = '<div class="n-icon">' + meta.icon + '</div><div class="n-name">' + meta.name + '</div>' + (sel[n.id] ? '<div class="n-badge">可往</div>' : '');
+        if (sel[n.id]) node.onclick = function () { onAdvNode(n.id); };
+        colEl.appendChild(node);
+      });
+      mapEl.appendChild(colEl);
     });
-    choices.push({ t: '← 撤退（保住既有收获）', node: { type: 'retreat' } });
-    showChapter(f.t, [f.l], {
-      subtitle: '已收获：' + (a.gains.length ? a.gains.join('、') : '空空如也'),
-      choices: choices
-    }).then(function (r) {
-      const node = (r && r.pick && r.pick.node) || { type: 'retreat' };
-      if (node.type === 'retreat') { advFinish('撤退'); return; }
-      advResolveNode(node);
+    // Boss 列
+    const bossCol = document.createElement('div');
+    bossCol.className = 'adv-col';
+    const bossNode = document.createElement('div');
+    let bcls = 'adv-node boss';
+    if (a.nodeId === 'boss') bcls += ' current';
+    if (sel['boss']) bcls += ' selectable';
+    bossNode.className = bcls;
+    bossNode.innerHTML = '<div class="n-icon">☠</div><div class="n-name">洞天决战</div>' + (sel['boss'] ? '<div class="n-badge">可往</div>' : '');
+    if (sel['boss']) bossNode.onclick = function () { onAdvNode('boss'); };
+    bossCol.appendChild(bossNode);
+    mapEl.appendChild(bossCol);
+    const hint = $('adv-hint');
+    if (!Engine.advCanMove(S) && a.nodeId !== 'boss') {
+      hint.textContent = '秘境体力已耗尽，无力再深入——只能原路撤退。';
+    } else {
+      hint.textContent = '选择高亮节点继续深入（每步耗 ' + (map.stepCost || 5) + ' 体力）。';
+    }
+  }
+  function onAdvNode(id) {
+    const r = Engine.advMove(S, id);
+    if (!r.ok) { log(r.msg || '此路不通', 'bad'); return; }
+    refresh();
+    if (r.final) {
+      const res = Engine.advResolve(S, r.node);
+      openBattle(res.spec, { title: '决战 · ' + res.spec.name, adventure: true }).then(function (br) {
+        if (br.win) {
+          S.adv.cleared = true;
+          const extra = Engine.advClearReward(S);
+          showBossChoice(extra);
+        } else if (br.lost) { advFinish('战败'); }
+        else { advFinish('撤退'); }
+      });
+      return;
+    }
+    advResolveNode(r.node);
+  }
+  function advAdvanceToMap() {
+    Engine.advAdvance(S);
+    const a = S.adv;
+    if (a.done) return;
+    if (a.nodeId !== 'boss' && !Engine.advCanMove(S)) { advFinish('力竭'); return; }
+    renderAdvMap();
+  }
+  function openRestScreen() {
+    const ov = $('modal'); const box = $('modal-body');
+    ov.style.display = 'flex'; ov.onclick = null;
+    box.innerHTML = '';
+    const title = document.createElement('h3'); title.textContent = '静室歇脚';
+    box.appendChild(title);
+    const tip = document.createElement('p'); tip.className = 'dim';
+    tip.textContent = '当前：气血 ' + S.hp + '/' + S.hpMax + '，灵力 ' + (S.mp || 0) + '/' + (S.mpMax || 0) + '。可回复约 40%。';
+    box.appendChild(tip);
+    const mk = function (label, kind) {
+      const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = label;
+      btn.onclick = function () {
+        Engine.advRest(S, kind).forEach(function (l) { log(l, 'good'); });
+        ov.style.display = 'none';
+        refresh();
+        advAdvanceToMap();
+      };
+      box.appendChild(btn);
+    };
+    mk('打坐（回血 40%）', 'hp');
+    mk('调息（回蓝 40%）', 'mp');
+    mk('双修（气血灵力各 35%）', 'both');
+    const leave = document.createElement('button'); leave.className = 'btn-main ghost'; leave.textContent = '不再停留';
+    leave.onclick = function () { ov.style.display = 'none'; advAdvanceToMap(); };
+    box.appendChild(leave);
+  }
+  function showBossChoice(extra) {
+    showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏' }).then(function () {
+      const ov = $('modal'); const box = $('modal-body');
+      ov.style.display = 'flex'; ov.onclick = null; box.innerHTML = '';
+      const title = document.createElement('h3'); title.textContent = '秘藏二选一';
+      box.appendChild(title);
+      const tip = document.createElement('p'); tip.className = 'dim'; tip.textContent = '择其一纳入囊中。';
+      box.appendChild(tip);
+      Engine.advBossBonus(S).forEach(function (ch) {
+        const card = document.createElement('div');
+        card.style.cssText = 'border:1px solid #2e2942;padding:10px;margin-bottom:10px;border-radius:8px;';
+        card.innerHTML = '<b style="color:var(--gold)">' + ch.label + '</b><br><span class="dim">' + ch.desc + '</span>';
+        const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = '选取';
+        btn.onclick = function () {
+          ch.apply().forEach(function (l) { log(l, 'good'); if (S.adv) S.adv.gains.push(l); });
+          ov.style.display = 'none';
+          advFinish('通关');
+        };
+        card.appendChild(btn);
+        box.appendChild(card);
+      });
     });
+  }
+  function openAdvPrep(advKey, ap) {
+    const ov = $('modal'); const box = $('modal-body');
+    ov.style.display = 'flex'; ov.onclick = null;
+    box.innerHTML = '';
+    const title = document.createElement('h3'); title.textContent = '整备 · 携带丹药';
+    box.appendChild(title);
+    const cap = Engine.getAdvItemCap(S);
+    const tip = document.createElement('p'); tip.className = 'dim';
+    tip.textContent = '进入秘境前，可选至多 ' + cap + ' 种丹药随身携带（仅限秘境可用丹药）。战斗或休整时可服用。';
+    box.appendChild(tip);
+    const usable = Object.keys(S.elixirs || {}).filter(function (id) {
+      const el = ELIXIRS[id]; return el && el.usableInAdv && S.elixirs[id] > 0;
+    });
+    if (!usable.length) {
+      const p = document.createElement('p'); p.className = 'dim'; p.textContent = '储物袋中没有可用的秘境丹药，可直接进入。';
+      box.appendChild(p);
+    }
+    const picked = {};
+    usable.forEach(function (id) {
+      const el = ELIXIRS[id];
+      const row = document.createElement('div'); row.className = 'adv-prep-elixir';
+      const name = document.createElement('span'); name.className = 'ae-name';
+      name.textContent = el.name + '（持有 ' + S.elixirs[id] + '）';
+      const ctrl = document.createElement('span');
+      const minus = document.createElement('button'); minus.className = 'btn-small'; minus.textContent = '-';
+      const cnt = document.createElement('span'); cnt.className = 'ae-count'; cnt.textContent = '0';
+      const plus = document.createElement('button'); plus.className = 'btn-small'; plus.textContent = '+';
+      minus.onclick = function () { picked[id] = Math.max(0, (picked[id] || 0) - 1); cnt.textContent = picked[id]; };
+      plus.onclick = function () {
+        const total = Object.keys(picked).reduce(function (a, k) { return a + picked[k]; }, 0);
+        if (total >= cap) { log('携带上限为 ' + cap + ' 种', 'bad'); return; }
+        if ((picked[id] || 0) >= S.elixirs[id]) return;
+        picked[id] = (picked[id] || 0) + 1; cnt.textContent = picked[id];
+      };
+      ctrl.appendChild(minus); ctrl.appendChild(cnt); ctrl.appendChild(plus);
+      row.appendChild(name); row.appendChild(ctrl);
+      box.appendChild(row);
+    });
+    const enterBtn = document.createElement('button'); enterBtn.className = 'btn-main';
+    enterBtn.textContent = '进入秘境（' + ap + ' 行动）';
+    enterBtn.onclick = function () { doStartAdv(advKey, ap, picked); };
+    box.appendChild(enterBtn);
+    const skipBtn = document.createElement('button'); skipBtn.className = 'btn-main ghost'; skipBtn.textContent = '空手进入';
+    skipBtn.onclick = function () { doStartAdv(advKey, ap, {}); };
+    box.appendChild(skipBtn);
+  }
+  function doStartAdv(advKey, ap, picked) {
+    const items = Object.keys(picked).filter(function (id) { return picked[id] > 0; })
+      .map(function (id) { return { id: id, count: picked[id] }; });
+    const res = Engine.startAdventure(S, advKey, { ap: ap, items: items });
+    if (res.ok === false) { log(res.msg || '行动点不足', 'bad'); afterAction(); return; }
+    $('modal').style.display = 'none';
+    if (typeof AudioManager !== 'undefined') AudioManager.playSfx('explore');
+    advIntro();
   }
   function generateTreasureReward() {
     if (!S.materials) S.materials = {};
@@ -797,24 +1013,25 @@
     // 保留原始节点类型用于显示
     res.originalType = node.type;
     if (res.type === 'battle') {
-      openBattle(res.spec, { title: res.title }).then(function (r) {
+      openBattle(res.spec, { title: res.title, adventure: true }).then(function (r) {
         const b = S.battle;
         if (r.win) {
           // 精英战斗胜利后给予宝箱奖励
           if (res.eliteReward) {
             const eliteLoot = generateTreasureReward();
-            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(advAdvance);
+            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(advAdvanceToMap);
           } else {
-            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(advAdvance);
+            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(advAdvanceToMap);
           }
         } else if (r.lost) {
           advFinish('战败');
         } else {
-          showChapter('脱身', ['你及时抽身，绕开了这一处凶险。']).then(advAdvance);
+          showChapter('脱身', ['你及时抽身，绕开了这一处凶险。']).then(advAdvanceToMap);
         }
       });
       return;
     }
+    if (res.type === 'rest') { openRestScreen(); return; }
     if (res.type === 'shop') { advShop(res.stock); return; }
     if (res.type === 'remnant_soul') {
       advResolveRemnantSoul(res.spell1, res.spell2);
@@ -822,21 +1039,18 @@
     }
     if (res.type === 'event') {
       if (res.ev) {
-        runEvent(res.ev).then(advAdvance);
+        runEvent(res.ev).then(advAdvanceToMap);
       } else {
-        showChapter('雾散', ['迷雾散去，空无一物。你摇了摇头，继续前行。']).then(advAdvance);
+        showChapter('雾散', ['迷雾散去，空无一物。你摇了摇头，继续前行。']).then(advAdvanceToMap);
       }
       return;
     }
     if (res.type === 'final') {
-      openBattle(res.spec, { title: '决战 · ' + res.spec.name }).then(function (r) {
-        const b = S.battle;
+      openBattle(res.spec, { title: '决战 · ' + res.spec.name, adventure: true }).then(function (r) {
         if (r.win) {
+          S.adv.cleared = true;
           const extra = Engine.advClearReward(S);
-          showChapter('秘境通关', [res.spec.name + '化作流光消散，藏于深处的秘藏尽数显现！']
-            .concat(extra), { subtitle: '通关秘藏' }).then(function () {
-              advFinish('通关');
-            });
+          showBossChoice(extra);
         } else if (r.lost) {
           advFinish('战败');
         } else {
@@ -856,7 +1070,7 @@
     } else if (res.originalType === 'iron') {
       chapterTitle = '灵矿';
     }
-    showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(advAdvance);
+    showChapter(chapterTitle, res.lines, { subtitle: chapterSubtitle }).then(advAdvanceToMap);
   }
 
   /* ---- 残魂传承事件 ---- */
@@ -891,16 +1105,16 @@
           if (S.techs.indexOf(spell2) < 0) S.techs.push(spell2);
           Engine.ensureTechEquip(S);
           Engine.saveState(S);
-          showChapter('残魂考验', ['残魂散去前微微点头："你有这个资格。"', '两道灵光同时飞入你的眉心——', '【' + t1.name + '】和【' + t2.name + '】已习得！'], { subtitle: '考验通过' }).then(advAdvance);
+          showChapter('残魂考验', ['残魂散去前微微点头："你有这个资格。"', '两道灵光同时飞入你的眉心——', '【' + t1.name + '】和【' + t2.name + '】已习得！'], { subtitle: '考验通过' }).then(advAdvanceToMap);
         } else {
           // 战斗失败，只获得第一个功法
           if (S.techs.indexOf(spell1) < 0) S.techs.push(spell1);
           Engine.ensureTechEquip(S);
           Engine.saveState(S);
-          showChapter('残魂考验', ['你未能通过考验，残魂叹道："缘分未到。"', '但先前传授的功法已然铭记于心。', '【' + t1.name + '】已习得！'], { subtitle: '考验未通过' }).then(advAdvance);
+          showChapter('残魂考验', ['你未能通过考验，残魂叹道："缘分未到。"', '但先前传授的功法已然铭记于心。', '【' + t1.name + '】已习得！'], { subtitle: '考验未通过' }).then(advAdvanceToMap);
         }
       } else {
-        advAdvance();
+        advAdvanceToMap();
       }
     });
   }
@@ -932,7 +1146,7 @@
     const closeShop = function () {
       ov.style.display = 'none';
       $('modal-close').onclick = prevClose;
-      advAdvance();
+      advAdvanceToMap();
     };
     stock.forEach(function (si) {
       const row = document.createElement('div');
@@ -984,6 +1198,7 @@
   }
   function advFinish(why) {
     const a = S.adv;
+    $('adv-screen').style.display = 'none';
     Engine.advEnd(S, why === '战败' ? 'lost' : 'done');
     // 还原主界面背景与秘境层样式
     resetAdvBackground();

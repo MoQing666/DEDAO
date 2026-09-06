@@ -5,3 +5,6 @@ Thumbs.db
 f4out.txt
 dist/
 assets/img/_src/
+
+# 测试运行生成报告（自动产物）
+test/reports/

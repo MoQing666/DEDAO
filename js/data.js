@@ -40,7 +40,12 @@ const ELIXIRS = {
 jiejin:   { name: '结金丹', desc: '突破金丹渡劫时自动服用，成功率 +25%。' },
   yuanying: { name: '元婴丹', desc: '突破元婴渡劫时自动服用，成功率 +25%。' },
   zengshou: { name: '增寿丹',   desc: '服用后寿元 +50。' },
-  wudao:    { name: '悟道丹',   desc: '服用后道心通明，悟性 +1。' }
+  wudao:    { name: '悟道丹',   desc: '服用后道心通明，悟性 +1。' },
+  /* 秘境可携带丹药：usableInAdv=true，可在秘境战斗/休整中服用 */
+  huichun:  { name: '回春丹', desc: '秘境中可服用，立即恢复 40% 气血。', usableInAdv: true, adv: { hpPct: 0.40 } },
+  ningling: { name: '凝灵丹', desc: '秘境中可服用，立即恢复 40% 灵力。', usableInAdv: true, adv: { mpPct: 0.40 } },
+  jiuzhuan: { name: '九转丹', desc: '秘境中可服用，气血与灵力各恢复 35%。', usableInAdv: true, adv: { hpPct: 0.35, mpPct: 0.35 } },
+  jiedu:    { name: '解毒丹', desc: '秘境中可服用，解除中毒等负面状态。', usableInAdv: true, adv: { cure: true } }
 };
 const BREAK_ELIXIR = { 筑基: 'zhuji', 金丹: 'jiejin', 元婴: 'yuanying' };
 
@@ -2531,7 +2536,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 0,
     desc: '炼气期秘境，匪徒盘踞之地。',
     monsters: MONSTER_POOL.huang,
-    boss: MONSTER_POOL.boss[0],
+    boss: Object.assign({}, MONSTER_POOL.boss[0], { mechanic: 'thorns' }),
     drops: { herb: 'herb_huang', iron: 'iron_huang' }
   },
   xuan: {
@@ -2540,7 +2545,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 1,
     desc: '筑基期秘境，妖兽横行之地。',
     monsters: MONSTER_POOL.xuan,
-    boss: MONSTER_POOL.boss[1],
+    boss: Object.assign({}, MONSTER_POOL.boss[1], { mechanic: 'enrage' }),
     drops: { herb: 'herb_xuan', iron: 'iron_xuan' }
   },
   di: {
@@ -2549,7 +2554,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 2,
     desc: '金丹期秘境，上古洞天遗迹。',
     monsters: MONSTER_POOL.di,
-    boss: MONSTER_POOL.boss[2],
+    boss: Object.assign({}, MONSTER_POOL.boss[2], { mechanic: 'summon' }),
     drops: { herb: 'herb_di', iron: 'iron_di' }
   },
   tian: {
@@ -2558,7 +2563,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 3,
     desc: '元婴期秘境，魔道势力盘踞之地。',
     monsters: MONSTER_POOL.tian,
-    boss: MONSTER_POOL.boss[3],
+    boss: Object.assign({}, MONSTER_POOL.boss[3], { mechanic: 'lifesteal' }),
     drops: { herb: 'herb_tian', iron: 'iron_tian' }
   },
   xian: {
@@ -2567,7 +2572,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 3,
     desc: '每十年一现的仙人遗迹，内藏仙品宝物。',
     monsters: MONSTER_POOL.tian,
-    boss: { name: '仙人残念', line: '一缕仙人残念，金光万丈，威压如山。' },
+    boss: { name: '仙人残念', line: '一缕仙人残念，金光万丈，威压如山。', mechanic: 'multicast' },
     drops: { herb: 'herb_tian', iron: 'iron_tian' },
     isSpecial: true
   }
@@ -2647,8 +2652,72 @@ const ADV_NODES = {
   herb:     { name: '灵草丛',   icon: '❀', desc: '药香扑鼻，年份十足，四周却静得反常。' },
   iron:     { name: '灵铁矿脉', icon: '▲', desc: '矿脉露出地表，半截石壁闪着金属光泽。' },
   shop:     { name: '荒野坊市', icon: '◇', desc: '荒僻之地竟有一间亮着灯的小铺。' },
-  event:    { name: '雾中奇遇', icon: '☯', desc: '迷雾深处，似乎传来一声苍老的咳嗽。' }
+  event:    { name: '雾中奇遇', icon: '☯', desc: '迷雾深处，似乎传来一声苍老的咳嗽。' },
+  rest:     { name: '静室歇脚', icon: '☾', desc: '一处僻静地界，可打坐调息，回复气血或灵力。' }
 };
+
+/* ---------------- 秘境地图生成（横版 DAG，参考杀戮尖塔路径 + 异世轮回录） ----------------
+ * 生成一张有向无环图：normalCols 个普通列（每列 2~3 个节点）+ 1 个最终 Boss 列。
+ * 每个节点带 type 与 next（指向下一列/ Boss 的节点 id 数组）。
+ * 保证：起点可达 Boss；除第 0 列外每个节点都有入边（无孤儿）。
+ */
+function genAdvMap(grade) {
+  const NORMAL_COLS = 7;            // col 0..6 普通节点，col 7 为 Boss
+  const STEP_COST = 5;              // 每走一步消耗秘境体力
+  function pickType(col) {
+    if (col === 0) return Math.random() < 0.6 ? 'combat' : 'event';
+    if (col === NORMAL_COLS - 1) {
+      const r = Math.random();
+      if (r < 0.45) return 'combat';
+      if (r < 0.70) return 'elite';
+      if (r < 0.85) return 'treasure';
+      return 'shop';
+    }
+    if (col >= 2 && col <= NORMAL_COLS - 2 && Math.random() < 0.18) return 'rest';
+    const weighted = ['combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event'];
+    return weighted[Math.floor(Math.random() * weighted.length)];
+  }
+  const cols = [];
+  for (let c = 0; c < NORMAL_COLS; c++) {
+    const n = (c === 0) ? 2 : (2 + (Math.random() < 0.5 ? 0 : 1));
+    const arr = [];
+    for (let i = 0; i < n; i++) arr.push({ id: 'c' + c + '_' + i, col: c, type: pickType(c), next: [], visited: false });
+    cols.push(arr);
+  }
+  const boss = { id: 'boss', col: NORMAL_COLS, type: 'final', next: [], visited: false };
+  // 连边：每一列节点连向下一列 1~2 个相邻节点
+  for (let c = 0; c < NORMAL_COLS; c++) {
+    const cur = cols[c];
+    const nxt = (c + 1 < NORMAL_COLS) ? cols[c + 1] : [boss];
+    cur.forEach(function (node, idx) {
+      const center = Math.min(nxt.length - 1, Math.floor(idx * nxt.length / cur.length));
+      const seen = {};
+      seen[center] = 1; node.next.push(nxt[center].id);
+      if (Math.random() < 0.6) {
+        const alt = center + (Math.random() < 0.5 ? 1 : -1);
+        if (alt >= 0 && alt < nxt.length && !seen[alt]) { seen[alt] = 1; node.next.push(nxt[alt].id); }
+      }
+    });
+  }
+  // 修复孤儿：保证下一列每个节点都有入边
+  for (let c = 1; c <= NORMAL_COLS; c++) {
+    const cur = (c < NORMAL_COLS) ? cols[c] : [boss];
+    const prev = cols[c - 1];
+    cur.forEach(function (node) {
+      const hasIn = prev.some(function (p) { return p.next.indexOf(node.id) >= 0; });
+      if (!hasIn) {
+        let best = 0, bestD = 1e9;
+        prev.forEach(function (p, i) { const d = Math.abs(i - cur.indexOf(node)); if (d < bestD) { bestD = d; best = i; } });
+        prev[best].next.push(node.id);
+      }
+    });
+  }
+  const byId = {};
+  cols.forEach(function (col) { col.forEach(function (n) { byId[n.id] = n; }); });
+  byId[boss.id] = boss;
+  const startId = cols[0][Math.floor(Math.random() * cols[0].length)].id;
+  return { cols: cols, boss: boss, byId: byId, startId: startId, normalCols: NORMAL_COLS, stepCost: STEP_COST };
+}
 
 /* ---------------- 坊市商品 ---------------- */
 const SHOP_ITEMS = [
@@ -2658,6 +2727,10 @@ const SHOP_ITEMS = [
   { id: 'zhuji',       name: '筑基丹',     price: 150, give: { elixirs: { zhuji: 1 } } },
   { id: 'jiejin',      name: '结金丹',     price: 400, give: { elixirs: { jiejin: 1 } } },
   { id: 'zengshou',    name: '增寿丹',     price: 250, give: { elixirs: { zengshou: 1 } } },
+  { id: 'huichun',     name: '回春丹',     price: 60,  give: { elixirs: { huichun: 1 } } },
+  { id: 'ningling',    name: '凝灵丹',     price: 60,  give: { elixirs: { ningling: 1 } } },
+  { id: 'jiuzhuan',    name: '九转丹',     price: 120, give: { elixirs: { jiuzhuan: 1 } } },
+  { id: 'jiedu',       name: '解毒丹',     price: 50,  give: { elixirs: { jiedu: 1 } } },
   { id: 'tech_shengong', name: '功法·生息功', price: 150, tech: 'shengong' },
   { id: 'tech_xiaoyao',  name: '功法·逍遥步', price: 90,  tech: 'xiaoyao' },
   { id: 'tech_yuhuo',    name: '功法·御火诀', price: 120, tech: 'yuhuo' },

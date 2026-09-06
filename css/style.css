@@ -1010,3 +1010,51 @@ button:disabled { opacity: .4; cursor: default; }
   justify-content: center;
 }
 .enter-footer .btn-main { flex: 1; }
+
+/* ============ 秘境横版地图 ============ */
+.adv-inner { max-width: 760px; }
+.adv-hud { display: flex; align-items: center; gap: 14px; margin: 8px 0 12px; flex-wrap: wrap; }
+.adv-stamina { display: flex; align-items: center; gap: 8px; min-width: 200px; flex: 1; }
+.adv-bar { flex: 1; height: 14px; }
+.adv-items { display: flex; gap: 6px; flex-wrap: wrap; }
+.adv-item-chip {
+  font-size: 12px; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--gold); color: var(--gold);
+}
+.adv-map {
+  display: flex; gap: 0; overflow-x: auto; padding: 6px 2px 14px;
+  align-items: stretch; min-height: 280px;
+}
+.adv-col {
+  display: flex; flex-direction: column; justify-content: space-around;
+  gap: 14px; padding: 0 10px; position: relative; min-width: 96px;
+}
+.adv-col::after {
+  content: ''; position: absolute; right: -6px; top: 0; bottom: 0;
+  width: 2px; background: linear-gradient(var(--line), transparent);
+}
+.adv-node {
+  width: 84px; min-height: 64px; border-radius: 12px; cursor: default;
+  border: 1px solid var(--line); background: rgba(0,0,0,.28);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 6px 4px; transition: transform .12s, box-shadow .12s;
+  position: relative;
+}
+.adv-node .n-icon { font-size: 22px; line-height: 1; }
+.adv-node .n-name { font-size: 11px; color: var(--text); text-align: center; }
+.adv-node.selectable { cursor: pointer; border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.adv-node.selectable:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,.4), 0 0 0 1px var(--gold) inset; }
+.adv-node.visited { opacity: .45; }
+.adv-node.current { border-color: #6ad1ff; box-shadow: 0 0 0 2px #6ad1ff inset; opacity: 1; }
+.adv-node.boss { border-color: #e05a7a; box-shadow: 0 0 0 1px #e05a7a inset; }
+.adv-node.boss.selectable { box-shadow: 0 0 0 2px #e05a7a inset, 0 0 18px rgba(224,90,122,.5); }
+.adv-node .n-badge { position: absolute; top: -6px; right: -6px; font-size: 10px; background: #6ad1ff; color:#10121e; border-radius: 10px; padding: 0 5px; }
+.adv-node.rest .n-icon { color: #c9a86a; }
+.adv-node.combat .n-icon, .adv-node.elite .n-icon { color: #e0604a; }
+.adv-node.treasure .n-icon, .adv-node.shop .n-icon { color: var(--gold); }
+.adv-node.herb .n-icon { color: #4ec9a0; }
+.adv-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.adv-foot #adv-hint { flex: 1; }
+.adv-prep-elixir { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.adv-prep-elixir .ae-name { flex: 1; }
+.adv-prep-elixir .ae-count { color: var(--gold); font-size: 13px; }

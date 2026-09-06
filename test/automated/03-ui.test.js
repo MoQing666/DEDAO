@@ -359,11 +359,17 @@ module.exports = async function build() {
     // 点秘境打开选择弹窗
     click(win, 'btn-explore');
     await new Promise(r => setTimeout(r, 150));
-    const enterBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /进入/.test(b.textContent) && !b.disabled);
-    t.ok(!!enterBtn, '秘境选择弹窗应出现「进入」按钮');
-    if (!enterBtn) return;
-    enterBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    const entryBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /入秘境|深探/.test(b.textContent) && !b.disabled);
+    t.ok(!!entryBtn, '秘境选择弹窗应出现「入秘境 / 深探」按钮');
+    if (!entryBtn) return;
+    entryBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
     await new Promise(r => setTimeout(r, 250));
+    // 第二步：整备弹窗（选择携带丹药，可空手进入）
+    const prepBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /空手进入|进入秘境/.test(b.textContent) && !b.disabled);
+    t.ok(!!prepBtn, '整备弹窗应出现进入按钮');
+    if (!prepBtn) return;
+    prepBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 300));
     // 关键回归点：章节层应可见且位于主界面之上
     const chap = doc.getElementById('chapter');
     t.ok(chap && chap.style.display !== 'none', '章节层应在秘境入口后可见（修复 z-index 后不再卡死）');

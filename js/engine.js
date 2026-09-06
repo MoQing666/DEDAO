@@ -45,7 +45,9 @@ const Engine = (function () {
         if (s.dun === undefined) s.dun = 0;
         if (s.shen === undefined) s.shen = 0;
         if (s.dao === undefined) s.dao = 0;
-        if (s.fu === undefined) s.fu = 0;
+        if (s.ling === undefined) s.ling = 0;
+        // 灵力条（法力）兼容：旧档无 mp 字段则按公式补算
+        if (s.mpMax === undefined) { s.mpMax = 10 + (s.ling || 0) * 20; s.mp = s.mpMax; }
         if (!s.destinies) s.destinies = [];
         if (!s.destinySlots) s.destinySlots = 1;
         if (!s.equip) s.equip = { head: null, body: null, leg: null, weapon: null, accessory: null, treasure: [] };
@@ -232,7 +234,8 @@ const Engine = (function () {
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
-    a += effAttr(s, 'shen') * 10; // 神识挂钩攻击：1点+10攻击
+    a += effAttr(s, 'shen') * 5; // 神识挂钩攻击：1点+5攻击
+    a += effAttr(s, 'ling') * 5; // 灵力挂钩攻击：1点+5攻击（灵力同时关系灵力条上限）
     if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
     if (s.linggen && s.linggen.body && s.linggen.body.atk) a += s.linggen.body.atk;
     if (s.arts.indexOf('qingfeng') >= 0) a += 20;
@@ -313,11 +316,17 @@ const Engine = (function () {
   }
 
   /* ---------------- 属性基础 ---------------- */
+  function calcMpMax(s) {
+    // 灵力条上限：基础 10 + 灵力每点 +20（初始灵力条为 10 点，灵力扩展其上限）
+    return 10 + effAttr(s, 'ling') * 20;
+  }
   function refreshStats(s) {
     const m = calcHpMax(s);
     s.hpMax = m;
     s.atk = calcAtk(s);
     if (s.hp > m) s.hp = m;
+    s.mpMax = calcMpMax(s);
+    if (s.mp === undefined || s.mp > s.mpMax) s.mp = s.mpMax;
   }
 
   /* ---------------- 开局 ---------------- */
@@ -441,7 +450,7 @@ const Engine = (function () {
         else if (r.id === 'dun') s.dun = (s.dun || 0) + 1;
         else if (r.id === 'shen') s.shen = (s.shen || 0) + 1;
         else if (r.id === 'dao') s.dao = (s.dao || 0) + 1;
-        else if (r.id === 'fu') s.fu = (s.fu || 0) + 1;
+        else if (r.id === 'ling') s.ling = (s.ling || 0) + 1;
         else if (r.id === 'stone') s.stone += 100;
         else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 3;
         else if (r.id === 'life20') s.lifeMax += 20;
@@ -469,7 +478,8 @@ const Engine = (function () {
       dunSpeed: 1,
       wu: 1, wuAcc: 0,
       ti: 1,
-      dun: 1, shen: 1, dao: 1, fu: 1,
+      dun: 1, shen: 1, dao: 1, ling: 1,
+      mp: 0, mpMax: 0,
       destinies: [], destinySlots: 1, extraDestiny: 0,
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
@@ -525,7 +535,7 @@ const Engine = (function () {
       if (f.dun) s.dun += f.dun;
       if (f.shen) s.shen += f.shen;
       if (f.dao) s.dao += f.dao;
-      if (f.fu) s.fu += f.fu;
+      if (f.ling) s.ling += f.ling;
       if (f.life) s.lifeMax += f.life;
     }
     applyReinc(s, meta);
@@ -546,7 +556,7 @@ const Engine = (function () {
     if (!ops) return out;
     if (typeof ops === 'function') ops = ops(s);
     if (!ops) return out;
-    ['qi', 'hp', 'stone', 'herb', 'iron', 'life', 'wu', 'ti', 'atk', 'art', 'tech', 'elixirs', 'flags', 'sect', 'hpMax', 'equip', 'inv', 'trib', 'mo', 'dao', 'fu'].forEach(function (k) {
+    ['qi', 'hp', 'stone', 'herb', 'iron', 'life', 'wu', 'ti', 'atk', 'art', 'tech', 'elixirs', 'flags', 'sect', 'hpMax', 'equip', 'inv', 'trib', 'mo', 'dao', 'ling'].forEach(function (k) {
       let v = ops[k];
       if (v === undefined || v === null) return;
       if (typeof v === 'function') v = v(s);
@@ -605,7 +615,7 @@ const Engine = (function () {
         }); break;
         case 'trib': if (!s.linggen) s.linggen = {}; if (!s.linggen.body) s.linggen.body = {}; s.linggen.body.trib = (s.linggen.body.trib || 0) + v; out.push('渡劫 +' + Math.round(v * 100) + '%'); break;
         case 'dao': s.dao = (s.dao || 0) + v; out.push('道心 +' + v); break;
-        case 'fu': s.fu = (s.fu || 0) + v; out.push('福源 +' + v); break;
+        case 'ling': s.ling = (s.ling || 0) + v; out.push('灵力 +' + v); break;
       }
     });
     refreshStats(s);
@@ -625,28 +635,12 @@ const Engine = (function () {
   function gainEquip(s, id) {
     const it = findEquip(id);
     if (!it) return [];
-    const slot = slotOf(id);
     const out = [];
-    if (slot === 'treasure') {
-      if (!Array.isArray(s.equip.treasure)) s.equip.treasure = [];
-      if (s.equip.treasure.length < maxTreasure(s)) {
-        s.equip.treasure.push(id);
-        refreshStats(s);
-        out.push('装备【' + it.name + '】已上身（' + EQUIP_SLOTS[slot].name + '）');
-      } else {
-        s.inventory.push(id);
-        out.push('获得装备【' + it.name + '】（收入储物袋）');
-      }
-      return out;
-    }
-    if (!s.equip[slot]) {
-      s.equip[slot] = id;
-      refreshStats(s);
-      out.push('装备【' + it.name + '】已上身（' + EQUIP_SLOTS[slot].name + '）');
-    } else {
-      s.inventory.push(id);
-      out.push('获得装备【' + it.name + '】（收入储物袋）');
-    }
+    if (!Array.isArray(s.inventory)) s.inventory = [];
+    // 得到装备不再自动穿上：一律收入储物袋，由玩家在角色页手动穿戴
+    s.inventory.push(id);
+    refreshStats(s);
+    out.push('获得装备【' + it.name + '】（收入储物袋，可于角色页手动穿戴）');
     return out;
   }
   function wearEquip(s, id) {
@@ -741,6 +735,8 @@ const Engine = (function () {
     refreshStats(s);
     // 进入战斗时血量自动补满
     s.hp = s.hpMax;
+    // 进入战斗前灵力条补满
+    s.mp = s.mpMax;
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;
@@ -870,7 +866,11 @@ const Engine = (function () {
       let sp = spellId ? TECHNIQUES[spellId] : null;
       if (!sp || sp.cls !== 'shufa') sp = getBestShufa(s);
       if (!sp) return { done: false, lines: ['你并未习得任何法术。'] };
-      const dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
+      const cost = sp.cost || 0;
+      let dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
+      // 灵力消耗：充足则扣除，不足则威力减半（灵力条=10+灵力×20，由灵力属性扩展上限）
+      if (s.mp >= cost) { s.mp -= cost; }
+      else { s.mp = 0; dmg = Math.round(dmg * 0.5); out.push('灵力不足，法术威力大减！'); }
       const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true);
       lines.forEach(function (l) { out.push(l); });
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
@@ -2282,7 +2282,7 @@ const Engine = (function () {
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,
     enemyGen: enemyGen, randomEquip: randomEquip,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
-    refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure,
+    refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure, calcMpMax: calcMpMax,
     xinmoSpec: xinmoSpec, tianjieSpec: tianjieSpec,
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
     fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,

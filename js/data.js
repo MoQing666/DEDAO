@@ -284,7 +284,7 @@ const TALENTS = [
   { id: 't_dun2',   name: '踏雪无痕',   tier: 'white', desc: '踏雪无痕，遁速 +2。',           apply: { dun: 2 } },
   { id: 't_shen2',  name: '洞察秋毫',   tier: 'white', desc: '洞察秋毫，神识 +2。',           apply: { shen: 2 } },
   { id: 't_dao2',   name: '心如止水',   tier: 'white', desc: '心如止水，道心 +2。',           apply: { dao: 2 } },
-  { id: 't_fu2',    name: '财星高照',   tier: 'white', desc: '财星高照，福源 +2。',           apply: { fu: 2 } },
+  { id: 't_fu2',    name: '灵潮涌动',   tier: 'white', desc: '灵潮涌动，灵力 +2。',           apply: { ling: 2 } },
   // ==================== 本命（绿）—— 属性+战斗 ====================
   { id: 't_dati',   name: '道体天成',   tier: 'green', desc: '道体天成，悟性 +3，道心 +1。',   apply: { wu: 3, dao: 1 } },
   { id: 't_jianxin',name: '剑心通明',   tier: 'green', desc: '剑心通明，神识 +3，悟性 +1。',   apply: { shen: 3, wu: 1 } },
@@ -296,21 +296,21 @@ const TALENTS = [
   { id: 't_ti_amplify', name: '金刚不坏',  tier: 'blue', desc: '体魄对气血的影响翻倍。',     apply: { tiMul: 2 } },
   { id: 't_dun_amplify',name: '风驰电掣',  tier: 'blue', desc: '遁速对闪避和额外攻击的影响翻倍。', apply: { dunMul: 2 } },
   { id: 't_shen_amplify',name: '天眼通',   tier: 'blue', desc: '神识对暴击率的影响翻倍。',   apply: { shenMul: 2 } },
-  { id: 't_fu_amplify', name: '天赐财缘',  tier: 'blue', desc: '福源对灵石获取的影响翻倍。', apply: { fuMul: 2 } },
+  { id: 't_fu_amplify', name: '灵源充沛',  tier: 'blue', desc: '灵力 +2（灵力上限+40、攻击+10）。', apply: { ling: 2 } },
   { id: 't_zhanmie',    name: '一剑封喉',  tier: 'blue', desc: '攻击时对气血低于 20% 的敌人直接斩杀。', apply: { execute: 0.20 } },
   { id: 't_baoji_boost',name: '致命一击',  tier: 'blue', desc: '暴击伤害从 200% 提升至 300%。', apply: { critDmgBoost: 1.0 } },
   // ==================== 极命（紫）—— 强力战斗+三维 ====================
-  { id: 't_tianling',name: '天灵根',    tier: 'purple',desc: '天灵根，悟性 +5，道心 +3，福源 +2。', apply: { wu: 5, dao: 3, fu: 2 } },
+  { id: 't_tianling',name: '天灵根',    tier: 'purple',desc: '天灵根，悟性 +5，道心 +3，灵力 +2。', apply: { wu: 5, dao: 3, ling: 2 } },
   { id: 't_hunti',  name: '混元道体',   tier: 'purple',desc: '混元道体，体魄 +5，道心 +3，悟性 +2。', apply: { ti: 5, dao: 3, wu: 2 } },
   { id: 't_leiling',name: '雷灵之体',   tier: 'purple',desc: '雷灵之体，遁速 +5，神识 +3，体魄 +2。', apply: { dun: 5, shen: 3, ti: 2 } },
   { id: 't_xixue2', name: '血魔大法',   tier: 'purple',desc: '攻击时回复伤害 25% 的气血。',   apply: { lifesteal: 0.25 } },
   { id: 't_fanshe2',name: '荆棘之体',   tier: 'purple',desc: '受击时反弹 30% 伤害给敌人。',   apply: { thorns: 0.30 } },
   // ==================== 仙命（金）—— 逆天效果 ====================
-  { id: 't_jiutian',name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全六维 +3。',         apply: { wu: 3, ti: 3, dun: 3, shen: 3, dao: 3, fu: 3 } },
+  { id: 't_jiutian',name: '九天玄体',   tier: 'gold',  desc: '九天玄体，全六维 +3。',         apply: { wu: 3, ti: 3, dun: 3, shen: 3, dao: 3, ling: 3 } },
   { id: 't_grow_wu',name: '道心渐明',   tier: 'gold',  desc: '道心渐明，每年悟性 +0.5（永久）。', apply: { growWu: 0.5 } },
   { id: 't_grow_ti',name: '肉身成圣',   tier: 'gold',  desc: '肉身成圣，每年体魄 +0.5（永久）。', apply: { growTi: 0.5 } },
   { id: 't_grow_dun',name: '御风化影',  tier: 'gold',  desc: '御风化影，每年遁速 +0.5（永久）。', apply: { growDun: 0.5 } },
-  { id: 't_tianming',name: '天命之子',  tier: 'gold',  desc: '天命之子，道心 +5，福源 +5，渡劫 +25%。', apply: { dao: 5, fu: 5, trib: 0.25 } }
+  { id: 't_tianming',name: '天命之子',  tier: 'gold',  desc: '天命之子，道心 +5，灵力 +5，渡劫 +25%。', apply: { dao: 5, ling: 5, trib: 0.25 } }
 ];
 
 /* ---------------- 劫轮回系统 ---------------- */
@@ -496,7 +496,7 @@ const MAINLINE = [
     effect: { wu: 0.5 },
     choices: [
       { t: '谨记于心（悟性+0.5）', lines: ['你把这几条要紧事默诵三遍，只觉前路清晰了几分。'] },
-      { t: '一一记在随身小册上（福源+0.5）', lines: ['你寻了册子逐条记下。日后翻看，少走了许多弯路。'] }
+      { t: '一一记在随身小册上（灵力+0.5）', lines: ['你寻了册子逐条记下。日后翻看，少走了许多弯路。'] }
     ] },
 
   { id: 'ml_0_3', idx: 0, title: '村庄危机', chapter: true,
@@ -692,7 +692,7 @@ const MAINLINE = [
       { t: '擂台切磋', fight: { name: '林婉儿', atk: 50, hp: 200, loot: { stone: 100 } },
         resultWin: '你一剑挑飞她的长剑，她跌坐在地，气鼓鼓地瞪你："你赢了。"但她眼中分明带着笑意。',
         resultLose: '她的剑比你快半招，你输了。她扶你起来："下次再来。"你闻到她身上淡淡的药香。' },
-      { t: '台下叙旧', effect: { fu: 0.5, hp: 30 },
+      { t: '台下叙旧', effect: { ling: 0.5, hp: 30 },
         lines: ['你跳下擂台，和她坐在角落里聊天。她给你讲这些年走南闯北的故事，你给她讲修行中的趣事。不知不觉，天就黑了。'] }
     ] },
 
@@ -724,7 +724,7 @@ const MAINLINE = [
           '你学着桩印，站入那个人形轮廓。初时只觉气血翻涌，站到第三日，你竟隐隐听见自己骨骼如金石交鸣。',
           '你若有所悟——这崖壁之后，必藏着一部炼体传承。'
         ] },
-      { t: '拓印桩印，他日参详（福源+0.5）', effect: { fu: 0.5, flags: { duanti_r1: 1 } },
+      { t: '拓印桩印，他日参详（灵力+0.5）', effect: { ling: 0.5, flags: { duanti_r1: 1 } },
         lines: [
           '你以灵力拓下满崖桩印。拓毕，指尖犹有余震——这些桩印的行气路线，暗合某种失传的炼体法门。',
           '看来得循着这缕地气，去找找传承的下落。'
@@ -1875,9 +1875,9 @@ E('shejiao', {
     '她看见你，非但不避，反而指着花说："你看它，它也在笑呢！"'
   ],
   choices: [
-    { t: '与她同笑', effect: { fu: 0.5, hp: 20 },
+    { t: '与她同笑', effect: { ling: 0.5, hp: 20 },
       lines: ['你蹲下来，和她一起笑。笑够了，她从花丛中摘下一朵别在你耳边："送你。你笑起来也好看。"'] },
-    { t: '赠她一株灵花', req: { stone: 200 }, effect: { stone: -200, fu: 1 },
+    { t: '赠她一株灵花', req: { stone: 200 }, effect: { stone: -200, ling: 1 },
       lines: ['你从储物袋中取出一株品相最好的灵花递给她。她眼睛亮了，小心翼翼地捧着花，像捧着全世界。'] }
   ]
 });
@@ -2019,7 +2019,7 @@ E('shejiao', {
     { t: '擂台切磋', fight: { name: '林婉儿', atk: 50, hp: 200, loot: { stone: 100 } },
       resultWin: '你一剑挑飞她的长剑，她跌坐在地，气鼓鼓地瞪你："你赢了。"但她眼中分明带着笑意。',
       resultLose: '她的剑比你快半招，你输了。她扶你起来："下次再来。"你闻到她身上淡淡的药香。' },
-    { t: '台下叙旧', effect: { fu: 0.5, hp: 30 },
+    { t: '台下叙旧', effect: { ling: 0.5, hp: 30 },
       lines: ['你跳下擂台，和她坐在角落里聊天。她给你讲这些年走南闯北的故事，你给她讲修行中的趣事。不知不觉，天就黑了。'] }
   ]
 });
@@ -2332,17 +2332,19 @@ const ACHIEVEMENTS = {
 
 /* ---------------- 轮回天赋（局外成长） ---------------- */
 const REINCARNATION = [
+  /* ===== 新六维相关天赋（排列在最上方） ===== */
   { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 6, max: 5,  apply: { wu: 1 } },
   { id: 'ti',         name: '强体',     desc: '体魄 +1（肉身根基）',            cost: 3, max: 5,  apply: { ti: 1 } },
+  { id: 'dun',        name: '灵步',     desc: '遁速 +1（先天身法）',            cost: 3, max: 5,  apply: { dun: 1 } },
+  { id: 'shen',       name: '神念',     desc: '神识 +1（先天感知）',            cost: 3, max: 5,  apply: { shen: 1 } },
+  { id: 'dao',        name: '定心',     desc: '道心 +1（先天心境）',            cost: 6, max: 5,  apply: { dao: 1 } },
+  { id: 'ling',       name: '灵海',     desc: '灵力 +1（灵力上限+20、攻击+5）', cost: 3, max: 5,  apply: { ling: 1 } },
+  /* ===== 其余天赋 ===== */
   { id: 'stone',      name: '殷实',     desc: '出生时灵石 +100',                cost: 2, max: 4,  apply: { stone: 100 } },
   { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 3, max: 3,  apply: { elixirs: { juling: 3 } } },
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
   { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
   { id: 'forge',      name: '器魂',     desc: '炼器时间 -1年',                   cost: 3, max: 3,  apply: { forgeTimeReduce: 1 } },
-  { id: 'dun',        name: '灵步',     desc: '遁速 +1（先天身法）',            cost: 3, max: 5,  apply: { dun: 1 } },
-  { id: 'shen',       name: '神念',     desc: '神识 +1（先天感知）',            cost: 3, max: 5,  apply: { shen: 1 } },
-  { id: 'dao',        name: '定心',     desc: '道心 +1（先天心境）',            cost: 6, max: 5,  apply: { dao: 1 } },
-  { id: 'fu',         name: '招财',     desc: '福源 +1（先天福运）',            cost: 3, max: 5,  apply: { fu: 1 } },
   { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 2, max: 3,  apply: { life: 20 } },
   { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } },
   { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
@@ -2360,7 +2362,7 @@ const DESTINIES = {
   taxue:        { name:'踏雪无痕',   grade:'白', type:'attr',  attr:{ dun:1 }, desc:'身法轻盈，如履平地' },
   dongcha:      { name:'洞察秋毫',   grade:'白', type:'attr',  attr:{ shen:1 }, desc:'目光如炬，明察秋毫' },
   xinruzhishui: { name:'心如止水',   grade:'白', type:'attr',  attr:{ dao:1 }, desc:'心境平和，不受外扰' },
-  caixing:      { name:'财星高照',   grade:'白', type:'attr',  attr:{ fu:1 }, desc:'财运亨通，机缘不断' },
+  caixing:      { name:'灵星高照',   grade:'白', type:'attr',  attr:{ ling:1 }, desc:'灵力+1，灵力上限+20、攻击+5' },
   jianyi:       { name:'剑意初凝',   grade:'白', type:'combat', effect:{ atkMul:0.03 }, desc:'剑气初显，锋芒毕露' },
   lingqi:       { name:'灵气护体',   grade:'白', type:'combat', effect:{ defMul:0.03 }, desc:'灵气自动护体' },
   qingling:     { name:'轻灵之体',   grade:'白', type:'combat', effect:{ dodgeRate:0.02 }, desc:'身法灵动，难以捉摸' },
@@ -2382,33 +2384,33 @@ const DESTINIES = {
   tianshengjp:  { name:'天生剑胚',   grade:'蓝', type:'attr',  attr:{ shen:2, wu:1 }, desc:'天生剑道奇才' },
   liuli:        { name:'琉璃宝体',   grade:'蓝', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.08 }, desc:'肉身如琉璃，坚不可摧' },
   zhuifeng2:    { name:'追风逐电',   grade:'蓝', type:'combat', attr:{ dun:3 }, effect:{ dodgeRate:0.05 }, desc:'速度极快，闪避极高' },
-  jubao:        { name:'聚宝盆',     grade:'蓝', type:'attr',  attr:{ fu:3, wu:1 }, desc:'财运极佳，机缘不断' },
+  jubao:        { name:'聚灵盆',     grade:'蓝', type:'attr',  attr:{ ling:3, wu:1 }, desc:'灵力+3、悟性+1' },
   shixuekuang:  { name:'嗜血狂徒',   grade:'蓝', type:'combat', effect:{ lifesteal:0.05, critRate:0.05 }, desc:'攻击附带吸血，暴击极高' },
   fanshangdun:  { name:'反伤之盾',   grade:'蓝', type:'combat', effect:{ defMul:0.10, thorns:0.13 }, desc:'防御极高，反伤恐怖' },
-  xiantiandt:   { name:'先天道体',   grade:'蓝', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, fu:1 }, desc:'全面发展的先天体质' },
+  xiantiandt:   { name:'先天道体',   grade:'蓝', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, desc:'全面发展的先天体质' },
   jiandaozs:    { name:'剑道宗师',   grade:'蓝', type:'combat', effect:{ atkMul:0.08, critRate:0.05 }, desc:'剑道大成，攻伐无双' },
   linghunjr:    { name:'灵魂坚韧',   grade:'蓝', type:'attr',  attr:{ dao:1, shen:2 }, desc:'灵魂坚韧，难以动摇' },
-  tianshengfx:  { name:'天生福星',   grade:'蓝', type:'attr',  attr:{ fu:3 }, effect:{ stonePerYear:10 }, desc:'福运绵长，财源广进' },
+  tianshengfx:  { name:'天生灵星',   grade:'蓝', type:'attr',  attr:{ ling:3 }, effect:{ stonePerYear:10 }, desc:'灵力+3，每年灵石+10' },
 
   /* ======== 极命（紫）—— 属性+3~4 / 战斗+13~18% ======== */
-  tianlinggen:  { name:'天灵根',     grade:'紫', type:'attr',  attr:{ wu:3, dao:2, fu:1 }, desc:'天生灵根，修行无瓶颈' },
+  tianlinggen:  { name:'天灵根',     grade:'紫', type:'attr',  attr:{ wu:3, dao:2, ling:1 }, desc:'天生灵根，修行无瓶颈' },
   hunyuan:      { name:'混元道体',   grade:'紫', type:'attr',  attr:{ ti:3, dao:2, wu:1 }, desc:'混元一体，万法皆通' },
   leiling:      { name:'雷灵之体',   grade:'紫', type:'combat', attr:{ dun:3, shen:2, ti:1 }, desc:'雷霆之体，速度与力量兼备' },
   shashen:      { name:'杀神转世',   grade:'紫', type:'combat', effect:{ critRate:0.05, lifesteal:0.05 }, desc:'杀神降世，挡我者死' },
   bumie:        { name:'不灭金身',   grade:'紫', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.13, thorns:0.15 }, desc:'金身不灭，万法不侵' },
   xiantijian:   { name:'先天剑体',   grade:'紫', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.08, critRate:0.06 }, desc:'先天剑体，剑道无双' },
-  tianming:     { name:'天命之子',   grade:'紫', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, fu:1 }, effect:{ stonePerYear:15 }, desc:'天命所归，万事亨通' },
+  tianming:     { name:'天命之子',   grade:'紫', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, effect:{ stonePerYear:15 }, desc:'天命所归，万事亨通' },
 
   /* ======== 仙命（金）—— 全维+2 / 战斗+18~25% ======== */
-  jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, desc:'九天之上，唯我独尊' },
+  jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, desc:'九天之上，唯我独尊' },
   daoxinjm:     { name:'道心渐明',   grade:'金', type:'attr',  effect:{ wuPerYear:0.3 }, desc:'道心通明，悟性渐增' },
   roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:0.3, defMul:0.15 }, desc:'肉身成圣，万法不侵' },
-  tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, fu:3 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
+  tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, ling:3 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
   shafadj:      { name:'杀伐果断',   grade:'金', type:'combat', effect:{ atkMul:0.15, critRate:0.13, executeBonus:0.10 }, desc:'一击必杀，挡我者死' },
   wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', effect:{ defMul:0.18, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
-  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, effect:{ stonePerYear:25 }, desc:'先天道体，万法皆通' },
+  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, effect:{ stonePerYear:25 }, desc:'先天道体，万法皆通' },
   zhanshen:     { name:'战神降世',   grade:'金', type:'combat', effect:{ atkMul:0.18, critRate:0.15, lifesteal:0.08 }, desc:'战神降世，天下无敌' },
-  tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, fu:2 }, effect:{ tribBonus:0.15, stonePerYear:20 }, desc:'天道眷顾，万事如意' },
+  tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, effect:{ tribBonus:0.15, stonePerYear:20 }, desc:'天道眷顾，万事如意' },
   wanjian:      { name:'万剑归宗',   grade:'金', type:'combat', effect:{ atkMul:0.20, critRate:0.18, techTypeBonus:{ xinfa:0.25 } }, desc:'万剑归宗，剑道巅峰' }
 };
 

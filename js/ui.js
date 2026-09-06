@@ -180,7 +180,7 @@
     $('st-dun').textContent = S.dun || 0;
     $('st-shen').textContent = S.shen || 0;
     $('st-dao').textContent = S.dao || 0;
-    $('st-fu').textContent = S.fu || 0;
+    $('st-ling').textContent = S.ling || 0;
     // 战斗属性
     $('st-atk').textContent = S.atk || 0;
     const defVal = Math.round((S.ti || 0) * 0.5);
@@ -190,7 +190,7 @@
     const dodgeVal = Math.round(((S.dun || 0) * 0.005 + (Engine.getDestinyBonus ? Engine.getDestinyBonus(S, 'dodgeRate') : 0)) * 100);
     $('st-dodge').textContent = dodgeVal + '%';
     $('st-hp').textContent = S.hp;
-    if ($('st-mo')) $('st-mo').textContent = S.qi || 0;
+    if ($('st-mo')) $('st-mo').textContent = (S.mp || 0) + '/' + (S.mpMax || 0);
 
     $('btn-cult-label').textContent = S.cultedThisYear ? '修炼（今年已修炼）' : '修炼（' + Engine.cultCost(S) + '点）';
     $('btn-cult').classList.toggle('disabled', S.cultedThisYear || !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));
@@ -301,7 +301,7 @@
       let reqMet = true;
       let failMsg = '';
       if (c.req) {
-        const attrNames = { stone: '灵石', ti: '体魄', shen: '神识', dao: '道心', wu: '悟性', dun: '遁速', fu: '福源', minAtk: '攻击' };
+        const attrNames = { stone: '灵石', ti: '体魄', shen: '神识', dao: '道心', wu: '悟性', dun: '遁速', ling: '灵力', minAtk: '攻击' };
         for (var attr in c.req) {
           if (c.req.hasOwnProperty(attr)) {
             if (attr === 'flags') continue;
@@ -485,7 +485,7 @@
           const b = document.createElement('button');
           b.className = 'btn-small';
           b.style.color = GRADE_COLOR[sp.grade];
-          b.textContent = sp.name;
+          b.textContent = sp.name + '（' + (sp.cost || 0) + '灵）';
           b.disabled = false;
           b.onclick = function () { doAct('spell', sp.id); };
           bar.appendChild(b);
@@ -499,6 +499,9 @@
         const mp = Math.max(0, Math.min(100, S.hp / S.hpMax * 100));
         $('b-me-bar').style.width = mp + '%';
         $('b-me-num').textContent = S.hp + ' / ' + S.hpMax;
+        const meMp = Math.max(0, Math.min(100, (S.mpMax ? S.mp / S.mpMax * 100 : 0)));
+        $('b-me-mp-bar').style.width = meMp + '%';
+        $('b-me-mp-num').textContent = (S.mp || 0) + ' / ' + (S.mpMax || 0) + ' 灵';
         const list = bb.spellList || [];
         $('b-spell').disabled = !list.length;
         $('b-spell').textContent = '法术' + (bb.spellName ? '·' + bb.spellName + (list.length > 1 ? '（' + list.length + '）' : '') : '(无)');
@@ -1700,7 +1703,7 @@
             if (dest.attr.dun) attrParts.push('遁速+' + dest.attr.dun);
             if (dest.attr.shen) attrParts.push('神识+' + dest.attr.shen);
             if (dest.attr.dao) attrParts.push('道心+' + dest.attr.dao);
-            if (dest.attr.fu) attrParts.push('福源+' + dest.attr.fu);
+            if (dest.attr.ling) attrParts.push('灵力+' + dest.attr.ling);
             if (attrParts.length) detailHtml += '<div style="color:#4ec9a0;font-size:12px;">属性：' + attrParts.join('、') + '</div>';
           }
           if (dest.effect) {
@@ -1925,7 +1928,7 @@
         if (dest.attr.dun) attrParts.push('遁速+' + dest.attr.dun);
         if (dest.attr.shen) attrParts.push('神识+' + dest.attr.shen);
         if (dest.attr.dao) attrParts.push('道心+' + dest.attr.dao);
-        if (dest.attr.fu) attrParts.push('福源+' + dest.attr.fu);
+        if (dest.attr.ling) attrParts.push('灵力+' + dest.attr.ling);
         if (attrParts.length) detailHtml += '<div class="destiny-detail">' + attrParts.join('、') + '</div>';
       }
       if (dest.effect) {
@@ -2231,7 +2234,7 @@
     const st = safeStage(S);
     const es = Engine.equipStats(S);
     const cultR = Engine.cultGain(S);
-    const destAttrBonus = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, fu: 0 };
+    const destAttrBonus = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0 };
     (S.destinies || []).forEach(function (d) {
       const dest = DESTINIES[d];
       if (dest && dest.attr) {
@@ -2263,11 +2266,11 @@
       { key: 'dun', name: '遁速', icon: '💨', color: '#4ec9a0',
         affect: '影响闪避率与攻速（每点+2%闪避、+2%几率额外攻击），遁速越高越灵活' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0',
-        affect: '影响攻击与暴击（每点+10攻击、+1%暴击），神识越高攻击越强' },
+        affect: '影响攻击与暴击（每点+5攻击、+1%暴击），神识越高攻击越强' },
       { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a',
         affect: '影响暴击与渡劫（每点+2%暴击），道心越高劫难越轻' },
-      { key: 'fu', name: '福源', icon: '🍀', color: '#90e8b0',
-        affect: '影响机缘触发与物品掉落，福源越高运气越好' }
+      { key: 'ling', name: '灵力', icon: '🔮', color: '#6ad1ff',
+        affect: '关系灵力条上限与攻击（每点+20灵力上限、+5攻击）' }
     ];
 
     sixDims.forEach(function (dim) {
@@ -2326,13 +2329,13 @@
     const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×10 + 装备' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
       { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5 + 命格加成' },
       { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80 + 体魄×50 + 境界' },
       { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 道心×2% + 命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2% + 命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
-      { name: '寿元', val: S.age + ' / ' + S.lifeMax, color: '#c06ae0', desc: '每突破增加上限' },
+      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（上限=10+灵力×20）' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '遁速', val: S.dunSpeed || 1, color: '#4ec9a0', desc: '影响逃跑成功率' }
     ];
@@ -2387,7 +2390,7 @@
         // 属性加成
         const attrParts = [];
         if (dest.attr) {
-          const attrNames = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', fu: '福源' };
+          const attrNames = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', ling: '灵力' };
           Object.keys(dest.attr).forEach(function (k) {
             if (attrNames[k]) attrParts.push(attrNames[k] + '+' + dest.attr[k]);
           });
@@ -4625,7 +4628,7 @@
     const tiMulti = [20, 25, 30, 35][Engine.bigIdxOf(S)] || 20;
 
     // 命格加成汇总
-    const destAttrBonus = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, fu: 0 };
+    const destAttrBonus = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0 };
     (S.destinies || []).forEach(function (d) {
       const dest = DESTINIES[d];
       if (dest && dest.attr) {
@@ -4654,13 +4657,13 @@
         affect: '闪避率 / 攻速', formula: '每点+2%闪避、+2%几率额外攻击' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0',
         base: S.shen || 0, eqBonus: 0, destBonus: destAttrBonus.shen || 0,
-        affect: '攻击 / 暴击率', formula: '每点+10攻击、+1%暴击' },
+        affect: '攻击 / 暴击率', formula: '每点+5攻击、+1%暴击' },
       { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a',
         base: S.dao || 0, eqBonus: 0, destBonus: destAttrBonus.dao || 0,
         affect: '暴击率 / 渡劫', formula: '每点+2%暴击' },
-      { key: 'fu', name: '福源', icon: '🍀', color: '#90e8b0',
-        base: S.fu || 0, eqBonus: 0, destBonus: destAttrBonus.fu || 0,
-        affect: '机缘触发', formula: '福源越高运气越好' }
+      { key: 'ling', name: '灵力', icon: '🔮', color: '#6ad1ff',
+        base: S.ling || 0, eqBonus: 0, destBonus: destAttrBonus.ling || 0,
+        affect: '灵力上限 / 攻击', formula: '每点+20灵力上限、+5攻击' }
     ];
 
     sixDims.forEach(function (dim) {
@@ -4715,13 +4718,13 @@
     const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×10 + 装备' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
       { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5×命格倍率' },
       { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80+体魄×50+境界' },
       { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1%+道心×2%+命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2%+命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
-      { name: '寿元', val: S.age + ' / ' + S.lifeMax, color: '#c06ae0', desc: '每突破增加上限' },
+      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（上限=10+灵力×20）' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '修炼', val: '+' + cultR.gain, color: '#4ec9a0', desc: '(60+悟性×10)×境界' }
     ];
@@ -4776,7 +4779,7 @@
         // 属性加成
         const attrParts = [];
         if (dest.attr) {
-          const attrNames = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', fu: '福源' };
+          const attrNames = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', ling: '灵力' };
           Object.keys(dest.attr).forEach(function (k) {
             if (attrNames[k]) attrParts.push(attrNames[k] + '+' + dest.attr[k]);
           });

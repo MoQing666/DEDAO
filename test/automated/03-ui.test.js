@@ -426,14 +426,14 @@ module.exports = async function build() {
     const { win } = await boot();
     const v = JSON.parse(win.eval(`(function(){
       var s = Engine.startLife('初始六维');
-      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, fu:s.fu, linggen: s.linggen});
+      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, ling:s.ling, linggen: s.linggen});
     })()`));
     t.eq(v.wu, 1, '悟性初始应为1');
     t.eq(v.ti, 1, '体魄初始应为1');
     t.eq(v.dun, 1, '遁速初始应为1');
     t.eq(v.shen, 1, '神识初始应为1');
     t.eq(v.dao, 1, '道心初始应为1');
-    t.eq(v.fu, 1, '福源初始应为1');
+    t.eq(v.ling, 1, '灵力初始应为1（六维之一，替代福源）');
     t.eq(v.linggen, null, '开局前灵根应为 null（提交后觉醒）');
   });
 
@@ -463,14 +463,14 @@ module.exports = async function build() {
       var s = Engine.startLife('轮回测试');
       s.bg = null; s.destinies = [];
       Engine.commitStart(s, null);
-      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, fu:s.fu, linggen: s.linggen ? s.linggen.name : null});
+      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, ling:s.ling, linggen: s.linggen ? s.linggen.name : null});
     })()`));
     t.eq(v.wu, 4, '悟性应为 基础1 + 慧根3 = 4（轮回属性加成已实装）');
     t.eq(v.ti, 1, '体魄无轮回加成应为1');
     t.eq(v.dun, 1, '遁速无轮回加成应为1');
     t.eq(v.shen, 1, '神识无轮回加成应为1');
     t.eq(v.dao, 1, '道心无轮回加成应为1');
-    t.eq(v.fu, 1, '福源无轮回加成应为1');
+    t.eq(v.ling, 1, '灵力无轮回加成应为1（六维之一）');
     t.ok(!!v.linggen, '灵根应已觉醒');
   });
 
@@ -492,7 +492,7 @@ module.exports = async function build() {
       return JSON.stringify({hp1:hp1,hp2:hp2,a1:a1,a2:a2,c1:c1,c2:c2,d1:d1,d2:d2,e1:e1,e2:e2});
     })()`));
     t.eq(v.hp2 - v.hp1, 500, '体魄每点应 +50 气血（ti 1→11 共 +500）');
-    t.eq(v.a2 - v.a1, 40, '神识每点应 +10 攻击（shen 1→5 共 +40）');
+    t.eq(v.a2 - v.a1, 20, '神识每点应 +5 攻击（shen 1→5 共 +20）');
     t.ok(Math.abs(v.c1 - 0.03) < 1e-9, '暴击率=神识1%×1+道心2%×1=3%');
     t.ok(Math.abs((v.c2 - v.c1) - 0.20) < 1e-9, '道心每点应 +2% 暴击（dao 1→11 共 +20%）');
     t.ok(Math.abs(v.d1 - 0.02) < 1e-9, '闪避率=遁速2%×1=2%');
@@ -551,6 +551,70 @@ module.exports = async function build() {
       await new Promise(r => setTimeout(r, 80));
       t.eq(startBtn.disabled, false, '选中命格后按钮应启用');
     }
+  });
+
+  // === 回归：灵力条（上限=10+灵力×20，战斗前补满） ===
+  S.case('灵力条：上限=10+灵力×20，战斗前补满', async (t) => {
+    const { win } = await boot();
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('灵力条');
+      s.talents=[]; s.sect=null; s.arts=[]; s.extraAtk=0; s.destinies=[];
+      s.equip={head:null,body:null,leg:null,treasure:[]}; s.linggen=null;
+      s.ling=1; Engine.refreshStats(s); var low=s.mpMax;
+      s.ling=3; Engine.refreshStats(s); var high=s.mpMax;
+      s.ling=2; Engine.refreshStats(s); var cap=s.mpMax; var before=s.mp;
+      Engine.combatStart(s, { name:'测试', atk:10, hp:50, line:'' });
+      return JSON.stringify({ low:low, high:high, cap:cap, before:before, after:s.mp, afterMax:s.mpMax });
+    })()`));
+    t.eq(v.low, 30, '灵力=1 时灵力上限应为 10+1×20=30');
+    t.eq(v.high, 70, '灵力=3 时灵力上限应为 10+3×20=70');
+    t.eq(v.cap, 50, '灵力=2 时灵力上限应为 50');
+    t.eq(v.after, v.afterMax, '战斗开始前灵力应被补满（等于上限）');
+  });
+
+  // === 回归：神识×5攻击、灵力×5攻击（原神识×10已下调） ===
+  S.case('神识每点+5攻击、灵力每点+5攻击', async (t) => {
+    const { win } = await boot();
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('攻击');
+      s.talents=[]; s.sect=null; s.arts=[]; s.extraAtk=0; s.destinies=[];
+      s.equip={head:null,body:null,leg:null,treasure:[]}; s.linggen=null;
+      s.shen=0; s.ling=0; Engine.refreshStats(s); var a0=s.atk;
+      s.shen=1; Engine.refreshStats(s); var a1=s.atk;
+      s.ling=1; Engine.refreshStats(s); var a2=s.atk;
+      return JSON.stringify({a0:a0, a1:a1, a2:a2});
+    })()`));
+    t.ok(Math.abs((v.a1 - v.a0) - 5) < 1e-9, '神识每点应 +5 攻击（原+10）');
+    t.ok(Math.abs((v.a2 - v.a1) - 5) < 1e-9, '灵力每点应 +5 攻击');
+  });
+
+  // === 回归：得到装备不再自动穿上（一律入储物袋） ===
+  S.case('得到装备不再自动穿上（一律入储物袋）', async (t) => {
+    const { win } = await boot();
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('装备');
+      s.bg=null; s.destinies=[]; Engine.commitStart(s, null);
+      var id='ling_toujin';
+      var out = Engine.gainEquip(s, id);
+      return JSON.stringify({ inInv: s.inventory.indexOf(id) >= 0, equipped: s.equip.head === id, msg: out.join('') });
+    })()`));
+    t.ok(v.inInv, '获得装备应进入储物袋（inventory）');
+    t.ok(!v.equipped, '获得装备不应自动穿上（equip.head 不应被设置）');
+    t.ok(/储物袋/.test(v.msg), '提示文案应说明收入储物袋');
+  });
+
+  // === 回归：寿元移出战斗属性；灵力条显示在角色战斗属性页 ===
+  S.case('寿元移出战斗属性，灵力条显示在角色页', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '寿元测试');
+    click(win, 'btn-char-bottom');
+    await new Promise(r => setTimeout(r, 200));
+    const cells = [...doc.querySelectorAll('#char-attr-content .attr-combat-cell')].map(c => c.textContent);
+    const joined = cells.join(' ');
+    t.ok(!/寿元/.test(joined), '战斗属性区不应再显示「寿元」');
+    t.ok(/灵力/.test(joined), '战斗属性区应显示「灵力」条');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('寿元移出战斗属性流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   return S;

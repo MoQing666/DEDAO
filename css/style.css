@@ -52,7 +52,21 @@ h1, h2, h3, h4, .tower-title, .chapter-title, .chapter-sub, .settle-head h2,
   flex-direction: column;
   padding: 10px 10px 70px;
   animation: fadein .3s;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
+/* 背景图压暗层：保证淡彩背景上的浅色文字仍可读 */
+.screen[data-bg]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 16, 26, 0.58);
+  z-index: 0;
+  pointer-events: none;
+}
+.screen[data-bg] > * { position: relative; z-index: 1; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---------------- 通用 ---------------- */

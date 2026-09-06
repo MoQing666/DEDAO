@@ -57,7 +57,13 @@
   }
   function showScreen(name) {
     ['title', 'game', 'rebirth', 'ending', 'gear', 'settlement', 'tech', 'favor', 'crafts', 'duanti', 'bag', 'char', 'enter'].forEach(function (n) {
-      $('screen-' + n).style.display = (n === name) ? 'flex' : 'none';
+      var el = $('screen-' + n);
+      el.style.display = (n === name) ? 'flex' : 'none';
+      // 首次进入该屏幕时才加载背景图（懒加载）
+      if (n === name && el.dataset && el.dataset.bg && !el.dataset.bgLoaded) {
+        el.style.backgroundImage = 'url(' + el.dataset.bg + ')';
+        el.dataset.bgLoaded = '1';
+      }
     });
     // 底部栏只在游戏页面显示
     var bottomBar = $('bottom-bar');

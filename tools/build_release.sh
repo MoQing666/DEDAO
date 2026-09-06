@@ -13,6 +13,9 @@ mkdir -p "$OUT"
 cp index.html manifest.json sw.js "$OUT/"
 cp -r css js assets "$OUT/"
 
+# 剔除 AI 原图（_src 为生成源，不进发布包；只发布处理后成品）
+rm -rf "$OUT/assets/img/_src"
+
 # 校验：字体/音频为压缩后版本
 echo "=== 包体构成 ==="
 du -sh "$OUT"/* | sort -rh

@@ -411,9 +411,9 @@ button:disabled { opacity: .4; cursor: default; }
 .chapter-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px; }
 .chapter-foot .btn-main { margin: 0; width: auto; flex: 1; }
 
-/* 探索模式：游戏主页面提升层级，HUD+属性可交互 */
+/* 探索模式：章节层置于主界面之上，叙事与选择可交互；背景随秘境切换 */
 .chapter-overlay.explore-mode {
-  z-index: 99;
+  z-index: 300;
 }
 .screen.explore-active {
   z-index: 100;
@@ -424,6 +424,20 @@ button:disabled { opacity: .4; cursor: default; }
 /* 探索模式下主页面顶部区域保持可见 */
 .screen.explore-active .hud,
 .screen.explore-active .stats { pointer-events: auto; opacity: 1; }
+
+/* ---------------- 主界面背景虚化 ---------------- */
+/* 中间内容面板半透明+毛玻璃，让背景大体可见 */
+.screen[data-bg] .panel,
+.screen[data-bg] .log {
+  background: rgba(28, 24, 40, 0.52);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.screen[data-bg] .hud {
+  background: rgba(18, 16, 26, 0.30);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
 
 /* ---------------- 弹窗 ---------------- */
 .modal {

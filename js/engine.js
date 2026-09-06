@@ -51,6 +51,14 @@ const Engine = (function () {
         if (!s.equip) s.equip = { head: null, body: null, leg: null, weapon: null, accessory: null, treasure: [] };
         if (s.equip.treasure === undefined) s.equip.treasure = [];
       }
+      // 修复旧版遗留的“虚假存档”：早期版本的 confirmEnterPage 未调用 commitStart，
+      // 导致自动存档里 linggen 为 null（且天赋/命格仅其一为空）。这类存档在“读档菜单”
+      // 里显示为存在（有名字/功法），但 validSave 校验失败，点击读档会报“该存档已失效”。
+      // 仅当存档已具备角色要素（有名字且至少带命格/天赋）但灵根缺失时，补抽灵根以恢复可读性。
+      if (s && s.name && !s.linggen &&
+          ((s.destinies && s.destinies.length) || (s.talents && s.talents.length))) {
+        s.linggen = s.linggenRaw || rollLinggen();
+      }
       return s;
     } catch (e) {}
     return null;
@@ -65,9 +73,19 @@ const Engine = (function () {
   function slotExists(slot) {
     try { return !!localStorage.getItem(slotKey(slot)); } catch (e) { return false; }
   }
+  /* 存档是否“真实且可读取”：灵根 + 名字 + 至少一项命格/天赋 + 境界与阶段一致 */
+  function isUsableSave(S) {
+    if (!S || !S.linggen || !S.name) return false;
+    const hasFate = (S.talents && S.talents.length) || (S.destinies && S.destinies.length);
+    if (!hasFate) return false;
+    if (S.dead || S.endReason) return true;
+    const st = STAGES[S.idx];
+    if (!st || st.realm !== S.realm) return false;
+    return true;
+  }
   function slotInfo(slot) {
     const s = loadState(slot);
-    if (!s || !s.name || !s.techs) return null;
+    if (!s || !isUsableSave(s)) return null;
     const st = safeStage(s);
     return {
       name: s.name,
@@ -203,20 +221,18 @@ const Engine = (function () {
     return st;
   }
   function calcHpMax(s) {
-    const tiMulti = [20, 25, 30, 35][bigIdxOf(s)] || 20;
-    let m = 80 + s.ti * tiMulti + bigIdxOf(s) * 80;
+    let m = 80 + effAttr(s, 'ti') * 50 + bigIdxOf(s) * 80;
     if (s.linggen && s.linggen.body && s.linggen.body.hpMax) m += s.linggen.body.hpMax;
     if (s.arts.indexOf('xuantie') >= 0) m += 150;
     if (s.sect && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
     m += s.hpMaxBonus || 0;
     m += equipStats(s).hpMax;
-    // 命格体魄加成
-    m += (s.ti || 0) * 10;
-    m += getDestinyAttrBonus(s, 'ti') * 10;
+    // 体魄=1点×50气血（命格体魄加成已并入 effAttr）
     return m;
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
+    a += effAttr(s, 'shen') * 10; // 神识挂钩攻击：1点+10攻击
     if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
     if (s.linggen && s.linggen.body && s.linggen.body.atk) a += s.linggen.body.atk;
     if (s.arts.indexOf('qingfeng') >= 0) a += 20;
@@ -388,6 +404,15 @@ const Engine = (function () {
     return mult;
   }
 
+  /* 有效六维 = 基础值 + 命格属性加成（让命格属性真正影响战斗属性） */
+  function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k); }
+  /* 暴击率：神识×1% + 道心×2% + 命格暴击 */
+  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate'); }
+  /* 闪避率：遁速×2% + 命格闪避 */
+  function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'dodgeRate'); }
+  /* 攻速（几率额外攻击一次）：遁速×2% + 命格额外攻击 */
+  function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'extraAttack'); }
+
   function applyDestinyYearly(s) {
     (s.destinies || []).forEach(function(d) {
       const dest = DESTINIES[d];
@@ -442,9 +467,9 @@ const Engine = (function () {
       realm: '炼气', idx: 0, qi: 0,
       hp: 100, hpMax: 100, atk: 10, hpMaxBonus: 0,
       dunSpeed: 1,
-      wu: 2 + Math.floor(Math.random() * 5), wuAcc: 0,
-      ti: 2 + Math.floor(Math.random() * 5),
-      dun: 0, shen: 0, dao: 0, fu: 0,
+      wu: 1, wuAcc: 0,
+      ti: 1,
+      dun: 1, shen: 1, dao: 1, fu: 1,
       destinies: [], destinySlots: 1, extraDestiny: 0,
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
@@ -472,22 +497,25 @@ const Engine = (function () {
     const meta = loadMeta();
     const egg = s.easterEgg;
     s.linggen = s.linggenRaw || rollLinggen();
-    s.talents = [talentId];
+    // 新进入流程（confirmEnterPage/命格选择）可能不传单一天赋，
+    // 兜底为空数组，并把彩蛋天赋 fuyuan 合并进来
+    s.talents = (talentId ? [talentId] : []).concat(egg ? ['fuyuan'] : []);
     if (egg) {
-      s.talents.push('fuyuan');
       if (egg.effect.wu) s.wu += egg.effect.wu;
       if (egg.effect.ti) s.ti += egg.effect.ti;
       if (egg.effect.atk) s.extraAtk += egg.effect.atk;
       if (egg.effect.life) s.lifeMax += egg.effect.life;
     }
-    const t = TALENTS.filter(function (x) { return x.id === talentId; })[0];
-    if (t && t.apply) {
-      if (t.apply.wu) s.wu += t.apply.wu;
-      if (t.apply.ti) s.ti += t.apply.ti;
-      if (t.apply.life) s.lifeMax += t.apply.life;
-      if (t.apply.stone) s.stone += t.apply.stone;
-      if (t.apply.atk) s.extraAtk += t.apply.atk;
-      if (t.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + t.apply.hpMax;
+    if (talentId) {
+      const t = TALENTS.filter(function (x) { return x.id === talentId; })[0];
+      if (t && t.apply) {
+        if (t.apply.wu) s.wu += t.apply.wu;
+        if (t.apply.ti) s.ti += t.apply.ti;
+        if (t.apply.life) s.lifeMax += t.apply.life;
+        if (t.apply.stone) s.stone += t.apply.stone;
+        if (t.apply.atk) s.extraAtk += t.apply.atk;
+        if (t.apply.hpMax) s.hpMaxBonus = (s.hpMaxBonus || 0) + t.apply.hpMax;
+      }
     }
     if (s.bg && s.bg.flavor) {
       const f = s.bg.flavor;
@@ -733,11 +761,50 @@ const Engine = (function () {
       gains: [], hpLost: 0,
       spellList: spellList,
       spellName: spellList.length ? spellList[0].name : null,
-      firstStrike: (s.dun || 0) * 0.01 + getDestinyBonus(s, 'firstStrike'),
+      firstStrike: effAttr(s, 'dun') * 0.01 + getDestinyBonus(s, 'firstStrike'),
       round: 0
     };
     saveState(s);
     return s.battle;
+  }
+  /* 统一处理一次出手（含暴击/斩杀/吸血/先手/额外攻击），供普攻与法术复用 */
+  function playerHit(s, b, baseDmg, labelPrefix, allowExtra) {
+    const out = [];
+    let dmg = baseDmg;
+    const critRate = getCritRate(s);
+    if (Math.random() < critRate) {
+      dmg = Math.round(dmg * 2);
+      out.push('暴击！伤害翻倍！');
+    }
+    const executeBonus = getDestinyBonus(s, 'executeBonus');
+    if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
+      dmg = Math.round(dmg * (1 + executeBonus));
+      out.push('斩杀效果触发，伤害提升！');
+    }
+    b.hp -= dmg;
+    out.push(labelPrefix + '造成 ' + dmg + ' 点伤害！');
+    const lifesteal = getDestinyBonus(s, 'lifesteal');
+    if (lifesteal > 0) {
+      const heal = Math.round(dmg * lifesteal);
+      s.hp = Math.min(s.hpMax, s.hp + heal);
+      out.push('吸血效果触发，气血 +' + heal + '。');
+    }
+    if (b.round === 1 && b.firstStrike > 0) {
+      const fd = Math.round(dmg * b.firstStrike);
+      b.hp -= fd;
+      out.push('先手突袭，额外造成 ' + fd + ' 点伤害。');
+    }
+    if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
+    // 攻速（遁速×2%）：几率额外攻击一次（仅主攻击触发，避免无限连锁）
+    if (!b.done && allowExtra) {
+      const extraChance = getExtraAtkChance(s);
+      if (extraChance > 0 && Math.random() < extraChance) {
+        out.push('身形如电，你抓住破绽再次出手！');
+        const ex = playerHit(s, b, Math.max(1, Math.round(baseDmg * 0.7)), '你趁隙追击，对『' + b.name + '』', false);
+        for (let i = 0; i < ex.length; i++) out.push(ex[i]);
+      }
+    }
+    return out;
   }
   function combatAct(s, act, spellId) {
     const b = s.battle;
@@ -754,7 +821,7 @@ const Engine = (function () {
     const counter = function () {
       const d = enemyAtkRoll();
       // 闪避判定
-      const dodgeRate = (s.dun || 0) * 0.005 + getDestinyBonus(s, 'dodgeRate');
+      const dodgeRate = getDodgeRate(s);
       if (Math.random() < dodgeRate) {
         out.push('你身形灵动，闪避了『' + b.name + '』的攻击！');
         b.guarded = false;
@@ -804,70 +871,15 @@ const Engine = (function () {
       if (!sp || sp.cls !== 'shufa') sp = getBestShufa(s);
       if (!sp) return { done: false, lines: ['你并未习得任何法术。'] };
       const dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
-      // 暴击判定
-      let finalDmg = dmg;
-      const critRate = (s.shen || 0) * 0.01 + getDestinyBonus(s, 'critRate');
-      if (Math.random() < critRate) {
-        finalDmg = Math.round(dmg * 2);
-        out.push('暴击！伤害翻倍！');
-      }
-      // 斩杀加成
-      const executeBonus = getDestinyBonus(s, 'executeBonus');
-      if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
-        finalDmg = Math.round(finalDmg * (1 + executeBonus));
-        out.push('斩杀效果触发，伤害提升！');
-      }
-      b.hp -= finalDmg;
-      out.push('你施展【' + sp.name + '】，' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』造成 ' + finalDmg + ' 点伤害！');
-      // 吸血效果
-      const lifesteal = getDestinyBonus(s, 'lifesteal');
-      if (lifesteal > 0) {
-        const heal = Math.round(finalDmg * lifesteal);
-        s.hp = Math.min(s.hpMax, s.hp + heal);
-        out.push('吸血效果触发，气血 +' + heal + '。');
-      }
-      // 先手加成
-      if (b.round === 1 && b.firstStrike > 0) {
-        const firstDmg = Math.round(finalDmg * b.firstStrike);
-        b.hp -= firstDmg;
-        out.push('先手突袭，额外造成 ' + firstDmg + ' 点伤害。');
-      }
+      const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true);
+      lines.forEach(function (l) { out.push(l); });
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
-      if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
-      else counter();
+      if (!b.done) counter();
     } else {
       const dmg = Math.max(1, s.atk); // 无随机
-      // 暴击判定
-      let finalDmg = dmg;
-      const critRate = (s.shen || 0) * 0.01 + getDestinyBonus(s, 'critRate');
-      if (Math.random() < critRate) {
-        finalDmg = Math.round(dmg * 2);
-        out.push('暴击！伤害翻倍！');
-      }
-      // 斩杀加成
-      const executeBonus = getDestinyBonus(s, 'executeBonus');
-      if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
-        finalDmg = Math.round(finalDmg * (1 + executeBonus));
-        out.push('斩杀效果触发，伤害提升！');
-
-      }
-      b.hp -= finalDmg;
-      out.push('你出手如电，对『' + b.name + '』造成 ' + finalDmg + ' 点伤害。');
-      // 吸血效果
-      const lifesteal = getDestinyBonus(s, 'lifesteal');
-      if (lifesteal > 0) {
-        const heal = Math.round(finalDmg * lifesteal);
-        s.hp = Math.min(s.hpMax, s.hp + heal);
-        out.push('吸血效果触发，气血 +' + heal + '。');
-      }
-      // 先手加成
-      if (b.round === 1 && b.firstStrike > 0) {
-        const firstDmg = Math.round(finalDmg * b.firstStrike);
-        b.hp -= firstDmg;
-        out.push('先手突袭，额外造成 ' + firstDmg + ' 点伤害。');
-      }
-      if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
-      else counter();
+      const lines = playerHit(s, b, dmg, '你出手如电，对『' + b.name + '』', true);
+      lines.forEach(function (l) { out.push(l); });
+      if (!b.done) counter();
     }
     if (b.win) {
       const gains = [];
@@ -1025,6 +1037,7 @@ const Engine = (function () {
     s.advType = advKey;
     const settings = ADV_SETTINGS_MAP[advKey] || ADV_SETTINGS_HUANG;
     s.adv = {
+      grade: advKey,
       depth: 1, maxDepth: 5,
       setting: settings[Math.floor(Math.random() * settings.length)],
       gains: [], status: 'running', caught: false, done: false
@@ -2247,7 +2260,7 @@ const Engine = (function () {
 
   return {
     loadMeta: loadMeta, saveMeta: saveMeta, loadState: loadState, saveState: saveState, clearState: clearState,
-    slotExists: slotExists, slotInfo: slotInfo,
+    slotExists: slotExists, slotInfo: slotInfo, isUsableSave: isUsableSave,
     ensureTechEquip: ensureTechEquip, equippedShufa: equippedShufa,
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,
     startLife: startLife, commitStart: commitStart,
@@ -2287,6 +2300,7 @@ const Engine = (function () {
     rollMingge: rollMingge,
     getDestinyBonus: getDestinyBonus, getDestinyAttrBonus: getDestinyAttrBonus,
     getDestinyAttrMult: getDestinyAttrMult, applyDestinyYearly: applyDestinyYearly,
+    effAttr: effAttr, getCritRate: getCritRate, getDodgeRate: getDodgeRate, getExtraAtkChance: getExtraAtkChance,
     DESTINIES: DESTINIES
   };
 })();

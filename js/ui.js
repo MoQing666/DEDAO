@@ -508,6 +508,35 @@
   }
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */
+  /* ---------------- 秘境背景映射（按秘境等级） ---------------- */
+  const MAIN_BG_PATH = 'assets/img/bg/bg_main.png';
+  const ADV_BG_MAP = { huang: 'bg_mijing_huang', xuan: 'bg_mijing_xuan', di: 'bg_mijing_di', tian: 'bg_mijing_tian', xian: 'bg_mijing_xian' };
+  function advBgPath(grade) {
+    const f = ADV_BG_MAP[grade];
+    return f ? ('assets/img/bg/' + f + '.png') : '';
+  }
+  function applyAdvBackground(grade) {
+    const url = advBgPath(grade);
+    const game = $('screen-game');
+    const chap = $('chapter');
+    if (url) {
+      game.dataset.bg = url;
+      game.style.backgroundImage = 'url(' + url + ')';
+      chap.style.background = 'linear-gradient(180deg, rgba(14,12,21,.80), rgba(23,19,34,.86)), url(' + url + ')';
+      chap.style.backgroundSize = 'cover';
+      chap.style.backgroundPosition = 'center';
+    }
+  }
+  function resetAdvBackground() {
+    const game = $('screen-game');
+    const chap = $('chapter');
+    game.dataset.bg = MAIN_BG_PATH;
+    game.style.backgroundImage = 'url(' + MAIN_BG_PATH + ')';
+    chap.style.background = '';
+    chap.style.backgroundSize = '';
+    chap.style.backgroundPosition = '';
+  }
+
   function actExplore() {
     // 所有玩家都显示秘境选择界面
     openAdvSelect();
@@ -577,6 +606,8 @@
 
   function advIntro() {
     const a = S.adv;
+    const grade = a ? a.grade : null;
+    applyAdvBackground(grade);
     $('chapter').classList.add('explore-mode');
     $('screen-game').classList.add('explore-active');
     showChapter('秘境 · 轻身而入', [
@@ -833,6 +864,10 @@
   function advFinish(why) {
     const a = S.adv;
     Engine.advEnd(S, why === '战败' ? 'lost' : 'done');
+    // 还原主界面背景与秘境层样式
+    resetAdvBackground();
+    $('chapter').classList.remove('explore-mode');
+    $('screen-game').classList.remove('explore-active');
     // 恢复游戏BGM
     if (typeof AudioManager !== 'undefined') {
       AudioManager.playBgm('game');
@@ -1944,6 +1979,9 @@
       poolEl.appendChild(card);
     });
 
+    // 未选择任何命格时禁用“开始这一世”，避免出现无命格的虚假存档
+    const startBtn = $('enter-start');
+    if (startBtn) startBtn.disabled = (enterState.selected || []).length === 0;
   }
 
   function rerollDestiny(maxJie) {
@@ -2010,8 +2048,13 @@
     S = Engine.startLife(name);
     S.year = 1;
     S.jie = enterState.jie;
+    // 兜底：未选择任何命格时自动选取第一个候选项，避免出现“无命格”的虚假(phantom)存档
+    if (!enterState.selected || !enterState.selected.length) {
+      enterState.selected = (enterState.pool && enterState.pool.length) ? [enterState.pool[0]] : [];
+    }
     S.destinies = enterState.selected.slice();
-    Engine.saveState(S);
+    // 提交开局：抽取灵根、应用命格/彩蛋/背景/轮回天赋加成（之前漏调用导致灵根显示“未觉醒”、轮回属性加成未实装）
+    Engine.commitStart(S, null);
     suspended = false;
 
     const bg = S.bg;
@@ -2216,13 +2259,13 @@
       { key: 'wu', name: '悟性', icon: '📖', color: '#5ac8fa',
         affect: '影响修炼速度，越高修为增长越快' },
       { key: 'ti', name: '体魄', icon: '💪', color: '#e0604a',
-        affect: '影响防御力与气血上限，体魄越高越耐打' },
+        affect: '影响防御力与气血上限（每点+50气血），体魄越高越耐打' },
       { key: 'dun', name: '遁速', icon: '💨', color: '#4ec9a0',
-        affect: '影响闪避率与逃跑成功率，遁速越高越灵活' },
+        affect: '影响闪避率与攻速（每点+2%闪避、+2%几率额外攻击），遁速越高越灵活' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0',
-        affect: '影响暴击率与法术命中，神识越高攻击越精准' },
+        affect: '影响攻击与暴击（每点+10攻击、+1%暴击），神识越高攻击越强' },
       { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a',
-        affect: '影响渡劫成功率与心境稳定，道心越高劫难越轻' },
+        affect: '影响暴击与渡劫（每点+2%暴击），道心越高劫难越轻' },
       { key: 'fu', name: '福源', icon: '🍀', color: '#90e8b0',
         affect: '影响机缘触发与物品掉落，福源越高运气越好' }
     ];
@@ -2276,19 +2319,19 @@
 
     const atkMul = Engine.getDestinyAttrMult(S, 'atk');
     const defMul = Engine.getDestinyAttrMult(S, 'def');
-    const critBonus = Engine.getDestinyBonus(S, 'critRate');
-    const dodgeBonus = Engine.getDestinyBonus(S, 'dodgeRate');
     const defBase = Math.round((S.ti || 0) * 0.5);
     const defTotal = Math.round(defBase * defMul);
-    const critBase = Math.round(((S.shen || 0) * 0.01 + (Engine.getDestinyBonus ? Engine.getDestinyBonus(S, 'critRate') : 0)) * 100);
-    const dodgeBase = Math.round(((S.dun || 0) * 0.005 + (Engine.getDestinyBonus ? Engine.getDestinyBonus(S, 'dodgeRate') : 0)) * 100);
+    const critBase = Math.round(Engine.getCritRate(S) * 100);
+    const dodgeBase = Math.round(Engine.getDodgeRate(S) * 100);
+    const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '悟性×技能倍率 + 装备' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×10 + 装备' },
       { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5 + 命格加成' },
-      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '基础100 + 体魄加成' },
-      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 命格加成' },
-      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×0.5% + 命格加成' },
+      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80 + 体魄×50 + 境界' },
+      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 道心×2% + 命格' },
+      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2% + 命格' },
+      { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
       { name: '寿元', val: S.age + ' / ' + S.lifeMax, color: '#c06ae0', desc: '每突破增加上限' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '遁速', val: S.dunSpeed || 1, color: '#4ec9a0', desc: '影响逃跑成功率' }
@@ -2313,42 +2356,20 @@
     lg.className = 'attr-section';
     if (S.linggen) {
       lg.innerHTML = '<b style="color:#e8c15a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
+      const parts = [];
+      const qiMul = S.linggen.qiMul;
+      if (qiMul && qiMul !== 1) parts.push('修炼速度 +' + Math.round((qiMul - 1) * 100) + '%');
       if (S.linggen.body) {
-        const parts = [];
         if (S.linggen.body.atk) parts.push('攻击+' + S.linggen.body.atk);
         if (S.linggen.body.hpMax) parts.push('气血上限+' + S.linggen.body.hpMax);
         if (S.linggen.body.trib) parts.push('渡劫+' + Math.round(S.linggen.body.trib * 100) + '%');
-        if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">加成：' + parts.join('，') + '</span>';
+        if (S.linggen.body.quirk) parts.push('特质：' + S.linggen.body.quirk);
       }
+      if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">效果：' + parts.join('，') + '</span>';
     } else {
       lg.innerHTML = '<span class="dim">未觉醒</span>';
     }
     wrap.appendChild(lg);
-
-    // === 命格（天赋） ===
-    const h3 = document.createElement('h4');
-    h3.textContent = '天赋';
-    h3.style.color = 'var(--gold)';
-    wrap.appendChild(h3);
-    if (S.talents.length) {
-      S.talents.forEach(function (t) {
-        const x = TALENTS.filter(function (y) { return y.id === t; })[0];
-        if (!x) return;
-        const p = document.createElement('div');
-        p.className = 'attr-destiny-card';
-        const tierName = TIER_NAMES[x.tier] || '凡命';
-        const tierColor = TIER_COLORS[x.tier] || '#b0b0bc';
-        p.innerHTML = '<div class="attr-destiny-header"><span class="attr-destiny-tier" style="color:' + tierColor + '">【' + tierName + '】</span>' +
-          '<span class="attr-destiny-name" style="color:' + tierColor + '">' + x.name + '</span></div>' +
-          '<div class="attr-destiny-desc dim">' + x.desc + '</div>';
-        wrap.appendChild(p);
-      });
-    } else {
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '无天赋';
-      wrap.appendChild(p);
-    }
 
     // === 命格（命运） ===
     const h3b = document.createElement('h4');
@@ -2460,21 +2481,6 @@
     if (spells.length) techParts.push('法术：' + spells.map(function (s) { return s.name; }).join('、'));
     techDiv.innerHTML = techParts.length ? '<span class="dim">' + techParts.join('。') + '</span>' : '<span class="dim">无功法</span>';
     wrap.appendChild(techDiv);
-
-    // === 轮回加成 ===
-    const h7 = document.createElement('h4');
-    h7.textContent = '轮回加成';
-    h7.style.color = 'var(--gold)';
-    wrap.appendChild(h7);
-    const reincDiv = document.createElement('div');
-    reincDiv.className = 'attr-section';
-    const reincParts = [];
-    if ((S.reinc.cult || 0) > 0) reincParts.push('道种：修炼+' + (S.reinc.cult * 10) + '%');
-    if ((S.reinc.alchemyTimeReduce || 0) > 0) reincParts.push('丹心：炼丹时间-' + S.reinc.alchemyTimeReduce + '年');
-    if ((S.reinc.forgeTimeReduce || 0) > 0) reincParts.push('器魂：炼器时间-' + S.reinc.forgeTimeReduce + '年');
-    if ((S.reinc.shesheng || 0) > 0) reincParts.push('舍生：修炼+' + (S.reinc.shesheng * 10) + '%，-1寿元/次');
-    reincDiv.innerHTML = reincParts.length ? '<span class="dim">' + reincParts.join('。') + '</span>' : '<span class="dim">无轮回加成</span>';
-    wrap.appendChild(reincDiv);
 
     box.appendChild(wrap);
   }
@@ -4402,11 +4408,8 @@
 
   /* ---------------- 标题 / 继续 ---------------- */
   function validSave(S) {
-    if (!S || !S.linggen || !S.name || !S.talents || !S.talents.length) return false;
-    if (S.dead || S.endReason) return true;
-    const st = STAGES[S.idx];
-    if (!st || st.realm !== S.realm) return false;
-    return true;
+    // 统一交给引擎判定：避免“读档菜单显示存在、点开却报已失效”的虚假(phantom)存档
+    return Engine.isUsableSave(S);
   }
   function renderTitle() {
     M = Engine.loadMeta();
@@ -4645,16 +4648,16 @@
         affect: '修炼速度', formula: '每点+10修为基础值' },
       { key: 'ti', name: '体魄', icon: '💪', color: '#e0604a',
         base: S.ti || 0, eqBonus: es.ti || 0, destBonus: destAttrBonus.ti || 0,
-        affect: '气血上限', formula: '每点+' + tiMulti + '气血' },
+        affect: '气血上限', formula: '每点+50气血' },
       { key: 'dun', name: '遁速', icon: '💨', color: '#4ec9a0',
         base: S.dun || 0, eqBonus: 0, destBonus: destAttrBonus.dun || 0,
-        affect: '闪避率', formula: '每点+0.5%闪避' },
+        affect: '闪避率 / 攻速', formula: '每点+2%闪避、+2%几率额外攻击' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0',
         base: S.shen || 0, eqBonus: 0, destBonus: destAttrBonus.shen || 0,
-        affect: '暴击率', formula: '每点+1%暴击' },
+        affect: '攻击 / 暴击率', formula: '每点+10攻击、+1%暴击' },
       { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a',
         base: S.dao || 0, eqBonus: 0, destBonus: destAttrBonus.dao || 0,
-        affect: '渡劫成功率', formula: '道心越高劫难越轻' },
+        affect: '暴击率 / 渡劫', formula: '每点+2%暴击' },
       { key: 'fu', name: '福源', icon: '🍀', color: '#90e8b0',
         base: S.fu || 0, eqBonus: 0, destBonus: destAttrBonus.fu || 0,
         affect: '机缘触发', formula: '福源越高运气越好' }
@@ -4707,15 +4710,17 @@
     const defMul = Engine.getDestinyAttrMult(S, 'def');
     const defBase = Math.round((S.ti || 0) * 0.5);
     const defTotal = Math.round(defBase * defMul);
-    const critBase = Math.round(((S.shen || 0) * 0.01 + Engine.getDestinyBonus(S, 'critRate')) * 100);
-    const dodgeBase = Math.round(((S.dun || 0) * 0.005 + Engine.getDestinyBonus(S, 'dodgeRate')) * 100);
+    const critBase = Math.round(Engine.getCritRate(S) * 100);
+    const dodgeBase = Math.round(Engine.getDodgeRate(S) * 100);
+    const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界加成' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×10 + 装备' },
       { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5×命格倍率' },
-      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80+体魄×' + tiMulti + '+境界' },
-      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1%+命格' },
-      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×0.5%+命格' },
+      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80+体魄×50+境界' },
+      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1%+道心×2%+命格' },
+      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2%+命格' },
+      { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
       { name: '寿元', val: S.age + ' / ' + S.lifeMax, color: '#c06ae0', desc: '每突破增加上限' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '修炼', val: '+' + cultR.gain, color: '#4ec9a0', desc: '(60+悟性×10)×境界' }
@@ -4740,42 +4745,20 @@
     lg.className = 'attr-section';
     if (S.linggen) {
       lg.innerHTML = '<b style="color:#e8c15a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
+      const parts = [];
+      const qiMul = S.linggen.qiMul;
+      if (qiMul && qiMul !== 1) parts.push('修炼速度 +' + Math.round((qiMul - 1) * 100) + '%');
       if (S.linggen.body) {
-        const parts = [];
         if (S.linggen.body.atk) parts.push('攻击+' + S.linggen.body.atk);
         if (S.linggen.body.hpMax) parts.push('气血上限+' + S.linggen.body.hpMax);
         if (S.linggen.body.trib) parts.push('渡劫+' + Math.round(S.linggen.body.trib * 100) + '%');
-        if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">加成：' + parts.join('，') + '</span>';
+        if (S.linggen.body.quirk) parts.push('特质：' + S.linggen.body.quirk);
       }
+      if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">效果：' + parts.join('，') + '</span>';
     } else {
       lg.innerHTML = '<span class="dim">未觉醒</span>';
     }
     box.appendChild(lg);
-
-    // === 天赋（旧命格系统） ===
-    const h3 = document.createElement('h4');
-    h3.textContent = '天赋';
-    h3.style.color = 'var(--gold)';
-    box.appendChild(h3);
-    if (S.talents.length) {
-      S.talents.forEach(function (t) {
-        const x = TALENTS.filter(function (y) { return y.id === t; })[0];
-        if (!x) return;
-        const p = document.createElement('div');
-        p.className = 'attr-destiny-card';
-        const tierName = TIER_NAMES[x.tier] || '凡命';
-        const tierColor = TIER_COLORS[x.tier] || '#b0b0bc';
-        p.innerHTML = '<div class="attr-destiny-header"><span class="attr-destiny-tier" style="color:' + tierColor + '">【' + tierName + '】</span>' +
-          '<span class="attr-destiny-name" style="color:' + tierColor + '">' + x.name + '</span></div>' +
-          '<div class="attr-destiny-desc dim">' + x.desc + '</div>';
-        box.appendChild(p);
-      });
-    } else {
-      const p = document.createElement('p');
-      p.className = 'dim';
-      p.textContent = '无天赋';
-      box.appendChild(p);
-    }
 
     // === 命格（新系统）===
     const h3b = document.createElement('h4');
@@ -4870,21 +4853,6 @@
     if (es.cult) eqParts.push('修炼+' + Math.round(es.cult * 100) + '%');
     eqDiv.innerHTML = eqParts.length ? '<span class="dim">' + eqParts.join('，') + '</span>' : '<span class="dim">无装备加成</span>';
     box.appendChild(eqDiv);
-
-    // === 轮回加成 ===
-    const h7 = document.createElement('h4');
-    h7.textContent = '轮回加成';
-    h7.style.color = 'var(--gold)';
-    box.appendChild(h7);
-    const reincDiv = document.createElement('div');
-    reincDiv.className = 'attr-section';
-    const reincParts = [];
-    if ((S.reinc.cult || 0) > 0) reincParts.push('道种：修炼+' + (S.reinc.cult * 10) + '%');
-    if ((S.reinc.alchemyTimeReduce || 0) > 0) reincParts.push('丹心：炼丹时间-' + S.reinc.alchemyTimeReduce + '年');
-    if ((S.reinc.forgeTimeReduce || 0) > 0) reincParts.push('器魂：炼器时间-' + S.reinc.forgeTimeReduce + '年');
-    if ((S.reinc.shesheng || 0) > 0) reincParts.push('舍生：修炼+' + (S.reinc.shesheng * 10) + '%，-1寿元/次');
-    reincDiv.innerHTML = reincParts.length ? '<span class="dim">' + reincParts.join('。') + '</span>' : '<span class="dim">无轮回加成</span>';
-    box.appendChild(reincDiv);
   }
   
   function renderCharEquip() {

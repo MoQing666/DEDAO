@@ -333,5 +333,225 @@ module.exports = async function build() {
     if (real.length) t.fail('锻体页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  // === 回归：秘境入口不再卡死（章节层 z-index 修复 + 背景切换） ===
+  S.case('秘境入口：章节层正常显示且背景切换到秘境图', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '秘境回归');
+    const raw = JSON.parse(win.localStorage.getItem('dedao_save') || 'null');
+    if (raw) {
+      raw.actionsLeft = 5;
+      raw.adv = null;
+      win.localStorage.setItem('dedao_save', JSON.stringify(raw));
+      click(win, 't-load');
+      await new Promise(r => setTimeout(r, 150));
+      const loadBtn = [...doc.querySelectorAll('#modal-body button')].find(b => b.textContent === '读档' && !b.disabled);
+      if (loadBtn) {
+        loadBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        await new Promise(r => setTimeout(r, 200));
+        const card = doc.getElementById('dialog-card');
+        const okBtn = card ? [...card.querySelectorAll('button')].find(b => /确定/.test(b.textContent)) : null;
+        if (okBtn) {
+          okBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+    // 点秘境打开选择弹窗
+    click(win, 'btn-explore');
+    await new Promise(r => setTimeout(r, 150));
+    const enterBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /进入/.test(b.textContent) && !b.disabled);
+    t.ok(!!enterBtn, '秘境选择弹窗应出现「进入」按钮');
+    if (!enterBtn) return;
+    enterBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // 关键回归点：章节层应可见且位于主界面之上
+    const chap = doc.getElementById('chapter');
+    t.ok(chap && chap.style.display !== 'none', '章节层应在秘境入口后可见（修复 z-index 后不再卡死）');
+    t.ok(chap && chap.classList.contains('explore-mode'), '章节层应带 explore-mode 类');
+    t.ok(doc.getElementById('screen-game').classList.contains('explore-active'), '主界面应带 explore-active 类');
+    // 章节层有交互按钮（继续 / 后续选择）
+    t.ok(!!doc.getElementById('chapter-actions'), '章节层应提供「继续」交互按钮');
+    // 章节层背景已切换为秘境图（不再是洞府）
+    const chapBg = chap ? (chap.style.background || chap.getAttribute('style') || '') : '';
+    t.ok(/mijing/.test(chapBg), '章节层背景应切换到秘境图（包含 mijing 关键字）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('秘境入口交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 回归：角色属性删除（轮回加成）（天赋），灵根注明效果 ===
+  S.case('角色属性：删除轮回加成与天赋；灵根与实际一致并注明效果', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '角色回归');
+    const raw = JSON.parse(win.localStorage.getItem('dedao_save') || 'null');
+    if (raw) {
+      // 注入真实灵根（含 qiMul / body）以便校验"注明效果"
+      raw.linggen = { id: 'mu', name: '木灵根', desc: '青木生机，生机勃勃。', qiMul: 1.25, body: { hpMax: 80 } };
+      win.localStorage.setItem('dedao_save', JSON.stringify(raw));
+      click(win, 't-load');
+      await new Promise(r => setTimeout(r, 150));
+      const loadBtn = [...doc.querySelectorAll('#modal-body button')].find(b => b.textContent === '读档' && !b.disabled);
+      if (loadBtn) {
+        loadBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        await new Promise(r => setTimeout(r, 200));
+        const card = doc.getElementById('dialog-card');
+        const okBtn = card ? [...card.querySelectorAll('button')].find(b => /确定/.test(b.textContent)) : null;
+        if (okBtn) {
+          okBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+    // 打开角色页
+    click(win, 'btn-char-bottom');
+    await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'screen-char'), true, '应进入角色页');
+    const attrText = (doc.getElementById('char-attr-content') || {}).textContent || '';
+    // 灵根：与实际一致 + 注明效果
+    t.ok(/灵根/.test(attrText), '角色属性应包含「灵根」板块');
+    t.ok(/木灵根/.test(attrText), '灵根应与存档一致（木灵根）');
+    t.ok(/修炼速度/.test(attrText), '灵根应注明效果（修炼速度）');
+    t.ok(/气血上限/.test(attrText), '灵根应注明效果（气血上限）');
+    // 删除项：轮回加成、天赋不应作为独立板块出现
+    const headings = [...doc.querySelectorAll('#char-attr-content h4')].map(h => h.textContent.trim());
+    t.ok(!headings.includes('天赋'), '角色属性不应再展示「天赋」板块');
+    t.ok(!headings.includes('轮回加成'), '角色属性不应再展示「轮回加成」板块');
+    // 命格（新版）应保留
+    t.ok(headings.includes('命格'), '角色属性应保留「命格」板块');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('角色面板交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 回归：主角初始六维=1 ===
+  S.case('主角初始六维=1（开局基础值）', async (t) => {
+    const { win } = await boot();
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('初始六维');
+      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, fu:s.fu, linggen: s.linggen});
+    })()`));
+    t.eq(v.wu, 1, '悟性初始应为1');
+    t.eq(v.ti, 1, '体魄初始应为1');
+    t.eq(v.dun, 1, '遁速初始应为1');
+    t.eq(v.shen, 1, '神识初始应为1');
+    t.eq(v.dao, 1, '道心初始应为1');
+    t.eq(v.fu, 1, '福源初始应为1');
+    t.eq(v.linggen, null, '开局前灵根应为 null（提交后觉醒）');
+  });
+
+  // === 回归：灵根开局即觉醒（commitStart 已实装，不再显示“未觉醒”） ===
+  S.case('灵根开局即觉醒（不再显示未觉醒）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '觉醒测试');
+    const save = JSON.parse(win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(save && save.linggen, '存档中灵根应已觉醒（非 null）');
+    t.ok(save && typeof save.linggen === 'object' && save.linggen.name, '灵根应带有名称');
+    click(win, 'btn-char-bottom');
+    await new Promise(r => setTimeout(r, 200));
+    const attrText = (doc.getElementById('char-attr-content') || {}).textContent || '';
+    t.ok(!/未觉醒/.test(attrText), '角色属性不应显示「未觉醒」');
+    t.ok(/灵根/.test(attrText), '角色属性应包含「灵根」板块');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('灵根觉醒流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 回归：轮回天赋属性加成实装（慧根+3 → 悟性 1→4） ===
+  S.case('轮回天赋属性加成实装（慧根+3 → 悟性=4）', async (t) => {
+    const { win } = await boot();
+    win.eval(`(function(){
+      var m = Engine.loadMeta(); m.reinc = m.reinc || {}; m.reinc.wu = 3; Engine.saveMeta(m);
+    })()`);
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('轮回测试');
+      s.bg = null; s.destinies = [];
+      Engine.commitStart(s, null);
+      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, fu:s.fu, linggen: s.linggen ? s.linggen.name : null});
+    })()`));
+    t.eq(v.wu, 4, '悟性应为 基础1 + 慧根3 = 4（轮回属性加成已实装）');
+    t.eq(v.ti, 1, '体魄无轮回加成应为1');
+    t.eq(v.dun, 1, '遁速无轮回加成应为1');
+    t.eq(v.shen, 1, '神识无轮回加成应为1');
+    t.eq(v.dao, 1, '道心无轮回加成应为1');
+    t.eq(v.fu, 1, '福源无轮回加成应为1');
+    t.ok(!!v.linggen, '灵根应已觉醒');
+  });
+
+  // === 回归：属性公式优化（神识→攻击、道心→暴击、遁速→闪避/攻速、体魄→气血） ===
+  S.case('属性公式优化：神识→攻击/道心→暴击/遁速→闪避攻速/体魄→气血', async (t) => {
+    const { win } = await boot();
+    const v = JSON.parse(win.eval(`(function(){
+      var s = Engine.startLife('公式');
+      s.talents=[]; s.sect=null; s.arts=[]; s.extraAtk=0; s.destinies=[];
+      s.equip={head:null,body:null,leg:null,treasure:[]}; s.linggen=null;
+      s.ti=1; Engine.refreshStats(s); var hp1=s.hpMax;
+      s.ti=11; Engine.refreshStats(s); var hp2=s.hpMax;
+      s.ti=1; s.shen=1; Engine.refreshStats(s); var a1=s.atk;
+      s.shen=5; Engine.refreshStats(s); var a2=s.atk;
+      s.shen=1; s.dao=1; var c1=Engine.getCritRate(s);
+      s.dao=11; var c2=Engine.getCritRate(s);
+      s.dao=1; s.dun=1; var d1=Engine.getDodgeRate(s), e1=Engine.getExtraAtkChance(s);
+      s.dun=11; var d2=Engine.getDodgeRate(s), e2=Engine.getExtraAtkChance(s);
+      return JSON.stringify({hp1:hp1,hp2:hp2,a1:a1,a2:a2,c1:c1,c2:c2,d1:d1,d2:d2,e1:e1,e2:e2});
+    })()`));
+    t.eq(v.hp2 - v.hp1, 500, '体魄每点应 +50 气血（ti 1→11 共 +500）');
+    t.eq(v.a2 - v.a1, 40, '神识每点应 +10 攻击（shen 1→5 共 +40）');
+    t.ok(Math.abs(v.c1 - 0.03) < 1e-9, '暴击率=神识1%×1+道心2%×1=3%');
+    t.ok(Math.abs((v.c2 - v.c1) - 0.20) < 1e-9, '道心每点应 +2% 暴击（dao 1→11 共 +20%）');
+    t.ok(Math.abs(v.d1 - 0.02) < 1e-9, '闪避率=遁速2%×1=2%');
+    t.ok(Math.abs((v.d2 - v.d1) - 0.20) < 1e-9, '遁速每点应 +2% 闪避（dun 1→11 共 +20%）');
+    t.ok(Math.abs(v.e1 - 0.02) < 1e-9, '攻速=遁速2%×1=2%（几率额外攻击一次）');
+    t.ok(Math.abs((v.e2 - v.e1) - 0.20) < 1e-9, '遁速每点应 +2% 攻速（dun 1→11 共 +20%）');
+  });
+
+  // === 回归：自动存档真实可读（旧版 linggen=null 虚假存档应在读取时修复，而非“已失效”） ===
+  S.case('自动存档真实可读：旧版 linggen=null 的存档读档时自动修复', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '读档测试');
+    // 模拟“刷新后”从 localStorage 读到的旧版遗留自动存档（linggen 缺失）
+    const raw = win.localStorage.getItem('dedao_save');
+    t.ok(!!raw, '开局后应存在自动存档 dedao_save');
+    const obj = JSON.parse(raw);
+    obj.linggen = null; obj.talents = []; // 旧版未调用 commitStart 导致的虚假存档
+    win.localStorage.setItem('dedao_save', JSON.stringify(obj));
+
+    // 打开读档弹窗：slotInfo 现在会走 loadState 修复灵根，自动存档应显示可读
+    click(win, 't-load');
+    await new Promise(r => setTimeout(r, 120));
+    const loadBtns = [...doc.querySelectorAll('#modal-body button')].filter(b => b.textContent.trim() === '读档');
+    t.ok(loadBtns.length >= 1, '读档弹窗应出现「自动存档」的读档按钮');
+    const autoLoadBtn = loadBtns[0];
+    t.ok(autoLoadBtn && !autoLoadBtn.disabled, '修复后的自动存档读档按钮应可用（非虚假）');
+
+    // 点击自动存档读档，应成功载入而非报“该存档已失效”
+    if (autoLoadBtn) {
+      autoLoadBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, view: win }));
+      await new Promise(r => setTimeout(r, 150));
+    }
+    const logTxt = (doc.getElementById('log') || {}).textContent || '';
+    t.ok(logTxt.indexOf('已失效') < 0, '旧版 linggen=null 存档应被修复并可读取（不应出现“已失效”）');
+    t.eq(visible(doc, 'screen-game'), true, '读取后应处于游戏主界面');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('读档修复流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 回归：进入页未选命格时“开始这一世”按钮禁用（避免产生无命格的虚假存档） ===
+  S.case('进入页未选命格时「开始这一世」禁用', async (t) => {
+    const { win, doc } = await boot();
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    const useEnter = visible(doc, 'screen-enter') === true;
+    t.ok(useEnter, '应进入新版进入页');
+    if (!useEnter) return;
+    const startBtn = doc.getElementById('enter-start');
+    t.ok(!!startBtn, '进入页应含「开始这一世」按钮');
+    t.eq(startBtn.disabled, true, '未选任何命格时按钮应禁用');
+    // 选中一个命格后按钮应启用
+    const pool = doc.getElementById('enter-destiny-pool');
+    t.ok(pool && pool.children.length > 0, '命格候选项应存在');
+    if (pool && pool.children.length) {
+      pool.children[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, view: win }));
+      await new Promise(r => setTimeout(r, 80));
+      t.eq(startBtn.disabled, false, '选中命格后按钮应启用');
+    }
+  });
+
   return S;
 };

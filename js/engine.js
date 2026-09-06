@@ -1424,14 +1424,22 @@ const Engine = (function () {
   function advRest(s, kind) {
     const lines = [];
     if (kind === 'hp' || kind === 'both') {
-      const h = Math.round(s.hpMax * 0.40);
+      const pct = kind === 'both' ? 0.30 : 0.60;
+      const h = Math.round(s.hpMax * pct);
       s.hp = Math.min(s.hpMax, s.hp + h);
-      lines.push('打坐吐纳，气血 +' + h);
+      lines.push((kind === 'both' ? '双修共参，气血 ' : '打坐吐纳，气血 ') + '+' + h);
     }
     if (kind === 'mp' || kind === 'both') {
-      const m = Math.round(s.mpMax * 0.40);
+      const pct = kind === 'both' ? 0.30 : 0.60;
+      const m = Math.round(s.mpMax * pct);
       s.mp = Math.min(s.mpMax, s.mp + m);
-      lines.push('调息运功，灵力 +' + m);
+      lines.push((kind === 'both' ? '双修共参，灵力 ' : '调息运功，灵力 ') + '+' + m);
+    }
+    if (kind === 'stamina') {
+      const a = s.adv;
+      const before = a.stamina;
+      a.stamina = Math.min(a.staminaMax, a.stamina + 10);
+      lines.push('养精蓄锐，秘境体力 +' + (a.stamina - before));
     }
     refreshStats(s); saveState(s);
     return lines;

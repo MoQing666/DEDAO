@@ -884,7 +884,7 @@
     const title = document.createElement('h3'); title.textContent = '静室歇脚';
     box.appendChild(title);
     const tip = document.createElement('p'); tip.className = 'dim';
-    tip.textContent = '当前：气血 ' + S.hp + '/' + S.hpMax + '，灵力 ' + (S.mp || 0) + '/' + (S.mpMax || 0) + '。可回复约 40%。';
+    tip.textContent = '当前：气血 ' + S.hp + '/' + S.hpMax + '，灵力 ' + (S.mp || 0) + '/' + (S.mpMax || 0) + '，秘境体力 ' + (S.adv ? S.adv.stamina : 0) + '。可回复气血/灵力 60%（双修各 30%），或恢复秘境体力 10。';
     box.appendChild(tip);
     const mk = function (label, kind) {
       const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = label;
@@ -896,9 +896,10 @@
       };
       box.appendChild(btn);
     };
-    mk('打坐（回血 40%）', 'hp');
-    mk('调息（回蓝 40%）', 'mp');
-    mk('双修（气血灵力各 35%）', 'both');
+    mk('打坐（回血 60%）', 'hp');
+    mk('调息（回蓝 60%）', 'mp');
+    mk('双修（气血灵力各 30%）', 'both');
+    mk('养精蓄锐（秘境体力 +10）', 'stamina');
     const leave = document.createElement('button'); leave.className = 'btn-main ghost'; leave.textContent = '不再停留';
     leave.onclick = function () { ov.style.display = 'none'; advAdvanceToMap(); };
     box.appendChild(leave);

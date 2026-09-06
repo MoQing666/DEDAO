@@ -15,6 +15,32 @@
     //   navigator.serviceWorker.register('./sw.js');
     // }
   </script>
+  <script>
+    // WebView 兼容（抖音/TAPTAP 内嵌浏览器）：部分环境下 localStorage 访问会抛异常，
+    // 若直接裸用会导致开局白屏。检测到不可用时降级为内存存储，保证游戏可运行。
+    (function () {
+      try {
+        var t = '__dedao_ls_probe__';
+        window.localStorage.setItem(t, t);
+        window.localStorage.removeItem(t);
+      } catch (e) {
+        var mem = {};
+        var memLS = {
+          getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+          setItem: function (k, v) { mem[k] = String(v); },
+          removeItem: function (k) { delete mem[k]; },
+          clear: function () { mem = {}; },
+          key: function (i) { return Object.keys(mem)[i] || null; },
+          get length() { return Object.keys(mem).length; }
+        };
+        try {
+          Object.defineProperty(window, 'localStorage', { value: memLS, configurable: true, writable: true });
+        } catch (e2) {
+          try { window.localStorage = memLS; } catch (e3) {}
+        }
+      }
+    })();
+  </script>
 </head>
 <body>
 

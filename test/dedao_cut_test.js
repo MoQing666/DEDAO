@@ -107,18 +107,20 @@ c += `probe=(function(){
   // 宗门活动：有宗门走宗门池
   const s3 = E.startLife('�?); E.commitStart(s3, 'dujie');
   s3.actionsLeft = 1;
-  let ev1 = E.social(s3);
-  fail('无宗�?社交事件', EVENTS.shejiao.some(function(e){return e.id===ev1.id;}));
+    let ev1 = E.social(s3);
+  fail('no-sect social -> multi 3 events', ev1 && ev1.multi === true && ev1.events.length >= 1 && ev1.events.length <= 3 && ev1.events.every(function (e) { return EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).some(function (x) { return x.id === e.id; }); }));
+  out.push('  no-sect events=' + ev1.events.length);
   s3.actionsLeft = 1;
   s3.sect = 'qingyunjian';
   ev1 = E.social(s3);
-  fail('有宗�?宗门活动', SECT_SOCIAL['qingyunjian'].some(function(e){return e.id===ev1.id;}));
-  out.push('  宗门活动=' + ev1.title);
-  // 宗门活动按大境界过滤
+  fail('sect social -> multi from SECT_SOCIAL', ev1 && ev1.multi === true && ev1.events.every(function (e) { return SECT_SOCIAL['qingyunjian'].some(function (x) { return x.id === e.id; }); }));
+  out.push('  sect events=' + ev1.events.length);
   s3.actionsLeft = 1;
-  s3.idx = 2; // 筑基初期 bi=1
+  s3.idx = 2; // bi=1
   ev1 = E.social(s3);
-  fail('宗门活动按大境界过滤(min=1才可�?', ev1.min >= 1 || ev1.min === 0 && ev1.max >= 1);
+  const bi3 = bigIdxOf(s3);
+  fail('sect social events filtered by big realm', ev1.events.every(function (e) { return e.min <= bi3 && e.max >= bi3; }));
+
 
   // 宗门事件 seen 去重 + 范围过滤
   const bi = bigIdxOf(s3);

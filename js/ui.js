@@ -1316,8 +1316,51 @@
   function actExplore2() { actExplore(); }
   function actSocial() {
     const r = Engine.social(S);
-    if (typeof r === 'string') { log(r); afterAction(); }
-    else runEvent(r);
+    if (typeof r === 'string') { log(r); afterAction(); return; }
+    if (r && r.multi) { openEventChoice(r.events); return; }
+    runEvent(r);
+  }
+  function openEventChoice(events) {
+    const ov = $('modal');
+    const box = $('modal-body');
+    ov.style.display = 'flex';
+    box.innerHTML = '';
+    const title = document.createElement('h3');
+    title.textContent = '游历 · 何去何从';
+    title.style.marginBottom = '8px';
+    box.appendChild(title);
+    const desc = document.createElement('p');
+    desc.className = 'dim';
+    desc.textContent = '你游历四方，眼前浮现三桩际遇。择其一而往——其余擦肩而过。';
+    desc.style.marginBottom = '16px';
+    box.appendChild(desc);
+    const tagName = { shejiao: '社交', mijing: '秘境', jiyuan: '机缘' };
+    events.forEach(function (ev) {
+      const tag = tagName[ev.tag] || '游历';
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;cursor:pointer;transition:border-color .15s;';
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      const b = document.createElement('b'); b.style.fontSize = '16px'; b.textContent = ev.title;
+      const span = document.createElement('span');
+      span.style.cssText = 'font-size:12px;border:1px solid #6a6a7a;padding:2px 6px;border-radius:4px;color:#aaa;';
+      span.textContent = tag;
+      head.appendChild(b); head.appendChild(span);
+      const p = document.createElement('p');
+      p.style.cssText = 'font-size:13px;color:#8a8a9a;margin:0;';
+      p.textContent = ev.desc || (ev.lines && ev.lines[0]) || '未知的际遇。';
+      card.appendChild(head); card.appendChild(p);
+      card.onmouseenter = function () { card.style.borderColor = '#6ab8c9'; };
+      card.onmouseleave = function () { card.style.borderColor = '#2e2942'; };
+      card.onclick = function () {
+        ov.style.display = 'none';
+        S.seen[ev.id] = 1;
+        runEvent(ev);
+      };
+      box.appendChild(card);
+    });
+    // 已消耗行动点，必须择一而往；点击遮罩不关闭弹窗
+    ov.onclick = function (e) { if (e.target === ov) { /* 必须择一，不关闭 */ } };
   }
   function actJiyuan() {
     const r = Engine.jiyuan(S);

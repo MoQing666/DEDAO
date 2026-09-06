@@ -1668,24 +1668,21 @@ const Engine = (function () {
   }
   function social(s) {
     if (!canAction(s, 1)) return false;
+    let pool;
     if (s.sect) {
       const bi = bigIdxOf(s);
-      const pool = SECT_SOCIAL[s.sect].filter(function (ev) {
+      pool = SECT_SOCIAL[s.sect].filter(function (ev) {
         return ev.min <= bi && ev.max >= bi && (!ev.once || !s.seen[ev.id]);
       });
-      if (!pool.length) { spend(s, 1); return '你走遍宗门各处，今日并无合宜的活动，只得回洞府清修半日。'; }
-      spend(s, 1);
-      const ev = pickWeighted(pool);
-      s.seen[ev.id] = 1;
-      return ev;
+    } else {
+      // 游历池包含社交+秘境+机缘事件
+      pool = EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).filter(evOK(s, 1));
     }
-    // 游历池包含社交+秘境+机缘事件
-    const pool = EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).filter(evOK(s, 1));
-    if (!pool.length) { spend(s, 1); return '这一带没有值得交谈的人，你独自练剑半日。'; }
+    if (!pool.length) { spend(s, 1); return '这一带没有值得交集的人与事，你独自练剑半日。'; }
     spend(s, 1);
-    const ev = pickWeighted(pool);
-    s.seen[ev.id] = 1;
-    return ev;
+    // 抽取 3 桩际遇，供玩家 3 选 1（不足 3 则全取）
+    const picks = shuffle(pool.slice()).slice(0, Math.min(3, pool.length));
+    return { multi: true, events: picks };
   }
   function sectCombat(s) {
     if (!s.sect) return '你尚未加入宗门。';

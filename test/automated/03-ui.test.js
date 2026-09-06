@@ -206,7 +206,7 @@ module.exports = async function build() {
     const { win, doc, errors } = await boot();
     await enterGame(win, doc, '乙');
     let bars = [...doc.querySelectorAll('.bottom-bar .bottom-btn')].map(e => e.id).filter(Boolean);
-    if (!bars.length) bars = ['btn-bag-bottom', 'btn-gear-bottom', 'btn-tech-bottom', 'btn-favor', 'btn-craft-bottom', 'btn-events'].filter(id => doc.getElementById(id));
+    if (!bars.length) bars = ['btn-bag-bottom', 'btn-gear-bottom', 'btn-tech-bottom', 'btn-favor', ].filter(id => doc.getElementById(id));
     t.gt(bars.length, 0, '未发现任何底部按钮');
     for (const id of bars) {
       try {

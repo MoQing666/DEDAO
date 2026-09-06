@@ -4520,12 +4520,6 @@
     $('btn-char-bottom').onclick = function () { if (!S) return; sfx('click'); openChar(); };
     $('btn-bag-bottom').onclick = function () { sfx('click'); openBag(); };
     $('btn-favor').onclick = function () { if (!S) return; sfx('click'); openFavor(); };
-    $('btn-craft-bottom').onclick = function () {
-      if (!S || S.dead) return;
-      sfx('click');
-      openModal('arts');
-    };
-    $('btn-events').onclick = function () { if (!S) return; sfx('click'); openEvents(); };
     $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
 
     $('pause-resume').onclick = function () { sfx('click'); $('pause').style.display = 'none'; };

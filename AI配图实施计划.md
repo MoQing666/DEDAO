@@ -4,6 +4,31 @@
 > 现状：全 DOM + CSS 暗色像素风（`image-rendering: pixelated`），发布包 3.6MB，无一张图片。
 > 优先级共识：**背景 > UI > 其他（人物 / 物品 / 功法 / 秘境 / 敌人）**。
 
+## 〇、风格定稿（用户拍板）
+
+**技法**：像素（16-bit，crisp pixel edges）✅ 保留
+**风格**：旧版「暗色阴森、画面密集」作废 → **轻盈留白 · 仙意飘忽 · 水墨淡彩**
+参考基准：**《觅长生》**（水墨国风、留白、淡雅）+ **《异世轮回录》**（像素、明亮轻快、场景开阔）
+
+| 场景 | 画面语义（必须体现） |
+|---|---|
+| 洞府 / 静室 | **温馨美好**：暖木色、蒲团、香炉轻烟、窗外桃花竹影、留白多 |
+| 修炼地 | **灵气四溢**：灵气光点上浮、云海浮山、大面积天空留白 |
+| 锻体处 | **百般锻体材料 + 药浴房**：大药桶蒸汽、药材架/筐、石锁木人桩 |
+| 百艺坊 | **丹器房 + 灵田 + 矿田**：丹炉、铸炉、成畦灵田、矿洞入口，明亮整齐 |
+| 秘境 | 参考《异世轮回录》：明亮开阔、远山薄雾、灵草点缀、溪水云影 |
+
+**背景淡彩色板**（UI 面板仍为暗色，与背景形成对比）
+
+| 用途 | 色值 |
+|---|---|
+| 宣纸底 / 雾 | `#f2ece0` |
+| 远山 / 天空 | `#d8e4ec` / `#a8b6c0` |
+| 玉石青 | `#cfe3d8` / `#9fcf9f` |
+| 暖木 | `#c8a877` |
+| 点缀金 | `#e8c15a` |
+| 淡紫（高阶场景） | `#b9a8d0` |
+
 ---
 
 ## 一、风格选型
@@ -92,10 +117,14 @@
 **prompt 模板（像素风）**
 
 ```
-<subject>，16-bit pixel art，limited palette (#12101a #1d1926 #3a3450 #e8c15a #d8d2e0)，
-dark night atmosphere，Chinese xianxia，no text，no watermark，centered composition
+<subject>，16-bit pixel art，soft ink-wash Chinese xianxia，
+airy composition with generous negative space，light ethereal atmosphere，
+pale palette (#f2ece0 rice paper #d8e4ec pale sky #cfe3d8 jade #c8a877 warm wood #e8c15a gold)，
+crisp pixel edges，no text，no watermark
 ```
-背景追加 `wide cinematic scene, soft parallax layers`；图标追加 `single object, centered, transparent background, crisp silhouette`。
+室内追加 `warm afternoon light, sparse tidy furnishings, open floor space`；
+室外追加 `wide open sky, drifting mist between distant peaks, floating clouds`；
+**禁止词**：dark gloomy、horror、dense clutter、heavy black shadows。
 
 ---
 

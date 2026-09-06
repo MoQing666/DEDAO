@@ -260,6 +260,63 @@ button:disabled { opacity: .4; cursor: default; }
 .b-spellbar .btn-small { font-size: 13px; padding: 6px 14px; }
 .battle-log { margin-top: 8px; }
 .battle-log .bl { font-size: 13px; color: var(--dim); margin: 3px 0; font-family: 'YuYang', serif; }
+
+/* ---------------- 战斗立绘 / Buff / 飘字 / 特效 ---------------- */
+.battle-board { position: relative; overflow: hidden; }
+.combatants { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.fighter { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.fighter.enemy { /* 敌方位居右，立绘朝左由美术决定；布局对称即可 */ }
+.fighter .fname { margin: 4px 0 2px; font-size: 13px; color: #e6d9ff; letter-spacing: 2px; text-align: center; }
+.fighter .hp-row { width: 100%; }
+.portrait {
+  position: relative; width: 92px; height: 120px; flex: none;
+  border: 2px solid #6a5a90; background: #0e0b18; overflow: hidden;
+  box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+}
+.portrait img { width: 100%; height: 100%; object-fit: cover; display: none; image-rendering: pixelated; }
+.portrait.has-img img { display: block; }
+.portrait.has-img .ph-fallback { display: none; }
+.ph-fallback { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 44px; color: #cdb9ff; font-family: 'YuYang', serif; }
+.vs { align-self: center; color: #8a7ab0; font-size: 18px; font-family: 'YuYang', serif; flex: none; }
+.buffs { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; margin-top: 3px; }
+.buff { font-size: 11px; padding: 1px 4px; border: 1px solid #6a5a90; border-radius: 3px; color: #ffd27a; background: rgba(0,0,0,.3); }
+.buff.bad { color: #ff8a7a; border-color: #8a4a4a; }
+.fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.float-dmg {
+  position: absolute; font-size: 19px; font-weight: bold; font-family: 'YuYang', serif;
+  text-shadow: 0 1px 3px #000, 0 0 4px #000; animation: floatUp .9s ease-out forwards;
+}
+.float-dmg.dmg { color: #ff6a5a; }
+.float-dmg.crit { color: #ffd23a; font-size: 24px; }
+.float-dmg.heal { color: #5affa0; }
+.float-dmg.mp { color: #6ad1ff; }
+.float-dmg.shield { color: #c9b6ff; }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(.8); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -28px) scale(1.1); }
+}
+/* 立绘受击/施法特效（纯 CSS，轻量） */
+.portrait.fx-hit { animation: fxShake .3s ease; }
+.portrait.fx-guard { box-shadow: 0 0 12px #5affa0, 3px 3px 0 rgba(0,0,0,.4); }
+@keyframes fxShake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.portrait.fx-spell::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  animation: fxFade .45s ease-out forwards;
+}
+.portrait.fx-fire::after  { background: radial-gradient(circle, rgba(255,140,40,.85), rgba(255,60,20,.2) 60%, transparent 75%); }
+.portrait.fx-ice::after   { background: radial-gradient(circle, rgba(150,220,255,.85), rgba(80,160,255,.2) 60%, transparent 75%); }
+.portrait.fx-thunder::after { background: radial-gradient(circle, rgba(240,220,120,.9), rgba(180,120,255,.25) 60%, transparent 75%); }
+.portrait.fx-wood::after  { background: radial-gradient(circle, rgba(150,255,170,.8), rgba(60,200,120,.2) 60%, transparent 75%); }
+.portrait.fx-earth::after { background: radial-gradient(circle, rgba(220,180,120,.8), rgba(150,110,60,.2) 60%, transparent 75%); }
+.portrait.fx-gold::after  { background: radial-gradient(circle, rgba(255,225,140,.9), rgba(200,160,60,.2) 60%, transparent 75%); }
+@keyframes fxFade { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+.portrait.fx-flash { animation: fxFlash .3s ease; }
+@keyframes fxFlash { 0% { filter: brightness(2.2) saturate(1.6); } 100% { filter: none; } }
 #battle-title, #battle-sub { font-family: 'YuYang', serif; letter-spacing: 4px; }
 .hud-line { display: flex; align-items: center; margin-top: 4px; font-size: 13px; color: var(--dim); }
 .lcap { width: 34px; flex: none; }

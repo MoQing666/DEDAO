@@ -420,6 +420,8 @@
       $('battle-log').innerHTML = '';
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
+      setPortrait('b-me-portrait', 'b-me-img', 'me');
+      setPortrait('b-enemy-portrait', 'b-enemy-img', b.portraitEnemy || 'foe');
       ov.style.display = 'flex';
       // 进入战斗播放战斗BGM
       if (typeof AudioManager !== 'undefined') {
@@ -449,6 +451,7 @@
         }
         const r = Engine.combatAct(S, act, spellId);
         r.lines.forEach(function (l) { bl(l); });
+        if (r.fx) r.fx.forEach(applyFx);
         renderBattle();
         if (r.done) finish({ win: r.win, fled: r.fled, lost: r.lost });
       }
@@ -466,6 +469,7 @@
       };
       $('b-guard').onclick = function () { doAct('guard'); };
       $('b-flee').onclick = function () { doAct('flee'); };
+      $('b-order').onclick = function () { openSpellOrder(); };
       $('b-auto').onclick = function () {
         const sb = $('b-spellbar'); if (sb) sb.style.display = 'none';
         const r = Engine.combatAuto(S);
@@ -502,12 +506,126 @@
         const meMp = Math.max(0, Math.min(100, (S.mpMax ? S.mp / S.mpMax * 100 : 0)));
         $('b-me-mp-bar').style.width = meMp + '%';
         $('b-me-mp-num').textContent = (S.mp || 0) + ' / ' + (S.mpMax || 0) + ' 灵';
+        renderBuffs('b-enemy-buffs', bb.buffs);
+        renderBuffs('b-me-buffs', S.battle.buffs);
         const list = bb.spellList || [];
         $('b-spell').disabled = !list.length;
         $('b-spell').textContent = '法术' + (bb.spellName ? '·' + bb.spellName + (list.length > 1 ? '（' + list.length + '）' : '') : '(无)');
         $('b-flee').textContent = bb.noFlee ? '本战斗不可逃跑' : '逃跑（' + Math.round(bb.flee * 100) + '% · 遁速' + (S.dunSpeed || 1) + '）';
       }
+      function renderBuffs(elId, buffs) {
+        const el = $(elId); if (!el) return;
+        el.innerHTML = '';
+        (buffs || []).forEach(function (x) {
+          const s = document.createElement('span');
+          s.className = 'buff' + (x.bad ? ' bad' : '');
+          s.textContent = x.label;
+          if (x.tip) s.title = x.tip;
+          el.appendChild(s);
+        });
+      }
     });
+  }
+
+  /* ---------------- 战斗立绘 / 飘字 / 特效 / 法术序 ---------------- */
+  const PORTRAIT = {
+    me: 'assets/img/portrait/me.png',
+    foe: 'assets/img/portrait/foe.png',
+    boss_huang: 'assets/img/portrait/boss_huang.png',
+    boss_xuan: 'assets/img/portrait/boss_xuan.png',
+    boss_di: 'assets/img/portrait/boss_di.png',
+    boss_tian: 'assets/img/portrait/boss_tian.png',
+    boss_xian: 'assets/img/portrait/boss_xian.png'
+  };
+  function setPortrait(portraitId, imgId, key) {
+    const box = $(portraitId); const img = $(imgId);
+    if (!box || !img) return;
+    const src = PORTRAIT[key];
+    if (src) {
+      img.onerror = function () { box.classList.remove('has-img'); img.onerror = null; };
+      img.src = src; box.classList.add('has-img');
+    } else {
+      box.classList.remove('has-img');
+    }
+  }
+  function applyFx(ev) {
+    if (!ev) return;
+    const targetId = (ev.side === 'me') ? 'b-me-portrait' : 'b-enemy-portrait';
+    const box = $(targetId); if (!box) return;
+    // 飘字
+    floatNum(ev);
+    // 立绘动画
+    if (ev.kind === 'spell') {
+      const cls = 'fx-' + (elToElem(ev.el) || 'fire');
+      box.classList.remove('fx-spell', 'fx-fire', 'fx-ice', 'fx-thunder', 'fx-wood', 'fx-earth', 'fx-gold');
+      void box.offsetWidth;
+      box.classList.add('fx-spell', cls);
+      setTimeout(function () { box.classList.remove('fx-spell', cls); }, 460);
+    } else if (ev.kind === 'dmg' || ev.kind === 'crit') {
+      box.classList.remove('fx-hit'); void box.offsetWidth; box.classList.add('fx-hit');
+      setTimeout(function () { box.classList.remove('fx-hit'); }, 320);
+    } else if (ev.kind === 'heal') {
+      box.classList.remove('fx-guard'); void box.offsetWidth; box.classList.add('fx-guard');
+      setTimeout(function () { box.classList.remove('fx-guard'); }, 320);
+    }
+  }
+  function elToElem(el) {
+    // 功法 grade → 五行/特效色
+    const map = { huang: 'gold', xuan: 'wood', di: 'earth', tian: 'thunder', xian: 'ice' };
+    return map[el] || 'fire';
+  }
+  function floatNum(ev) {
+    const layer = $('b-fx'); if (!layer) return;
+    const d = document.createElement('div');
+    let cls = 'dmg', txt = '';
+    if (ev.kind === 'crit') { cls = 'crit'; txt = '-' + ev.amount; }
+    else if (ev.kind === 'dmg') { cls = 'dmg'; txt = '-' + ev.amount; }
+    else if (ev.kind === 'heal') { cls = 'heal'; txt = '+' + ev.amount; }
+    else if (ev.kind === 'mp') { cls = 'mp'; txt = '-' + ev.amount + '灵'; }
+    else if (ev.kind === 'shield') { cls = 'shield'; txt = ev.amount; }
+    d.className = 'float-dmg ' + cls;
+    d.textContent = txt;
+    const left = (ev.side === 'me') ? (12 + Math.random() * 18) : (70 + Math.random() * 18);
+    d.style.left = left + '%';
+    d.style.top = (24 + Math.random() * 16) + '%';
+    layer.appendChild(d);
+    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 950);
+  }
+  function openSpellOrder() {
+    const b = S.battle; if (!b) return;
+    const list = b.spellList || [];
+    if (!list.length) { log('你尚未习得任何法术，无法编排。', 'bad'); return; }
+    const ov = $('modal'); const box = $('modal-body');
+    ov.style.display = 'flex'; ov.onclick = function (e) { if (e.target === ov) closeModal(); };
+    box.innerHTML = '';
+    const title = document.createElement('h3'); title.textContent = '编排法术序（驱动自动战斗）';
+    box.appendChild(title);
+    const tip = document.createElement('p'); tip.className = 'dim';
+    tip.textContent = '自动战斗将按此顺序施法，法力不足时跳过该法术。上下移动调整优先级。';
+    box.appendChild(tip);
+    if (!b.spellOrder || !b.spellOrder.length) b.spellOrder = list.map(function (x) { return x.id; });
+    const render = function () {
+      box.querySelectorAll('.order-row').forEach(function (n) { n.remove(); });
+      b.spellOrder.forEach(function (id, idx) {
+        const sp = list.filter(function (x) { return x.id === id; })[0] || { id: id, name: id, cost: 0 };
+        const row = document.createElement('div');
+        row.className = 'order-row formula-row';
+        const info = document.createElement('div');
+        info.innerHTML = '<b>' + (idx + 1) + '. ' + esc(sp.name) + '</b> <span class="dim">(' + (sp.cost || 0) + '灵)</span>';
+        const ops = document.createElement('div'); ops.style.cssText = 'display:flex;gap:6px;';
+        const up = document.createElement('button'); up.className = 'btn-small'; up.textContent = '↑'; up.disabled = idx === 0;
+        up.onclick = function () { if (idx > 0) { const t = b.spellOrder[idx - 1]; b.spellOrder[idx - 1] = id; b.spellOrder[idx] = t; render(); } };
+        const down = document.createElement('button'); down.className = 'btn-small'; down.textContent = '↓'; down.disabled = idx === b.spellOrder.length - 1;
+        down.onclick = function () { if (idx < b.spellOrder.length - 1) { const t = b.spellOrder[idx + 1]; b.spellOrder[idx + 1] = id; b.spellOrder[idx] = t; render(); } };
+        ops.appendChild(up); ops.appendChild(down);
+        row.appendChild(info); row.appendChild(ops);
+        box.appendChild(row);
+      });
+    };
+    render();
+    const close = document.createElement('button'); close.className = 'btn-main'; close.style.marginTop = '10px'; close.textContent = '完成';
+    close.onclick = function () { ov.style.display = 'none'; closeModal(); };
+    box.appendChild(close);
   }
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */

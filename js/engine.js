@@ -756,7 +756,9 @@ const Engine = (function () {
       spellUsed: false, noFlee: !!spec.noFlee, done: false, win: false, fled: false, lost: false,
       gains: [], hpLost: 0,
       spellList: spellList,
+      spellOrder: [],
       spellName: spellList.length ? spellList[0].name : null,
+      portraitEnemy: spec.portrait || 'foe',
       firstStrike: effAttr(s, 'dun') * 0.01 + getDestinyBonus(s, 'firstStrike'),
       round: 0
     };
@@ -764,13 +766,17 @@ const Engine = (function () {
     return s.battle;
   }
   /* 统一处理一次出手（含暴击/斩杀/吸血/先手/额外攻击），供普攻与法术复用 */
-  function playerHit(s, b, baseDmg, labelPrefix, allowExtra) {
+  function playerHit(s, b, baseDmg, labelPrefix, allowExtra, fx) {
     const out = [];
+    fx = fx || [];
     let dmg = baseDmg;
     const critRate = getCritRate(s);
     if (Math.random() < critRate) {
       dmg = Math.round(dmg * 2);
       out.push('暴击！伤害翻倍！');
+      fx.push({ side: 'enemy', kind: 'crit', amount: dmg });
+    } else {
+      fx.push({ side: 'enemy', kind: 'dmg', amount: dmg });
     }
     const executeBonus = getDestinyBonus(s, 'executeBonus');
     if (executeBonus > 0 && b.hp < b.hpMax * 0.3) {
@@ -784,11 +790,13 @@ const Engine = (function () {
       const heal = Math.round(dmg * lifesteal);
       s.hp = Math.min(s.hpMax, s.hp + heal);
       out.push('吸血效果触发，气血 +' + heal + '。');
+      fx.push({ side: 'me', kind: 'heal', amount: heal });
     }
     if (b.round === 1 && b.firstStrike > 0) {
       const fd = Math.round(dmg * b.firstStrike);
       b.hp -= fd;
       out.push('先手突袭，额外造成 ' + fd + ' 点伤害。');
+      fx.push({ side: 'enemy', kind: 'dmg', amount: fd });
     }
     if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
     // 攻速（遁速×2%）：几率额外攻击一次（仅主攻击触发，避免无限连锁）
@@ -796,7 +804,7 @@ const Engine = (function () {
       const extraChance = getExtraAtkChance(s);
       if (extraChance > 0 && Math.random() < extraChance) {
         out.push('身形如电，你抓住破绽再次出手！');
-        const ex = playerHit(s, b, Math.max(1, Math.round(baseDmg * 0.7)), '你趁隙追击，对『' + b.name + '』', false);
+        const ex = playerHit(s, b, Math.max(1, Math.round(baseDmg * 0.7)), '你趁隙追击，对『' + b.name + '』', false, fx);
         for (let i = 0; i < ex.length; i++) out.push(ex[i]);
       }
     }
@@ -805,7 +813,8 @@ const Engine = (function () {
   function combatAct(s, act, spellId) {
     const b = s.battle;
     const out = [];
-    if (!b || b.done) return { done: true, lines: ['战斗已经结束。'] };
+    const fx = [];
+    if (!b || b.done) return { done: true, lines: ['战斗已经结束。'], fx: fx };
     b.round = (b.round || 0) + 1;
     const enemyAtkRoll = function () {
       let d = b.atk; // 基础伤害 = 敌方攻击力（无随机）
@@ -823,15 +832,18 @@ const Engine = (function () {
         b.guarded = false;
         return;
       }
+      const hpBefore = s.hp;
       s.hp -= d;
       b.hpLost += d;
       out.push('『' + b.name + '』反手回击，你气血 -' + d + '。');
+      fx.push({ side: 'me', kind: 'dmg', amount: hpBefore - s.hp });
       // 反伤效果
       const thorns = getDestinyBonus(s, 'thorns');
       if (thorns > 0) {
         const thornDmg = Math.round(d * thorns);
         b.hp -= thornDmg;
         out.push('反伤效果触发，『' + b.name + '』受到 ' + thornDmg + ' 点反伤。');
+        fx.push({ side: 'enemy', kind: 'dmg', amount: thornDmg });
         if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反伤致死。'); }
       }
       // 反击效果
@@ -840,6 +852,7 @@ const Engine = (function () {
         const counterDmg = Math.max(1, s.atk);
         b.hp -= counterDmg;
         out.push('你趁势反击，对『' + b.name + '』造成 ' + counterDmg + ' 点伤害。');
+        fx.push({ side: 'enemy', kind: 'dmg', amount: counterDmg });
         if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』被反击致死。'); }
       }
       if (s.hp <= 0) {
@@ -865,19 +878,22 @@ const Engine = (function () {
     } else if (act === 'spell') {
       let sp = spellId ? TECHNIQUES[spellId] : null;
       if (!sp || sp.cls !== 'shufa') sp = getBestShufa(s);
-      if (!sp) return { done: false, lines: ['你并未习得任何法术。'] };
+      if (!sp) return { done: false, lines: ['你并未习得任何法术。'], fx: fx };
       const cost = sp.cost || 0;
+      const mpBefore = s.mp;
       let dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
       // 灵力消耗：充足则扣除，不足则威力减半（灵力条=10+灵力×20，由灵力属性扩展上限）
       if (s.mp >= cost) { s.mp -= cost; }
       else { s.mp = 0; dmg = Math.round(dmg * 0.5); out.push('灵力不足，法术威力大减！'); }
-      const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true);
+      if (mpBefore - s.mp > 0) fx.push({ side: 'me', kind: 'mp', amount: mpBefore - s.mp, el: sp.grade });
+      fx.push({ side: 'enemy', kind: 'spell', el: sp.grade });
+      const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true, fx);
       lines.forEach(function (l) { out.push(l); });
       if (sp.slow) { b.slow = true; out.push('霜气渗入，『' + b.name + '』的攻势为之一滞。'); }
       if (!b.done) counter();
     } else {
       const dmg = Math.max(1, s.atk); // 无随机
-      const lines = playerHit(s, b, dmg, '你出手如电，对『' + b.name + '』', true);
+      const lines = playerHit(s, b, dmg, '你出手如电，对『' + b.name + '』', true, fx);
       lines.forEach(function (l) { out.push(l); });
       if (!b.done) counter();
     }
@@ -923,23 +939,27 @@ const Engine = (function () {
     }
     refreshStats(s);
     saveState(s);
-    return { done: b.done, win: b.win, lost: b.lost, fled: b.fled, lines: out };
+    return { done: b.done, win: b.win, lost: b.lost, fled: b.fled, lines: out, fx: fx };
   }
   function combatAuto(s) {
     const out = [];
-    const act = function (a) {
-      const rr = combatAct(s, a);
+    const order = (s.battle.spellOrder && s.battle.spellOrder.length)
+      ? s.battle.spellOrder
+      : (s.battle.spellList || []).map(function (x) { return x.id; });
+    const act = function (a, id) {
+      const rr = combatAct(s, a, id);
       out.push.apply(out, rr.lines);
       return rr;
     };
-    let rr = act('spell');
-    let i = 0, fleeTries = 0;
-    while (!rr.done && i < 80) {
+    let rr = order.length ? act('spell', order[0]) : act('spell');
+    let i = 0, gi = 0, fleeTries = 0;
+    while (!rr.done && gi < 80) {
       if (s.hp <= s.hpMax * 0.2 && fleeTries < 2) { fleeTries++; rr = act('flee'); continue; }
-      rr = (i % 2 === 0) ? act('guard') : act('atk');
-      i++;
+      if (i < order.length - 1) { i++; rr = act('spell', order[i]); gi++; continue; }
+      rr = (gi % 2 === 0) ? act('guard') : act('atk');
+      gi++;
     }
-    return { done: rr.done, win: rr.win, lost: rr.lost, fled: rr.fled, rounds: Math.ceil(i / 2), lines: out };
+    return { done: rr.done, win: rr.win, lost: rr.lost, fled: rr.fled, rounds: Math.ceil(gi / 2), lines: out };
   }
 
   /* ---------------- 肉鸽冒险（轻肉鸽探索） ---------------- */
@@ -1022,7 +1042,8 @@ const Engine = (function () {
     }
     const bname = (tag === 'final') ? advConfig.boss.name : (boss ? advConfig.boss.name : m.name);
     const bline = (tag === 'final') ? advConfig.boss.line : (boss ? advConfig.boss.line : m.line);
-    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1 };
+    const portrait = (boss || tag === 'final') ? ('boss_' + advKey) : 'foe';
+    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait };
   }
   function startAdventure(s, advType) {
     if (s.adventuredYear === s.year) return { ok: false, msg: '天地灵机有限，一年只能入秘境一次。' };

@@ -374,11 +374,29 @@
       </div>
       <div class="chapter-body">
         <div id="battle-board" class="battle-board">
-          <p style="text-align:center"><span class="chap-npc" id="b-enemy-name">『敌人』</span></p>
-          <div class="hp-row"><span class="who">敌</span><span class="hp-bar"><i id="b-enemy-bar" style="width:100%;background:#e0604a"></i></span><span class="hp-num" id="b-enemy-num"></span></div>
-          <p style="text-align:center"><span class="chap-npc small" id="b-me-name">『修行者』</span></p>
-          <div class="hp-row"><span class="who">我</span><span class="hp-bar"><i id="b-me-bar" style="width:100%;background:#4ec9a0"></i></span><span class="hp-num" id="b-me-num"></span></div>
-          <div class="hp-row"><span class="who">灵</span><span class="hp-bar"><i id="b-me-mp-bar" style="width:100%;background:#6ad1ff"></i></span><span class="hp-num" id="b-me-mp-num"></span></div>
+          <div class="combatants">
+            <div class="fighter me">
+              <div class="portrait" id="b-me-portrait">
+                <img id="b-me-img" alt="主角">
+                <div class="ph-fallback" id="b-me-ph">道</div>
+              </div>
+              <div class="fname" id="b-me-name">『修行者』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-me-bar" style="width:100%;background:#4ec9a0"></i></span><span class="hp-num" id="b-me-num"></span></div>
+              <div class="hp-row"><span class="who">灵</span><span class="hp-bar"><i id="b-me-mp-bar" style="width:100%;background:#6ad1ff"></i></span><span class="hp-num" id="b-me-mp-num"></span></div>
+              <div class="buffs" id="b-me-buffs"></div>
+            </div>
+            <div class="vs">⚔</div>
+            <div class="fighter enemy">
+              <div class="portrait" id="b-enemy-portrait">
+                <img id="b-enemy-img" alt="敌人">
+                <div class="ph-fallback" id="b-enemy-ph">敌</div>
+              </div>
+              <div class="fname" id="b-enemy-name">『敌人』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-enemy-bar" style="width:100%;background:#e0604a"></i></span><span class="hp-num" id="b-enemy-num"></span></div>
+              <div class="buffs" id="b-enemy-buffs"></div>
+            </div>
+          </div>
+          <div class="fx-layer" id="b-fx"></div>
         </div>
         <div id="battle-log" class="battle-log"></div>
       </div>
@@ -387,6 +405,7 @@
         <button id="b-spell" class="btn-main ghost">法术</button>
         <button id="b-guard" class="btn-main ghost">防御</button>
         <button id="b-flee" class="btn-main ghost">逃跑</button>
+        <button id="b-order" class="btn-main ghost">编排</button>
         <button id="b-auto" class="btn-main ghost wide">跳过战斗</button>
       </div>
       <div id="b-spellbar" class="b-spellbar" style="display:none"></div>

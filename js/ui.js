@@ -356,6 +356,7 @@
           } else if (r.lost) {
             lines.push(c.resultLose || '你负伤败退，踉跄而逃。');
             if (b && b.hpLost) lines.push('此战你气血 -' + b.hpLost + '。');
+            lines.push(Engine.loseLife(S, 1, 'explore'));
           } else {
             lines.push('你见势不妙，抽身而退。');
           }
@@ -398,6 +399,12 @@
         });
         return;
       }
+      if (c.special === 'adv_explore') {
+        if (c.mode === 'skip') { resolve({ pick: c, win: true, lines: ['你未作停留，径自离去。'] }); return; }
+        const r = Engine.advExplore(S, c.mode);
+        resolve({ pick: c, win: true, lines: r.ok ? r.lines : [r.msg] });
+        return;
+      }
       if (c.sectAct) {
         resolve({ pick: c, win: true, lines: ['你决定' + (c.sectAct === 'combat' ? '降妖除魔' : '聆听道法') + '。'] });
         return;
@@ -435,9 +442,8 @@
         if (typeof AudioManager !== 'undefined') {
           AudioManager.playBgm('game');
         }
-        // 战斗结束后恢复状态；秘境模式下血蓝跨节点延续，不在此回满
+        // 战斗结束后恢复状态；血蓝不再在此回满（战前仅恢复 10%，见 combatStart）
         Engine.refreshStats(S);
-        if (!opts.adventure) S.hp = S.hpMax;
         Engine.saveState(S);
         resolve(r);
       }
@@ -496,8 +502,10 @@
           const b = document.createElement('button');
           b.className = 'btn-small';
           b.style.color = GRADE_COLOR[sp.grade];
-          b.textContent = sp.name + '（' + (sp.cost || 0) + '灵）';
-          b.disabled = false;
+          const cost = sp.cost || 0;
+          b.textContent = sp.name + '（' + cost + '灵）';
+          b.disabled = cost > S.mp;
+          b.title = cost > S.mp ? '灵力不足' : '';
           b.onclick = function () { doAct('spell', sp.id); };
           bar.appendChild(b);
         });
@@ -797,6 +805,16 @@
     const sp = Math.max(0, Math.min(100, a.stamina / a.staminaMax * 100));
     $('adv-stamina-bar').style.width = sp + '%';
     $('adv-stamina-num').textContent = a.stamina + ' / ' + a.staminaMax;
+    // 探索度：满 100% 方可直面秘境之主
+    const exNow = Math.min(100, a.explore || 0);
+    const exPct = Math.max(0, Math.min(100, exNow / (a.exploreMax || 100) * 100));
+    const exBar = $('adv-explore-bar');
+    if (exBar) {
+      exBar.style.width = exPct + '%';
+      exBar.style.background = exPct >= 100 ? '#4ec9a0' : '#8a6bff';
+    }
+    const exNum = $('adv-explore-num');
+    if (exNum) exNum.textContent = exNow + '%';
     const itemsEl = $('adv-items');
     itemsEl.innerHTML = '';
     if (a.items && a.items.length) {
@@ -846,35 +864,102 @@
     bossCol.appendChild(bossNode);
     mapEl.appendChild(bossCol);
     const hint = $('adv-hint');
+    const exHint = Math.min(100, a.explore || 0);
     if (!Engine.advCanMove(S) && a.nodeId !== 'boss') {
-      hint.textContent = '秘境体力已耗尽，无力再深入——只能原路撤退。';
+      hint.textContent = '秘境体力已耗尽——仍可点击前方节点，以 1 年寿元强行前行一步。';
     } else {
-      hint.textContent = '选择高亮节点继续深入（每步耗 ' + (map.stepCost || 5) + ' 体力）。';
+      hint.textContent = '选择高亮节点继续深入（每步耗 ' + (map.stepCost || 5) + ' 体力）· 探索度 ' + exHint + '%，满 100% 方可直面秘境之主。';
     }
   }
   function onAdvNode(id) {
     const r = Engine.advMove(S, id);
-    if (!r.ok) { log(r.msg || '此路不通', 'bad'); return; }
-    refresh();
-    if (r.final) {
-      const res = Engine.advResolve(S, r.node);
-      openBattle(res.spec, { title: '决战 · ' + res.spec.name, adventure: true }).then(function (br) {
-        if (br.win) {
-          S.adv.cleared = true;
-          const extra = Engine.advClearReward(S);
-          showBossChoice(extra);
-        } else if (br.lost) { advFinish('战败'); }
-        else { advFinish('撤退'); }
-      });
-      return;
+    if (!r.ok) {
+      // 体力不足：提供「以寿元强行前行」（1 年 1 步）
+      const cost = (S.adv && S.adv.map && S.adv.map.stepCost) || 5;
+      if (S.adv && S.adv.stamina < cost) { offerForceMove(id); return; }
+      log(r.msg || '此路不通', 'bad'); return;
     }
-    advResolveNode(r.node);
+    refresh();
+    handleMovedNode(r.node);
+  }
+  // 体力耗尽时：以寿元强行前行（1 年 1 步）
+  function offerForceMove(id) {
+    return showChapter('体力不支', [
+      '你气力将尽，双腿如灌了铅。前方仍有路，只是再迈一步，怕是要拿寿元去换。',
+      '（秘境体力不足：可以 1 年寿元强行前行一步）'
+    ], {
+      choices: [
+        { t: '以寿元强行前行\n-1 年寿元，前进一步', special: 'adv_force_move', target: id },
+        { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+      ]
+    }).then(function (r) {
+      const pick = r.pick || {};
+      if (pick.special === 'adv_force_move') {
+        const fr = Engine.advForceMove(S, pick.target);
+        if (!fr.ok) { log(fr.msg, 'bad'); renderAdvMap(); return; }
+        (fr.lines || []).forEach(function (l) { log(l, 'bad'); });
+        refresh();
+        handleMovedNode(fr.node);
+        return;
+      }
+      advFinish('撤退');
+    });
+  }
+  function handleMovedNode(node) {
+    if (node.type === 'final') { openBossGate(node); return; }
+    advResolveNode(node);
+  }
+  // 探索度未满 100% 不得直面秘境之主：可折寿强行探查，或撤退
+  function openBossGate(bossNode, extra) {
+    const a = S.adv;
+    const pct = Math.min(100, a.explore || 0);
+    if (Engine.advCanFightBoss(S)) { fightBoss(bossNode); return; }
+    const lines = (extra || []).concat([
+      '秘境深处，一股压迫感如潮水般涌来——秘境之主，就在那里。',
+      '可你对这片秘境只探明了 ' + pct + '%，冒然闯入，只怕连它的真容都看不真切。',
+      '（探索度须满 100% 方可直面秘境之主）'
+    ]);
+    const choices = [
+      { t: '以寿元强行探查\n-1 年寿元，探索度 +10%', special: 'adv_force_explore' },
+      { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+    ];
+    return showChapter('秘境 · 未明之地', lines, { choices: choices }).then(function (r) {
+      const pick = r.pick || {};
+      if (pick.special === 'adv_retreat') { advFinish('撤退'); return; }
+      const fr = Engine.advForceExplore(S);
+      const fl = (r.lines || []).concat(fr.ok ? fr.lines : [fr.msg]);
+      if (Engine.advCanFightBoss(S)) {
+        return showChapter('秘境 · 水落石出', fl.concat([
+          '探索度已达 100%，秘境之主的气息再无遮掩。'
+        ]), {
+          choices: [
+            { t: '直面秘境之主', special: 'adv_fight_boss' },
+            { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+          ]
+        }).then(function (r2) {
+          if ((r2.pick || {}).special === 'adv_fight_boss') fightBoss(bossNode);
+          else advFinish('撤退');
+        });
+      }
+      return openBossGate(bossNode, fl);
+    });
+  }
+  function fightBoss(bossNode) {
+    const res = Engine.advResolve(S, bossNode);
+    openBattle(res.spec, { title: '决战 · ' + res.spec.name, adventure: true }).then(function (br) {
+      if (br.win) {
+        S.adv.cleared = true;
+        const extra = Engine.advClearReward(S);
+        showBossChoice(extra);
+      } else if (br.lost) { advFinish('战败', { boss: true }); }
+      else { advFinish('撤退'); }
+    });
   }
   function advAdvanceToMap() {
     Engine.advAdvance(S);
     const a = S.adv;
     if (a.done) return;
-    if (a.nodeId !== 'boss' && !Engine.advCanMove(S)) { advFinish('力竭'); return; }
+    // 体力耗尽不再强制结束：玩家可选择以 1 年寿元强行前行，或自行撤退
     renderAdvMap();
   }
   function openRestScreen() {
@@ -1007,6 +1092,27 @@
     }
     return g;
   }
+  // 秘地探查：可反复探查（消耗体力换取造化与探索度），直至体力耗尽或主动离开
+  function openExplore(extra) {
+    const a = S.adv;
+    const pct = Math.min(100, a.explore || 0);
+    const choices = [];
+    if (a.stamina >= 8) choices.push({ t: '深入探查（消耗 8 体力 · 造化更丰 · 探索度 +10%）', special: 'adv_explore', mode: 'deep' });
+    if (a.stamina >= 3) choices.push({ t: '粗略搜刮（消耗 3 体力 · 探索度 +5%）', special: 'adv_explore', mode: 'shallow' });
+    choices.push({ t: '不作停留，继续前行', special: 'adv_explore', mode: 'skip' });
+    const head = [
+      '一处灵气氤氲的秘地出现在眼前，石壁苔痕斑驳，深处似有造化流转。',
+      '当前探索度 ' + pct + '% · 秘境体力 ' + a.stamina + '。'
+    ];
+    return showChapter('秘地探查', (extra || []).concat(head), { choices: choices }).then(function (r) {
+      const mode = (r.pick || {}).mode;
+      const lines = (r.lines || []).slice();
+      if (mode === 'skip' || !mode) return lines;
+      // 只要还有体力，便可继续探查——体力越充裕，探索度攒得越快
+      if (a.stamina >= 3) return openExplore(lines);
+      return lines.concat(['你心力已尽，再也探不动了。']);
+    });
+  }
   function advResolveNode(node) {
     const a = S.adv;
     if (!a || a.done || a.status !== 'running') return;
@@ -1033,6 +1139,7 @@
       return;
     }
     if (res.type === 'rest') { openRestScreen(); return; }
+    if (res.type === 'explore') { openExplore().then(advAdvanceToMap); return; }
     if (res.type === 'shop') { advShop(res.stock); return; }
     if (res.type === 'remnant_soul') {
       advResolveRemnantSoul(res.spell1, res.spell2);
@@ -1053,7 +1160,7 @@
           const extra = Engine.advClearReward(S);
           showBossChoice(extra);
         } else if (r.lost) {
-          advFinish('战败');
+          advFinish('战败', { boss: true });
         } else {
           showChapter('秘境撤退', ['你终究没敢直面' + res.spec.name + '，转身退了出来。']).then(function () { advFinish('撤退'); });
         }
@@ -1197,7 +1304,7 @@
       advResolveNode({ type: 'final' });
     });
   }
-  function advFinish(why) {
+  function advFinish(why, opts) {
     const a = S.adv;
     $('adv-screen').style.display = 'none';
     Engine.advEnd(S, why === '战败' ? 'lost' : 'done');
@@ -1212,8 +1319,11 @@
     }
     const lines = [];
     if (why === '战败') {
-      lines.push('你重伤倒地，意识模糊前只想着一个念头——活着回去。');
+      const boss = !!(opts && opts.boss);
+      const years = boss ? 10 : 1;
+      lines.push(boss ? '你被秘境之主轰碎护身法力，道基剧震，溃败而逃。' : '你重伤倒地，意识模糊前只想着一个念头——活着回去。');
       lines.push('你带着残存的气力，跌跌撞撞离开了秘境。');
+      lines.push(Engine.loseLife(S, years, boss ? 'boss' : 'adv'));
     } else if (why === '通关') {
       lines.push('你走出秘境，身后轰然一响，洞天关闭。');
     } else {

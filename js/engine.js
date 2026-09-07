@@ -317,8 +317,8 @@ const Engine = (function () {
 
   /* ---------------- 属性基础 ---------------- */
   function calcMpMax(s) {
-    // 灵力条上限：基础 10 + 灵力每点 +20（初始灵力条为 10 点，灵力扩展其上限）
-    return 10 + effAttr(s, 'ling') * 20;
+    // 灵力条上限：基础 30 + 灵力每点 +20（初始灵力=1 时上限=50，符合设定）
+    return 30 + effAttr(s, 'ling') * 20;
   }
   function refreshStats(s) {
     const m = calcHpMax(s);
@@ -736,11 +736,9 @@ const Engine = (function () {
   function combatStart(s, spec, opts) {
     refreshStats(s);
     opts = opts || {};
-    // 进入战斗时血量自动补满（秘境模式不补满，血蓝跨节点延续）
-    if (!opts.adventure) {
-      s.hp = s.hpMax;
-      s.mp = s.mpMax;
-    }
+    // 战前不再回满血蓝；改为恢复 10% 最大气血与灵力（秘境/游历通用，血蓝跨节点延续）
+    s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.10));
+    s.mp = Math.min(s.mpMax, s.mp + Math.round(s.mpMax * 0.10));
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;
@@ -919,12 +917,16 @@ const Engine = (function () {
       if (!sp || sp.cls !== 'shufa') sp = getBestShufa(s);
       if (!sp) return { done: false, lines: ['你并未习得任何法术。'], fx: fx };
       const cost = sp.cost || 0;
+      // 灵力不足：无法施展，不扣蓝、不造成伤害，仅招致敌方反击（实装真实法力消耗）
+      if (s.mp < cost) {
+        out.push('灵力不足，无法施展【' + sp.name + '】（需 ' + cost + ' 灵）。');
+        counter();
+        return { done: b.done, win: b.win, lost: b.lost, fled: b.fled, lines: out, fx: fx };
+      }
       const mpBefore = s.mp;
+      s.mp -= cost;
       let dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
-      // 灵力消耗：充足则扣除，不足则威力减半（灵力条=10+灵力×20，由灵力属性扩展上限）
-      if (s.mp >= cost) { s.mp -= cost; }
-      else { s.mp = 0; dmg = Math.round(dmg * 0.5); out.push('灵力不足，法术威力大减！'); }
-      if (mpBefore - s.mp > 0) fx.push({ side: 'me', kind: 'mp', amount: mpBefore - s.mp, el: sp.grade });
+      fx.push({ side: 'me', kind: 'mp', amount: mpBefore - s.mp, el: sp.grade });
       fx.push({ side: 'enemy', kind: 'spell', el: sp.grade });
       const beforeHp = b.hp;
       const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true, fx);
@@ -994,11 +996,19 @@ const Engine = (function () {
       out.push.apply(out, rr.lines);
       return rr;
     };
-    let rr = order.length ? act('spell', order[0]) : act('spell');
+    let rr = { done: false, win: false, lost: false, fled: false };
     let i = 0, gi = 0, fleeTries = 0;
     while (!rr.done && gi < 80) {
       if (s.hp <= s.hpMax * 0.2 && fleeTries < 2) { fleeTries++; rr = act('flee'); continue; }
-      if (i < order.length - 1) { i++; rr = act('spell', order[i]); gi++; continue; }
+      // 依次尝试施放当前灵力足以支撑的法术
+      let casted = false;
+      while (i < order.length) {
+        const sp = TECHNIQUES[order[i]];
+        if (sp && sp.cls === 'shufa' && (sp.cost || 0) <= s.mp) { rr = act('spell', order[i]); i++; casted = true; break; }
+        i++;
+      }
+      if (casted) { gi++; continue; }
+      // 灵力不足以施放任何法术，交替守御/普攻
       rr = (gi % 2 === 0) ? act('guard') : act('atk');
       gi++;
     }
@@ -1128,20 +1138,21 @@ const Engine = (function () {
     s.advType = advKey;
     const map = genAdvMap(advKey);
     const settings = ADV_SETTINGS_MAP[advKey] || ADV_SETTINGS_HUANG;
-    const staminaMax = ap * (ap * 5 + 10); // 2行动=40，3行动=75
+    // 体力预算：9 列地图共 9 步（45 体力）。探索度须满 100% 才能直面 Boss，
+    // 富余体力可在「秘地探查」中反复探查换取探索度——故 2 行动=70（偏紧，需取舍），3 行动=95（宽裕）。
+    const staminaMax = (ap === 3) ? 95 : 70;
     s.adv = {
       grade: advKey,
       depth: 1, maxDepth: map.normalCols,
       setting: settings[Math.floor(Math.random() * settings.length)],
       gains: [], status: 'running', caught: false, done: false,
       apSpent: ap, stamina: staminaMax, staminaMax: staminaMax,
+      explore: 0, exploreMax: 100, // 探索度：满 100% 方可直面秘境之主
       map: map, nodeId: map.startId, items: [], itemsUsed: 0, cleared: false
     };
     if (map.byId[map.startId]) map.byId[map.startId].visited = true;
-    // 进入秘境时血蓝补满（仅此一次），之后跨节点延续，不再回满
+    // 进入秘境不再回满血蓝；沿用进入时的状态，每场战斗前恢复 10%（见 combatStart）
     refreshStats(s);
-    s.hp = s.hpMax;
-    s.mp = s.mpMax;
     moveItemsToAdv(s, opts.items);
     saveState(s);
     return { ok: true };
@@ -1181,10 +1192,16 @@ const Engine = (function () {
   }
   function advResolve(s, node) {
     if (node && node.col != null) s.adv.depth = node.col + 1;
+    // 经历节点即积累探索度（Boss 节点本身不计入）
+    if (node && node.type && node.type !== 'final') {
+      const eg = ADV_EXPLORE_GAIN[node.type] || 0;
+      if (eg) addExplore(s, eg);
+    }
     const d = s.adv.depth, bi = bigIdxOf(s), realmM = 1 + bi * 0.5;
     const advType = s.advType || 'huang';
     const gi = ADVENTURE_GRADE[advType] || 0; // 秘境等级决定灵材品级（与玩家境界无关）
     if (node.type === 'rest') return { type: 'rest' };
+    if (node.type === 'explore') return { type: 'explore' };
     if (node.type === 'combat') {
       return { type: 'battle', spec: enemyGen(s, 'combat', d, advType), title: '遭遇战！' };
     }
@@ -1443,6 +1460,119 @@ const Engine = (function () {
     }
     refreshStats(s); saveState(s);
     return lines;
+  }
+  function grantMaterial(s, gi, kind, amt) {
+    const herbGrades = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'];
+    const ironGrades = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'];
+    const key = kind === 'herb' ? herbGrades[gi] : ironGrades[gi];
+    if (!s.materials) s.materials = {};
+    s.materials[key] = (s.materials[key] || 0) + amt;
+    return [MATERIALS[key].name + ' +' + amt];
+  }
+  /* ---------------- 探索度（异世轮回录式：满 100% 方可直面秘境之主） ---------------- */
+  // 经历节点即积累探索度：普通战斗 +10、精英敌人 +20、宝箱/灵草/灵铁 +5
+  const ADV_EXPLORE_GAIN = {
+    combat: 10, elite: 20, treasure: 5, herb: 5, iron: 5,
+    explore: 10, rest: 5, event: 5, shop: 5
+  };
+  function addExplore(s, amount) {
+    const a = s.adv;
+    if (!a || !amount) return 0;
+    if (a.exploreMax === undefined) a.exploreMax = 100;
+    const before = a.explore || 0;
+    a.explore = Math.min(a.exploreMax, before + amount);
+    saveState(s);
+    return a.explore - before;
+  }
+  // 体力不足时：以寿元强行探查（1 年换 10% 探索度）
+  function advForceExplore(s) {
+    const a = s.adv;
+    if (!a) return { ok: false, msg: '不在秘境之中', lines: [] };
+    if ((a.explore || 0) >= (a.exploreMax || 100)) return { ok: false, msg: '探索已达 100%，无需再折寿。', lines: [] };
+    const got = addExplore(s, 10);
+    const msg = loseLife(s, 1, 'force');
+    const lines = [msg, '你强提心神继续探查，探索度 +' + got + '%（当前 ' + (a.explore || 0) + '%）。'];
+    return { ok: true, lines: lines, explore: a.explore };
+  }
+  // 体力不足时：以寿元强行前行（1 年 1 步）
+  function advForceMove(s, nodeId) {
+    const a = s.adv;
+    if (!a || a.done) return { ok: false, msg: '秘境已结束' };
+    const node = a.map && a.map.byId[nodeId];
+    if (!node) return { ok: false, msg: '节点不存在' };
+    const cur = a.map.byId[a.nodeId];
+    if (!cur || cur.next.indexOf(nodeId) < 0) return { ok: false, msg: '此路不通' };
+    const cost = (a.map && a.map.stepCost) || 5;
+    if (a.stamina >= cost) return { ok: false, msg: '体力尚足，无需折寿。' };
+    const msg = loseLife(s, 1, 'force');
+    a.nodeId = nodeId;
+    node.visited = true;
+    a.depth = node.col + 1;
+    saveState(s);
+    return { ok: true, node: node, final: node.type === 'final', lines: [msg, '你咬牙折寿前行，又深入了一步。'] };
+  }
+  // Boss 门槻：探索度未满 100% 不得直面秘境之主
+  function advCanFightBoss(s) {
+    const a = s.adv;
+    if (!a) return false;
+    return (a.explore || 0) >= (a.exploreMax || 100);
+  }
+
+  // 秘地探查：消耗秘境体力换取造化与探索度
+  // （deep 耗8体力/探索度+10，shallow 耗3体力/探索度+5，skip 不耗）
+  function advExplore(s, mode) {
+    const a = s.adv;
+    if (!a) return { ok: false, msg: '不在秘境之中' };
+    const cost = mode === 'deep' ? 8 : 3;
+    if (a.stamina < cost) return { ok: false, msg: '秘境体力不足，无法探查。' };
+    a.stamina -= cost;
+    const g = [];
+    const advType = s.advType || 'huang';
+    const gi = ADVENTURE_GRADE[advType] || 0;
+    if (!s.spiritItems) s.spiritItems = []; // 防御：新档/旧档可能未初始化
+    if (mode === 'deep') {
+      const roll = Math.random();
+      if (roll < 0.35) {
+        const tech = getRandomTechFromPools(advType, s);
+        if (tech) g.push.apply(g, applyOps(s, { tech: tech }));
+        else { const st = 40 + Math.floor(Math.random() * 40); s.stone += st; g.push('灵石 +' + st); }
+      } else if (roll < 0.6) {
+        const ek = Object.keys(ELIXIRS);
+        const el = ek[Math.floor(Math.random() * ek.length)];
+        g.push.apply(g, applyOps(s, { elixirs: { [el]: 1 } }));
+      } else if (roll < 0.8) {
+        const sk = Object.keys(SPIRIT_ITEMS);
+        const sp = sk[Math.floor(Math.random() * sk.length)];
+        if (sp && s.spiritItems.indexOf(sp) < 0) { s.spiritItems.push(sp); g.push('获得灵物【' + SPIRIT_ITEMS[sp].name + '】'); }
+        else { const st = 50 + Math.floor(Math.random() * 50); s.stone += st; g.push('灵石 +' + st); }
+      } else {
+        g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', 5 + Math.floor(Math.random() * 6)));
+      }
+    } else {
+      const st = 20 + Math.floor(Math.random() * 20);
+      s.stone += st;
+      g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', 2 + Math.floor(Math.random() * 3)));
+      g.push('灵石 +' + st);
+    }
+    a.gains.push.apply(a.gains, g);
+    const gotExp = addExplore(s, mode === 'deep' ? 10 : 5);
+    if (gotExp > 0) g.push('探索度 +' + gotExp + '%（当前 ' + a.explore + '%）');
+    refreshStats(s); saveState(s);
+    return { ok: true, lines: g, stamina: a.stamina, explore: a.explore };
+  }
+  // 战败扣减寿命：秘境普通 -1 年、秘境 Boss -10 年、游历 -1 年
+  function loseLife(s, years, reason) {
+    const y = Math.max(1, years | 0);
+    s.lifeMax = Math.max(1, (s.lifeMax || 0) - y);
+    let msg;
+    if (reason === 'boss') msg = '你被秘境之主轰碎护身法力，道基剧震，寿元 -' + y + '！';
+    else if (reason === 'adv') msg = '你力战不敌，重伤遁走，寿元 -' + y + '。';
+    else if (reason === 'explore') msg = '你在游历中力战不敌，负伤遁走，寿元 -' + y + '。';
+    else if (reason === 'force') msg = '你强行动用本源，以命换力，寿元 -' + y + '。';
+    else msg = '你负伤退走，寿元 -' + y + '。';
+    // 死亡交由年末寿数结算（s.age >= s.lifeMax）统一处理，此处仅扣减上限
+    saveState(s);
+    return msg;
   }
   function useAdvElixir(s, id) {
     const a = s.adv;
@@ -2496,6 +2626,9 @@ const Engine = (function () {
     enemyGen: enemyGen, randomEquip: randomEquip,
     advNextChoices: advNextChoices, advMove: advMove, advCanMove: advCanMove,
     advRest: advRest, useAdvElixir: useAdvElixir, advBossBonus: advBossBonus,
+    advExplore: advExplore, loseLife: loseLife, addExplore: addExplore,
+    advForceExplore: advForceExplore, advForceMove: advForceMove, advCanFightBoss: advCanFightBoss,
+    ADV_EXPLORE_GAIN: ADV_EXPLORE_GAIN,
     getAdvItemCap: getAdvItemCap, returnUnusedAdvItems: returnUnusedAdvItems,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
     refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure, calcMpMax: calcMpMax,

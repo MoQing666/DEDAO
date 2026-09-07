@@ -1053,6 +1053,7 @@ button:disabled { opacity: .4; cursor: default; }
 .adv-node.combat .n-icon, .adv-node.elite .n-icon { color: #e0604a; }
 .adv-node.treasure .n-icon, .adv-node.shop .n-icon { color: var(--gold); }
 .adv-node.herb .n-icon { color: #4ec9a0; }
+.adv-node.explore .n-icon { color: #7aa2ff; }
 .adv-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .adv-foot #adv-hint { flex: 1; }
 .adv-prep-elixir { display: flex; align-items: center; gap: 8px; margin: 6px 0; }

@@ -16,6 +16,7 @@ const MODULES = [
   ['01-static-data.test.js', '静态一致性 & 数据完整性'],
   ['02-engine-sim.test.js', '引擎单元测试 & 长时模拟'],
   ['03-ui.test.js', 'UI / DOM 层'],
+  ['04-adventure.test.js', '秘境重构（横版地图/体力/探索度/Boss）'],
 ];
 
 function bar(pass, fail) {

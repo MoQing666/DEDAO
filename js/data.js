@@ -2653,7 +2653,8 @@ const ADV_NODES = {
   iron:     { name: '灵铁矿脉', icon: '▲', desc: '矿脉露出地表，半截石壁闪着金属光泽。' },
   shop:     { name: '荒野坊市', icon: '◇', desc: '荒僻之地竟有一间亮着灯的小铺。' },
   event:    { name: '雾中奇遇', icon: '☯', desc: '迷雾深处，似乎传来一声苍老的咳嗽。' },
-  rest:     { name: '静室歇脚', icon: '☾', desc: '一处僻静地界，可打坐调息，回复气血或灵力。' }
+  rest:     { name: '静室歇脚', icon: '☾', desc: '一处僻静地界，可打坐调息，回复气血或灵力。' },
+  explore:  { name: '秘地探查', icon: '⚘', desc: '灵气氤氲的秘地，深处似有造化流转——深入须耗心力。' }
 };
 
 /* ---------------- 秘境地图生成（横版 DAG，参考杀戮尖塔路径 + 异世轮回录） ----------------
@@ -2662,7 +2663,7 @@ const ADV_NODES = {
  * 保证：起点可达 Boss；除第 0 列外每个节点都有入边（无孤儿）。
  */
 function genAdvMap(grade) {
-  const NORMAL_COLS = 7;            // col 0..6 普通节点，col 7 为 Boss
+  const NORMAL_COLS = 9;            // col 0..8 普通节点，col 9 为 Boss（长度增加）
   const STEP_COST = 5;              // 每走一步消耗秘境体力
   function pickType(col) {
     if (col === 0) return Math.random() < 0.6 ? 'combat' : 'event';
@@ -2673,8 +2674,9 @@ function genAdvMap(grade) {
       if (r < 0.85) return 'treasure';
       return 'shop';
     }
+    if (col >= 1 && col <= NORMAL_COLS - 2 && Math.random() < 0.16) return 'explore';
     if (col >= 2 && col <= NORMAL_COLS - 2 && Math.random() < 0.18) return 'rest';
-    const weighted = ['combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event'];
+    const weighted = ['combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event', 'explore'];
     return weighted[Math.floor(Math.random() * weighted.length)];
   }
   const cols = [];
@@ -2683,6 +2685,18 @@ function genAdvMap(grade) {
     const arr = [];
     for (let i = 0; i < n; i++) arr.push({ id: 'c' + c + '_' + i, col: c, type: pickType(c), next: [], visited: false });
     cols.push(arr);
+  }
+  // 保证至少 1 个静室（回血）与 2 个秘地探查（探索机制：攒探索度方可直面 Boss）
+  let restCount = 0, exploreCount = 0;
+  cols.forEach(function (col) { col.forEach(function (n) { if (n.type === 'rest') restCount++; if (n.type === 'explore') exploreCount++; }); });
+  if (restCount < 1 || exploreCount < 2) {
+    const cand = [];
+    for (let c = 1; c <= NORMAL_COLS - 2; c++) cols[c].forEach(function (n) { cand.push(n); });
+    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp; }
+    cand.forEach(function (n) {
+      if (restCount < 1) { n.type = 'rest'; restCount++; return; }
+      if (exploreCount < 2 && n.type !== 'rest') { n.type = 'explore'; exploreCount++; }
+    });
   }
   const boss = { id: 'boss', col: NORMAL_COLS, type: 'final', next: [], visited: false };
   // 连边：每一列节点连向下一列 1~2 个相邻节点

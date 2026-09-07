@@ -1484,15 +1484,22 @@ const Engine = (function () {
     saveState(s);
     return a.explore - before;
   }
-  // 体力不足时：以寿元强行探查（1 年换 10% 探索度）
+  // 体力不足时：以寿元强行探查（-1 年寿元，硬搜一处实打实的造化，产出加倍）
+  // 注意：这是「拼命搜刮」而非「从容勘察」——只出具体收获，不计入探索度。
+  // 探索度只来自亲身经历的节点（战斗/精英/宝箱灵草灵铁）与有余力时的细致探查。
   function advForceExplore(s) {
     const a = s.adv;
     if (!a) return { ok: false, msg: '不在秘境之中', lines: [] };
-    if ((a.explore || 0) >= (a.exploreMax || 100)) return { ok: false, msg: '探索已达 100%，无需再折寿。', lines: [] };
-    const got = addExplore(s, 10);
     const msg = loseLife(s, 1, 'force');
-    const lines = [msg, '你强提心神继续探查，探索度 +' + got + '%（当前 ' + (a.explore || 0) + '%）。'];
-    return { ok: true, lines: lines, explore: a.explore };
+    const g = rollExploreLoot(s, 'deep', 2);
+    a.gains.push.apply(a.gains, g);
+    refreshStats(s); saveState(s);
+    return {
+      ok: true,
+      lines: [msg, '你强提心神，在秘境中硬搜了一处——'].concat(g)
+        .concat(['（折寿强搜只出造化，不计探索度）']),
+      explore: a.explore || 0, stamina: a.stamina
+    };
   }
   // 体力不足时：以寿元强行前行（1 年 1 步）
   function advForceMove(s, nodeId) {
@@ -1520,40 +1527,49 @@ const Engine = (function () {
 
   // 秘地探查：消耗秘境体力换取造化与探索度
   // （deep 耗8体力/探索度+10，shallow 耗3体力/探索度+5，skip 不耗）
+  // rollExploreLoot 只负责「摇出具体内容」，供体力探查与折寿强搜共用（mult 为产出倍数）
+  function rollExploreLoot(s, mode, mult) {
+    const g = [];
+    const advType = s.advType || 'huang';
+    const gi = ADVENTURE_GRADE[advType] || 0;
+    if (!s.spiritItems) s.spiritItems = []; // 防御：新档/旧档可能未初始化
+    const k = mult || 1;
+    if (mode === 'deep') {
+      const roll = Math.random();
+      if (roll < 0.35) {
+        const tech = getRandomTechFromPools(advType, s);
+        if (tech) g.push.apply(g, applyOps(s, { tech: tech }));
+        else { const st = (40 + Math.floor(Math.random() * 40)) * k; s.stone += st; g.push('灵石 +' + st); }
+      } else if (roll < 0.6) {
+        const ek = Object.keys(ELIXIRS);
+        for (let i = 0; i < k; i++) {
+          const el = ek[Math.floor(Math.random() * ek.length)];
+          g.push.apply(g, applyOps(s, { elixirs: { [el]: 1 } }));
+        }
+      } else if (roll < 0.8) {
+        const sk = Object.keys(SPIRIT_ITEMS);
+        const sp = sk[Math.floor(Math.random() * sk.length)];
+        if (sp && s.spiritItems.indexOf(sp) < 0) { s.spiritItems.push(sp); g.push('获得灵物【' + SPIRIT_ITEMS[sp].name + '】'); }
+        else { const st = (50 + Math.floor(Math.random() * 50)) * k; s.stone += st; g.push('灵石 +' + st); }
+      } else {
+        g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', (5 + Math.floor(Math.random() * 6)) * k));
+      }
+    } else {
+      const st = (20 + Math.floor(Math.random() * 20)) * k;
+      s.stone += st;
+      g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', (2 + Math.floor(Math.random() * 3)) * k));
+      g.push('灵石 +' + st);
+    }
+    return g;
+  }
+  // 体力探查：有余力时的从容勘察——既出具体内容，也增进对秘境的了解（探索度）
   function advExplore(s, mode) {
     const a = s.adv;
     if (!a) return { ok: false, msg: '不在秘境之中' };
     const cost = mode === 'deep' ? 8 : 3;
     if (a.stamina < cost) return { ok: false, msg: '秘境体力不足，无法探查。' };
     a.stamina -= cost;
-    const g = [];
-    const advType = s.advType || 'huang';
-    const gi = ADVENTURE_GRADE[advType] || 0;
-    if (!s.spiritItems) s.spiritItems = []; // 防御：新档/旧档可能未初始化
-    if (mode === 'deep') {
-      const roll = Math.random();
-      if (roll < 0.35) {
-        const tech = getRandomTechFromPools(advType, s);
-        if (tech) g.push.apply(g, applyOps(s, { tech: tech }));
-        else { const st = 40 + Math.floor(Math.random() * 40); s.stone += st; g.push('灵石 +' + st); }
-      } else if (roll < 0.6) {
-        const ek = Object.keys(ELIXIRS);
-        const el = ek[Math.floor(Math.random() * ek.length)];
-        g.push.apply(g, applyOps(s, { elixirs: { [el]: 1 } }));
-      } else if (roll < 0.8) {
-        const sk = Object.keys(SPIRIT_ITEMS);
-        const sp = sk[Math.floor(Math.random() * sk.length)];
-        if (sp && s.spiritItems.indexOf(sp) < 0) { s.spiritItems.push(sp); g.push('获得灵物【' + SPIRIT_ITEMS[sp].name + '】'); }
-        else { const st = 50 + Math.floor(Math.random() * 50); s.stone += st; g.push('灵石 +' + st); }
-      } else {
-        g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', 5 + Math.floor(Math.random() * 6)));
-      }
-    } else {
-      const st = 20 + Math.floor(Math.random() * 20);
-      s.stone += st;
-      g.push.apply(g, grantMaterial(s, gi, Math.random() < 0.5 ? 'herb' : 'iron', 2 + Math.floor(Math.random() * 3)));
-      g.push('灵石 +' + st);
-    }
+    const g = rollExploreLoot(s, mode, 1);
     a.gains.push.apply(a.gains, g);
     const gotExp = addExplore(s, mode === 'deep' ? 10 : 5);
     if (gotExp > 0) g.push('探索度 +' + gotExp + '%（当前 ' + a.explore + '%）');

@@ -917,11 +917,11 @@
     const lines = (extra || []).concat([
       '秘境深处，一股压迫感如潮水般涌来——秘境之主，就在那里。',
       '可你对这片秘境只探明了 ' + pct + '%，冒然闯入，只怕连它的真容都看不真切。',
-      '（探索度须满 100% 方可直面秘境之主）'
+      '（探索度须满 100% 方可直面秘境之主。探索度只由亲身经历的节点累积，折寿强搜换不来）'
     ]);
     const choices = [
-      { t: '以寿元强行探查\n-1 年寿元，探索度 +10%', special: 'adv_force_explore' },
-      { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+      { t: '以寿元强行探查\n-1 年寿元，硬搜一处造化（产出加倍，不计探索度）', special: 'adv_force_explore' },
+      { t: '就此撤退\n保住已有收获，不折寿', special: 'adv_retreat' }
     ];
     return showChapter('秘境 · 未明之地', lines, { choices: choices }).then(function (r) {
       const pick = r.pick || {};
@@ -1108,9 +1108,20 @@
       const mode = (r.pick || {}).mode;
       const lines = (r.lines || []).slice();
       if (mode === 'skip' || !mode) return lines;
-      // 只要还有体力，便可继续探查——体力越充裕，探索度攒得越快
       if (a.stamina >= 3) return openExplore(lines);
-      return lines.concat(['你心力已尽，再也探不动了。']);
+      // 体力已不足以再探查：可折寿硬搜一处（只出造化，不计探索度），或就此作罢
+      return showChapter('心力已尽', lines.concat(['你心力已尽，再也探不动了。']), {
+        choices: [
+          { t: '以寿元强行探查\n-1 年寿元，硬搜一处造化（产出加倍，不计探索度）', special: 'adv_force_explore' },
+          { t: '就此作罢，继续前行', special: 'adv_force_explore_stop' }
+        ]
+      }).then(function (r2) {
+        const pick = r2.pick || {};
+        const base = r2.lines || lines;
+        if (pick.special !== 'adv_force_explore') return base.concat(['你不再留恋，转身继续前行。']);
+        const fr = Engine.advForceExplore(S);
+        return openExplore(base.concat(fr.ok ? fr.lines : [fr.msg]));
+      });
     });
   }
   function advResolveNode(node) {

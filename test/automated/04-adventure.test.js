@@ -274,24 +274,38 @@ module.exports = async function build() {
     t.eq(s2.adv.explore, 0, 'Boss 节点不应计入探索度');
   });
 
-  S.case('体力不足可以寿元强行探查 / 强行前行（1 年 1 步）', (t) => {
+  S.case('折寿强搜只出具体造化（不计探索度） / 强行前行 1 年 1 步', (t) => {
     const s = started();
     E.startAdventure(s, 'huang', { ap: 2, items: [] });
     const life0 = s.lifeMax;
+    const exp0 = s.adv.explore;
+    t.eq(exp0, 0, '初始探索度应为 0');
     const fr = E.advForceExplore(s);
     t.ok(fr.ok, '强行探查应成功: ' + (fr.msg || ''));
-    t.eq(s.adv.explore, 10, '强行探查应 +10% 探索度');
     t.eq(s.lifeMax, life0 - 1, '强行探查应 -1 年寿元');
+    t.eq(s.adv.explore, exp0, '折寿强搜只出具体造化，不应增加探索度');
+    t.gt((fr.lines || []).length, 2, '折寿强搜应产出具体收获文案');
+    // 反复折寿强搜也不得推高探索度
+    E.advForceExplore(s);
+    E.advForceExplore(s);
+    t.eq(s.adv.explore, exp0, '多次折寿强搜仍不应增加探索度');
+    t.eq(s.lifeMax, life0 - 3, '三次折寿强搜应共 -3 年寿元');
+    // 对照：有余力时的体力探查才增进探索度
+    s.adv.stamina = 50;
+    const er = E.advExplore(s, 'shallow');
+    t.ok(er.ok, '体力探查应成功');
+    t.gt(s.adv.explore, exp0, '体力探查应增进探索度');
     // 体力不足以支付一步时，普通前进失败、可折寿强行前行
     const choices = E.advNextChoices(s);
     t.ok(choices.length > 0, '应有可前往的节点');
     s.adv.stamina = 1;
     const mv = E.advMove(s, choices[0].id);
     t.ok(!mv.ok, '体力不足时普通前进应失败');
+    const lifeBeforeMove = s.lifeMax;
     const fm = E.advForceMove(s, choices[0].id);
     t.ok(fm.ok, '强行前行应成功: ' + (fm.msg || ''));
     t.eq(s.adv.nodeId, choices[0].id, '强行前行后应到达目标节点');
-    t.eq(s.lifeMax, life0 - 2, '强行前行应再 -1 年寿元');
+    t.eq(s.lifeMax, lifeBeforeMove - 1, '强行前行应 -1 年寿元（1 年 1 步）');
     // 体力充足时不应允许无谓折寿
     s.adv.stamina = 50;
     const fm2 = E.advForceMove(s, 'c1_0');

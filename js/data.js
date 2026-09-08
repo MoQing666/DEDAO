@@ -785,7 +785,7 @@ const MAINLINE = [
       { t: '赴仙门应考', effect: {}, lines: ['你整了整衣冠，朝仙门行去。执事弟子迎上前：「可是来应考的？随我来。」（于底部栏【宗门】择一仙门，过入宗考验。）'] },
       { t: '再游历几年（婉拒）', effect: { stone: 50 }, lines: ['你稽首告退。仙门碑石高耸，你却想再多走几年人间——反正规矩在那，随时可考。'] }
     ] },
-  { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true,
+  { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true, needSect: true,
     lines: [
       '你随青袍修士御剑飞行，脚下山河如棋盘。',
       '云海之上，一座浮空仙山赫然入目——那便是青云剑宗。',
@@ -794,7 +794,7 @@ const MAINLINE = [
     effect: { hpMax: 30, atk: 5, art: 'jingshi_yupai' } },
 
   // 新手指引：百艺入门（宗门剧情，筑基前期 idx 3）
-  { id: 'ml_2_g1', idx: 3, title: '百艺初窥', chapter: true,
+  { id: 'ml_2_g1', idx: 3, title: '百艺初窥', chapter: true, needSect: true,
     lines: [
       '安顿下来的次日，一位执事长老领你去了半山腰的百艺坊。',
       '坊内丹香与铁火气交织：鼎炉边弟子守着灵草熬炼丹药；铸炉前锤声阵阵，灵铁百炼成器；坊后一畦畦灵田四时流转，矿洞里灵脉幽幽发光。',
@@ -807,13 +807,13 @@ const MAINLINE = [
       { t: '撸起袖子帮着锤了一日铁（体魄+0.5）', lines: ['你抡锤一日，胳膊酸了三日，手上的茧却厚实了。', '铸炉的师傅赞道：「是块料。」'] }
     ] },
 
-  { id: 'ml_2_2', idx: 3, title: '藏剑阁', chapter: true,
+  { id: 'ml_2_2', idx: 3, title: '藏剑阁', chapter: true, needSect: true,
     lines: [
       '藏剑阁中，无数飞剑悬于壁上，剑气纵横。',
       '你伸手取下一柄青锋剑，剑身嗡鸣，似在认主。'
     ],
     effect: { atk: 10 } },
-  { id: 'ml_2_3', idx: 3, title: '宗门任务', chapter: true,
+  { id: 'ml_2_3', idx: 3, title: '宗门任务', chapter: true, needSect: true,
     lines: [
       '长老派你下山执行任务：剿灭山下妖兽。',
       '你带领几位师弟，前往妖兽巢穴。'
@@ -823,7 +823,7 @@ const MAINLINE = [
     resultLose: '妖兽凶猛，你受伤退走——但任务失败了。' },
 
   // 第四章：金丹之路（筑基中后期 idx 4-5，第16-25年）
-  { id: 'ml_3_0', idx: 4, title: '秘境探索', chapter: true,
+  { id: 'ml_3_0', idx: 4, title: '秘境探索', chapter: true, needSect: true,
     lines: [
       '宗门开放秘境，你进入探索。',
       '秘境中危机四伏，但也充满机缘。'
@@ -832,7 +832,7 @@ const MAINLINE = [
       { t: '深入探索', fight: { name: '秘境守护者', atk: 150, hp: 800, loot: { stone: 200, herb: 5 } }, resultWin: '你击败守护者，获得秘境宝藏。', resultLose: '你重伤退出，但捡到一些灵草。' },
       { t: '稳扎稳打', effect: { qi: 300 }, lines: ['你稳扎稳打，修为稳步提升。'] }
     ] },
-  { id: 'ml_3_1', idx: 4, title: '宗门大比', chapter: true,
+  { id: 'ml_3_1', idx: 4, title: '宗门大比', chapter: true, needSect: true,
     lines: [
       '三年一度的宗门大比如期而至。',
       '擂台上剑光如雨，你连胜三场，终于站在了首席弟子面前。',
@@ -843,7 +843,7 @@ const MAINLINE = [
       { t: '认输请教', effect: { atk: 5 }, lines: ['你收剑抱拳："师兄剑法高明，愿请教。"他欣然指点。（攻击+5）'] }
     ] },
 
-  { id: 'ml_3_2', idx: 5, title: '故人重逢', chapter: true,
+  { id: 'ml_3_2', idx: 5, title: '故人重逢', chapter: true, needSect: true,
     req: { flags: { lin: 1 } },
     setFlags: { lin2: 1 },
     lines: [

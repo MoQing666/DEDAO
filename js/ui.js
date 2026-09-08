@@ -6092,6 +6092,11 @@
     if (act === 'sect-fight') return sectDoFight();
   }
   function sectDoTrial() {
+    // 每年限应考 1 次：今年已考过（杂役重考）→ 拦截提示
+    if (S.lastTrialYear === S.year) {
+      uiAlert('今年已应考过入宗考验，来年再来吧。');
+      return;
+    }
     const isServant = S.sectRank === '杂役';
     const box = openPanel('<h3>入宗考验</h3><p class="dim">' + (isServant ? '你身为杂役，宗门允你再来一试，评得更高身份便当授之。' : '宗门以三项观人：武骨（悟性≥8）、道心（道心≥8）、实战（胜一场）。') + '</p>'
       + '<p>当前：悟性 ' + S.wu + '　道心 ' + S.dao + '</p><div id="trial-result"></div>'
@@ -6101,6 +6106,10 @@
       const ar = autoFight(S, { name: '宗门巡守', line: '', atk: 12, hp: 80, loot: {} });
       const win = !ar.lost;
       const r = Engine.applySectTrial(S, win);     // 写入身份（杂役/外门/内门/真传）
+      if (r.blocked) {                              // 防御：今年已应考（入口已拦，通常不达）
+        uiAlert(r.msg || '今年已应考过入宗考验，来年再来吧。');
+        return;
+      }
       $('trial-result').innerHTML = '实战' + (win ? '胜' : '败') + ' → 评定身份：<b>' + r.rank + '</b>' + (r.gift ? ('，功业 +' + r.gift) : '');
       log('入宗考验：实战' + (win ? '胜' : '败') + (r.changed ? '，身份定为【' + r.rank + '】' : '，维持【' + r.rank + '】'), r.passed ? 'good' : 'bad');
       if (r.passed) {

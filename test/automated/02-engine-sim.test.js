@@ -552,7 +552,7 @@ module.exports = async function build() {
     t.eq(r.ok, false, '杂役不可购买');
   });
 
-  S.case('入宗考验：通过按评分定级写回 / 全败成杂役', (t) => {
+  S.case('入宗考验：通过按评分定级写回 / 全败成杂役 / 每年限考一次', (t) => {
     const s = E.startLife('考验');
     E.commitStart(s, TALENTS[0].id);
     const SECTS0 = G.get('SECTS') || {};
@@ -562,8 +562,16 @@ module.exports = async function build() {
     let r = E.applySectTrial(s, false);
     t.eq(s.sectRank, '杂役', '全败应成杂役');
     t.eq(r.passed, false, '杂役 passed=false');
-    // 实战胜一场 → 至少外门
+    // 每年限考一次：同年再考（即使实战胜）→ 拦截，不得刷过
+    const y0 = s.year;
     r = E.applySectTrial(s, true);
+    t.eq(r.ok, false, '同年重考应被拦截');
+    t.eq(r.blocked, true, '同年重考应标记 blocked');
+    t.eq(s.sectRank, '杂役', '被拦截后身份不得变更（防刷过）');
+    // 跨年 → 实战胜一场 → 至少外门
+    s.year = y0 + 1;
+    r = E.applySectTrial(s, true);
+    t.eq(r.blocked, undefined, '跨年重考不应 blocked');
     t.ok(['外门', '内门', '真传'].indexOf(s.sectRank) >= 0, '实战胜应评得正式身份，实为 ' + s.sectRank);
     t.eq(E.sectPassed(s), true, '正式身份应 sectPassed=true');
     // 高阶定级：悟性/道心高 + 实战胜 → 真传
@@ -573,6 +581,40 @@ module.exports = async function build() {
     t.eq(s2.sectRank, '真传', '三项俱足应评真传，实为 ' + s2.sectRank);
     t.eq(E.sectPassed(s2), true, '真传 sectPassed=true');
   });
+
+  S.case('宗门向主线门禁：未过考验不触发（needSect 顺延），正式入宗才连播', (t) => {
+    const s = E.startLife('宗门主线门禁');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    const MAINLINE0 = G.get('MAINLINE') || [];
+    // 把所有主线标 seen，仅留 ml_2_1（初入宗门）与 ml_2_g1（百艺初窥）两条宗门向候选，idx 提到筑基(3)
+    Object.keys(s.seen || {}).forEach(function (k) { if (k.indexOf('ml_') === 0) delete s.seen[k]; });
+    MAINLINE0.forEach(function (m) { if (m.id !== 'ml_2_1' && m.id !== 'ml_2_g1') s.seen['ml_' + m.id] = 1; });
+    s.idx = 3; s.year = 1;
+    // 情形1：散修未择宗 → 不得触发宗门向主线
+    s.sect = null; s.sectRank = null;
+    let yr = E.checkYearEvents(s);
+    t.notEq(yr, 'mainline', '散修不应触发宗门向主线');
+    // 情形2：已择宗但未过考验（sectRank=null）→ 仍不得触发
+    s.sect = Object.keys(SECTS0)[0]; s.sectRank = null;
+    yr = E.checkYearEvents(s);
+    t.ok(yr !== 'mainline' || !s.pendingMainline || s.pendingMainline.id !== 'ml_2_1', '未过考验不得把初入宗门列为主线');
+    // 情形3：杂役 → sectPassed=false，仍不得触发
+    s.sectRank = '杂役';
+    yr = E.checkYearEvents(s);
+    t.ok(yr !== 'mainline' || !s.pendingMainline || s.pendingMainline.id !== 'ml_2_1', '杂役不得把初入宗门列为主线');
+    // 情形4：正式入宗（内门）→ 触发 ml_2_1
+    s.sectRank = '内门';
+    yr = E.checkYearEvents(s);
+    t.eq(yr, 'mainline', '正式入宗应触发主线');
+    t.ok(s.pendingMainline && s.pendingMainline.id === 'ml_2_1', '应触发【初入宗门】，实为 ' + (s.pendingMainline && s.pendingMainline.id));
+    // 连播：moreMainline 播完 ml_2_1 后，正式入宗应继续连播下一宗门向主线（百艺初窥 ml_2_g1）
+    s.seen['ml_' + 'ml_2_1'] = 1; delete s.pendingMainline;
+    const nx = E.moreMainline(s);
+    t.eq(nx, true, '入宗后应能连播后续主线');
+    t.ok(s.pendingMainline && s.pendingMainline.id === 'ml_2_g1', '连播应取到百艺初窥，实为 ' + (s.pendingMainline && s.pendingMainline.id));
+  });
+
 
   S.case('杂役筑基：年度自动升内门（sectYearPromote）', (t) => {
     const s = E.startLife('杂役筑基');

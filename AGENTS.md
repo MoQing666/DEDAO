@@ -33,7 +33,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~04，当前 80/80 全过
+node test/automated/run.js     # 依次跑 01~04，当前 81/81 全过
 ```
 | 文件 | 覆盖 |
 |---|---|
@@ -114,6 +114,8 @@ node test/automated/run.js     # 依次跑 01~04，当前 80/80 全过
   - 地位谱：`杂役(-1) < 外门 < 内门 < 真传 < 核心 < 首席`。「杂役」不在 `SECT_RANKS`，`sectRankIndex` 对未知名(含杂役)返回 -1 → 商人/任务天然拒绝。
   - 宗门页两态：未过考验仅「择宗 + 入宗考验」受限界面；通过后 7 项完整菜单（商人/晋升/任务/大比/练神/传功/切磋，无入宗考验项）。
   - 考验 `Engine.applySectTrial(s, win)`：武骨(悟性≥8)/道心(道心≥8)/实战三项 → 真传/内门/外门；全败 → **杂役**（每年可重考，评得更高即升）；杂役筑基(`bigIdx≥1`)由年度 `sectYearPromote` 自动升**内门**。
+  - **每年限应考 1 次**：`applySectTrial` 记录 `s.lastTrialYear`，同一年重复应考返回 `{blocked:true}`（防杂役连续刷考）；UI 入口 `sectDoTrial` 同判拦截提示。跨年自然失效。
+  - **宗门向主线门禁**：`MAINLINE` 中宗门语境条目带 `needSect:true`（ml_2_1 初入宗门/ml_2_g1 百艺初窥/ml_2_2 藏剑阁/ml_2_3 宗门任务/ml_3_0 秘境探索/ml_3_1 宗门大比/ml_3_2 大比后重逢），`checkYearEvents`/`moreMainline` 仅当 `sectPassed(s)` 才播；散修/杂役一律跳过挂起 → 入宗后顺延连播，不阻塞后续非宗门主线。
   - 触发：主线 `ml_2_0`「仙门收徒」(idx2 炼气后期) 引导；突破筑基散修走 `sectJoinFlow`(仅意属择宗、须应考)。年末 `sectYearPromote` 统一处理杂役筑基 / 正式档自动晋升。
 - **宗门商人 `SECT_GOODS`（2026-09-08 改单货币按类型）**：**丹药(elixir)/灵材(mat) 只用功业**；**功法(tech)/遁术(dun)/法宝(art)/装备(equip) 只用灵石**。每件 `coin: 'stone'|'gongye'`。阵法(array)商品已移除——有效阵法属洞府(聚灵阵)与百艺页(五行阵)。
 - **宗门活动 `actSect`**：降妖除魔(combat) / 道庭讲法(lecture) / **同门交游(sectSocial)** —— `sectSocial` 从 `SECT_SOCIAL` 取事件（含「青云·剑峰习剑」，已设 `once:true` 仅一次）。
@@ -174,3 +176,4 @@ node test/automated/run.js     # 依次跑 01~04，当前 80/80 全过
 7. 字体统一（弹窗标题/描述/名称层级）。
 8. 测试套件 76/76 通过（自动套件 `test/automated/run.js`）。
 9. **宗门入宗考验门禁（2026-09-08 晚）**：删宗门商店聚灵阵/五行阵僵尸商品（洞府/百艺阵法保留）；商人单货币按类型；宗门页未过考验仅受限应考界面，`applySectTrial` 定级写回，失败成杂役（每年可重考/筑基自动内门），不考验无法入宗；`ml_2_0` 收束为「仙门收徒」引导；`sectYearPromote` 年度晋升；年初主线可连播（`moreMainline`）。测试套件 **80/80 通过**。
+10. **宗门主线门禁 + 每年限考（2026-09-08 拍板落地）**：宗门语境主线条目加 `needSect:true`，`checkYearEvents`/`moreMainline` 未正式入宗（散修/杂役）跳过挂起、入宗后顺延连播；`applySectTrial` 每年限应考 1 次（`s.lastTrialYear` 冷却），UI 拦截提示；已择宗未过考验者**不可改投他门**（选宗即锁定，维持现状）；考验门槛维持 悟性≥8/道心≥8/实战、全败成杂役的现状；杂役筑基跳升内门保留。测试套件 **81/81 通过**。

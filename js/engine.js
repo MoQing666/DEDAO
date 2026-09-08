@@ -2717,10 +2717,11 @@ const Engine = (function () {
         return 'death_event';
       }
     }
-    // 主线剧情触发检查
+    // 主线剧情触发检查（needSect 条目：须正式入宗才播，否则跳过挂起 → 顺延；杂役同样不满足 sectPassed）
     for (var mi = 0; mi < MAINLINE.length; mi++) {
       var ml = MAINLINE[mi];
       if (ml.idx <= s.idx && !s.seen['ml_' + ml.id] && (!ml.req || evReqOK(s, ml))) {
+        if (ml.needSect && !sectPassed(s)) continue;    // 宗门向主线：未正式入宗则顺延，不阻塞查找后续主线
         s.pendingMainline = ml;
         saveState(s);
         return 'mainline';
@@ -2743,6 +2744,7 @@ const Engine = (function () {
     for (var mi = 0; mi < MAINLINE.length; mi++) {
       var ml = MAINLINE[mi];
       if (ml.idx <= s.idx && !s.seen['ml_' + ml.id] && (!ml.req || evReqOK(s, ml))) {
+        if (ml.needSect && !sectPassed(s)) continue;    // 同 checkYearEvents：宗门向主线须正式入宗才连播
         s.pendingMainline = ml;
         saveState(s);
         return true;
@@ -3019,13 +3021,18 @@ const Engine = (function () {
     return { rank: rank, gift: gift, A: A, B: B, C: C };
   }
   // applySectTrial：执行入宗考验并写入地位。杂役/未考 → 按评分定级；已过更高档则不高更低降级。
+  // 每年限应考 1 次：s.lastTrialYear 记录当年已考（无论成败），跨年 reset 由年份自然失效。
   function applySectTrial(s, win) {
+    if (s.lastTrialYear === s.year) {
+      return { ok: false, rank: s.sectRank || null, gift: 0, passed: sectPassed(s), changed: false, blocked: true, msg: '今年已应考过入宗考验，来年再来吧。' };
+    }
     const r = sectTrial(s, win);
     const prevIdx = sectRankIndex(s.sectRank);           // 杂役/未考 = -1
     const newIdx = sectRankIndex(r.rank);
     if (prevIdx >= 0 && prevIdx > newIdx) {
       return { ok: true, rank: s.sectRank, gift: 0, passed: true, changed: false, msg: '你已是【' + s.sectRank + '】，无须再考。' };
     }
+    s.lastTrialYear = s.year;                            // 无论成败，本年度已应考（杂役不可连续刷考）
     s.sectRank = r.rank;
     if (r.gift) addGongye(s, r.gift);
     ensureTechEquip(s); refreshStats(s); saveState(s);

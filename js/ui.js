@@ -5139,11 +5139,9 @@
     // 底部栏按钮事件
     $('btn-char-bottom').onclick = function () { if (!S) return; sfx('click'); openChar(); };
     $('btn-bag-bottom').onclick = function () { sfx('click'); openBag(); };
-    if ($('btn-favor')) $('btn-favor').onclick = function () { if (!S) return; sfx('click'); openFavor(); };
     $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
 
     // 新场景底部导航
-    if ($('btn-cultivate-bottom')) $('btn-cultivate-bottom').onclick = function () { if (!S) return; sfx('click'); openCultivate(); };
     $('btn-sect-bottom').onclick = function () { if (!S) return; sfx('click'); openSect(); };
     if ($('btn-sect')) $('btn-sect').onclick = function () { if (!S) return; sfx('click'); openSect(); };
     $('btn-travel-bottom').onclick = function () { if (!S) return; sfx('click'); openTravel(); };

@@ -1,144 +1,176 @@
-# DEDAO 得道 — Agent Guide
+# DEDAO 得道 — Agent 指南（项目宪法）
 
-## What this is
-Single-page browser game (修仙 life sim). Pure vanilla JS/HTML/CSS, no framework, no bundler, no npm. PWA with service worker. GitHub Pages deployment.
+> 最后更新：2026-09-08。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 
-## Architecture
-Load order matters — all share globals via page scope:
-1. `js/data.js` — Game data constants. Key globals: `STAGES`, `SECTS`, `EVENTS`, `TECHNIQUES`, `EQUIPS`, `FORMULAS`, `ELEMENT_COUNTER`, `ADVENTURE_CONFIG`, `ADVENTURE_GRADE`, `SPIRIT_ITEMS`, `REINCARNATION`, `FIELD_SEEDS`, `DESTINIES`. Event registration via `E(tag, ev)`.
-2. `js/engine.js` — All game logic. IIFE exposing single `Engine` global (~80 functions). Key: `startLife`, `combatStart`, `startAdventure`, `cultivate`, `endYear`, `breakthrough`, `perfectBreakthrough`, `normalBreakthrough`.
-3. `js/audio.js` — Audio manager. `AudioManager` global. Real audio files with Web Audio synthesis fallback.
-4. `js/ui.js` — All DOM/rendering. IIFE, boots via `DOMContentLoaded`. `S` variable = current game state.
-5. `index.html` — All screens, overlays, modals. Single file.
-6. `css/style.css` — Single stylesheet. Font: `'YuYang'` for everything.
+## 一、项目概述
+- **类型**：修仙题材放置 / 养成类**纯文字浏览器游戏**（auto-battler + 文字剧情）。
+- **技术栈**：原生 JS / HTML / CSS + PWA（Service Worker 离线缓存），**无框架、无打包器、无 npm 依赖**。
+- **商业模式**：纯免费，**不接任何内购付费点**。
+- **发布渠道**：静态 PWA，通过 WebView 嵌入运行于 **抖音小游戏 / TAPTAP / 华为小游戏**；亦可 GitHub Pages 等任意静态托管。
+- **代码规模**：`data.js`(~224KB) / `engine.js`(~147KB) / `ui.js`(~295KB) / `style.css`(~47KB)。
 
-## Run / Deploy
+## 二、架构与加载顺序
+所有文件**共享全局作用域**，加载顺序即依赖顺序：
+1. `js/data.js` — 全部游戏数据常量。关键全局：`STAGES`, `SECTS`, `EVENTS`(含 `shejiao`/`jiyuan`/`mijing` 等分池), `TECHNIQUES`, `EQUIPS`, `ARTIFACTS`, `ELIXIRS`, `MATERIALS`, `SECT_GOODS`, `NPCS`, `SECT_SOCIAL`, `ADVENTURE_CONFIG`, `ADVENTURE_GRADE`, `ELEMENT_COUNTER`, `FORMULAS`, `REINCARNATION`, `FIELD_SEEDS`, `DESTINIES`。事件注册统一用 `E(tag, ev)`。
+2. `js/engine.js` — 全部游戏逻辑。IIFE 暴露单一 `Engine` 全局（~80 个函数）。关键：`startLife`, `commitStart`, `combatStart`, `startAdventure`, `cultivate`, `endYear`, `breakthrough`, `perfectBreakthrough`, `normalBreakthrough`, `social`, `sectSocial`, `sectBuy`, `calcMpMax`, `artifactStats`, `advNextChoices`, `advCanFightBoss`。
+3. `js/audio.js` — 音频管理器 `AudioManager`（真实音频文件 + Web Audio 合成兜底）。
+4. `js/ui.js` — 全部 DOM 渲染。IIFE，`DOMContentLoaded` 启动。`S` = 当前游戏状态对象。
+5. `index.html` — 所有 screen / overlay / modal 的单一容器。
+6. `css/style.css` — 单一样式表。字体统一 `'YuYang'`。
+
+## 三、运行 / 调试 / 构建
+```bash
+# 本地开发（二选一）
+node serve.js                         # 内置静态服务器，端口 8000
+python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
+
+# 发布包构建：产物在 dist/DEDAO_release/
 ```
-node serve.js        # local dev, port 8000
-git push             # deploys to GitHub Pages
+**缓存失效（改 UI/数据后必做）**：
+- `sw.js` 顶部 `const CACHE = 'dedao-v76';` 自增。
+- `index.html` 内 `css/style.css?v=36`、`js/*.js?v=35` 版本号自增（强刷 Ctrl+Shift+R 才生效）。
+
+## 四、测试
+存在**自动化测试套件**（非"无框架"，旧文档已过时）：
+```bash
+node test/automated/run.js     # 依次跑 01~04，当前 80/80 全过
 ```
-`serve.js` is a minimal static server (29 lines, no npm).
+| 文件 | 覆盖 |
+|---|---|
+| `01-static-data.test.js` | 静态数据一致性 & 引用完整性（含宗门商品单货币结构） |
+| `02-engine-sim.test.js` | 引擎单元 & 长时模拟（含宗门商人单货币、入宗考验门禁、杂役筑基） |
+| `03-ui.test.js` | UI / DOM 层（含灵力上限断言 10/50/30、宗门页门禁受限 UI） |
+| `04-adventure.test.js` | 秘境重构（横版地图 / 体力 / 探索度 / Boss） |
 
-**Cache busting:** Bump `CACHE` version in `sw.js` (currently `dedao-v57`) after pushing UI changes. Also bump CSS version query in `index.html` (currently `?v=34`).
+- 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
+- 测试路径硬编码 `D:/opencode/DEDAO/js/`；用 `_harness.js` 暴露 `ROOT`。
 
-## Testing
-No test framework. Tests run in Node.js with mocked DOM/localStorage:
-```
-node test/dedao_f4_engine_test.js     # engine unit tests
-node test/dedao_ui_drive2.js          # UI smoke (title, save/load)
-node test/dedao_ui_drive3.js          # UI smoke (alchemy, explore)
-node test/dedao_ui_drive4.js          # UI smoke (tech, crafts, battle, year)
-node test/dedao_ui_drive5.js          # UI smoke (explore flow, trib)
-```
-Syntax check (PowerShell): `node --check js/data.js; if ($?) { node --check js/engine.js; if ($?) { node --check js/ui.js } }`
+## 五、六维 & 战斗公式
+### 核心属性
+| 属性 | Key | 影响 |
+|---|---|---|
+| 悟性 | `wu` | 修炼速度 |
+| 体魄 | `ti` | 气血上限、防御 |
+| 遁速 | `dun` | 闪避率 |
+| 神识 | `shen` | 暴击率 |
+| 道心 | `dao` | 渡劫成功率 |
+| 福源 | `fu` | 事件触发、掉落 |
 
-## Six Dimensions (六维) & Combat Formulas
+### 灵力（法力）— 2026-09-08 修订
+- **上限**：`mpMax = 10 + max(0, 有效灵力−1) × 20`（灵力=1 → 10；每点 +20；另加灵根词条 `mpMax` 与五行阵加成）。
+- **初始**：`mpMax = 10, mp = 1`。
+- 战斗前补满；法术消耗灵力。
 
-### Core Attributes
-| Attr | Key | Affects | Formula |
-|------|-----|---------|---------|
-| 悟性 | `wu` | Cultivation speed | `cultGain`: `(60 + wu*10) * (1 + 0.3*CULT_REALM) * techMult * ...` |
-| 体魄 | `ti` | HP max, defense | `calcHpMax`: `80 + ti*tiMulti + bigRealm*80`, tiMulti=[20,25,30,35] by realm |
-| 遁速 | `dun` | Dodge rate | `dodgeRate = dun * 0.005 + destinyBonus` |
-| 神识 | `shen` | Crit rate | `critRate = shen * 0.01 + destinyBonus` |
-| 道心 | `dao` | Tribulation success | Higher dao = easier tribulations |
-| 福源 | `fu` | Event triggers, loot | Higher fu = more lucky events |
+### 战斗属性
+- 攻击：`(10 + bigRealm*15) * talentMult * linggenMult * destMult * allMult + extraAtk + equipAtk`
+- 防御：`round(ti * 0.5 * destDefMul)`
+- 气血上限：含 `ti / bigRealm / linggenHp / artHp / sectHp / 装备 / 命格` 多项
+- 暴击：`shen * 0.01 + destCritRate`；闪避：`dun * 0.005 + destDodgeRate`
+- 修炼收益：`(60 + wu*10) * realmMult * techMult * linggenMult * talentMult * reincMult * equipMult * destMult`（聚气丹现 +20%）
+- 战斗**无随机乘数**：`伤害 = atk * 法术系数`。
 
-### Combat Stats
-| Stat | Formula |
-|------|---------|
-| Attack | `(10 + bigRealm*15) * talentMult * linggenMult * destMult * allMult + extraAtk + equipAtk` |
-| Defense | `Math.round(ti * 0.5 * destDefMul)` |
-| HP Max | `80 + ti*tiMulti + bigRealm*80 + linggenHp + artHp + sectHp + hpBonus + equipHp + ti*10 + destTi*10` |
-| Crit Rate | `shen * 0.01 + destCritRate` |
-| Dodge Rate | `dun * 0.005 + destDodgeRate` |
-| Cultivation | `(60 + wu*10) * realmMult * techMult * linggenMult * talentMult * reincMult * equipMult * destMult` |
+## 六、五行系统
+相克：`金 → 木 → 土 → 水 → 火 → 金`。克制 ×1.5 / 被克 ×0.7 / 无关 ×1.0。每个法术有 `element`，每门心法有 `element` 或 `sect`。
 
-### Destiny Effects (命格)
-- `getDestinyAttrBonus(s, attr)` — flat attribute bonuses from destinies
-- `getDestinyAttrMult(s, attr)` — multiplier bonuses (atkMul, defMul)
-- `getDestinyBonus(s, type)` — combat effect bonuses (critRate, dodgeRate, lifesteal, thorns, etc.)
+## 七、行动系统（行动点）
+- 基础 **3 点 / 年**；realm idx ≥3(筑基) +1、≥7(金丹) +1、≥11(元婴) +1。
+- **秘境**：2 点。**游历**：1 点。**锻体/突破**：消耗行动（突破需修为满）。
+- **百艺**：0 点，入宗后解锁。
+- **宗门**：行动栏跳转入口（不单独消耗点数）。
+- 修炼每年一次（`cultedThisYear` 标记，`endYear` 重置）。
 
-## Five Elements System (五行)
-Core combat mechanic. Defined in `ELEMENT_COUNTER`:
-```
-金 → 木 → 土 → 水 → 火 → 金
-```
-- Counter: damage ×1.5
-- Countered: damage ×0.7
-- No relation: damage ×1.0
-
-Each spell has `element` property. Each heart technique has `element` or `sect` property.
-
-## Action System (行动)
-- Base actions: 3 per year
-- +1 at realm index ≥3 (筑基+)
-- +1 at realm index ≥7 (金丹+)
-- +1 at realm index ≥11 (元婴+)
-- **百艺 (Baiyi)**: costs 0 action points, unlocked after joining a sect
-
-## Adventure System (秘境)
-4 tiers + 1 special:
-| Key | Name | Realm | Drops |
-|-----|------|-------|-------|
+## 八、秘境系统（核心重构于 2026-09-08）
+4 档 + 1 特殊：
+| Key | 名 | 境界 | 掉落 |
+|---|---|---|---|
 | huang | 匪徒营寨 | 炼气 | 黄级 |
 | xuan | 大黑山 | 筑基 | 玄级 |
 | di | 洞天福地 | 金丹 | 地级 |
 | tian | 魔道祖地 | 元婴 | 天级 |
-| xian | 遗世仙踪 | 元婴 | 仙级 (every 10 years) |
+| xian | 遗世仙踪 | 元婴 | 仙级（每 10 年） |
 
-Config: `ADVENTURE_CONFIG[key]`, grade: `ADVENTURE_GRADE[key]`.
+- **横版地图（从下到上）**：第 1 层在底部（入口），洞天决战在顶部；渲染后自动滚动到底部。
+- **探索度机制**：经历节点累计探索度（普通战斗 +10 / 精英 +20 / 宝箱·灵草·灵铁 +5 / 探查·事件·商贩·静室 +5），满 **100%** 方可直面 Boss。
+- **Boss 开局不显示**：仅当 `advCanFightBoss()`（探索度满）才渲染 Boss 列；未满时提供"折寿强搜 / 撤退"兜底，**杜绝卡死**。
+- **节点类型**：`combat / elite / treasure / herb / iron / rest / event / shop`。原"秘地探查(explore)"节点已**全部改为遭遇战(combat)**（"谜底探查"需求）。
 
-## Breakthrough System (突破)
-Three modes:
-1. **Perfect** (`perfectBreakthrough`) — Uses spirit item, 100% success, special effect
-2. **Normal** (`normalBreakthrough`) — Uses elixir, base chance, HP bonus
-3. **Direct** (`normalBreakthrough(s, null)`) — No item, base chance
+## 九、突破系统
+三种模式：`perfectBreakthrough`(灵物 100%)、`normalBreakthrough`(丹药，基础率)、`normalBreakthrough(s,null)`(无物，基础率)。灵物 `SPIRIT_ITEMS` 每境界一个（Boss 掉落）。
 
-Spirit items: `SPIRIT_ITEMS` — one per realm, dropped by bosses.
-Elixir grades: `ELIXIR_GRADE_HP = { '黄': 50, '玄': 100, '地': 300, '天': 500 }`
+## 十、法宝系统
+- 法宝存于 `s.arts`（`ARTIFACTS`），由 `artifactStats(s)` 聚合、**自动生效**（储物袋获得即计入，无需手动装备）。
+- **角色页法宝栏**（`renderCharTreasure`）展示 `s.arts` + `S.equip.treasure`（装备型法宝）；曾因误读 `S.equip.treasure`（恒空）导致空栏，已修复。
+- 宗门商店亦售法宝（4 件），**灵石价走同级中值（不翻倍），功业价翻倍**。
+- 装备型法宝存 `s.equip.treasure`（数组，容量 = bigIdx+1，最大 4）。
 
-## Material System (灵材)
-Graded materials: `herb_huang/xuan/di/tian`, `iron_huang/xuan/di/tian`.
-Old `s.herb`/`s.iron` migrated to `s.materials` on load.
-Display shows totals across all grades.
+## 十一、灵材 / 丹药 / 装备
+- 灵材：`herb_*` / `iron_*`（黄/玄/地/天），统一存 `s.materials`。
+- 丹药：`s.elixirs`，聚气丹（修炼 +20%）、筑基丹、结金丹、元婴丹、悟道丹等。
+- 装备：`s.inventory`（`EQUIPS`），攻防/气血加成经 `equipStats` 统一计算。
 
-## UI Structure
-- **Bottom bar** — Fixed at bottom, z-index 50. Contains: 储物袋, 装备, 功法, 结缘, 百艺
-- **Modal** — z-index 250
-- **Battle overlay** — z-index 9999 (CSS `!important`)
-- **Screen** — `overflow: hidden`, padding-bottom 70px for bottom bar
-- **Year button** — Always visible, shows confirmation if actions remain
-- **Character page** — Full-screen (`screen-char`), tabs: 属性/装备/法宝/功法
-- **Baiyi page** — Full-screen (`screen-crafts`), shows 炼丹/炼器/灵田
-- **Attribute panel** — Modal in game, shows 六维+战斗属性+命格详情
+## 十二、宗门系统
+- **入宗门禁（2026-09-08 重构）**：不考验，无法入宗。
+  - `sectPassed(s)` = 已正式入宗（`sect` 非空且 `sectRank` 为 SECT_RANKS 正式五档之一，非杂役）。
+  - 地位谱：`杂役(-1) < 外门 < 内门 < 真传 < 核心 < 首席`。「杂役」不在 `SECT_RANKS`，`sectRankIndex` 对未知名(含杂役)返回 -1 → 商人/任务天然拒绝。
+  - 宗门页两态：未过考验仅「择宗 + 入宗考验」受限界面；通过后 7 项完整菜单（商人/晋升/任务/大比/练神/传功/切磋，无入宗考验项）。
+  - 考验 `Engine.applySectTrial(s, win)`：武骨(悟性≥8)/道心(道心≥8)/实战三项 → 真传/内门/外门；全败 → **杂役**（每年可重考，评得更高即升）；杂役筑基(`bigIdx≥1`)由年度 `sectYearPromote` 自动升**内门**。
+  - 触发：主线 `ml_2_0`「仙门收徒」(idx2 炼气后期) 引导；突破筑基散修走 `sectJoinFlow`(仅意属择宗、须应考)。年末 `sectYearPromote` 统一处理杂役筑基 / 正式档自动晋升。
+- **宗门商人 `SECT_GOODS`（2026-09-08 改单货币按类型）**：**丹药(elixir)/灵材(mat) 只用功业**；**功法(tech)/遁术(dun)/法宝(art)/装备(equip) 只用灵石**。每件 `coin: 'stone'|'gongye'`。阵法(array)商品已移除——有效阵法属洞府(聚灵阵)与百艺页(五行阵)。
+- **宗门活动 `actSect`**：降妖除魔(combat) / 道庭讲法(lecture) / **同门交游(sectSocial)** —— `sectSocial` 从 `SECT_SOCIAL` 取事件（含「青云·剑峰习剑」，已设 `once:true` 仅一次）。
+- 宗门任务、宗门大比、师父传功、练神峰等各自独立入口。
 
-## Key gotchas
-- **Cultivation is once per year.** `cultivate()` checks `s.cultedThisYear`; `endYear()` resets it.
-- `equipStats` handles ALL equipment stats including treasures (array). Do NOT add direct `s.wu += it.wu` — it double-counts.
-- `treasure` is stored as array `s.equip.treasure = []`, capacity = `bigIdx + 1` (max 4).
-- **Sect join** triggers automatically after first breakthrough to 筑基 via `sectJoinFlow()`.
-- **Combat starts with full HP/MP.** `combatStart()` sets `s.hp = s.hpMax`.
-- **No randomness in combat.** Damage = `atk * spellDmg` (no random multiplier).
-- **Slow effect** lasts 1 round only.
-- `endYear()` returns `'end'|'fate'|'ok'|'ok|...'`. Resets `cultedThisYear`.
-- `validSave` accepts dead/ended saves (`S.dead || S.endReason` returns true early).
-- **S.materials** must be initialized: `if (!s.materials) s.materials = {};`
-- Tests use `_Spatch(fn)` to mutate `S` state. Test paths are hardcoded `D:/opencode/DEDAO/js/`.
-- **Duobao mechanism removed.** Equipment drops directly now.
-- **Screen lifecycle:** `showScreen(name)` hides all `.screen` then shows `#screen-{name}`.
-- **Destiny lock** (`destiny_lock` talent): reroll keeps locked destinies, sorts them to front.
-- **BACKGROUNDS** have `flavor` with stat bonuses: `{ stone: N, ti/wu/shen/dao: N }`.
-- **Social pool** now includes `EVENTS.jiyuan` (机缘 events merged into 游历).
-- **Baiyi (百艺)**: 0 action cost, unlocked after sect join. Shows 炼丹/炼器/灵田.
-- **loadState** silently swallows errors via try-catch. If save fails to load, check console for errors.
+## 十三、游历系统（2026-09-08 重构）
+主页面【游历】→ `openTravel()`，节点：
+| 节点 | 接取逻辑 |
+|---|---|
+| 流动商贩 | `travelShop`（游历专属行商，仅灵石） |
+| 市井机缘 | `social()` → **始终只从 `EVENTS.shejiao` 抽 3 个、玩家 3 选 1**（修复：曾误用 `SECT_SOCIAL` 导致与「青云·剑峰习剑」等价） |
+| 名山大川 | `actJiyuan` → `Engine.jiyuan`（天地机缘独立入口） |
 
-## Recent Changes (last session)
-- UI redesign: stats panel with 六维 2×3 grid + combat stats 4×2 grid
-- Destiny cards with specific bonus descriptions
-- Attribute panel (modal) with full六维+combat+destiny details
-- Character page attribute tab redesigned with六维 grid and combat formulas
-- Merged 机缘 into 游历 pool
-- Replaced 机缘 button with 百艺 (0 cost, sect-locked)
-- 百艺 full-screen page with 炼丹/炼器/灵田
-- SW bumped to v57, CSS version v34
+- 删除了原"秘境探幽 / 宗门信符 / 仙缘寻访"三节点（避免与主页秘境、宗门页、仙缘页重复开口）。
+
+## 十四、仙缘系统（提纯）
+仙缘页（底部栏「仙缘」`openNpc`）**只保留 4 个纯仙缘角色**，各配真实缘法事件（点击 `runEvent(n.event)` 触发，非跳转，`once` 防刷）：
+- **老乞丐**（炼体传承）、**林婉儿**（结缘线）、**白素**（狐仙报恩）、**神秘黑猫**（引路教学）。
+- 功能型 NPC（商贩/长老/师父/师兄/师姐）已移出仙缘页，回归游历/宗门原入口。
+
+## 十五、命格 / 轮回
+- 命格加成：`getDestinyAttrBonus`（平加）、`getDestinyAttrMult`（乘区 atkMul/defMul）、`getDestinyBonus`（暴击/闪避/吸血/反伤等）。
+- 轮回阁：`REINCARNATION` 提供转世加成（修为/舍生等）。
+
+## 十六、UI 结构
+- **行动栏**（主页中上部）：修炼 / 秘境(2点) / 宗门 / 锻体 / 游历 / 百艺(未解锁置灰) / 突破 / 下一年。
+- **底部栏**：角色 / 储物袋 / 宗门 / 游历 / 仙缘 / 设置（z-index 50）。
+- **Modal** z-index 250；**战斗层** z-index 9999（`!important`）。
+- **屏幕**：`overflow:hidden`，底部留 70px 给底部栏。
+- **角色页** `screen-char` 全屏，Tab：属性 / 装备 / 法宝 / 功法。
+- **百艺页** `screen-crafts`：炼丹 / 炼器 / 灵田。
+- 字体统一规则：弹窗标题 `#modal-body h3` 15px/600/金；描述类 13px/400；名称类 15px/600（详见 `style.css` 的 `ct-*`/`tn-*` 系列）。
+
+## 十七、关键陷阱（gotchas）
+- `cultivate()` 每年仅一次；`endYear()` 重置 `cultedThisYear`。
+- `equipStats` 统算**全部**装备（含法宝数组）。切勿直接 `s.wu += it.wu`，会双重计数。
+- `treasure` 为数组 `s.equip.treasure = []`，容量 `bigIdx+1`。
+- 入宗在首次突破筑基时自动触发。
+- 战斗开局满血满蓝（`combatStart` 设 `s.hp = s.hpMax`）。
+- `loadState` 用 try-catch 吞错，读档失败看 console。
+- `s.materials` 须初始化：`if (!s.materials) s.materials = {};`
+- `s.arts` 法宝**自动生效**，角色法宝栏须读 `s.arts`（不要误读恒空的 `S.equip.treasure`）。
+- 测试用 `_Spatch(fn)` 改 `S`；测试路径硬编码 `D:/opencode/DEDAO/js/`。
+- **Duobao 机制已移除**：装备直接掉落，不再经多宝。
+- 屏幕生命周期：`showScreen(name)` 隐藏所有 `.screen` 再显示 `#screen-{name}`。
+- 灵根词条 `/` 五行阵可加战斗次级属性（暴击/闪避/渡劫/防御）。
+- **市井机缘 = `social()` 只取 `shejiao` 池（3 选 1）**；天地机缘走游历「名山大川」。两者已拆分，勿再合并。
+- **Boss 探索度未满时不可见**，UI 渲染须判 `advCanFightBoss()`。
+- **宗门门禁**：未过考验（`sectRank` 为 null/`'杂役'`）→ `sectPassed(s)` 为假，商人/任务/晋升自动拒；勿直接把未应考的玩家设正式地位。杂役筑基自动升内门走 `sectYearPromote`，勿手动设 `外门`（会破坏"筑基=内门"约定）。
+
+## 十八、近期重大变更（2026-09-08）
+1. 灵力公式改为 `10 + (ling−1)×20`（初始 10/1）。
+2. 秘境地图横版从下到上、Boss 探索度满才现、探索度累计机制、探查节点全改遭遇战。
+3. 角色法宝栏修复（读 `s.arts`）。
+4. 宗门商人重做（30→29 件/按类型单货币：丹药灵材=功业，功法装备法宝=灵石；阵法商品移除）。
+5. 游历重构：删秘境/宗门/仙缘三节点；市井机缘纯化（shejiao 3 选 1）；新增名山大川（jiyuan）；新增宗门「同门交游」consuming `SECT_SOCIAL`（青云·剑峰习剑仅一次）。
+6. 仙缘提纯 4 角色 + 真实缘法事件。
+7. 字体统一（弹窗标题/描述/名称层级）。
+8. 测试套件 76/76 通过（自动套件 `test/automated/run.js`）。
+9. **宗门入宗考验门禁（2026-09-08 晚）**：删宗门商店聚灵阵/五行阵僵尸商品（洞府/百艺阵法保留）；商人单货币按类型；宗门页未过考验仅受限应考界面，`applySectTrial` 定级写回，失败成杂役（每年可重考/筑基自动内门），不考验无法入宗；`ml_2_0` 收束为「仙门收徒」引导；`sectYearPromote` 年度晋升；年初主线可连播（`moreMainline`）。测试套件 **80/80 通过**。

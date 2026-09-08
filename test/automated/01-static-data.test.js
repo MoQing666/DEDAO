@@ -38,7 +38,11 @@ module.exports = async function build() {
     const refs = new Set();
     for (const m of uiJs.matchAll(/getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) refs.add(m[1]);
     for (const m of uiJs.matchAll(/\$\(\s*['"]([^'"]+)['"]\s*\)/g)) refs.add(m[1]);
-    const missing = [...refs].filter(id => !htmlIds.has(id));
+    const missing = [...refs].filter(id =>
+      !htmlIds.has(id) &&                       // 不在 index.html 中定义
+      !uiJs.includes(`id="${id}"`) &&           // 且非 ui.js 运行时通过模板动态创建的 ID（如开荒/宗门/仙缘面板）
+      !uiJs.includes(`id='${id}'`)
+    );
     t.note(`检查了 ${refs.size} 个 ID 引用 / HTML 定义 ${htmlIds.size} 个`);
     if (!missing.length) return;
     // 区分「裸引用」（真实缺陷）与「if ($(id)) 守护式死代码」（低风险）
@@ -162,17 +166,22 @@ module.exports = async function build() {
     const ART = get('ARTIFACTS') || {};
     const ELX = get('ELIXIRS') || {};
     const MAT = get('MATERIALS') || {};
+    // 可炼制产物：丹(ELIXIRS) / 装备(EQUIPS 各槽位)。法宝(ARTIFACTS) 仅可剧情获取，不在炼制配方内。
+    const EQ = get('EQUIPS') || {};
+    const equipIds = new Set();
+    for (const slot in EQ) for (const id in EQ[slot]) equipIds.add(id);
     t.gt(F.length, 5, '配方数量过少');
     const badOut = [], badCost = [];
     for (const f of F) {
-      if (!ART[f.out] && !ELX[f.out]) badOut.push(`${f.id} → ${f.out}`);
+      if (!ART[f.out] && !ELX[f.out] && !equipIds.has(f.out)) badOut.push(`${f.id} → ${f.out}`);
       for (const k of Object.keys(f.cost || {})) {
         if (!MAT[k]) badCost.push(`${f.id}:${k}`);
       }
     }
     if (badOut.length) t.fail(`配方产物不存在: ${badOut.join(', ')}`);
     if (badCost.length) t.fail(`配方材料不存在: ${[...new Set(badCost)].join(', ')}`);
-    t.note(`配方 ${F.length} 条`);
+    const outTypes = F.map(f => f.type);
+    t.note(`配方 ${F.length} 条，类型分布: ${[...new Set(outTypes)].join(' / ')}`);
   });
 
   S.case('事件库 EVENTS 结构合法', (t) => {
@@ -225,10 +234,9 @@ module.exports = async function build() {
     t.note(`灵根 ${LG.length} / 彩蛋 ${Object.keys(EG).length} / 背景 ${BG.length}`);
   });
 
-  S.case('装备 ARTIFACTS 槽位与品阶合法', (t) => {
+  S.case('法宝 ARTIFACTS 合法（仅剧情获取，不可炼制）', (t) => {
     const ART = get('ARTIFACTS') || {};
     const ids = Object.keys(ART);
-    t.gt(ids.length, 3, '装备数量过少');
     const types = new Set(), badType = [], noName = [];
     for (const id of ids) {
       const a = ART[id];
@@ -237,10 +245,82 @@ module.exports = async function build() {
       // 法宝以 type 区分：攻 / 守 / 辅
       if (!['攻', '守', '辅'].includes(a.type)) badType.push(`${id}:${a.type}`);
     }
-    if (noName.length) t.fail(`装备缺少 name: ${noName.slice(0, 8).join(', ')}`);
-    if (badType.length) t.fail(`装备 type 非法: ${badType.slice(0, 8).join(', ')}`);
-    t.note(`装备 ${ids.length} 件，类型: ${[...types].join(' / ')}`);
-    if (ids.length < 10) t.note(`⚠ 法宝仅 ${ids.length} 件，品类偏少，长期内容深度可能不足`);
+    if (noName.length) t.fail(`法宝缺少 name: ${noName.slice(0, 8).join(', ')}`);
+    if (badType.length) t.fail(`法宝 type 非法: ${badType.slice(0, 8).join(', ')}`);
+    t.note(`法宝 ${ids.length} 件（剧情获取，不可炼制），类型: ${[...types].join(' / ')}`);
+    // 校验：炼制配方中不应出现法宝产物
+    const F = get('FORMULAS') || [];
+    const fa = F.filter(f => f.type === '法宝');
+    if (fa.length) t.fail(`存在可炼制法宝配方: ${fa.map(x => x.id).join(', ')} — 法宝应仅由剧情获取`);
+  });
+
+  S.case('法宝系统：39 件完整 & 全链路挂载 & 数值单位校验', (t) => {
+    const ART = get('ARTIFACTS') || {};
+    const ids = Object.keys(ART);
+    t.eq(ids.length, 39, `法宝应为 39 件（剧情26+商店13），实际 ${ids.length}`);
+
+    const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale'];
+    const pctFields = ['critPct','dodgePct','defPct','atkPct','cult','stealPct','daoAtkPct','craftEff','tiHpBonus','duantiEff','farmEff','mineEff','stoneYearPct'];
+    const noEffect = [], empty = [], badPct = [];
+    for (const id of ids) {
+      const e = ART[id].effect;
+      if (!e || typeof e !== 'object') { noEffect.push(id); continue; }
+      if (!effKeys.some(k => e[k] !== undefined && e[k] !== null)) empty.push(id);
+      for (const k of pctFields) {
+        if (e[k] !== undefined && e[k] !== null) {
+          if (typeof e[k] !== 'number' || e[k] <= 0 || e[k] >= 1) badPct.push(`${id}.${k}=${e[k]}`);
+        }
+      }
+    }
+    if (noEffect.length) t.fail(`法宝缺少 effect: ${noEffect.join(', ')}`);
+    if (empty.length) t.fail(`法宝 effect 无任何生效键: ${empty.join(', ')}`);
+    if (badPct.length) t.fail(`百分比字段须为小数(0.05=5%)，非法: ${badPct.slice(0, 10).join(', ')}`);
+
+    // 商店挂载：SECT_GOODS / ART_SHOP_ITEMS 的 art 引用必须存在
+    const SECT_GOODS = get('SECT_GOODS') || [];
+    const ART_SHOP = get('ART_SHOP_ITEMS') || [];
+    const sectBad = SECT_GOODS.filter(g => g.kind === 'art' && !ART[g.ref]).map(g => g.ref);
+    const shopBad = ART_SHOP.filter(it => !ART[it.id]).map(it => it.id);
+    if (sectBad.length) t.fail(`宗门功业商店引用了不存在的法宝: ${sectBad.join(', ')}`);
+    if (shopBad.length) t.fail(`游历流动商贩池引用了不存在的法宝: ${shopBad.join(', ')}`);
+    t.note(`宗门功业商店法宝 ${SECT_GOODS.filter(g => g.kind === 'art').length} 件 / 游历流动商贩池 ${ART_SHOP.length} 件`);
+
+    // 剧情挂载：26 件剧情法宝都需在 data.js 中实际发放（effect.art 或 loot.art）
+    const story = ['linghu_pei','tongqian_jian','dashen_bian','taixu_zhu','wudao_yujian','xuanwu_guijia','fengxing_yuyi','yuanshen_deng','mingxin_jing','zhoutian_xingpan','zhanxian_feidao','bumie_jinshen','shixue_zhu','yuzhi_motong','youhun_pijian','panshi_kai','juling_art','daolv_tongxin_pei','changsheng_yusui','jingshi_yupai','wuchen_putuan','xinru_zhishui','dixue_ren','jilin_jia','xuechi_duanjian','huixin_jian'];
+    const missing = story.filter(id => !new RegExp(`art:\\s*['"]${id}['"]`).test(dataJs));
+    if (missing.length) t.fail(`剧情法宝未挂载发放: ${missing.join(', ')}`);
+    t.note('26 件剧情法宝全部挂载 ✓（含新增事件 yl_dashen）');
+
+    // 门槛选项：清净明心剑/无尘蒲团/周天星盘 的 req 门槛存在
+    t.ok(/id:\s*'jd_shanzhong_yinshi'[\s\S]*?req:\s*\{\s*dao:\s*10/.test(dataJs), '清净明心剑缺少 dao:10 门槛');
+    t.ok(/id:\s*'jd_gusha_zhongsheng'[\s\S]*?req:\s*\{\s*wu:\s*10/.test(dataJs), '无尘蒲团缺少 wu:10 门槛');
+    t.ok(/id:\s*'xingluo_gu'[\s\S]*?req:\s*\{\s*shen:\s*8/.test(dataJs), '周天星盘缺少 shen:8 门槛');
+
+    // 老乞丐 50 灵石门槛维持不补（确认 ml_0_5 仍有 req:{stone:50}）
+    t.ok(/id:\s*'ml_0_5'[\s\S]*?req:\s*\{\s*stone:\s*50/.test(dataJs), '老乞丐 ml_0_5 的 50 灵石门槛缺失');
+
+    // 公式产物不得是法宝
+    const F = get('FORMULAS') || [];
+    const fa2 = F.filter(f => ART[f.out]);
+    if (fa2.length) t.fail(`炼制配方产物是法宝: ${fa2.map(x => x.id).join(', ')}`);
+
+    // 新增事件 yl_dashen 存在且发放打神鞭
+    t.ok(/id:\s*'yl_dashen'[\s\S]*?art:\s*'dashen_bian'/.test(dataJs), '新增事件 yl_dashen 未正确发放打神鞭');
+
+    // —— 宗门商品池结构：无 array(阵法) 商品、单货币按类型、价格字段合法 ——
+    const coinKinds = { stone: ['tech', 'dun', 'art', 'equip'], gongye: ['elixir', 'mat'] };
+    const STONE_KINDS = coinKinds.stone, GONGYE_KINDS = coinKinds.gongye;
+    if (SECT_GOODS.some(g => g.kind === 'array')) t.fail('宗门商店不应再售 array(阵法)商品（已移除法阵，仅洞府/百艺有效）');
+    SECT_GOODS.forEach(g => {
+      const coin = g.coin || (GONGYE_KINDS.indexOf(g.kind) >= 0 ? 'gongye' : 'stone');
+      const expect = STONE_KINDS.indexOf(g.kind) >= 0 ? 'stone' : 'gongye';
+      if (coin !== expect) t.fail(`${g.ref} 币种应为 ${expect}，实际 ${coin}（kind=${g.kind}）`);
+      // 单货币：只允许存在所属币种的价格字段
+      const priceFields = (STONE_KINDS.indexOf(g.kind) >= 0) ? ['stoneFix', 'grade'] : ['gongye'];
+      if (expect === 'gongye' && !(g.gongye > 0)) t.fail(`${g.ref} 功业类缺少正价 gongye`);
+      if (expect === 'stone' && !(g.stoneFix > 0) && !(g.grade)) t.fail(`${g.ref} 灵石类缺少 stoneFix/grade 定价`);
+    });
+    t.note(`宗门商品 ${SECT_GOODS.length} 件，全部单货币（灵石 ${SECT_GOODS.filter(g => STONE_KINDS.indexOf(g.kind) >= 0).length} / 功业 ${SECT_GOODS.filter(g => GONGYE_KINDS.indexOf(g.kind) >= 0).length}）`);
   });
 
   return S;

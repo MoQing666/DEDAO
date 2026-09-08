@@ -72,6 +72,60 @@ module.exports = async function build() {
     t.note(`idx 0/3/6/9 → ${pts.join(' / ')} 点`);
   });
 
+  /* ---------- 法宝系统（机制层贯通） ---------- */
+  S.case('法宝 system：artifactStats 真实生效（机制层贯通）', (t) => {
+    const s = E.startLife('法宝测试');
+    E.commitStart(s, TALENTS[0].id);
+    const dao0 = E.effAttr(s, 'dao');
+    const gB = E.cultGain(s).gain;
+    const crit0 = E.getCritRate(s);
+
+    // 灵狐佩：道心 +2 → artAttr.dao / effAttr 等价道心
+    E.applyOps(s, { art: 'linghu_pei' });
+    t.eq(s.artAttr.dao, 2, '灵狐佩未使 artAttr.dao=2');
+    t.eq(E.effAttr(s, 'dao'), dao0 + 2, '灵狐佩未使等价道心 +2');
+
+    // 铜钱剑：攻击 +5 → s.atk
+    const atkB = s.atk;
+    E.applyOps(s, { art: 'tongqian_jian' });
+    t.eq(s.atk, atkB + 5, '铜钱剑未使攻击 +5');
+
+    // 聚灵珠：修炼 +5% → cultGain 提升
+    const gMid = E.cultGain(s).gain;
+    E.applyOps(s, { art: 'juling_art' });
+    const gAfter = E.cultGain(s).gain;
+    t.gt(gAfter, gMid, '聚灵珠未提升修炼收益');
+    t.gte(gAfter, Math.round(gMid * 1.05) - 1, '聚灵珠提升幅度应≈+5%');
+
+    // 预知魔瞳：暴击 +10% → getCritRate
+    const critB = E.getCritRate(s);
+    E.applyOps(s, { art: 'yuzhi_motong' });
+    t.gte(E.getCritRate(s) - critB, 0.099, '预知魔瞳未使暴击≈+10%');
+
+    // 玄武龟甲：防御 +20 → s.artDef
+    E.applyOps(s, { art: 'xuanwu_guijia' });
+    t.eq(s.artDef, 20, '玄武龟甲未使 s.artDef=20');
+
+    // 时停月华：每年可修炼 2 次 → s.cultMax
+    E.applyOps(s, { art: 'shiting_yuehua' });
+    t.eq(s.cultMax, 2, '时停月华未使 cultMax=2');
+
+    // 巨灵腰带：体魄气血 +25% → s.hpMax 提升
+    const hpB = s.hpMax;
+    E.applyOps(s, { art: 'juling_yaodai' });
+    t.gt(s.hpMax, hpB, '巨灵腰带未提升气血上限');
+
+    // 嗜血珠 stack：击杀累计——验证 killCount 累计钩子存在且生效
+    const atkPre = s.atk;
+    s.killCount = 5; E.refreshStats(s);
+    E.applyOps(s, { art: 'shixue_zhu' });
+    t.gt(s.atk, atkPre, '嗜血珠击杀累计未提升攻击');
+
+    // 去重：重复授予同一法宝不应叠加
+    t.eq(s.arts.filter(a => a === 'linghu_pei').length, 1, '重复授予法宝未被去重');
+    checkInvariants(t, s, '法宝测试末态');
+  });
+
   /* ---------- 修炼 / 突破 ---------- */
   S.case('cultivate 增加修为并消耗行动点', (t) => {
     const s = E.startLife('丙'); E.commitStart(s, TALENTS[0].id);
@@ -438,6 +492,104 @@ module.exports = async function build() {
     t.eq(r.count, 2, '全部出售应卖掉剩余两件');
     t.eq(s.inventory.filter(function (x) { return x === eid; }).length, 0, '袋中同名应清空');
     t.eq(s.equip.treasure.indexOf(eid) >= 0, true, '全部出售也不动已穿戴');
+  });
+
+  S.case('宗门商人：单货币按类型（丹药/灵材=功业，功法/装备/法宝=灵石）', (t) => {
+    const s = E.startLife('宗门商店');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];       // 正式入宗（需过考验）
+    s.sectRank = '首席';                    // sectPassed=true，可用商人
+    s.stone = 100000;
+    s.gongye = 100000;
+    const GRADE_STONE = G.get('GRADE_STONE') || { '黄': 100, '玄': 400, '地': 1400, '天': 4000, '仙': 8000 };
+
+    // 功业类：丹药/灵材只扣功业，不扣灵石
+    let s0 = s.stone, g0 = s.gongye;
+    let r = E.sectBuy(s, 'juling');                       // 聚气丹 gongye=10
+    t.ok(r.ok, '聚气丹购买应成功: ' + r.msg);
+    t.eq(s.elixirs.juling, 1, '聚气丹应入 s.elixirs 且数量 1');
+    t.eq(s.gongye - g0, -10, '聚气丹应扣功业 10，实扣=' + (g0 - s.gongye));
+    t.eq(s.stone, s0, '聚气丹不应扣灵石');
+
+    r = E.sectBuy(s, 'herb_huang');                       // 黄级灵草 gongye=5
+    t.ok(r.ok, '黄级灵草购买应成功: ' + r.msg);
+    t.eq(s.materials.herb_huang, 10, '黄级灵草应入 s.materials 且数量 10');
+    t.eq(s.stone, s0, '黄级灵草不应扣灵石');
+
+    // 灵石类：功法/装备/法宝只扣灵石，不扣功业
+    s0 = s.stone; g0 = s.gongye;
+    r = E.sectBuy(s, 'qingfeng');                         // 青锋剑(equip) stoneFix=100
+    t.ok(r.ok, '青锋剑购买应成功: ' + r.msg);
+    t.ok(s.inventory.indexOf('qingfeng') >= 0, '青锋剑应入 s.inventory');
+    t.eq(s0 - s.stone, 100, '青锋剑应扣灵石 100');
+    t.eq(s.gongye, g0, '青锋剑不应扣功业');
+
+    r = E.sectBuy(s, 'duangu_bian');                      // 锻骨鞭(art 地) 灵石 GRADE_STONE.地=1400
+    t.ok(r.ok, '锻骨鞭购买应成功: ' + r.msg);
+    t.ok(s.arts.indexOf('duangu_bian') >= 0, '锻骨鞭应入 s.arts');
+    t.eq(s0 - s.stone, 100 + GRADE_STONE['地'], '锻骨鞭灵石应为 GRADE_STONE.地=1400（实扣含青锋剑100）');
+    t.eq(s.gongye, g0, '法宝不应扣功业（单货币）');
+  });
+
+  S.case('宗门门禁：未过考验/杂役 商人无货、任务不可接、不可购', (t) => {
+    const s = E.startLife('门禁');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];
+    s.sectRank = null;                                    // 已择宗未过考验
+    s.stone = 99999; s.gongye = 99999;
+    t.eq(E.sectPassed(s), false, '未过考验应 sectPassed=false');
+    t.eq(E.sectGoods(s).length, 0, '未过考验商人应无货');
+    let r = E.sectBuy(s, 'shengong');
+    t.eq(r.ok, false, '未过考验不可购买');
+
+    s.sectRank = '杂役';                                   // 考验失败
+    t.eq(E.sectPassed(s), false, '杂役应 sectPassed=false');
+    t.eq(E.sectGoods(s).length, 0, '杂役商人应无货');
+    t.eq(E.commissionAvailable(s).length, 0, '杂役不可接宗门任务');
+    r = E.sectBuy(s, 'shengong');
+    t.eq(r.ok, false, '杂役不可购买');
+  });
+
+  S.case('入宗考验：通过按评分定级写回 / 全败成杂役', (t) => {
+    const s = E.startLife('考验');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];
+    // 全败：悟性/道心低且实战败 → 杂役
+    s.wu = 1; s.dao = 1;
+    let r = E.applySectTrial(s, false);
+    t.eq(s.sectRank, '杂役', '全败应成杂役');
+    t.eq(r.passed, false, '杂役 passed=false');
+    // 实战胜一场 → 至少外门
+    r = E.applySectTrial(s, true);
+    t.ok(['外门', '内门', '真传'].indexOf(s.sectRank) >= 0, '实战胜应评得正式身份，实为 ' + s.sectRank);
+    t.eq(E.sectPassed(s), true, '正式身份应 sectPassed=true');
+    // 高阶定级：悟性/道心高 + 实战胜 → 真传
+    const s2 = E.startLife('考验2'); E.commitStart(s2, TALENTS[0].id);
+    s2.sect = Object.keys(SECTS0)[0]; s2.wu = 10; s2.dao = 10;
+    const r2 = E.applySectTrial(s2, true);
+    t.eq(s2.sectRank, '真传', '三项俱足应评真传，实为 ' + s2.sectRank);
+    t.eq(E.sectPassed(s2), true, '真传 sectPassed=true');
+  });
+
+  S.case('杂役筑基：年度自动升内门（sectYearPromote）', (t) => {
+    const s = E.startLife('杂役筑基');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];
+    s.sectRank = '杂役';
+    // 炼气(大境界0) → 不升
+    let up = E.sectYearPromote(s);
+    t.eq(s.sectRank, '杂役', '炼气杂役年度不应晋升');
+    // 筑基(大境界≥1, idx=3) → 自动升内门
+    s.idx = 3;
+    up = E.sectYearPromote(s);
+    t.eq(s.sectRank, '内门', '杂役筑基应自动升内门，实为 ' + s.sectRank);
+    t.eq(E.sectPassed(s), true, '升内门后 sectPassed=true');
+    // 正式档不因大境界乱降/自动越级到内门之上（内门再晋升需功业）
+    t.ok(up && up.rank === '内门', 'sectYearPromote 应返回内门');
   });
 
   return S;

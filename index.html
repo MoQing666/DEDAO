@@ -156,7 +156,7 @@
         <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
         <div class="kv"><label>暴击</label><b id="st-crit">1%</b></div>
         <div class="kv"><label>闪避</label><b id="st-dodge">1%</b></div>
-        <div class="kv"><label>法力</label><b id="st-mo">0</b></div>
+        <div class="kv"><label>灵力</label><b id="st-mo">0</b></div>
         <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
       </div>
       <div class="stat-row">
@@ -168,11 +168,11 @@
 
     <footer class="actions">
       <div class="act-grid">
-        <button id="btn-cult" class="act"><span id="btn-cult-label">修炼（1点）</span></button>
+        <button id="btn-cult" class="act"><span id="btn-cult-label">修炼</span></button>
         <button id="btn-explore" class="act"><span>秘境（2点）</span></button>
+        <button id="btn-sect" class="act"><span>宗门</span></button>
         <button id="btn-arts" class="act"><span id="btn-arts-label">锻体</span></button>
-        <button id="btn-social" class="act"><span id="btn-social-label">游历（1点）</span></button>
-        <button id="btn-sect" class="act" disabled><span id="btn-sect-label">宗门（未加入）</span></button>
+        <button id="btn-social" class="act"><span id="btn-social-label">游历</span></button>
         <button id="btn-baiyi" class="act" disabled><span id="btn-baiyi-label">百艺（未解锁）</span></button>
       </div>
       <div class="year-row">
@@ -180,6 +180,47 @@
         <button id="btn-year" class="btn-year">下一年</button>
       </div>
     </footer>
+  </div>
+
+  <!-- ============ 开荒初始化 ============ -->
+  <div class="screen" id="screen-create" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel create-panel">
+      <div class="screen-head"><h2 id="create-title">开荒 · 命数自定</h2></div>
+      <div class="screen-body" id="create-body"></div>
+    </div>
+    <div class="ct-footer" id="create-footer"></div>
+  </div>
+
+  <!-- ============ 洞府 ============ -->
+  <div class="screen" id="screen-cultivate" style="display:none" data-bg="assets/img/bg/bg_dongfu.png">
+    <div class="panel">
+      <div class="screen-head"><h2>洞府 · 修行</h2><button class="btn-small ghost" id="cultivate-back">返回</button></div>
+      <div class="screen-body" id="cultivate-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 宗门 ============ -->
+  <div class="screen" id="screen-sect" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel">
+      <div class="screen-head"><h2>宗门</h2><button class="btn-small ghost" id="sect-back">返回</button></div>
+      <div class="screen-body" id="sect-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 游历地图 ============ -->
+  <div class="screen" id="screen-travel" style="display:none" data-bg="assets/img/bg/bg_title_yunhai.png">
+    <div class="panel">
+      <div class="screen-head"><h2>游历 · 山河图</h2><button class="btn-small ghost" id="travel-back">返回</button></div>
+      <div class="screen-body" id="travel-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 仙缘 NPC ============ -->
+  <div class="screen" id="screen-npc" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel">
+      <div class="screen-head"><h2>仙缘 · 众生相</h2><button class="btn-small ghost" id="npc-back">返回</button></div>
+      <div class="screen-body" id="npc-body"></div>
+    </div>
   </div>
 
   <!-- 底部栏 -->
@@ -192,9 +233,17 @@
       <span class="bottom-icon">📦</span>
       <span class="bottom-text">储物袋</span>
     </button>
-    <button id="btn-favor" class="bottom-btn">
-      <span class="bottom-icon">💕</span>
-      <span class="bottom-text">结缘</span>
+    <button id="btn-sect-bottom" class="bottom-btn">
+      <span class="bottom-icon">⛩️</span>
+      <span class="bottom-text">宗门</span>
+    </button>
+    <button id="btn-travel-bottom" class="bottom-btn">
+      <span class="bottom-icon">🗺️</span>
+      <span class="bottom-text">游历</span>
+    </button>
+    <button id="btn-npc-bottom" class="bottom-btn">
+      <span class="bottom-icon">🐾</span>
+      <span class="bottom-text">仙缘</span>
     </button>
     <button id="btn-settings-bottom" class="bottom-btn">
       <span class="bottom-icon">⚙️</span>
@@ -447,6 +496,7 @@
         <div id="adv-title" class="chapter-title">秘境 · 探幽</div>
       </div>
       <div class="adv-hud">
+        <button id="adv-info" class="btn-small ghost adv-info-btn">说明</button>
         <div class="adv-stamina">
           <span class="who">体力</span>
           <span class="hp-bar adv-bar"><i id="adv-stamina-bar" style="width:100%;background:#8a6bff"></i></span>
@@ -462,7 +512,7 @@
       <div id="adv-map" class="adv-map"></div>
       <div class="adv-foot">
         <span id="adv-hint" class="dim"></span>
-        <button id="adv-retreat" class="btn-main ghost">撤退（保住收获）</button>
+        <button id="adv-retreat" class="btn-small ghost adv-retreat">撤退（保住收获）</button>
       </div>
     </div>
   </div>
@@ -491,9 +541,9 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=31"></script>
-  <script src="js/engine.js?v=31"></script>
-  <script src="js/audio.js?v=30"></script>
-  <script src="js/ui.js?v=31"></script>
+  <script src="js/data.js?v=35"></script>
+  <script src="js/engine.js?v=35"></script>
+  <script src="js/audio.js?v=35"></script>
+  <script src="js/ui.js?v=35"></script>
 </body>
 </html>

@@ -108,18 +108,18 @@ c += `probe=(function(){
   const s3 = E.startLife('瀹?); E.commitStart(s3, 'dujie');
   s3.actionsLeft = 1;
     let ev1 = E.social(s3);
-  fail('no-sect social -> multi 3 events', ev1 && ev1.multi === true && ev1.events.length >= 1 && ev1.events.length <= 3 && ev1.events.every(function (e) { return EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).some(function (x) { return x.id === e.id; }); }));
+  fail('social -> multi 3 events from 游历池(shejiao)', ev1 && ev1.multi === true && ev1.events.length >= 1 && ev1.events.length <= 3 && ev1.events.every(function (e) { return EVENTS.shejiao.some(function (x) { return x.id === e.id; }); }));
   out.push('  no-sect events=' + ev1.events.length);
   s3.actionsLeft = 1;
   s3.sect = 'qingyunjian';
   ev1 = E.social(s3);
-  fail('sect social -> multi from SECT_SOCIAL', ev1 && ev1.multi === true && ev1.events.every(function (e) { return SECT_SOCIAL['qingyunjian'].some(function (x) { return x.id === e.id; }); }));
+  fail('sect social -> still from 游历池(shejiao), not SECT_SOCIAL', ev1 && ev1.multi === true && ev1.events.every(function (e) { return EVENTS.shejiao.some(function (x) { return x.id === e.id; }); }));
   out.push('  sect events=' + ev1.events.length);
   s3.actionsLeft = 1;
   s3.idx = 2; // bi=1
-  ev1 = E.social(s3);
+  ev1 = E.sectSocial(s3);
   const bi3 = bigIdxOf(s3);
-  fail('sect social events filtered by big realm', ev1.events.every(function (e) { return e.min <= bi3 && e.max >= bi3; }));
+  fail('sectSocial -> event from SECT_SOCIAL filtered by big realm', ev1 && ev1.id && SECT_SOCIAL['qingyunjian'].some(function (x) { return x.id === ev1.id; }) && ev1.min <= bi3 && ev1.max >= bi3);
 
 
   // 瀹楅棬浜嬩欢 seen 鍘婚噸 + 鑼冨洿杩囨护

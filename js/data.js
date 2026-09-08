@@ -35,7 +35,7 @@ const TRIBULATIONS = ['金丹','元婴','飞升'];   // 大劫名单
 
 /* ---------------- 丹药 ---------------- */
 const ELIXIRS = {
-  juling:   { name: '聚气丹',   desc: '修炼时自动服用，此次修炼收益加倍。' },
+  juling:   { name: '聚气丹',   desc: '修炼时自动服用，此次修炼收益 +20%。' },
   zhuji:    { name: '筑基丹',   desc: '突破筑基时自动服用，成功率 +25%。' },
 jiejin:   { name: '结金丹', desc: '突破金丹渡劫时自动服用，成功率 +25%。' },
   yuanying: { name: '元婴丹', desc: '突破元婴渡劫时自动服用，成功率 +25%。' },
@@ -208,16 +208,61 @@ const TECHNIQUES = {
 };
 const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05a7a', 仙: '#9adcff' };
 
-/* ---------------- 法宝（炼器产物） ---------------- */
+/* ---------------- 法宝（仅可经由剧情/商店获取，不可炼制） ----------------
+   effect 字段语义（小数 = 百分比）：
+   wu/ti/dun/shen/dao/ling 六维；atk/hpMax/def 加算；atkPct/defPct/critPct/dodgePct/cult 百分比(小数)
+   modeBonus{normal,focus,seclusion} 修炼倍率加算；stealPct 吸血(造成伤害%回血)；defToAtk 防御值×N 转攻击
+   lowHpAtk 血越低攻越高(按血量比例)；daoAtkPct 每点道心攻击加成(daoCap封顶)；tiHpBonus 体魄→气血系数加成
+   scale{res,per,perPoint,stat,cap} 资源缩放；stack{on,stat,per,cap} 累计；craftEff/craftKind 百艺；
+   farmEff/mineEff 产量；stoneYearPct 年度灵石；duantiEff/duantiMax 锻体；cultTwice 每年2次
+--------------------------------------------------------------------------- */
 const ARTIFACTS = {
-  // 黄级法宝
-  qingfeng: { name: '青锋剑', type: '攻', grade: '黄', desc: '寒光三尺，取人首级于百步之外。', effect: '攻击 +20' },
-  // 地级法宝
-  yuewang_sword: { name: '越王勾践剑', type: '攻', grade: '地', desc: '千古名剑，锋芒毕露，斩妖除魔。', effect: '攻击 +50' },
-  xuantie:  { name: '玄铁甲', type: '守', grade: '地', desc: '玄铁千锻，渡劫之时护住肉身。', effect: '气血 +150，天劫加护' },
-  juling_art: { name: '聚灵珠', type: '辅', grade: '地', desc: '灵珠悬顶，天地灵气自聚。', effect: '修炼 +5%' },
-  // 天级法宝
-  jinylv:   { name: '金缕衣', type: '守', grade: '天', desc: '天蚕金丝所织，万法不侵。', effect: '渡劫成功率 +10%' }
+  /* —— 剧情道具转法宝（3） —— */
+  linghu_pei:      { name: '灵狐配饰', type: '辅', grade: '地', desc: '白狐衔来的一枚温润玉佩，触手生温，似有狐鸣低回。', effect: { dao: 2 } },
+  tongqian_jian:   { name: '铜钱剑',   type: '攻', grade: '地', desc: '一枚古朴铜钱，于掌中分化重组，化作玄黑小剑。', effect: { atk: 5 } },
+  dashen_bian:     { name: '打神鞭',   type: '攻', grade: '地', desc: '缠满雷纹的长鞭，曾斩过三山妖王，与血脉隐隐共鸣。', effect: { shen: 1 } },
+  /* —— A 六维类（8） —— */
+  taixu_zhu:       { name: '太虚灵珠', type: '辅', grade: '仙', desc: '魔渊之战中不肯散去的一点光，凝作混沌之珠。', effect: { wu: 1, ti: 1, dun: 1, shen: 1, dao: 1, ling: 1 } },
+  wudao_yujian:    { name: '悟道玉简', type: '辅', grade: '天', desc: '论道台上一位老修塞来的玉简，只记了一句话。', effect: { wu: 1 } },
+  xuanwu_guijia:   { name: '玄武龟甲', type: '守', grade: '地', desc: '玄冰老龟遗下的磨盘大甲，浮冰般凝着寒气。', effect: { def: 20 } },
+  fengxing_yuyi:   { name: '风行羽衣', type: '辅', grade: '地', desc: '虚空乱流中残破的羽衣，触身化青衫薄如蝉翼。', effect: { dun: 2 } },
+  yuanshen_deng:   { name: '元神灯',   type: '辅', grade: '天', desc: '聂小倩所托的一盏青灯，灯灭人亦在。', effect: { shen: 1 } },
+  mingxin_jing:    { name: '明心镜',   type: '辅', grade: '地', desc: '心魔溃散处落下的蒙尘铜镜，擦净照见的只是自己。', effect: { dao: 2 } },
+  zhoutian_xingpan: { name: '周天星盘', type: '辅', grade: '天', desc: '星落谷深处仍在缓缓转动的星盘，周天星力倒灌。', effect: { wu: 1 } },
+  huixin_jian:     { name: '清净明心剑', type: '辅', grade: '天', desc: '山中隐士暗层抽出的无鞘斑驳旧剑：「心明，则剑利。」', effect: { daoAtkPct: 0.005, daoCap: 0.30 } },
+  /* —— B 战力类（9） —— */
+  zhanxian_feidao: { name: '斩仙飞刀', type: '攻', grade: '天', desc: '插在仙人喉头三寸的小刀，人散千年刀犹鸣。', effect: { atkPct: 0.05 } },
+  bumie_jinshen:   { name: '不灭金身', type: '守', grade: '仙', desc: '山巅罡风淬硬的肉身，伤痕里凝着万法不侵的意。', effect: { hpMax: 200, def: 5 } },
+  shixue_zhu:      { name: '嗜血珠',   type: '攻', grade: '地', desc: '魔修以精血祭炼的血珠，杀机越盛锋芒越利。', effect: { atk: 15 }, stack: { on: 'kill', stat: 'atk', per: 1, cap: 20 } },
+  yuzhi_motong:    { name: '预知魔瞳', type: '辅', grade: '天', desc: '浮空岛观星台嵌着的干涸眼珠，盯着你也在看你。', effect: { critPct: 0.10 } },
+  youhun_pijian:   { name: '幽魂披肩', type: '守', grade: '地', desc: '白骨古墓中那件破旧披风，风一吹无风自动。', effect: { dodgePct: 0.05 } },
+  panshi_kai:      { name: '磐石铠',   type: '守', grade: '地', desc: '荒神祭坛碎石里露出的厚重石铠，重若山岳。', effect: { def: 10 } },
+  dixue_ren:       { name: '喋血刃',   type: '攻', grade: '地', desc: '万骨洞中铁环嵌七颗骷髅，饮敌之血以养己身。', effect: { stealPct: 0.05 } },
+  jilin_jia:       { name: '棘鳞甲',   type: '守', grade: '天', desc: '九天雷池中倒刺脱落重组的鳞甲：护得住多少，便还得出多少。', effect: { defToAtk: 0.20 } },
+  xuechi_duanjian: { name: '血池断剑', type: '攻', grade: '地', desc: '魔渊之畔应允引魔气入血者所得，伤越重出手越狠。', effect: { lowHpAtk: 0.40 } },
+  /* —— C 修炼速度类（3） —— */
+  juling_art:      { name: '聚灵珠',     type: '辅', grade: '地', desc: '老乞丐仙风道骨所赠：「当年那顿烧鸡，今日来还。」灵珠悬顶，天地灵气自聚。', effect: { cult: 0.05 } },
+  daolv_tongxin_pei: { name: '道侣同心佩', type: '辅', grade: '地', desc: '林婉儿所赠半环玉佩：「我不在时，它替我陪你修炼。」', effect: { cult: 0.10 } },
+  changsheng_yusui: { name: '长生玉髓', type: '辅', grade: '仙', desc: '西王母桃核所化温润玉髓：「贪心的人，倒比聪明的人走得远。」', effect: { cult: 0.05 } },
+  /* —— D 不同程度修炼类（3） —— */
+  jingshi_yupai:   { name: '静室玉牌', type: '辅', grade: '玄', desc: '宗门所发：「闭关时挂上它，杂念会少些。」刻着「静心」二字。', effect: { modeBonus: { seclusion: 0.10 } } },
+  wuchen_putuan:   { name: '无尘蒲团', type: '辅', grade: '地', desc: '古刹老僧所推之蒲团：「坐的是一个空，去空一空。」', effect: { modeBonus: { seclusion: 0.20 } } },
+  xinru_zhishui:   { name: '心如止水', type: '辅', grade: '地', desc: '雷雨之夜所悟静功，心越静进境越快。', effect: { modeBonus: { normal: 0.10 } } },
+  /* —— G 锻体淬神类 → 宗门功业商店（4） —— */
+  duangu_bian:     { name: '锻骨鞭',   type: '守', grade: '地', desc: '体修一脉旧物，专抽自己不抽敌人，每落一鞭筋骨便硬一分。', effect: { duantiEff: 0.50 } },
+  cuishen_tai:     { name: '淬神台',   type: '辅', grade: '天', desc: '以神入台可淬神魂，老辈曾坐崩三座。', effect: { duantiEff: 0.50 } },
+  jiuzhuan_jindanlu: { name: '九转金丹炉', type: '辅', grade: '仙', desc: '火脉里捞出的丹炉，不炼丹专炼人身，多开五道锻体之门。', effect: { duantiMax: 5 } },
+  juling_yaodai:   { name: '巨灵腰带', type: '守', grade: '地', desc: '体修旧物，戴上后吃下的每口饭都多长成一分肉。', effect: { tiHpBonus: 0.25 } },
+  /* —— E 百艺经验类 + F 时间/资源缩放类 → 游历商人（9） —— */
+  shennong_chu:    { name: '神农锄',   type: '辅', grade: '玄', desc: '万年药园刨出的锈锄，撒把草籽都能长出灵药。', effect: { farmEff: 0.30 } },
+  xunkuang_luopan: { name: '寻矿罗盘', type: '辅', grade: '玄', desc: '认矿不认人的罗盘，滴血便指地脉最肥处。', effect: { mineEff: 0.30 } },
+  jubao_pen:       { name: '聚宝盆',   type: '辅', grade: '玄', desc: '放一枚进去，它非得再添半枚的奇盆。', effect: { stoneYearPct: 0.05 } },
+  dandao_chuancheng: { name: '丹道传承', type: '辅', grade: '地', desc: '丹霞谷流出的丹经，抄的人死了字还活着。', effect: { craftKind: { alchemy: 1 } } },
+  jiangshan_chui:  { name: '匠神锤',   type: '辅', grade: '地', desc: '悬在担侧的小锤，不认的人抡都抡不动。', effect: { craftKind: { forge: 1 } } },
+  baiyi_tianshu:   { name: '百艺天书', type: '辅', grade: '天', desc: '吞了太多别的纸的薄书，灵田丹器诸艺皆清几分。', effect: { craftEff: 0.20 } },
+  shiting_yuehua:  { name: '时停月华', type: '辅', grade: '仙', desc: '灯里没有火只有霜，给你时间也拿走你的时间。', effect: { cultTwice: true } },
+  jinjing_bi:      { name: '金精匕',   type: '攻', grade: '天', desc: '五金之精炼的短匕，只认灵石不认修为。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'atk', cap: 1.0 } } },
+  jinjing_jia:     { name: '金精甲',   type: '守', grade: '天', desc: '金线织就的软甲，底气也要拿灵石换。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'defPct', cap: 1.0 } } }
 };
 
 /* ---------------- 材料与货币 ---------------- */
@@ -238,18 +283,17 @@ const MATERIALS = {
 /* ---------------- 炼器丹方（配方） ---------------- */
 const FORMULAS = [
   // 黄级配方（炼气）
-  { id: 'qingfeng', out: 'qingfeng', type: '法宝', cost: { iron_huang: 15 }, needRealm: 0, grade: '黄', years: 2 },
+  { id: 'qingfeng', out: 'qingfeng', type: '装备', cost: { iron_huang: 15 }, needRealm: 0, grade: '黄', years: 2 },
   { id: 'juling_pill', out: 'juling', type: '丹',  cost: { herb_huang: 5 },  needRealm: 0, grade: '黄', years: 1 },
   // 玄级配方（筑基）
-  { id: 'xuantie',  out: 'xuantie',  type: '法宝', cost: { iron_xuan: 25 }, needRealm: 1, grade: '玄', years: 4 },
+  { id: 'xuantie',  out: 'xuantie',  type: '装备', cost: { iron_xuan: 25 }, needRealm: 1, grade: '玄', years: 4 },
   { id: 'zhuji_pill', out: 'zhuji',  type: '丹',  cost: { herb_xuan: 10 }, needRealm: 1, grade: '玄', years: 3 },
   { id: 'zengshou_pill', out: 'zengshou', type: '丹', cost: { herb_xuan: 15 }, needRealm: 1, grade: '玄', years: 4 },
   // 地级配方（金丹）
-  { id: 'juling_art',   out: 'juling',   type: '法宝', cost: { iron_di: 35 }, needRealm: 2, grade: '地', years: 6 },
   { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb_di: 20 }, needRealm: 2, grade: '地', years: 5 },
   { id: 'yuanying_pill', out: 'yuanying', type: '丹', cost: { herb_di: 30 }, needRealm: 2, grade: '地', years: 7 },
   // 天级配方（元婴）
-  { id: 'jinylv',   out: 'jinylv',   type: '法宝', cost: { iron_tian: 50 }, needRealm: 3, grade: '天', years: 10 },
+  { id: 'jinylv',   out: 'jinylv',   type: '装备', cost: { iron_tian: 50 }, needRealm: 3, grade: '天', years: 10 },
   { id: 'wudao_pill', out: 'wudao',  type: '丹',  cost: { herb_tian: 40 }, needRealm: 3, grade: '天', years: 8 }
 ];
 
@@ -264,20 +308,59 @@ const FIELD_SEEDS = {
 // 灵田产出映射
 const FIELD_GRADE_MAP = { '黄': 'herb_huang', '玄': 'herb_xuan', '地': 'herb_di', '天': 'herb_tian' };
 
-/* ---------------- 灵根 ---------------- */
+/* ---------------- 灵根（P1·§3.4 数值重设计 v3） ----------------
+   schema：
+     id, name, tier(传说/异/单/杂/变异), qiMul(修炼倍率),
+     wuBonus(仅天/混沌=1), lingBonus(仅混沌=1),
+     affinity(功法亲和系别数组), affinityBonus(亲和加伤%),
+     trait:{name, effect:{atk,hpMax,mpMax,def,critPct,tribPct,dodgePct}, quirk},
+     desc
+   双灵根设计已删除。
+------------------------------------------------------------------ */
 const LINGGEN_POOL = [
-  { id: 'shuang',   name: '水火双灵根', desc: '五行驳杂，修行平平。',      w: 46, qiMul: 1.0,  body: null },
-  { id: 'shuang2',  name: '土木双灵根', desc: '中正平和，胜在扎实。',      w: 30, qiMul: 1.05, body: null },
-  { id: 'jin',      name: '金灵根',     desc: '锐金之气，攻伐凌厉。',      w: 6,  qiMul: 1.25, body: { atk: 15 } },
-  { id: 'mu',       name: '木灵根',     desc: '青木生机，生机勃勃。',      w: 6,  qiMul: 1.25, body: { hpMax: 80 } },
-  { id: 'shui',     name: '水灵根',     desc: '润泽万灵，渡劫有福。',      w: 6,  qiMul: 1.25, body: { trib: 0.08 } },
-  { id: 'huo',      name: '火灵根',     desc: '烈焰焚天，攻伐凌厉。',      w: 6,  qiMul: 1.25, body: { atk: 15 } },
-  { id: 'tu',       name: '土灵根',     desc: '厚重如山，肉身强横。',      w: 6,  qiMul: 1.25, body: { hpMax: 80 } },
-  { id: 'lei',      name: '雷灵根',     desc: '先天雷脉！渡劫天雷反成补益。', w: 3, qiMul: 1.5, body: { trib: 0.15 } },
-  { id: 'feng',     name: '风灵根',     desc: '身随清风，轻灵缥缈。',      w: 3,  qiMul: 1.5, body: { quirk: 'feng' } },
-  { id: 'bing',     name: '冰灵根',     desc: '玄冰彻骨，举世罕见。',      w: 3,  qiMul: 1.5, body: { atk: 20, trib: 0.05 } },
-  { id: 'hundun',   name: '混沌灵体',   desc: '鸿蒙未判之气加身，万法归宗！', w: 1, qiMul: 2.0, body: { trib: 0.08, atk: 10 } }
+  // —— 单灵根（金木水火土）qiMul=1.10 ——
+  { id: 'jin', name: '金灵根', tier: '单', qiMul: 1.10, w: 6,
+    affinity: ['金'], affinityBonus: 15,
+    trait: { name: '金锐', effect: { critPct: 5 }, quirk: 'jin' },
+    desc: '锐金之气，攻伐凌厉；金系功法/法术伤害加成。' },
+  { id: 'mu', name: '木灵根', tier: '单', qiMul: 1.10, w: 6,
+    affinity: ['木'], affinityBonus: 15,
+    trait: { name: '生生', effect: { hpMax: 80 }, quirk: 'mu' },
+    desc: '青木生机，气血绵长；战斗开场回血少许。' },
+  { id: 'shui', name: '水灵根', tier: '单', qiMul: 1.10, w: 6,
+    affinity: ['水'], affinityBonus: 15,
+    trait: { name: '润泽', effect: { mpMax: 40, tribPct: 8 }, quirk: 'shui' },
+    desc: '润泽万灵，灵力深厚；渡劫有福。' },
+  { id: 'huo', name: '火灵根', tier: '单', qiMul: 1.10, w: 6,
+    affinity: ['火'], affinityBonus: 15,
+    trait: { name: '炽烈', effect: { atk: 15 }, quirk: 'huo' },
+    desc: '烈焰焚天，攻伐凌厉；火系功法/法术伤害加成。' },
+  { id: 'tu', name: '土灵根', tier: '单', qiMul: 1.10, w: 6,
+    affinity: ['土'], affinityBonus: 15,
+    trait: { name: '厚土', effect: { def: 5 }, quirk: 'tu' },
+    desc: '厚重如山，肉身强横；受暴击伤害减免。' },
+  // —— 天灵根（传说）qiMul=1.15，无战斗词条，仅+1悟性 ——
+  { id: 'tian', name: '天灵根', tier: '传说', qiMul: 1.15, w: 3, wuBonus: 1, lingBonus: 0,
+    affinity: ['金', '木', '水', '火', '土', '雷', '风', '冰'], affinityBonus: 15,
+    trait: null, quirk: 'tian',
+    desc: '万中无一的道体！修炼极速，全系亲和，悟性超群。无瓶颈、可兼修多系。' },
+  // —— 混沌灵体（变异）qiMul=1.20，无战斗词条，+1悟性+1灵力 ——
+  { id: 'hundun', name: '混沌灵体', tier: '变异', qiMul: 1.20, w: 1, wuBonus: 1, lingBonus: 1,
+    affinity: ['金', '木', '水', '火', '土', '雷', '风', '冰'], affinityBonus: 10,
+    trait: null, quirk: 'hundun',
+    desc: '鸿蒙未判之气加身，万法归宗！可同时修多系功法，每系亲和略弱于专精（无战斗属性）。' },
+  // —— 伪灵根（杂）体验档 ——
+  { id: 'wei', name: '伪灵根', tier: '杂', qiMul: 1.01, w: 46,
+    affinity: [], affinityBonus: 0,
+    trait: null, quirk: 'wei',
+    desc: '五行驳杂，修行艰难，无显著收益（体验档）。' }
 ];
+
+/* 开荒点选：灵根占点（§3.5 支柱①，双灵根已删除） */
+const LINGGEN_POINTS = {
+  wei: -3, jin: 5, mu: 5, shui: 5, huo: 5, tu: 5,
+  tian: 12, hundun: 15
+};
 
 /* ---------------- 开局命格（品质分级） ---------------- */
 const TIER_COLORS = { white: '#b0b0bc', green: '#4ec9a0', blue: '#5ac8fa', purple: '#c06ae0', gold: '#e8c15a' };
@@ -364,54 +447,84 @@ const EASTER_EGGS = {
     text: '你觉得，活得久，就是最大的赢。' }
 };
 
-/* ---------------- 出生背景 ---------------- */
+/* ---------------- 出生背景（P1·§3.5 开荒点选） ----------------
+   字段：id / title / point(占点) / flavor(六维+资源, 不绑定任何命格/轮回属性) / lines(开场剧情) / story(开荒页简介)
+   初始 3 种不可改动（各 1 点）；破落修真世家 / 体修遗脉 为特殊出身（各 3 点）。商人/散修已删除。
+--------------------------------------------------------------------------- */
 const BACKGROUNDS = [
   {
-    title: '山村少年',
+    id: 'shancun', title: '山村少年', point: 1,
+    flavor: { ti: 3, stone: 30 },
+    story: '槐溪村农家的孩子，肩宽臂厚、力大耐劳，被云游道士点化灵根觉醒。',
     lines: [
       '你生在青州一个叫槐溪村的小地方。爹娘是老实巴交的农人，家里三亩薄田，一头老黄牛。',
       '七岁那年起，你便随着爹下地，麦子割了十几茬，手上的茧早就磨得很厚。',
       '村东头有个疯癫的算命先生，见你路过总说："这娃儿，眉宇间有股子别样的气。"',
       '爹听了只当是疯话，笑呵呵塞给先生一个饼子。',
-      '十六岁这年，春耕时你弯腰拔起一株野草，忽然间——',
-      '满山的朝霞流光都朝你涌了过来。',
-      '没过几天，一位身着打着补丁却洗的干净道袍的清瘦道士路过村子，他唤你走近，伸出两根枯瘦的手指搭在你腕上，闭目不语。',
-      '片刻后，他睁开眼，目光复杂，似是喜悦似是不忍："根骨不错，但...." 犹豫片刻后，他终究从怀中取出一枚玉符递给你。',
-      '你接过那隐约闪着灵光的玉符，指尖触及冰凉的玉石，一股暖流涌入体内——那就是说书先生口中的天地灵气吧！',
-      '"灵根既已觉醒，从今日起，你便不再是凡人了，这玉符之中有一段口诀，小娃娃，要好生修行啊！"'
-    ],
-    flavor: { stone: 30, ti: 3 }
+      '十六岁这年，春耕时你弯腰拔起一株野草，忽然间——满山的朝霞流光都朝你涌了过来。',
+      '没过几天，一位清瘦道士路过村子，伸出两根枯瘦的手指搭在你腕上，闭目不语。',
+      '片刻后，他睁开眼，从怀中取出一枚玉符递给你："灵根既已觉醒，从今日起，你便不再是凡人了，要好生修行啊！"'
+    ]
   },
   {
-    title: '世家庶子',
+    id: 'shijia', title: '世家庶子', point: 1,
+    flavor: { wu: 1, dao: 1, stone: 50 },
+    story: '青州赵家旁支庶出，祭祖时测灵柱骤亮，暗中被记名旁听弟子。最稳的常规修士开局。',
     lines: [
       '你是青州城赵家的庶子。母亲原是侍女，又在你幼时离世，全靠姨母照料方能长成，你自幼便懂得看人眼色。',
       '嫡兄的功课你替抄，嫡姐的婚事你来斟茶。族学里先生教过你《千字文》，其余皆靠你夜夜偷读。',
-      '这世道似乎欠你一道门—，一道能让你头也不回离开的门。',
       '这日族中祭祖，祠堂里那根供奉百年的测灵柱忽然亮了一亮。',
       '霎时间，满堂寂静，而所有人的目光都落在了你身上。',
       '一位路过的老道士挤进人群，伸出两根枯瘦的手指搭在你腕上，闭目不语。',
-      '片刻后，他睁开眼，目光复杂似是喜悦似是不忍："根骨不错，但...." 犹豫片刻后，他终究从怀中取出一枚玉符递给你。',
-      '你接过那隐约闪着灵光的玉符，指尖触及冰凉的玉石，一股暖流涌入体内——那就是古书中的天地灵气吧！',
-      '"灵根已觉醒。从今日起，你便不再是凡人了，这玉符之中有一段口诀，小娃娃，要好生修行啊！"'
-    ],
-    flavor: { wu: 1, stone: 50, dao: 1 }
+      '片刻后，他睁开眼，从怀中取出一枚玉符递给你："灵根已觉醒。从今日起，你便不再是凡人了，要好生修行啊！"'
+    ]
   },
   {
-    title: '道门遗孤',
+    id: 'daomen', title: '道门遗孤', point: 1,
+    flavor: { shen: 1, ling: 1, life: 20, stone: 20 },
+    story: '青云观山门被拾养，随老道读经煮药，比旁人更敏锐、更懂天地细微声响。神识与灵力双修，寿元绵长。',
     lines: [
       '你不知自己生来何处。残破襁褓、一枚褪色玉佩，是你在道观门口被拾起时仅有的一切。',
       '老道士把你养大，教你读经、煮药、治病救人，观星看命。他说你根骨清奇，又说你命数缠劫。',
-      '十六岁这年，那养你十余载的老人神情复杂，似是喜悦似是不忍，',
-      '犹豫片刻后，他终究从怀中取出一枚玉符递给你："该到的还是要到啊，娃娃，下山去吧，也是时候去找你的来处，也找你的去处了。"',
-      '你接过那隐约闪着灵光的玉符，一股暖流涌入体内——那是老道士口中的天地灵气，你也曾在入静之时感受过，',
-      '此刻，你只觉生活多年的青翠山野间实则灵压流转气势磅礴，如一粒蜉蝣，得见真天地。',
-      '"娃娃，你的灵根已觉醒。从今日起，你便是名副其实的修真者了，道门戒律你要谨记，更要对得起自己的心，去吧，去吧！"',
+      '十六岁这年，那养你十余载的老人神情复杂，终究从怀中取出一枚玉符递给你："该到的还是要到啊，娃娃，下山去吧。"',
+      '你接过那隐约闪着灵光的玉符，一股暖流涌入体内——那是老道士口中的天地灵气，你也曾在入静之时感受过。',
+      '"娃娃，你的灵根已觉醒。从今日起，你便是名副其实的修真者了，去吧，去吧！"',
       '山脚下第一缕朝阳照在身上时，少年剑已佩妥，下山便入江湖。'
-    ],
-    flavor: { stone: 20, life: 20, shen: 1, dao: 1 }
+    ]
+  },
+  {
+    id: 'poluo', title: '破落修真世家', point: 3,
+    flavor: { wu: 2, dao: 1 },
+    story: '祖上曾一门显赫仙族，一朝倾覆，你携一卷焦黑残诀流落江湖，骨子里不肯认命。高悟性高道心，资源吃紧。',
+    lines: [
+      '你的祖上曾是一门显赫仙族，门庭鼎盛、法宝如云，连当朝国师也要给三分薄面。',
+      '一朝大地震荡，祖产尽散、族人四逃。你尚在襁褓，便被忠仆裹着逃出兵荒，从此流落江湖。',
+      '你怀里只揣着一卷边角焦黑的祖传功诀残篇——纵是残卷，字里行间仍透着不凡气象，是你唯一的念想。',
+      '你咬着牙长大，替人放牛、扛包、守坟，夜里就着月光翻那卷残诀，一笔一画地描摹。',
+      '你常想：这一脉的血脉，绝不能断在你手上。',
+      '十六岁这年，你在破庙中翻到残诀最后一页，忽觉体内灵根与残篇遥遥呼应——一道清光自百会涌出，照得满室生辉。',
+      '你怔怔望着自己发光的指尖，忽然明白了：道途，自此而开。这一脉的火种，到底没有熄灭。'
+    ]
+  },
+  {
+    id: 'tixiu', title: '体修遗脉', point: 3,
+    flavor: { ti: 5, ling: -1 },
+    story: '祖辈以横练筋骨闯出名号，上古炼体传承残存筋骨之间。天生力大皮厚，但对灵气感应迟钝半分（灵力-1）。',
+    lines: [
+      '祖辈以一身横练筋骨在修真界闯出名号，号称「铜皮铁骨、刀枪不入」，曾单枪匹马挑翻过一整座魔寨。',
+      '血脉传至你这一代，上古炼体传承仍残存于筋骨之间——你天生力大无穷、皮糙肉厚，挨打如挠痒，三岁便能举起石锁。',
+      '可也因肉身过于强悍，对天地灵气的感应反倒迟钝了半分（灵力 -1），旁人引气入体时，你只觉得周身暖洋洋的，抓不住那股劲儿。',
+      '村中孩童笑你「笨牛」，你只闷头举石。你心里清楚：这条路，走的是以力证道，与那些引气吐纳的修士不同。',
+      '十二岁那年，村里来了个走方郎中，见你筋骨惊为天人，临终前传你一套《铁骨诀》残谱，嘱你「先锻骨，后引气」。',
+      '十六岁这年，你依诀将浑身筋骨捶打至极致，某一刻，皮膜之下隐隐有金铁之音。你福至心灵，第一次感到灵气顺着毛孔渗入——',
+      '你睁开眼，掌心已覆上一层淡淡玉光。原来以力证道者，亦能开灵根。你攥紧拳头，笑了。'
+    ]
   }
 ];
+function findBackground(id) {
+  for (let i = 0; i < BACKGROUNDS.length; i++) if (BACKGROUNDS[i].id === id) return BACKGROUNDS[i];
+  return BACKGROUNDS[0];
+}
 
 /* ---------------- 宗门 ---------------- */
 const SECTS = {
@@ -548,6 +661,51 @@ const MAINLINE = [
         ] }
     ] },
 
+  /* —— 老乞丐主线后续（必然触发，按善心/冷漠分支展开）—— */
+  { id: 'ml_beggar_return', idx: 2, title: '老乞丐的回报', chapter: true,
+    req: { flags: { beggar_kind: 1 } },
+    lines: [
+      '多年后，你再次路过那座城隍庙。',
+      '老乞丐还躺在老地方，仿佛这些年从未动过。你走近，他睁开眼，看了你半晌，忽然笑了："哟，是你这小娃娃。"',
+      '他颤巍巍地站起来，从怀里摸出一枚古朴的铜钱——和你当年接过的那枚一模一样。',
+      '"老头我捡破烂捡了一辈子，攒了点碎银子。拿去吧，别嫌少。"',
+      '他将铜钱塞进你手里。你低头一看——那铜钱在你掌心分化重组，化作一柄古朴的铜钱小剑，通体玄黑，上面刻着密密麻麻的古文。',
+      '"小玩意。"他打了个哈欠，"老头我年轻时用的。现在老了，用不动了。你拿去吧。"',
+      '你抬头想说什么，他已经又缩回墙角，打起瞌睡。你收起铜钱小剑，对着老人一拜，转身离开。（获得法宝：铜钱剑）'
+    ],
+    effect: { art: 'tongqian_jian', flags: { beggar_repaid: 1 } } },
+
+  { id: 'ml_beggar_cold', idx: 3, title: '一个馒头的遗憾', chapter: true,
+    req: { flags: { beggar_cold: 1 } },
+    lines: [
+      '多年后你故地重游，城隍庙的墙垣已塌了大半。',
+      '墙角不剩下什么。看庙的老人口里念叨：那位老神仙，三年前就走了。走的时候身边什么都没带，就带了一壶酒。',
+      '你心念微动，似是错过什么，思索一番，也是无愧道心，便继续前行。（道心 +0.5）'
+    ],
+    effect: { dao: 0.5, flags: { beggar_cold_done: 1 } } },
+
+  { id: 'ml_guren_visit', idx: 2, title: '故人来访', chapter: true,
+    req: { flags: { beggar_kind: 1 } },
+    lines: [
+      '一位故人叩响你的洞府。',
+      '正是当年那个老乞丐——此刻他一身仙风道骨，笑呵呵道："小子，当年那顿烧鸡，今日来还。"'
+    ],
+    choices: [
+      { t: '恭敬相迎', effect: { wu: 1, art: 'juling_art' }, lines: ['他与你论道三日，字字珠玑。临别时他拍拍你的肩："好好修，天劫见。"又塞来一枚灵珠——竟是传说中的聚灵珠！（悟性+1，获得法宝：聚灵珠）'] },
+      { t: '请教天劫之事', effect: { trib: 0.05 }, lines: ['他传授你一些渡劫心得，让你受益匪浅。（渡劫+5%）'] }
+    ] },
+
+  { id: 'ml_guren_final', idx: 3, title: '故人重逢', chapter: true,
+    req: { flags: { beggar_kind: 1 } },
+    lines: [
+      '你在九州游历时，遇见一位故人。',
+      '正是当年那个老乞丐——此刻他已飞升成仙，只留一缕分身在此等你。'
+    ],
+    choices: [
+      { t: '请教飞升之道', effect: { trib: 0.10 }, lines: ['他传授你飞升心得，你受益匪浅。（渡劫+10%）'] },
+      { t: '求赐仙宝', effect: { atk: 10 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+10）'] }
+    ] },
+
   { id: 'ml_0_6', idx: 0, title: '青梅往事', chapter: true,
     setFlags: { lin: 1, linChildhood: 1 },
     lines: [
@@ -616,15 +774,16 @@ const MAINLINE = [
     ] },
 
   // 第三章：宗门风云（筑基前期 idx 3，第10-15年）
-  { id: 'ml_2_0', idx: 2, title: '拜入仙门', chapter: true,
+  { id: 'ml_2_0', idx: 2, title: '仙门收徒', chapter: true,
     lines: [
-      '你修行数年，灵气初凝，已能御风而行。',
-      '这一日，一道剑光自天际落下，一位青袍修士站在你面前。',
-      '"我乃青云剑宗传法长老，观察了你几日，见你根骨不错，心性尚可，欲引你入青云，你看如何？"'
+      '你修行多年，灵气渐凝，已近炼气之巅，离筑基不过一步之遥。',
+      '这一日山道上人流如织——竟是青云剑宗、丹霞谷、玄天门三座仙门同开收徒大典，各立碑石，广纳有缘。',
+      '碑前立着规矩：「凡入我门者，必先过【入宗考验】——武骨（悟性）、道心、实战三关，验得方录为正式弟子。不考验者，纵是天才亦不得入门。」',
+      '你望着三碑，心中了然：这仙门，须凭本事叩开。'
     ],
     choices: [
-      { t: '恭敬拜师', effect: { sect: 'qingyunjian' }, lines: ['你躬身一礼："弟子愿往。"青袍修士大笑，携你御剑而去。'] },
-      { t: '婉言谢绝', effect: { stone: 500 }, lines: ['你拱手道："晚辈还想再游历几年。"他点点头，留下一袋灵石便走了。'] }
+      { t: '赴仙门应考', effect: {}, lines: ['你整了整衣冠，朝仙门行去。执事弟子迎上前：「可是来应考的？随我来。」（于底部栏【宗门】择一仙门，过入宗考验。）'] },
+      { t: '再游历几年（婉拒）', effect: { stone: 50 }, lines: ['你稽首告退。仙门碑石高耸，你却想再多走几年人间——反正规矩在那，随时可考。'] }
     ] },
   { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true,
     lines: [
@@ -632,7 +791,7 @@ const MAINLINE = [
       '云海之上，一座浮空仙山赫然入目——那便是青云剑宗。',
       '山门前，掌门负手而立："来了就好。先去藏剑阁挑柄剑。"'
     ],
-    effect: { hpMax: 30, atk: 5 } },
+    effect: { hpMax: 30, atk: 5, art: 'jingshi_yupai' } },
 
   // 新手指引：百艺入门（宗门剧情，筑基前期 idx 3）
   { id: 'ml_2_g1', idx: 3, title: '百艺初窥', chapter: true,
@@ -713,7 +872,7 @@ const MAINLINE = [
       '"你……一直留着？"你愣住了。',
       '她抢回纸条，塞进怀里，耳根泛红："谁让你写得那么丑。我留着是想等你出名了拿去卖钱。"'
     ],
-    effect: { hp: 40, qi: 50, dao: 0.5 },
+    effect: { hp: 40, qi: 50, dao: 0.5, art: 'daolv_tongxin_pei' },
     result: '有一个人等你回家的感觉，让这漫长修行路都轻快了几分。（道心+0.5）' },
 
   // 第四章·尾声：锻体机缘（筑基后期 idx 5，三段剧情必然成功，得《锻体诀》解锁锻体）
@@ -780,7 +939,7 @@ const MAINLINE = [
       '那是魔修的气息——沉寂千年的魔道，终于按捺不住了。',
       '一个浑身缠绕黑雾的魔修拦住你的去路，他双眼赤红，声音沙哑："正道的蝼蚁，今日便是你的死期。"'
     ],
-    fight: { name: '魔修先锋', atk: 250, hp: 1200, loot: { stone: 200 } },
+    fight: { name: '魔修先锋', atk: 250, hp: 1200, loot: { stone: 200, art: 'shixue_zhu' } },
     resultWin: '你一剑斩开黑雾，魔修惨叫一声化为飞灰。远处传来更多魔气——这只是先锋。',
     resultLose: '魔气侵入经脉，你重伤退走——但你知道，更大的风暴即将来临。' },
 
@@ -824,9 +983,9 @@ const MAINLINE = [
       '"小友，"老者拈起一子，"这盘棋，你可敢接？"'
     ],
     choices: [
-      { t: '执黑先行，以攻代守', effect: { atk: 20 }, lines: ['你落子如剑，步步紧逼。老者连连点头："好棋。攻伐之道，你已得其髓。"（攻击+20）'] },
-      { t: '执白后手，以守待攻', effect: { hpMax: 100 }, lines: ['你稳扎稳打，步步为营。老者捋须微笑："善。守御之道，在于不动如山。"（气血上限+100）'] },
-      { t: '推棋不弈，直言请教', effect: { wu: 0.5 }, lines: ['你推开棋盘："前辈，魔渊将开，天下将乱，晚辈无心弈棋。"老者大笑："好，这才是正道修士该说的话。"（悟性+0.5）'] }
+      { t: '执黑先行，以攻代守', effect: { atk: 20, art: 'bumie_jinshen' }, lines: ['你落子如剑，步步紧逼。老者连连点头："好棋。攻伐之道，你已得其髓。"（攻击+20）'] },
+      { t: '执白后手，以守待攻', effect: { hpMax: 100, art: 'bumie_jinshen' }, lines: ['你稳扎稳打，步步为营。老者捋须微笑："善。守御之道，在于不动如山。"（气血上限+100）'] },
+      { t: '推棋不弈，直言请教', effect: { wu: 0.5, art: 'bumie_jinshen' }, lines: ['你推开棋盘："前辈，魔渊将开，天下将乱，晚辈无心弈棋。"老者大笑："好，这才是正道修士该说的话。"（悟性+0.5）'] }
     ] },
 
   // 第八章：宿命决战（元婴中后期 idx 10-11，第71-100年）
@@ -837,7 +996,7 @@ const MAINLINE = [
       '"这一战，不是为了成仙，是为了让他们活下去。"',
       '你拔剑，踏入黑暗。'
     ],
-    fight: { name: '魔祖化身', atk: 500, hp: 5000, loot: { stone: 600 } },
+    fight: { name: '魔祖化身', atk: 500, hp: 5000, loot: { stone: 600, art: 'taixu_zhu' } },
     resultWin: '你将魔祖化身按回魔渊深处，天地重归宁静。',
     resultLose: '魔气贯穿胸膛，你缓缓闭目——终究，差了一步。' }
 ];
@@ -915,7 +1074,7 @@ E('jiyuan', {
           '雷光将落的刹那，你看懂了雨水的轨迹、风的呼啸、山间草木的一呼一吸。',
     '天地之间，自有大道。'
   ],
-  effect: { qiMul: function () { return 1; }, qi: function (s) { return Math.round(requireNeed(s) * 0.25); } },
+  effect: { qiMul: function () { return 1; }, qi: function (s) { return Math.round(requireNeed(s) * 0.25); }, art: 'xinru_zhishui' },
   result: '你心头豁然开朗，修为大涨，隐隐触到了这一层的瓶颈。'
 });
 E('jiyuan', {
@@ -948,8 +1107,8 @@ E('jiyuan', {
     '他话不多，只在分别时看了你一眼："你的剑，握得太紧了。"',
     '说着解下背后那柄青鞘长剑，抛给你。'
   ],
-  effect: { art: 'qingfeng' },
-  result: '你接剑只觉通体一轻——好剑，真正的好剑！（获得法宝：青锋剑）'
+  effect: { equip: 'qingfeng' },
+  result: '你接剑只觉通体一轻——好剑，真正的好剑！（获得装备：青锋剑）'
 });
 E('jiyuan', {
   id: 'tianjiang_yuntie', title: '天降陨铁', chapter: false, weight: 5, min: 1, max: 14,
@@ -983,64 +1142,6 @@ E('jiyuan', {
   lines: ['这一夜，你修到紧要关头时，丹田中忽然一凉——窗外似有一双眼睛盯着你。'],
   effect: { hp: -40, qi: function (s) { return -Math.round(STAGES[s.idx].need * 0.05); } },
   result: '你强行收功，仍被反噬伤了经脉。窗外那双眼睛，早已不见。'
-});
-E('jiyuan', {
-  id: 'lao_qigai', title: '城中老乞丐', chapter: true, weight: 6, min: 0, max: 2, once: true,
-  setFlags: { beggar: 1 },
-  lines: [
-    '城隍庙前，一个老乞丐蜷在墙角，双手揣着，面前破碗里干干净净。',
-    '他穿着一身破烂的袄子，头发花白凌乱，满脸褶子。你路过时，他忽然抬起头，浑浊的眼睛越过你，望向天边。',
-    '"小娃娃。"他开口了，声音沙哑得像砂纸磨过木板，"给老头子点吃的吧。"',
-    '你愣了片刻，此时是年关，这老人独自在城隍庙前过年，不合常理，但你没多想，只是一口吃的。'
-  ],
-  choices: [
-    { t: '买只烧鸡给他（50灵石）', req: { stone: 50 },
-      effect: { stone: -50, flags: { beggar_kind: 1 } },
-      lines: [
-        '你从摊上买了只肥鸡递过去。老乞丐愣了愣，忽然笑了："行，是个心善的。"',
-        '他撕下一只鸡腿，吃得满嘴流油。吃完了，他抹抹嘴，从怀里摸出一枚铜钱递给你：',
-        '"拿着。老头我没什么值钱的东西，就这枚铜钱跟了我一辈子。你别嫌少。"',
-        '你接过铜钱——入手微沉。你看了看他，他已经在打瞌睡了。'
-      ] },
-    { t: '施舍一个热馒头',
-      effect: { flags: { beggar_cold: 1 } },
-      lines: [
-        '你到路边买了个热气腾腾的馒头，轻轻放在他手边。',
-        '他看了你很久，点了点头："好孩子。"',
-        '他掰开馒头，慢慢吃完。吃完后，他闭上眼，像是睡着了。',
-        '你站了一会儿，转身离去。身后传来他的声音："小娃娃，以后别走夜路。"',
-        '你回头一看，他还是那副昏昏欲睡的样子。'
-      ] }
-  ]
-});
-E('jiyuan', {
-  id: 'beggar_return', title: '老乞丐的回报', chapter: true, weight: 100, min: 6, max: 8, once: true,
-  req: { flags: { beggar_kind: 1 } },
-  setFlags: { beggar_repaid: 1 },
-  lines: [
-    '多年后，你再次路过那座城隍庙。',
-    '老乞丐还躺在老地方，仿佛这些年从未动过。你走近，他睁开眼，看了你半晌，忽然笑了："哟，是你这小娃娃。"',
-    '他颤巍巍地站起来，从怀里摸出一枚古朴的铜钱——和你当年接过的那枚一模一样。',
-    '"老头我捡破烂捡了一辈子，攒了点碎银子。拿去吧，别嫌少。"',
-    '他将铜钱塞进你手里。你低头一看——那铜钱在你掌心分化重组，化作一柄古朴的铜钱小剑，通体玄黑，上面刻着密密麻麻的古文。',
-    '"这是……"你愣住了。',
-    '"小玩意。"他打了个哈欠，"老头我年轻时用的。现在老了，用不动了。你拿去吧。"',
-    '你抬头想说什么，他已经又缩回墙角，开始打瞌睡了。你收起那柄铜钱小剑，对着老人一拜，回头离开。'
-  ],
-  effect: { equip: 'tongqian_jian' },
-  result: '你收起铜钱小剑，入手沉甸甸的，剑身上古文流转。（获得法宝：铜钱剑）'
-});
-E('jiyuan', {
-  id: 'beggar_cold_return', title: '一个馒头的遗憾', chapter: true, weight: 100, min: 9, max: 11, once: true,
-  req: { flags: { beggar_cold: 1 } },
-  setFlags: { beggar_cold_done: 1 },
-  lines: [
-    '多年后你故地重游，城隍庙的墙垣已塌了大半。',
-    '墙角不剩下什么。看庙的老人口里念叨：那位老神仙，三年前就走了。走的时候身边什么都没带，就带了一壶酒。',
-    '你心念微动，似是错过什么，思索一番，也是无愧道心，便继续前行。'
-  ],
-  effect: { dao: 0.5 },
-  result: '道心+0.5'
 });
 E('jiyuan', {
   id: 'xinzang_shuji', title: '古卷遗页', chapter: false, weight: 4, min: 4, max: 14, once: true,
@@ -1087,7 +1188,7 @@ E('jiyuan', {
   ],
   choices: [
     { t: '挥剑斩之："吾道自在我心！"', 
-      fight: { name: '心魔化身', atk: 0, hp: 300, loot: {} },
+      fight: { name: '心魔化身', atk: 0, hp: 300, loot: { art: 'mingxin_jing' } },
       lines: ['你闭眼，再睁眼，一剑而出——那人影碎成漫天光点。原来一切皆是虚妄。你道心愈发坚定。'] },
     { t: '盘膝不动，与之相望一炷香',
       effect: { wu: 1 },
@@ -1099,7 +1200,7 @@ E('jiyuan', {
 E('shejiao', {
   id: 'lundao_dahui', title: '论道大会', chapter: false, weight: 6, min: 1, max: 14,
   lines: ['城中茶楼举行论道会，诸修高谈阔论，你听得入神，偶有所得。'],
-  effect: { wu: function (s) { return 0.2; }, qi: 15, tech: function (s) {
+  effect: { wu: function (s) { return 0.2; }, qi: 15, art: 'wudao_yujian', tech: function (s) {
     if (Math.random() < 0.3) {
       const got = ['yuhuo', 'hanshuang', 'leiyin', 'jianqi'].filter(function (t) { return s.techs.indexOf(t) < 0; });
       if (got.length) return got[Math.floor(Math.random() * got.length)];
@@ -1178,14 +1279,6 @@ E('shejiao', {
   result: '有个人等你回家的感觉，让这漫长修行路都轻快了几分。'
 });
 E('shejiao', {
-  id: 'giant_zhe_liang', title: '同门相轻', chapter: true, weight: 4, min: 0, max: 14,
-  lines: ['一个衣饰华贵的同门弟子当众讥讽你的出身："泥腿子也想修仙？早点回家种地去吧。"', '围观者窃窃私语。'],
-  choices: [
-    { t: '反唇相讥', fight: { name: '纨绔弟子', atk: 30, hp: 100, loot: { stone: 40 } }, resultLose: '你被他的护卫架住，好不狼狈。', resultWin: '你三言两语把他驳得面红耳赤，拂袖而去。他暗暗记恨。' },
-    { t: '微微一笑，转身就走', effect: { wu: 0.1 }, lines: ['狗叫而已。你从兜里摸出一枚灵石，弹向身后——正中那厮后脑。回家种地？你也配。'] }
-  ]
-});
-E('shejiao', {
   id: 'chou_xiang', title: '旧怨寻仇', chapter: true, weight: 4, min: 2, max: 14, once: true,
   setFlags: { choux: 1 },
   lines: ['采药时节，当年在你家中落难时借了五十灵石不还、还反咬一口的同乡，带着三个帮手堵住了你。', '"风水轮流转。今日，连本带利还来！"'],
@@ -1239,18 +1332,6 @@ E('jiyuan', {
   ]
 });
 E('jiyuan', {
-  id: 'jd_guren_laifang', title: '故人来访', chapter: true, weight: 4, min: 6, max: 8, once: true,
-  req: { flags: { beggar_kind: 1 } },
-  lines: [
-    '一位故人叩响你的洞府。',
-    '正是当年那个老乞丐——此刻他一身仙风道骨，笑呵呵道："小子，当年那顿烧鸡，今日来还。"'
-  ],
-  choices: [
-    { t: '恭敬相迎', effect: { wu: 1 }, lines: ['他与你论道三日，字字珠玑。临别时他拍拍你的肩："好好修，天劫见。"（悟性+1）'] },
-    { t: '请教天劫之事', effect: { trib: 0.05 }, lines: ['他传授你一些渡劫心得，让你受益匪浅。（渡劫+5%）'] }
-  ]
-});
-E('jiyuan', {
   id: 'jd_danxia_micang', title: '丹霞密藏', chapter: true, weight: 5, min: 6, max: 8, once: true,
   lines: [
     '你在丹霞谷深处发现一间密室。',
@@ -1294,7 +1375,7 @@ E('shejiao', {
     '钟声中蕴含一丝道韵，你驻足倾听，道心微动。'
   ],
   choices: [
-    { t: '静听钟声', effect: { wu: 1, qi: 80 }, lines: ['你听了半日钟声，道心通明。（悟性+1，修为+）'] },
+    { t: '静听钟声（需悟性≥10）', req: { wu: 10 }, effect: { wu: 1, qi: 80, ti: 1, art: 'wuchen_putuan' }, lines: ['你听了半日钟声，道心通明，蒲团灵韵随之没入体内。（悟性+1，体魄+1，修为+，获得法宝：无尘蒲团）'] },
     { t: '探索古刹', fight: { name: '古刹怨灵', atk: 70, hp: 280, loot: { stone: 120 } },
       resultWin: '怨灵散去，你在佛像后发现一袋灵石。',
       resultLose: '怨灵缠身，你费了好大功夫才脱身。（气血受损）' }
@@ -1320,7 +1401,7 @@ E('shejiao', {
     '他与你论道三日，临别赠你一枚玉简。'
   ],
   choices: [
-    { t: '收下玉简', effect: { wu: 2 }, lines: ['玉简中记载着一门玄奥心法。（悟性+2）'] },
+    { t: '收下玉简（需道心≥10）', req: { dao: 10 }, effect: { wu: 2, art: 'huixin_jian' }, lines: ['玉简中记载着一门玄奥心法，剑意自生。（悟性+2，获得法宝：清净明心剑）'] },
     { t: '请教修行之道', effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.3); } }, lines: ['老者传授你修行心得，你修为大涨。'] }
   ]
 });
@@ -1365,7 +1446,7 @@ E('jiyuan', {
     '你紧守道心，将那声音驱散。'
   ],
   choices: [
-    { t: '以道心镇压', effect: { wu: 1 }, lines: ['你以道心镇压魔念，道心愈发坚定。（悟性+1）'] },
+    { t: '以道心镇压', effect: { wu: 1, art: 'xuechi_duanjian' }, lines: ['你以道心镇压魔念，道心愈发坚定，魔渊血池凝作一柄断剑落入掌心。（悟性+1，获得法宝：血池断剑）'] },
     { t: '反探魔渊', effect: { atk: 10 }, lines: ['你以神识反探魔渊，从魔念中悟得一丝攻伐之道。（攻击+10）'] }
   ]
 });
@@ -1378,18 +1459,6 @@ E('jiyuan', {
   choices: [
     { t: '炼化碎片', effect: { hpMax: 50, atk: 5 }, lines: ['你炼化碎片，肉身与攻击都得到提升。（气血上限+50，攻击+5）'] },
     { t: '参悟碎片', effect: { wu: 1 }, lines: ['你参悟碎片中的道韵，悟性大增。（悟性+1）'] }
-  ]
-});
-E('jiyuan', {
-  id: 'yy_guren_chongfeng2', title: '故人重逢', chapter: true, weight: 3, min: 9, max: 11, once: true,
-  req: { flags: { beggar_kind: 1 } },
-  lines: [
-    '你在九州游历时，遇见一位故人。',
-    '正是当年那个老乞丐——此刻他已飞升成仙，只留一缕分身在此等你。'
-  ],
-  choices: [
-    { t: '请教飞升之道', effect: { trib: 0.10 }, lines: ['他传授你飞升心得，你受益匪浅。（渡劫+10%）'] },
-    { t: '求赐仙宝', effect: { atk: 10 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+10）'] }
   ]
 });
 E('jiyuan', {
@@ -1506,7 +1575,7 @@ E('mijing', {
     '你推开石门，甬道两侧的白骨齐刷刷望着你。尽头一口青铜棺，棺盖上压着一方玉玺。'
   ],
   choices: [
-    { t: '开棺取宝', fight: { name: '守墓尸傀', atk: 60, hp: 260, loot: { iron: 15, stone: 100 } }, resultWin: '尸傀碎裂，棺中丹药玉简俱在。你满载而归。', resultLose: '尸傀力大无穷，你舍下一臂之伤才脱身。（气血受损，丢失灵石）',
+    { t: '开棺取宝', fight: { name: '守墓尸傀', atk: 60, hp: 260, loot: { iron: 15, stone: 100, art: 'youhun_pijian' } }, resultWin: '尸傀碎裂，棺中丹药玉简俱在。你满载而归。', resultLose: '尸傀力大无穷，你舍下一臂之伤才脱身。（气血受损，丢失灵石）',
       next: {
         winOnly: true,
         lines: ['棺底还有一层夹板，压着一枚青玉简。',
@@ -1526,7 +1595,7 @@ E('mijing', {
     '你破冰而入，寒气顺着经脉直往心口钻。潭底白影一晃——一头沉睡的冰蛟盘踞在冰髓旁。'
   ],
   choices: [
-    { t: '悄悄取髓', fight: { name: '冰蛟', atk: 90, hp: 420, loot: { iron: 20, stone: 160 } }, resultWin: '冰蛟轰然倒下，冰髓入手的一刻，你手心的温度几乎被冻透，心却是热的。', resultLose: '冰蛟一尾将你拍飞，你被寒气冻昏在半路，醒来时已在十里外的山脚。（气血大损）',
+    { t: '悄悄取髓', fight: { name: '冰蛟', atk: 90, hp: 420, loot: { iron: 20, stone: 160, art: 'xuanwu_guijia' } }, resultWin: '冰蛟轰然倒下，冰髓入手的一刻，你手心的温度几乎被冻透，心却是热的。', resultLose: '冰蛟一尾将你拍飞，你被寒气冻昏在半路，醒来时已在十里外的山脚。（气血大损）',
       next: {
         winOnly: true,
         lines: ['冰髓在掌中散发着幽幽蓝光。传闻将冰髓融入经脉，可大幅拓宽道基，但也有逆流之险。'],
@@ -1545,7 +1614,7 @@ E('mijing', {
     '你顶着灼热深入，却见炉前坐着一具焦黑的身躯——一位抱炉而死的铸师。'
   ],
   choices: [
-    { t: '以礼相待，取炉中神铁', fight: { name: '火脉元灵', atk: 130, hp: 600, loot: { iron: 40, art: 'jinylv' } }, resultWin: '元灵散去，神铁入手滚烫，仿佛还带着那位铸师的掌温。（获得灵铁与金缕衣）', resultLose: '火灵反噬，你被热浪卷出洞外，衣甲尽碎。（气血大损，丢失两株灵草）' },
+    { t: '以礼相待，取炉中神铁', fight: { name: '火脉元灵', atk: 130, hp: 600, loot: { iron: 40, equip: 'jinylv' } }, resultWin: '元灵散去，神铁入手滚烫，仿佛还带着那位铸师的掌温。（获得灵铁与金缕衣）', resultLose: '火灵反噬，你被热浪卷出洞外，衣甲尽碎。（气血大损，丢失两株灵草）' },
     { t: '收骨安葬，不取一物', effect: { herb: 8, wu: 1 }, lines: ['你用潭水洗净尸骨，以石头垒墓。最后一铲土落下时，炉中竟"叮"一声弹出一柄火红短剑——他留给有缘人的。（悟性+1）'] }
   ]
 });
@@ -1609,7 +1678,7 @@ E('mijing', {
     '灯下压着一卷泛黄的帛书。'
   ],
   choices: [
-    { t: '直接取帛书', fight: { name: '守灯尸修', atk: 55, hp: 240, loot: { tech: 'changchun', stone: 60 } },
+    { t: '直接取帛书', fight: { name: '守灯尸修', atk: 55, hp: 240, loot: { tech: 'changchun', stone: 60, art: 'dixue_ren' } },
       resultWin: '尸修散作飞灰，帛书入手——竟是一门玄阶功法《长春功》！',
       resultLose: '尸修枯爪拍来，你肋下一痛，不得不丢下帛书逃命。（气血受损）' },
     { t: '先拜三拜，再求借阅', effect: { wu: 1, qi: 60 },
@@ -1689,13 +1758,13 @@ E('mijing', {
     '一道石门拦在面前，门上九格，格格里是一副残局。'
   ],
   choices: [
-    { t: '推演残局', effect: { wu: 2, stone: 80 },
+    { t: '推演残局', effect: { wu: 2, stone: 80, art: 'yuzhi_motong' },
       lines: ['你盘坐门前推演了三天三夜，落下一子——石门应声而开，你取走石室中的阵道笔记与灵石。（悟性+2）'],
       next: {
         lines: ['石室深处还有一扇暗门，门上刻着：一子一乾坤。'],
         choices: [
-          { t: '以鲜血为引，强开暗门', fight: { name: '天机傀儡', atk: 110, hp: 450, loot: { art: 'juling', wu: 1 } },
-            resultWin: '傀儡散架，你从暗格里捧出聚灵珠——阵道大师的随身之宝！',
+          { t: '以鲜血为引，强开暗门', fight: { name: '天机傀儡', atk: 110, hp: 450, loot: { elixirs: { juling: 1 }, wu: 1 } },
+            resultWin: '傀儡散架，你从暗格里捧出一枚聚气丹——阵道大师的随身之宝！',
             resultLose: '傀儡一拳将你轰出石室，你带着阵道笔记逃之夭夭。（气血受损）' },
           { t: '见好就收，打道回府', effect: { stone: 40 }, lines: ['你掂了掂怀里的收获，心满意足地离开。有些门，不必全开。'] }
         ]
@@ -1720,7 +1789,7 @@ E('mijing', {
       next: {
         lines: ['雷池深处，一团紫色雷液在池心缓缓旋转——那是淬炼千年才成的雷髓。'],
         choices: [
-          { t: '涉足池心，取雷髓', fight: { name: '雷池元灵', atk: 150, hp: 550, loot: { iron: 30, hpMax: 150 } },
+          { t: '涉足池心，取雷髓', fight: { name: '雷池元灵', atk: 150, hp: 550, loot: { iron: 30, hpMax: 150, art: 'jilin_jia' } },
             resultWin: '你以手代器，将雷髓淬入己身——经脉拓宽，气血如虹！（气血上限+150）',
             resultLose: '雷髓反噬，你被电弧轰出雷池，躺在岸边抽搐了半日。（气血受损）' },
           { t: '取一瓢雷液便退', effect: { iron: 20 },
@@ -1750,7 +1819,7 @@ E('mijing', {
           { t: '再拜一礼，从容离开', effect: { wu: 1 }, lines: ['你不疾不徐行了一礼，才转身离去。走出三里，背后传来一声悠长的叹息——"善。"（悟性+1）'] }
         ]
       } },
-    { t: '取玉果', fight: { name: '荒神残念', atk: 180, hp: 900, loot: { elixirs: { wudao: 2 }, wu: 1 } },
+    { t: '取玉果', fight: { name: '荒神残念', atk: 180, hp: 900, loot: { elixirs: { wudao: 2 }, wu: 1, art: 'panshi_kai' } },
       resultWin: '残念消散，你捧起两枚玉果——这是神佛都垂涎的东西！（悟道丹×2，悟性+1）',
       resultLose: '神像掌风扫来，你倒飞十丈，埋在沙里半晌才爬起来。（气血大损）' },
     { t: '以空敬之：不取一物，只静坐一夜', effect: { wu: 2, qi: function (s) { return Math.round(requireNeed(s) * 0.3); } },
@@ -1770,8 +1839,8 @@ E('mijing', {
       resultLose: '虚空兽潮将你撕扯得遍体鳞伤，你拼死退回人间。（气血大损）' },
     { t: '以灵力封印裂缝', effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.5); }, hp: -60 },
       lines: ['你以自身灵力为锁，将裂缝缓缓缝合。虚空深处传来一声不甘的咆哮，又归于寂静。（修为+）'] },
-    { t: '记下坐标，他日再来', effect: { stone: 100 },
-      lines: ['你以玉简记下虚空裂缝的坐标。此界之后，尚有彼界——这条路，你迟早要再走。'] }
+    { t: '记下坐标，他日再来', effect: { stone: 100, art: 'fengxing_yuyi' },
+      lines: ['你以玉简记下虚空裂缝的坐标，裂缝中飘落的一片羽衣已附于你身。此界之后，尚有彼界——这条路，你迟早要再走。'] }
   ]
 });
 E('mijing', {
@@ -1787,8 +1856,8 @@ E('mijing', {
       resultLose: '巨蟒尾鞭扫来，你被拍飞出谷，星铁碎了一地。（气血大损）' },
     { t: '收集谷中星铁便走', effect: { iron: 35 },
       lines: ['你捡了满满一袋星铁——足够炼一炉好器了。谷底的巨蟒翻了个身，并未理会你。'] },
-    { t: '观星悟道', effect: { wu: 2, qi: function (s) { return Math.round(requireNeed(s) * 0.2); } },
-      lines: ['你盘坐在谷顶，看了一夜星辰起落，忽然明白了"周天"二字的含义。（悟性+2，修为+）'] }
+    { t: '观星悟道（需神识≥8）', req: { shen: 8 }, effect: { wu: 2, qi: function (s) { return Math.round(requireNeed(s) * 0.2); }, art: 'zhoutian_xingpan' },
+      lines: ['你盘坐在谷顶，看了一夜星辰起落，周天星盘自星河中落下。忽然明白了"周天"二字的含义。（悟性+2，修为+，获得法宝：周天星盘）'] }
   ]
 });
 E('mijing', {
@@ -1802,8 +1871,8 @@ E('mijing', {
   choices: [
     { t: '枯坐三年，悟他七剑', effect: { wu: 3, qi: function (s) { return Math.round(requireNeed(s) * 0.6); } },
       lines: ['三年弹指，你出关时，剑已在心中。七剑化作一剑，天地皆明。（悟性+3，修为大进）'] },
-    { t: '录其形意即去', effect: { atk: 30 },
-      lines: ['你将剑意拓印心中便走。此后出剑，总多一分飘然仙意。（攻击+30）'] }
+    { t: '录其形意即去', effect: { atk: 30, art: 'zhanxian_feidao' },
+      lines: ['你将剑意拓印心中便走。此后出剑，总多一分飘然仙意，袖中飞刀亦得仙授。（攻击+30，获得法宝：斩仙飞刀）'] }
   ]
 });
 
@@ -1865,8 +1934,22 @@ E('jiyuan', {
     '"这配饰以我自己的尾毛编织，又以千年灵力温养。戴在身上，可保不受妖邪迷惑。"',
     '她顿了顿，轻声说，"恩公……保重。"'
   ],
-  effect: { equip: 'linghu_pei' },
+  effect: { art: 'linghu_pei' },
   result: '你接过灵狐配饰，入手温热，能感到一股柔和的灵力在其中流转。她朝你笑了笑，化作白光消散。（获得法宝：灵狐配饰）'
+});
+E('jiyuan', {
+  id: 'yl_dashen', title: '落难武修的托付', chapter: true, weight: 6, min: 2, max: 14, once: true,
+  lines: [
+    '山道旁一名浑身是血的武修靠树而坐，脚边横着一柄缠满雷纹的长鞭。',
+    '"我…我撑不住了，"他攥住你的袖角，"这根打神鞭，随我斩过三山妖王……今日，便赠有缘人。"',
+    '他塞来长鞭，含笑阖目。你摩挲鞭身雷纹，竟隐隐与血脉共鸣。'
+  ],
+  choices: [
+    { t: '郑重接过，立誓不负所托', effect: { art: 'dashen_bian' },
+      lines: ['你对着遗体三拜："前辈放心，这鞭，我替你继续斩妖。"（获得法宝：打神鞭 · 神识+1）'] },
+    { t: '只取财物，不担因果', effect: { stone: 80 },
+      lines: ['你取走他囊中灵石，转身离去。身后那声叹息，散在风里。'] }
+  ]
 });
 
 /* ================ 聊斋志异灵感事件 ================ */
@@ -1943,8 +2026,8 @@ E('shejiao', {
     '她告诉你，古寺之下埋着一枚"冥灵珠"，那是她生前的本命法宝。她已将其炼化，如今可助公子一臂之力。',
     '"公子收留之恩，小倩无以为报。这枚冥灵珠，便赠予公子吧。"'
   ],
-  effect: { shen: 1, dao: 0.5 },
-  result: '你接过冥灵珠，感到一股阴柔的灵力涌入体内。小倩朝你微微一笑，化作青烟消散在月光中。（神识+1，道心+0.5）'
+  effect: { shen: 1, dao: 0.5, art: 'yuanshen_deng' },
+  result: '你接过冥灵珠，感到一股阴柔的灵力涌入体内——那是小倩的本命法宝元神灯。小倩朝你微微一笑，化作青烟消散在月光中。（神识+1，道心+0.5，获得法宝：元神灯）'
 });
 E('mijing', {
   id: 'lzh_huapi', title: '画皮之祸', chapter: true, weight: 4, min: 6, max: 8, once: true,
@@ -1993,8 +2076,8 @@ E('jiyuan', {
   choices: [
     { t: '求长生', effect: { life: 50, hpMax: 80 },
       lines: ['她将仙桃递给你："吃了这枚桃子，可增寿五十年。但记住——长生不是目的，而是修行的开始。"仙桃入口即化，你感到寿元大增。'] },
-    { t: '求大道', effect: { dao: 0.5, qi: 300 },
-      lines: ['她看着你，眼中露出赞许："好，有志气。"她伸出手指在你眉心一点——大道真意灌入识海。（道心+0.5，修为大进）'] }
+    { t: '求大道', effect: { dao: 0.5, qi: 300, art: 'changsheng_yusui' },
+      lines: ['她看着你，眼中露出赞许："好，有志气。"她伸出手指在你眉心一点——大道真意灌入识海，一枚玉髓随之落入你掌中。（道心+0.5，修为大进，获得法宝：长生玉髓）'] }
   ]
 });
 
@@ -2275,7 +2358,7 @@ const SECT_EVENTS = {
 /* 宗门活动（行动点·1点）：拜入后替代“会友” */
 const SECT_SOCIAL = {
   qingyunjian: [
-    { id: 'ss_qy_xiying', title: '青云·剑峰习剑', chapter: true, weight: 6, min: 0, max: 3,
+    { id: 'ss_qy_xiying', title: '青云·剑峰习剑', chapter: true, once: true, weight: 6, min: 0, max: 3,
       lines: ['剑峰晨课，百人同练一套基础剑。你混在人群里，一招一式练得极为扎实。'],
       choices: [
         { t: '请教剑术教习', effect: { atk: 3, wu: 0.3 }, lines: ['教习也不藏私，点出你三处破绽。当夜你练到月挂中天才歇。（攻击+3，悟性+0.3）'] },
@@ -2472,21 +2555,15 @@ const EQUIPS = {
     lingyun_xianlv:  { name: '凌云仙履',   tier: 5, hpMax: 100, dun: 2, price: 6600, desc: '履下生云，步步登仙。' }
   },
   treasure: {
-    // 基础宝物
+    // 基础宝物（多为剧情获取，不可炼制）
     gutang_pinganpai:{ name: '古檀平安牌', tier: 1, hpMax: 15,  price: 50,   desc: '老檀木所刻，讨个吉利。' },
-    juling_zhu:      { name: '聚灵珠',     tier: 2, hpMax: 20,  cult: 0.10,  price: 200,  desc: '明珠悬佩，灵气自聚。' },
     zhenhun_moyu:    { name: '镇魂墨玉',   tier: 3, hpMax: 40,  atk: 16,     price: 680,  desc: '墨玉一枚，静心凝神。' },
     jingang_xiangmoyin:{ name: '金刚降魔印', tier: 4, hpMax: 90, atk: 26, wu: 1, price: 2500, desc: '万佛铸印，降魔护身。' },
     taiji_baguapei:  { name: '太极八卦佩', tier: 5, wu: 2, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
-    // 炼器法宝
+    // 可炼制装备
     qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
-    yuewang_sword:   { name: '越王勾践剑', tier: 5, atk: 50,    price: 0,    desc: '千古名剑，锋芒毕露，斩妖除魔。' },
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
-    juling_art:      { name: '聚灵珠',     tier: 3, cult: 0.05, price: 500,  desc: '灵珠悬顶，天地灵气自聚。' },
-    jinylv:          { name: '金缕衣',     tier: 4, hpMax: 200, atk: 30, price: 1000, desc: '天蚕金丝所织，万法不侵。' },
-    linghu_pei:      { name: '灵狐配饰',   tier: 2, dao: 3, price: 0, desc: '灵狐尾毛与感恩之心所成，持之不受迷惑。' },
-    dashen_bian:     { name: '打神鞭',     tier: 3, atk: 16, price: 0, desc: '古朴铜鞭，刻满古文，可破万法。' },
-    tongqian_jian:   { name: '铜钱剑',     tier: 3, atk: 5, price: 0, desc: '古朴铜钱所化小剑，看似寻常却蕴含深意。' }
+    jinylv:          { name: '金缕衣',     tier: 4, stoneDef: true, price: 1000, desc: '天蚕金丝所织，万法不侵。每持有100灵石，防御+1%，上限300%（减伤至1/4）。' }
   }
 };
 
@@ -2674,9 +2751,9 @@ function genAdvMap(grade) {
       if (r < 0.85) return 'treasure';
       return 'shop';
     }
-    if (col >= 1 && col <= NORMAL_COLS - 2 && Math.random() < 0.16) return 'explore';
+    if (col >= 1 && col <= NORMAL_COLS - 2 && Math.random() < 0.16) return 'combat';
     if (col >= 2 && col <= NORMAL_COLS - 2 && Math.random() < 0.18) return 'rest';
-    const weighted = ['combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event', 'explore'];
+    const weighted = ['combat', 'combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event'];
     return weighted[Math.floor(Math.random() * weighted.length)];
   }
   const cols = [];
@@ -2686,16 +2763,15 @@ function genAdvMap(grade) {
     for (let i = 0; i < n; i++) arr.push({ id: 'c' + c + '_' + i, col: c, type: pickType(c), next: [], visited: false });
     cols.push(arr);
   }
-  // 保证至少 1 个静室（回血）与 2 个秘地探查（探索机制：攒探索度方可直面 Boss）
-  let restCount = 0, exploreCount = 0;
-  cols.forEach(function (col) { col.forEach(function (n) { if (n.type === 'rest') restCount++; if (n.type === 'explore') exploreCount++; }); });
-  if (restCount < 1 || exploreCount < 2) {
+  // 保证至少 1 个静室（回血）
+  let restCount = 0;
+  cols.forEach(function (col) { col.forEach(function (n) { if (n.type === 'rest') restCount++; }); });
+  if (restCount < 1) {
     const cand = [];
     for (let c = 1; c <= NORMAL_COLS - 2; c++) cols[c].forEach(function (n) { cand.push(n); });
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp; }
     cand.forEach(function (n) {
-      if (restCount < 1) { n.type = 'rest'; restCount++; return; }
-      if (exploreCount < 2 && n.type !== 'rest') { n.type = 'explore'; exploreCount++; }
+      if (restCount < 1) { n.type = 'rest'; restCount++; }
     });
   }
   const boss = { id: 'boss', col: NORMAL_COLS, type: 'final', next: [], visited: false };
@@ -2865,4 +2941,241 @@ const SECT_LECTURE = {
   effect: { qi: 200 },
   result: '你心有所悟，体内灵气流转顺畅了不少。',
   req: { maxRealm: 2 }
+};
+
+/* ============================================================
+   P1–P7 开荒 / 百艺 / 宗门 / 游历 / NPC 常量表
+   ============================================================ */
+
+/* ---------------- 开荒初始化（§3.5） ---------------- */
+const INIT_POINTS = 10;                 // 基础开荒点数
+// 轮回阁天赋：每级为开荒池永久 +bonus 点；升级消耗轮回点（周目内积累）
+const REINC_TALENT = [
+  { lv: 1, bonus: 4,  cost: 0 },
+  { lv: 2, bonus: 8,  cost: 10 },
+  { lv: 3, bonus: 12, cost: 20 },
+  { lv: 4, bonus: 16, cost: 40 },
+  { lv: 5, bonus: 20, cost: 80 }
+];
+function reincTalentBonus(lv) {
+  lv = lv || 1;
+  for (let i = REINC_TALENT.length - 1; i >= 0; i--) if (REINC_TALENT[i].lv <= lv) return REINC_TALENT[i].bonus;
+  return 0;
+}
+function reincTalentNextCost(lv) {
+  const t = REINC_TALENT.filter(function (x) { return x.lv === lv + 1; })[0];
+  return t ? t.cost : null;
+}
+// 百艺目标等级占点（base lv0 → 上限 lv3；Lv0 默认 0 点，Lv1 需 1 点）
+const CRAFT_POINTS = { 0: 0, 1: 1, 2: 2, 3: 6 };
+
+/* ---------------- 百艺（§5.3） ---------------- */
+const CRAFT_KINDS = [
+  { id: 'liandan', name: '炼丹' },
+  { id: 'lianqi',  name: '炼器' },
+  { id: 'zhenfa',  name: '阵法' },
+  { id: 'lingtian', name: '灵田' },
+  { id: 'lingkuang', name: '灵矿' }
+];
+const CRAFT_TIERS = [
+  { lv: 1, name: '入门',   comm: '基础' },
+  { lv: 2, name: '熟练',   comm: '中级' },
+  { lv: 3, name: '精通',   comm: '高级' },
+  { lv: 4, name: '宗师',   comm: '稀有' },
+  { lv: 5, name: '大宗师', comm: '顶级' }
+];
+function craftTier(lv) { return CRAFT_TIERS.filter(function (t) { return t.lv === lv; })[0] || CRAFT_TIERS[0]; }
+
+/* ---------------- 聚灵阵（§5.1，洞府布置） ---------------- */
+const JULING_ARRAY = [
+  { lv: 0, stonePerYear: 0,   pct: 0 },
+  { lv: 1, stonePerYear: 20,  pct: 0.05 },
+  { lv: 2, stonePerYear: 50,  pct: 0.10 },
+  { lv: 3, stonePerYear: 100, pct: 0.15 }
+];
+
+/* ---------------- 五行阵（§5.2，战斗光环） ---------------- */
+const WUXING_ARRAY = {
+  fire:  { name: '火阵', attr: 'atk',    pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  metal: { name: '金阵', attr: 'critPct', pctByLv: [0, 0.05, 0.08, 0.12, 0.16, 0.20] },
+  water: { name: '水阵', attr: 'mpMax',  pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  wood:  { name: '木阵', attr: 'hpMax',  pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  earth: { name: '土阵', attr: 'def',    pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] }
+};
+const WUXING_ORDER = ['fire', 'metal', 'water', 'wood', 'earth'];
+
+/* ---------------- 宗门地位（§6.4） ---------------- */
+const SECT_RANKS = [
+  { id: '外门', gongye: 0,    realm: null,   diffMax: 1, mult: 1.0, discount: 1.00, goods: '基础' },
+  { id: '内门', gongye: 80,   realm: '筑基', diffMax: 2, mult: 1.5, discount: 0.95, goods: '中级' },
+  { id: '真传', gongye: 300,  realm: '金丹', diffMax: 3, mult: 2.0, discount: 0.90, goods: '高级' },
+  { id: '核心', gongye: 800,  realm: '金丹', diffMax: 4, mult: 3.0, discount: 0.85, goods: '顶级' },
+  { id: '首席', gongye: 1500, realm: '元婴', diffMax: 5, mult: 4.0, discount: 0.80, goods: '全部' }
+];
+function sectRankInfo(id) { return SECT_RANKS.filter(function (r) { return r.id === id; })[0] || null; }
+// 「杂役」及任何未知名都不属于 SECT_RANKS 正式五档 → 返回 -1（严格低于外门 index 0）。
+// 作用：杂役/散修在 sectGoods/sectBuy 的 rankMin 比较中天然被拒，无法购任何宗门商品。
+function sectRankIndex(id) { for (let i = 0; i < SECT_RANKS.length; i++) if (SECT_RANKS[i].id === id) return i; return -1; }
+
+/* ---------------- 委托池（§6.2，宗门/游历共用框架） ---------------- */
+// type: six(六维考验) / fight(战斗) / craft(百艺只需等级)
+// realm: 任务所需境界（承接上限依 rank）; check: 多属性同时判定; enemy: 战斗
+const COMMISSIONS = [
+  { id: 'caiyao',  name: '采药巡山',   realm: '筑基', type: 'six',   check: { ti: 4, shen: 3 }, ap: 1, stone: [20, 50],   gongye: [3, 8] },
+  { id: 'wenxin',  name: '问心录',     realm: '筑基', type: 'six',   check: { wu: 5, dao: 5 },  ap: 1, stone: [20, 50],   gongye: [3, 8] },
+  { id: 'huwei',   name: '护卫商队',   realm: '筑基', type: 'fight', enemy: { name: '散修', atk: 20, hp: 150, loot: { stone: [40, 80] } }, ap: 2, stone: [80, 150], gongye: [8, 15] },
+  { id: 'lindan1', name: '炼制供奉·丹', realm: '筑基', type: 'craft', craft: 'liandan', minLv: 2, ap: 1, stone: [100, 200], gongye: [8, 15] },
+  { id: 'lianqi1', name: '修缮法器·器', realm: '金丹', type: 'craft', craft: 'lianqi',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },
+  { id: 'zhenfa1', name: '布阵值守·阵', realm: '金丹', type: 'craft', craft: 'zhenfa',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },
+  { id: 'tancha',  name: '秘境探勘',   realm: '金丹', type: 'fightsix', enemy: { name: '妖兽', atk: 40, hp: 300, loot: { stone: [300, 600] } }, check: { shen: 10 }, ap: 2, stone: [500, 800], gongye: [20, 30] },
+  { id: 'zhenmo',  name: '镇魔差遣',   realm: '元婴', type: 'fight', enemy: { name: '魔修', atk: 90, hp: 800, loot: { stone: [1500, 3000] } }, ap: 3, stone: [2000, 5000], gongye: [30, 50] }
+];
+
+/* ---------------- 宗门大比（§6.6 连战 gauntlet） ---------------- */
+const SECT_DABI = {
+  intervalYears: 3,
+  foes: [
+    { name: '外门散修', atk: 15,  hp: 120 },
+    { name: '内门弟子', atk: 30,  hp: 240 },
+    { name: '真传精锐', atk: 50,  hp: 420 },
+    { name: '宗门护法', atk: 75,  hp: 650 },
+    { name: '首席弟子', atk: 100, hp: 900 }
+  ],
+  reward: {
+    1: { gongye: 30,  stone: 30 },
+    2: { gongye: 80,  stone: 100 },
+    3: { gongye: 140, stone: 250 },
+    4: { gongye: 200, stone: 450 },
+    5: { gongye: 300, stone: 700, full: true }
+  }
+};
+
+/* ---------------- 宗门商品池（§6.3 单货币按类型） ---------------- */
+// rankMin=解锁地位；kind: tech/dun/art/equip(灵石) / elixir/mat(功业)
+// coin: stone→灵石 / gongye→功业。每件商品仅一种货币，杜绝"双货币"。
+//   - 灵石价(tech/dun/art)= GRADE_STONE[grade] 中值；(equip)= stoneFix(取 EQUIPS.price)
+//   - 功业价(elixir/mat)= gongye 显式；qty = 单次购入数量
+// 注：阵法(array)商品已于 2026-09-08 移除——宗门商店不再售卖聚灵阵/五行阵，
+//     有效阵法属洞府(聚灵阵)与百艺页(五行阵)系统，经 s.array.juling / s.array.wuxing 管理。
+const GRADE_STONE = { '黄': 100, '玄': 400, '地': 1400, '天': 4000, '仙': 8000 };
+const SECT_GOODS = [
+  /* ========== 外门 ========== */
+  { ref: 'shengong',  kind: 'tech',  grade: '黄', coin: 'stone',  rankMin: '外门' },
+  { ref: 'qingmu',    kind: 'tech',  grade: '黄', coin: 'stone',  rankMin: '外门' },
+  { ref: 'juling',    kind: 'elixir', gongye: 10, coin: 'gongye', rankMin: '外门', qty: 1 },
+  { ref: 'herb_huang', kind: 'mat',   gongye: 5,  coin: 'gongye', rankMin: '外门', qty: 10 },
+  { ref: 'iron_huang', kind: 'mat',   gongye: 5,  coin: 'gongye', rankMin: '外门', qty: 10 },
+  { ref: 'qingfeng',  kind: 'equip', grade: '黄', coin: 'stone',  rankMin: '外门', stoneFix: 100 },
+
+  /* ========== 内门 ========== */
+  { ref: 'chunyang',  kind: 'tech',  grade: '玄', coin: 'stone',  rankMin: '内门' },
+  { ref: 'tiangang',  kind: 'tech',  grade: '玄', coin: 'stone',  rankMin: '内门' },
+  { ref: 'juling_yaodai', kind: 'art', grade: '地', coin: 'stone', rankMin: '内门' }, // 灵石 GRADE_STONE.地=1400（不翻倍）
+  { ref: 'zhuji',     kind: 'elixir', gongye: 40, coin: 'gongye', rankMin: '内门', qty: 1 },
+  { ref: 'herb_xuan', kind: 'mat',   gongye: 20,  coin: 'gongye', rankMin: '内门', qty: 10 },
+  { ref: 'iron_xuan', kind: 'mat',   gongye: 20,  coin: 'gongye', rankMin: '内门', qty: 10 },
+  { ref: 'xuantie',   kind: 'equip', grade: '玄', coin: 'stone',  rankMin: '内门', stoneFix: 300 },
+
+  /* ========== 真传 ========== */
+  { ref: 'binghuo',   kind: 'tech',  grade: '地', coin: 'stone',  rankMin: '真传' },
+  { ref: 'gengjin',   kind: 'tech',  grade: '地', coin: 'stone',  rankMin: '真传' },
+  { ref: 'yingdun',   kind: 'dun',   grade: '玄', coin: 'stone',  rankMin: '真传' },
+  { ref: 'suodi',     kind: 'dun',   grade: '天', coin: 'stone',  rankMin: '真传' },
+  { ref: 'duangu_bian', kind: 'art', grade: '地', coin: 'stone', rankMin: '真传' }, // 灵石 1400（不翻倍）
+  { ref: 'jiejin',    kind: 'elixir', gongye: 120, coin: 'gongye', rankMin: '真传', qty: 1 },
+  { ref: 'herb_di',   kind: 'mat',   gongye: 80,  coin: 'gongye', rankMin: '真传', qty: 10 },
+  { ref: 'iron_di',   kind: 'mat',   gongye: 80,  coin: 'gongye', rankMin: '真传', qty: 10 },
+
+  /* ========== 核心 ========== */
+  { ref: 'qilin',     kind: 'tech',  grade: '天', coin: 'stone',  rankMin: '核心' },
+  { ref: 'baihu',     kind: 'tech',  grade: '天', coin: 'stone',  rankMin: '核心' },
+  { ref: 'cuishen_tai', kind: 'art', grade: '天', coin: 'stone', rankMin: '核心' }, // 灵石 4000（不翻倍）
+  { ref: 'yuanying',  kind: 'elixir', gongye: 250, coin: 'gongye', rankMin: '核心', qty: 1 },
+  { ref: 'herb_tian', kind: 'mat',   gongye: 150, coin: 'gongye', rankMin: '核心', qty: 10 },
+  { ref: 'iron_tian', kind: 'mat',   gongye: 150, coin: 'gongye', rankMin: '核心', qty: 10 },
+
+  /* ========== 首席 ========== */
+  { ref: 'wudao',     kind: 'elixir', gongye: 400, coin: 'gongye', rankMin: '首席', qty: 1 },
+  { ref: 'jiuzhuan_jindanlu', kind: 'art', grade: '仙', coin: 'stone', rankMin: '首席' } // 灵石 8000（不翻倍）
+];
+
+/* ---------------- 游历流动商贩 · 法宝池（仅灵石，每次随机 3 件入货） ---------------- */
+const ART_SHOP_ITEMS = [
+  { id: 'shennong_chu',       price: 1200, minDepth: 1, minBig: 0 }, // 神农锄：灵田产量 +30%
+  { id: 'xunkuang_luopan',    price: 1200, minDepth: 1, minBig: 0 }, // 寻矿罗盘：灵矿产量 +30%
+  { id: 'jubao_pen',          price: 1800, minDepth: 1, minBig: 0 }, // 聚宝盆：每年灵石 ×5%
+  { id: 'dandao_chuancheng',  price: 2600, minDepth: 0, minBig: 1 }, // 丹道传承：炼丹心得 +1/次
+  { id: 'jiangshan_chui',     price: 2600, minDepth: 0, minBig: 1 }, // 匠神锤：炼器心得 +1/次
+  { id: 'baiyi_tianshu',      price: 6000, minDepth: 0, minBig: 2 }, // 百艺天书：全百艺效率 +20%
+  { id: 'jinjing_bi',         price: 6000, minDepth: 0, minBig: 2 }, // 金精匕：每100灵石攻击+1%（上限+100%）
+  { id: 'jinjing_jia',        price: 6000, minDepth: 0, minBig: 2 }, // 金精甲：每100灵石防御+1%（上限+100%）
+  { id: 'shiting_yuehua',     price: 6000, minDepth: 0, minBig: 3 }  // 时停月华：每年可修炼 2 次
+];
+
+
+/* ---------------- NPC 表（§8，立绘后补，先实装对话/功能） ---------------- */
+/* ---------- 扩充：低阶市井机缘事件（炼气/筑基即可触发） ---------- */
+E('shejiao', {
+  id: 'shijin_yijian', title: '市井一剑', chapter: true, weight: 5, min: 0, max: 6,
+  lines: ['市集喧闹处，一个无赖正欺辱卖花老妪。你按剑上前。',
+    '"光天化日，欺老凌弱，也好意思用这张脸？"'],
+  choices: [
+    { t: '拔剑止恶', fight: { name: '市井无赖', atk: 30, hp: 100, loot: { stone: 20 } }, resultWin: '无赖抱头鼠窜，老妪连连道谢，塞来几枚灵石。（灵石+20）', resultLose: '你挂了彩，却也护住了老妪。她含泪替你包扎。' },
+    { t: '以银钱打发', effect: { stone: -10 }, lines: ['你丢下一袋灵石，无赖权衡片刻悻悻离去。息事宁人，亦是修行。'] }
+  ]
+});
+E('shejiao', {
+  id: 'guajie_laoren', title: '卦街老人', chapter: false, weight: 4, min: 0, max: 14,
+  lines: ['卦摊后的老人眯眼打量你："小友印堂发亮，近日有贵人星动。"'],
+  effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.1); } },
+  result: '你半信半疑，却也觉心绪明朗，修为微进。'
+});
+E('shejiao', {
+  id: 'chashi_tingshu', title: '茶肆听书', chapter: false, weight: 4, min: 0, max: 14,
+  lines: ['茶楼说书人正讲到上古仙人斗法，眉飞色舞。你听得入神，竟悟得一丝运炁之法。'],
+  effect: { wu: 0.3, qi: 10 },
+  result: '（悟性+0.3，修为+10）'
+});
+E('shejiao', {
+  id: 'yeling_caiyao', title: '野岭采药', chapter: false, weight: 4, min: 0, max: 14,
+  lines: ['城外野岭，你循着药香拨开草丛，竟寻得几株年份尚可的灵草。'],
+  effect: { herb: 5 },
+  result: '（灵草+5）'
+});
+
+/* ---------- 仙缘 NPC（提纯：仅留 4 个纯仙缘角色，各配真实缘法事件） ---------- */
+const NPCS = {
+  laoqigai: { id: 'laoqigai', name: '老乞丐', loc: '城中出现', role: '炼体传承',
+    intro: '一个衣衫褴褛的老乞丐缩在墙角，眼神却清亮。',
+    event: { id: 'xian_laoqigai', title: '老丐传艺', chapter: true, weight: 5, min: 0, max: 11, once: true,
+      lines: ['老乞丐忽然抬眼："小友，老夫观你筋骨，倒是块炼体的好材料。"', '他枯手在你肩头一按，一股暖流窜遍四肢百骸。'],
+      choices: [
+        { t: '恭敬请教炼体之法', effect: { ti: 1, atk: 3 }, lines: ['老丐咧嘴一笑，口授吐纳导引之术。你依法而行，只觉体魄渐凝。（体魄+1，攻击+3）'] },
+        { t: '赠以干粮，结个善缘', effect: { stone: -10, wu: 0.5 }, lines: ['你将干粮奉上，老丐也不推辞。临去前他低声指点："炼体先炼脊，莫急于求成。"（悟性+0.5）'] }
+      ] } },
+  lin: { id: 'lin', name: '林婉儿', loc: '主线', role: '女主候选',
+    intro: '一位青衣少女，眉眼含笑。',
+    event: { id: 'xian_lin', title: '药庐初遇', chapter: true, weight: 6, min: 0, max: 11, once: true,
+      setFlags: { linMet: 1 },
+      lines: ['药庐外传来轻唤，青衣少女正扶着门框看你。', '"这位道友，可否……替我上山采一味药？我腿受了伤。"她眉眼含忧。'],
+      choices: [
+        { t: '应允，护她上山采药', effect: { wu: 0.5 }, lines: ['你护她上山采得灵药。归途她轻声道："还未谢过道友姓名。"（悟性+0.5，结下善缘）'] },
+        { t: '留下灵药便离去', effect: { stone: -15 }, lines: ['你将灵药递予她便转身。身后一声轻唤，你未回头。（灵石-15）'] }
+      ] } },
+  baisu: { id: 'baisu', name: '白素', loc: '主线', role: '女主（狐）',
+    intro: '白衣胜雪的女子静静而立，耳畔隐约有狐影。',
+    event: { id: 'xian_baisu', title: '白衣报恩', chapter: true, weight: 5, min: 0, max: 11, once: true,
+      lines: ['白衣女子静静立在你身前，耳畔狐影浮动。', '"恩公，当年一饭之恩，白素从未敢忘。"她指尖轻点，一枚温润玉佩落入你掌心。'],
+      choices: [
+        { t: '受玉佩，记此恩义', effect: { dao: 0.5, wu: 0.5 }, lines: ['玉佩触手生温，道心与悟性俱有所感。（道心+0.5，悟性+0.5）'] },
+        { t: '婉拒，但结个善缘', effect: { wu: 0.5 }, lines: ['你笑拒玉佩，只与她对饮清茶。狐影轻摆，她笑说后会有期。（悟性+0.5）'] }
+      ] } },
+  heimao: { id: 'heimao', name: '神秘黑猫', loc: '游历/秘境', role: '引路人（教学）',
+    intro: '一只黑猫蹲在墙头，尾巴轻摆，竟口吐人言。',
+    event: { id: 'xian_heimao', title: '黑猫引路', chapter: true, weight: 5, min: 0, max: 11, once: true,
+      lines: ['墙头黑猫尾巴轻摆，竟口吐人言："喵——小子，想知道这方天地怎么走？"', '它跃下墙头，在前引路，带你穿过一条从未见过的巷弄。'],
+      choices: [
+        { t: '随猫而行，听它指点', effect: { wu: 1, stone: 20 }, lines: ['黑猫指点修行门径，临别叼来一袋灵石："拿去，别饿死了。"（悟性+1，灵石+20）'] },
+        { t: '问它大道何在', effect: { dao: 0.5 }, lines: ['黑猫歪头："大道？你脚下便是。"说完化作一缕青烟。（道心+0.5）'] }
+      ] } }
 };

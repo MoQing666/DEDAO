@@ -47,11 +47,23 @@ const Engine = (function () {
         if (s.dao === undefined) s.dao = 0;
         if (s.ling === undefined) s.ling = 0;
         // 灵力条（法力）兼容：旧档无 mp 字段则按公式补算
-        if (s.mpMax === undefined) { s.mpMax = 10 + (s.ling || 0) * 20; s.mp = s.mpMax; }
+        if (s.mpMax === undefined) { s.mpMax = 10 + Math.max(0, (s.ling || 0) - 1) * 20; s.mp = s.mpMax; }
         if (!s.destinies) s.destinies = [];
         if (!s.destinySlots) s.destinySlots = 1;
         if (!s.equip) s.equip = { head: null, body: null, leg: null, weapon: null, accessory: null, treasure: [] };
         if (s.equip.treasure === undefined) s.equip.treasure = [];
+        // P1–P7 新字段兼容
+        if (s.gongye === undefined) s.gongye = 0;
+        if (s.gongyeEarned === undefined) s.gongyeEarned = 0;
+        if (s.sectRank === undefined) s.sectRank = null;
+        if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: { fire: false, metal: false, water: false, wood: false, earth: false } };
+        if (!s.array.wuxing) s.array.wuxing = { fire: false, metal: false, water: false, wood: false, earth: false };
+        if (s.reincTalent === undefined) s.reincTalent = 1;
+        if (s.reincPoints === undefined) s.reincPoints = 0;
+        if (s.initPoints === undefined) s.initPoints = 0;
+        if (!s.craft) s.craft = { liandan: { lv: 1, exp: 0 }, lianqi: { lv: 1, exp: 0 }, zhenfa: { lv: 1, exp: 0 }, lingtian: { lv: 1, exp: 0 }, lingkuang: { lv: 1, exp: 0 } };
+        ['liandan', 'lianqi', 'zhenfa', 'lingtian', 'lingkuang'].forEach(function (k) { if (!s.craft[k]) s.craft[k] = { lv: 1, exp: 0 }; });
+        if (!s.sectTrain) s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
       }
       // 修复旧版遗留的“虚假存档”：早期版本的 confirmEnterPage 未调用 commitStart，
       // 导致自动存档里 linggen 为 null（且天赋/命格仅其一为空）。这类存档在“读档菜单”
@@ -222,13 +234,91 @@ const Engine = (function () {
     }
     return st;
   }
+  // 法宝聚合：遍历 s.arts，累计所有 effect（含 scale 资源缩放 / stack 累计 / 血量条件 / 道心向）
+  // 选项门槛（道心≥10 等）由 UI 的 c.req 在前端拦截，此处只负责数值生效。
+  function artifactStats(s) {
+    const arts = s.arts || [];
+    const st = {
+      wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0,
+      atk: 0, hpMax: 0, def: 0, critPct: 0, dodgePct: 0, defPct: 0, atkPct: 0,
+      cult: 0, stealPct: 0, defToAtk: 0, tiHpBonus: 0,
+      duantiEff: 0, duantiMax: 0, craftEff: 0,
+      farmEff: 0, mineEff: 0, stoneYearPct: 0,
+      cultTwice: false,
+      modeBonus: { normal: 0, focus: 0, seclusion: 0 },
+      craftKind: {}
+    };
+    arts.forEach(function (id) {
+      const a = ARTIFACTS[id];
+      if (!a || !a.effect) return;
+      const e = a.effect;
+      ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct'].forEach(function (k) {
+        if (e[k]) st[k] += e[k];
+      });
+      if (e.modeBonus) {
+        st.modeBonus.normal += e.modeBonus.normal || 0;
+        st.modeBonus.focus += e.modeBonus.focus || 0;
+        st.modeBonus.seclusion += e.modeBonus.seclusion || 0;
+      }
+      if (e.craftKind) {
+        for (const k in e.craftKind) st.craftKind[k] = (st.craftKind[k] || 0) + e.craftKind[k];
+      }
+      if (e.cultTwice) st.cultTwice = true;
+      // 资源缩放：每 per 资源 +perPoint，封顶 cap
+      if (e.scale) {
+        const sv = (e.scale.res === 'stone') ? (s.stone || 0) : 0;
+        const per = e.scale.per || 100;
+        const pp = e.scale.perPoint || 0.01;
+        const cap = (e.scale.cap == null) ? 1 : e.scale.cap;
+        const n = Math.min(Math.floor(sv / per) * pp, cap);
+        if (e.scale.stat === 'atk') st.atkPct += n;
+        else if (e.scale.stat === 'defPct') st.defPct += n;
+      }
+      // 累计类（如 嗜血珠：每杀 1 敌 +per，封顶 cap）
+      if (a.stack && a.stack.stat) {
+        st[a.stack.stat] += Math.min((s.killCount || 0) * (a.stack.per || 1), a.stack.cap || 0);
+      }
+      // 血量条件：血越低攻越高（按 当前/最大 比例）
+      if (e.lowHpAtk) {
+        const ratio = 1 - (s.hp || 0) / (s.hpMax || 1);
+        st.atkPct += Math.min(ratio * e.lowHpAtk, e.lowCap || 0.40);
+      }
+      // 道心向攻击：每 1 点道心 +daoAtkPct，封顶 daoCap
+      if (e.daoAtkPct) {
+        st.atkPct += Math.min((s.dao || 0) * e.daoAtkPct, e.daoCap || 0.30);
+      }
+      // 护体反射：防御值 ×N 转为攻击（棘鳞甲）
+      if (e.defToAtk) {
+        const defVal = (s.flatDef || 0) + Math.round((s.earthPct || 0) * 100 + (s.jinylvDef || 0) * 100);
+        st.atk += Math.round(defVal * e.defToAtk);
+      }
+    });
+    return st;
+  }
+  // 灵根战斗词条（兼容旧档 body 结构）
+  function linggenTrait(s) {
+    if (!s.linggen) return null;
+    if (s.linggen.trait) return s.linggen.trait.effect || null;
+    if (s.linggen.body) return s.linggen.body; // 旧档兼容
+    return null;
+  }
+  // 功法/法术亲和加成：法术 element 属于灵根亲和系别时，伤害 ×(1+affinityBonus/100)
+  function linggenAffinityMul(s, element) {
+    if (!s.linggen || !element || !s.linggen.affinity) return 1;
+    if (s.linggen.affinity.indexOf(element) >= 0) return 1 + (s.linggen.affinityBonus || 0) / 100;
+    return 1;
+  }
   function calcHpMax(s) {
-    let m = 80 + effAttr(s, 'ti') * 50 + bigIdxOf(s) * 80;
-    if (s.linggen && s.linggen.body && s.linggen.body.hpMax) m += s.linggen.body.hpMax;
-    if (s.arts.indexOf('xuantie') >= 0) m += 150;
+    const tiCoeff = 50 * (1 + (artifactStats(s).tiHpBonus || 0));
+    let m = 80 + effAttr(s, 'ti') * tiCoeff + bigIdxOf(s) * 80;
+    const eff = linggenTrait(s);
+    if (eff && eff.hpMax) m += eff.hpMax;
     if (s.sect && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
     m += s.hpMaxBonus || 0;
     m += equipStats(s).hpMax;
+    m += artifactStats(s).hpMax;
+    // 五行阵·木阵（气血上限 %）
+    m = applyWuxing(s, 'hpMax', m);
     // 体魄=1点×50气血（命格体魄加成已并入 effAttr）
     return m;
   }
@@ -237,8 +327,8 @@ const Engine = (function () {
     a += effAttr(s, 'shen') * 5; // 神识挂钩攻击：1点+5攻击
     a += effAttr(s, 'ling') * 5; // 灵力挂钩攻击：1点+5攻击（灵力同时关系灵力条上限）
     if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
-    if (s.linggen && s.linggen.body && s.linggen.body.atk) a += s.linggen.body.atk;
-    if (s.arts.indexOf('qingfeng') >= 0) a += 20;
+    const eff = linggenTrait(s);
+    if (eff && eff.atk) a += eff.atk;
     if (s.sect && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
     // 命格攻击加成
     var talentAtkMul = 0;
@@ -256,7 +346,25 @@ const Engine = (function () {
     });
     a += s.extraAtk || 0;
     a += equipStats(s).atk;
+    const art = artifactStats(s);
+    a += art.atk;
+    a = Math.round(a * (1 + art.atkPct));
+    // 五行阵
+    a = applyWuxing(s, 'atk', a);
     return Math.round(a);
+  }
+  // 五行阵：对攻击/灵力上限/气血上限/防御 施加百分比加成（随阵法 lv 缩放）
+  function applyWuxing(s, attr, base) {
+    if (!s.array || !s.array.wuxing) return base;
+    const lv = (s.craft && s.craft.zhenfa && s.craft.zhenfa.lv) || 1;
+    let mul = 1;
+    WUXING_ORDER.forEach(function (key) {
+      if (!s.array.wuxing[key]) return;
+      const def = WUXING_ARRAY[key];
+      if (def.attr !== attr) return;
+      mul += def.pctByLv[Math.min(lv, 5)];
+    });
+    return base * mul;
   }
   function cultGain(s) {
     const CULT_REALM = [0, 1, 5, 6]; // 炼气=0, 筑基=1, 金丹=5, 元婴=6
@@ -265,7 +373,10 @@ const Engine = (function () {
     g *= techMult(s);
     if (s.linggen) g *= (s.linggen.qiMul || 1);
     if (s.talents.indexOf('daoti') >= 0) g *= 1.1;
-    if (s.arts.indexOf('juling') >= 0) g *= 1.05;
+    if (s.array && s.array.juling && s.array.juling.level > 0) {
+      const jl = JULING_ARRAY[s.array.juling.level];
+      if (jl) g *= (1 + jl.pct);
+    }
     if (s.flags.daoLu) g *= 1.1;
     if (s.flags.petGrown) g *= 1.15;
     else if (s.flags.pet) g *= 1.05;
@@ -286,11 +397,12 @@ const Engine = (function () {
 
     g *= 1 + equipStats(s).cult;
     if (s.sect && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
+    g *= 1 + artifactStats(s).cult;
     let note = '';
     if ((s.elixirs.juling || 0) > 0) {
       s.elixirs.juling--;
       if (s.elixirs.juling <= 0) delete s.elixirs.juling;
-      g *= 2;
+      g *= 1.2;
       note = '【聚气丹】';
     }
     return { gain: Math.round(g), note: note };
@@ -300,7 +412,7 @@ const Engine = (function () {
     if (s.idx >= 3) n++;
     if (s.idx >= 6) n++;
     if (s.idx >= 9) n++;
-    return n;
+    return n + (artifactStats(s).apBonus || 0);
   }
   function cultCost(s) { return s.idx >= 6 ? 2 : 1; }
 
@@ -317,16 +429,57 @@ const Engine = (function () {
 
   /* ---------------- 属性基础 ---------------- */
   function calcMpMax(s) {
-    // 灵力条上限：基础 30 + 灵力每点 +20（初始灵力=1 时上限=50，符合设定）
-    return 30 + effAttr(s, 'ling') * 20;
+    // 灵力条上限：灵力=1 时 10，此后每点 +20（初始灵力上限=10、灵力条=1/10，符合设定）
+    let m = 10 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
+    const eff = linggenTrait(s);
+    if (eff && eff.mpMax) m += eff.mpMax;
+    m = applyWuxing(s, 'mpMax', m);
+    return Math.round(m);
+  }
+  // 灵根词条 + 五行阵 → 战斗次级属性（暴击/闪避/渡劫/防御）
+  function recalcLinggenBonus(s) {
+    const eff = linggenTrait(s);
+    let critPct = (eff && eff.critPct) ? eff.critPct / 100 : 0;
+    let dodgePct = (eff && eff.dodgePct) ? eff.dodgePct / 100 : 0;
+    let tribPct = (eff && eff.tribPct) ? eff.tribPct / 100 : 0;
+    let flatDef = (eff && eff.def) ? eff.def : 0;
+    let earthPct = 0;
+    if (s.array && s.array.wuxing) {
+      const lv = (s.craft && s.craft.zhenfa && s.craft.zhenfa.lv) || 1;
+      WUXING_ORDER.forEach(function (key) {
+        if (!s.array.wuxing[key]) return;
+        const def = WUXING_ARRAY[key];
+        if (def.attr === 'critPct') critPct += def.pctByLv[Math.min(lv, 5)];
+        if (def.attr === 'dodgePct') dodgePct += def.pctByLv[Math.min(lv, 5)];
+        if (def.attr === 'tribPct') tribPct += def.pctByLv[Math.min(lv, 5)];
+        if (def.attr === 'def') earthPct += def.pctByLv[Math.min(lv, 5)];
+      });
+    }
+    s.critPct = critPct;
+    s.dodgePct = dodgePct;
+    s.tribPct = tribPct;
+    s.flatDef = flatDef;      // 灵根土词条：绝对防御点
+    s.earthPct = earthPct;   // 五行阵·土阵：百分比减伤
   }
   function refreshStats(s) {
+    recalcLinggenBonus(s);
+    const a = artifactStats(s);
+    s.artAttr = { wu: a.wu, ti: a.ti, dun: a.dun, shen: a.shen, dao: a.dao, ling: a.ling };
+    s.artDef = a.def;
+    s.artDefPct = a.defPct;
+    s.cultMax = a.cultTwice ? 2 : 1;   // 时停月华：每年可修炼 2 次
     const m = calcHpMax(s);
     s.hpMax = m;
     s.atk = calcAtk(s);
     if (s.hp > m) s.hp = m;
     s.mpMax = calcMpMax(s);
     if (s.mp === undefined || s.mp > s.mpMax) s.mp = s.mpMax;
+    // 金缕衣：每持有100灵石，防御+1%，上限300%（减伤 1/(1+def)）
+    if (s.equip && Array.isArray(s.equip.treasure) && s.equip.treasure.indexOf('jinylv') >= 0) {
+      s.jinylvDef = Math.min(3.0, Math.floor((s.stone || 0) / 100) * 0.01);
+    } else {
+      s.jinylvDef = 0;
+    }
   }
 
   /* ---------------- 开局 ---------------- */
@@ -413,12 +566,12 @@ const Engine = (function () {
     return mult;
   }
 
-  /* 有效六维 = 基础值 + 命格属性加成（让命格属性真正影响战斗属性） */
-  function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k); }
-  /* 暴击率：神识×1% + 道心×2% + 命格暴击 */
-  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate'); }
-  /* 闪避率：遁速×2% + 命格闪避 */
-  function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'dodgeRate'); }
+  /* 有效六维 = 基础值 + 命格属性加成 + 法宝六维加成 */
+  function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k) + ((s.artAttr && s.artAttr[k]) || 0); }
+  /* 暴击率：神识×1% + 道心×2% + 命格暴击 + 灵根词条/五行阵 */
+  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct; }
+  /* 闪避率：遁速×2% + 命格闪避 + 法宝 */
+  function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
   /* 攻速（几率额外攻击一次）：遁速×2% + 命格额外攻击 */
   function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'extraAttack'); }
 
@@ -478,13 +631,19 @@ const Engine = (function () {
       dunSpeed: 1,
       wu: 1, wuAcc: 0,
       ti: 1,
-      dun: 1, shen: 1, dao: 1, ling: 1,
-      mp: 0, mpMax: 0,
+      dun: 1, shen: 1, dao: 1,       ling: 1,
+      mp: 1, mpMax: 10,
       destinies: [], destinySlots: 1, extraDestiny: 0,
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
       sect: null, broken: 0, actionsLeft: 3,
+      gongye: 0, gongyeEarned: 0, sectRank: null,
+      craft: { liandan: { lv: 1, exp: 0 }, lianqi: { lv: 1, exp: 0 }, zhenfa: { lv: 1, exp: 0 }, lingtian: { lv: 1, exp: 0 }, lingkuang: { lv: 1, exp: 0 } },
+      array: { juling: { level: 0, paid: false }, wuxing: { fire: false, metal: false, water: false, wood: false, earth: false } },
+      reincTalent: 1, reincPoints: 0, initPoints: 0,
+      sectTrain: { shenByRealm: {}, lingByRealm: {} },
+      dabi: null,
       year: 1, flags: {}, seen: {}, log: [], lifeLog: [], dead: false,
       endReason: null, lifeMax: 70, reinc: {},
       equip: { head: null, body: null, leg: null, treasure: [] },
@@ -796,13 +955,20 @@ const Engine = (function () {
       out.push('吸血效果触发，气血 +' + heal + '。');
       fx.push({ side: 'me', kind: 'heal', amount: heal });
     }
+    const steal = artifactStats(s).stealPct;
+    if (steal > 0) {
+      const sh = Math.round(dmg * steal);
+      s.hp = Math.min(s.hpMax, s.hp + sh);
+      out.push('神兵饮血，气血 +' + sh + '。');
+      fx.push({ side: 'me', kind: 'heal', amount: sh });
+    }
     if (b.round === 1 && b.firstStrike > 0) {
       const fd = Math.round(dmg * b.firstStrike);
       b.hp -= fd;
       out.push('先手突袭，额外造成 ' + fd + ' 点伤害。');
       fx.push({ side: 'enemy', kind: 'dmg', amount: fd });
     }
-    if (b.hp <= 0) { b.done = true; b.win = true; out.push('『' + b.name + '』轰然倒下。'); }
+    if (b.hp <= 0) { b.done = true; b.win = true; s.killCount = (s.killCount || 0) + 1; refreshStats(s); out.push('『' + b.name + '』轰然倒下。'); }
     // 攻速（遁速×2%）：几率额外攻击一次（仅主攻击触发，避免无限连锁）
     if (!b.done && allowExtra) {
       const extraChance = getExtraAtkChance(s);
@@ -831,6 +997,10 @@ const Engine = (function () {
       if (b.slow) { d = Math.round(d * 0.6); b.slow = false; } // 减速当回合生效后移除
       if (b.guarded) d = Math.round(d * 0.35);
       if (b.guard > 0) d = Math.round(d * (1 - b.guard));
+      // 五行阵·土阵百分比减伤 + 灵根土词条绝对防御 + 金缕衣灵石防御 + 法宝防御
+      if (s.earthPct || s.artDefPct) d = Math.round(d * (1 - (s.earthPct || 0) - (s.artDefPct || 0)));
+      if (s.flatDef || s.artDef) d = Math.max(1, d - (s.flatDef || 0) - (s.artDef || 0));
+      if (s.jinylvDef) d = Math.max(1, Math.round(d / (1 + s.jinylvDef)));
       return d;
     };
     const counter = function () {
@@ -925,7 +1095,7 @@ const Engine = (function () {
       }
       const mpBefore = s.mp;
       s.mp -= cost;
-      let dmg = Math.max(2, Math.round(s.atk * sp.dmg)); // 无随机
+      let dmg = Math.max(2, Math.round(s.atk * sp.dmg * linggenAffinityMul(s, sp.element))); // 无随机
       fx.push({ side: 'me', kind: 'mp', amount: mpBefore - s.mp, el: sp.grade });
       fx.push({ side: 'enemy', kind: 'spell', el: sp.grade });
       const beforeHp = b.hp;
@@ -964,6 +1134,7 @@ const Engine = (function () {
       if (b.loot.elixirs) gains.push.apply(gains, applyOps(s, { elixirs: b.loot.elixirs }));
       if (b.loot.tech) gains.push.apply(gains, applyOps(s, { tech: b.loot.tech }));
       if (b.loot.equip) gains.push.apply(gains, applyOps(s, { equip: b.loot.equip }));
+      if (b.loot.art) gains.push.apply(gains, applyOps(s, { art: b.loot.art }));
       // 灵物掉落
       if (b.loot.spirit) {
         if (!s.spiritItems) s.spiritItems = [];
@@ -1687,6 +1858,26 @@ const Engine = (function () {
       stock.push({ id: 'adv_heal', name: '伤药（气血 +40%）', price: 40, adv: { hpPct: 0.40 } });
       stock.push({ id: 'adv_mp', name: '灵泉（灵力 +40%）', price: 40, adv: { mpPct: 0.40 } });
     }
+    // 游历流动商贩：从法宝池中随机抽取 3 件（已持有则跳过，不足则全列）
+    if (typeof ART_SHOP_ITEMS !== 'undefined' && ART_SHOP_ITEMS && ART_SHOP_ITEMS.length) {
+      const bi = bigIdxOf(s);
+      const cand = ART_SHOP_ITEMS.filter(function (it) {
+        if (s.arts.indexOf(it.id) >= 0) return false;
+        if ((it.minDepth || 0) > (s.adv && s.adv.depth || 1)) return false;
+        if ((it.minBig || 0) > bi) return false;
+        return true;
+      });
+      // Fisher–Yates 随机抽 3 件
+      for (let i = cand.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp;
+      }
+      cand.slice(0, 3).forEach(function (it) {
+        const a = ARTIFACTS[it.id];
+        if (!a) return;
+        stock.push({ id: 'ART:' + it.id, name: '法宝·' + a.name, price: it.price, art: it.id });
+      });
+    }
     return stock;
   }
   function biOfSafe(s) { return bigIdxOf(s); }
@@ -1704,6 +1895,7 @@ const Engine = (function () {
     if (si.give) out.push.apply(out, applyOps(s, si.give));
     if (si.tech) out.push.apply(out, applyOps(s, { tech: si.tech }));
     if (si.equip) out.push.apply(out, gainEquip(s, si.equip));
+    if (si.art) out.push.apply(out, applyOps(s, { art: si.art }));
     if (si.adv) {
       const eff = si.adv;
       if (eff.hpPct) { const h = Math.round(s.hpMax * eff.hpPct); s.hp = Math.min(s.hpMax, s.hp + h); out.push('气血 +' + h); }
@@ -1744,16 +1936,35 @@ const Engine = (function () {
     refreshStats(s);
     saveState(s);
   }
-  function cultivate(s) {
-    if (s.cultedThisYear) return '今年已修炼过，明年再来吧。';
-    if (!canAction(s, cultCost(s))) return '行动点不足';
+  // 修炼三档（P2）：普通 1AP×1.0 / 潜心 2AP×1.8 / 闭关 3AP×2.4
+  function cultModes(s) {
+    const g = cultGain(s);
+    const need = requireNeed(s);
+    const room = Math.max(0, need - s.qi);
+    const art = artifactStats(s);
+    const mk = function (id, name, ap, mult) {
+      return { id: id, name: name, ap: ap, mult: mult + (art.modeBonus[id] || 0), gain: Math.min(Math.round(g.gain * (mult + (art.modeBonus[id] || 0))), room) };
+    };
+    return [
+      mk('normal', '普通修炼', 1, 1.0),
+      mk('focus', '潜心修炼', 2, 1.8),
+      mk('seclusion', '闭关修炼', 3, 2.4)
+    ];
+  }
+  function cultivate(s, mode) {
+    const modes = cultModes(s);
+    const m = modes.filter(function (x) { return x.id === mode; })[0] || modes[0];
+    const maxCult = s.cultMax || 1;
+    if ((s.cultTimes || 0) >= maxCult) return '今年已修炼过' + (maxCult > 1 ? maxCult : '') + '次，明年再来吧。';
+    if (!canAction(s, m.ap)) return '行动点不足（需 ' + m.ap + ' 点）';
     const need = requireNeed(s);
     if (s.qi >= need) return '修为已满，瓶颈隐隐颤动——该尝试突破了。';
     const r = cultGain(s);
-    const actual = Math.min(r.gain, need - s.qi);
+    const actual = Math.min(Math.round(r.gain * m.mult), need - s.qi);
     s.qi += actual;
+    s.cultTimes = (s.cultTimes || 0) + 1;
     s.cultedThisYear = true;
-    spend(s, cultCost(s));
+    spend(s, m.ap);
     let note2 = '';
     const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
     if (sheshengLv > 0) {
@@ -1762,12 +1973,13 @@ const Engine = (function () {
     }
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     refreshStats(s);
-    return '你闭目吐纳，引天地灵气入体，修为 +' + actual + '。' + (r.note ? r.note : '') + note2;
+    return '你' + m.name + '，引天地灵气入体，修为 +' + actual + '。' + (r.note ? r.note : '') + note2;
   }
   function canAction(s, n) { return s.actionsLeft >= n && !s.dead; }
 
   /* ---------------- 锻体（《锻体诀》：ml_5_t3 筑基后期剧情解锁） ---------------- */
   var DUANTI_MAX = 10;                            // 每个大境界，每种淬炼至多 10 次
+  function duantiCap(s) { return DUANTI_MAX + (artifactStats(s).duantiMax || 0); }  // 九转金丹炉 +5
   var DUANTI_TYPES = [
     { key: 'ti',   name: '体魄', verb: '淬体魄', cost: 1, attr: 'ti'   },
     { key: 'dun',  name: '遁速', verb: '炼遁速', cost: 1, attr: 'dun'  },
@@ -1796,18 +2008,20 @@ const Engine = (function () {
     for (var i = 0; i < DUANTI_TYPES.length; i++) if (DUANTI_TYPES[i].key === type) tp = DUANTI_TYPES[i];
     if (!tp) return { ok: false, msg: '无此淬炼之法。' };
     var st = duantiState(s);
-    if (st.counts[type] >= DUANTI_MAX) {
-      return { ok: false, msg: tp.name + '已淬炼 ' + DUANTI_MAX + ' 次，肉身至此境之限——待突破大境界后，方可再锻。' };
+    var cap = duantiCap(s);
+    if (st.counts[type] >= cap) {
+      return { ok: false, msg: tp.name + '已淬炼 ' + cap + ' 次，肉身至此境之限——待突破大境界后，方可再锻。' };
     }
     if (!canAction(s, tp.cost)) return { ok: false, msg: '行动点不足。' };
-    spend(s, tp.cost);
-    s[tp.attr] = (s[tp.attr] || 0) + 0.5;
+    const art = artifactStats(s);
+    if (!art.duantiFree) spend(s, tp.cost);
+    s[tp.attr] = (s[tp.attr] || 0) + 0.5 * (1 + (art.duantiEff || 0));
     st.counts[type]++;
     refreshStats(s); saveState(s);
     return {
       ok: true,
-      msg: '你依《锻体诀》' + tp.verb + '，' + tp.name + ' +0.5。（' + tp.name + ' ' + st.counts[type] + '/' + DUANTI_MAX + '）',
-      left: DUANTI_MAX - st.counts[type]
+      msg: '你依《锻体诀》' + tp.verb + '，' + tp.name + ' +' + (0.5 * (1 + (art.duantiEff || 0))).toFixed(2) + '。（' + tp.name + ' ' + st.counts[type] + '/' + cap + '）',
+      left: cap - st.counts[type]
     };
   }
 
@@ -1821,22 +2035,27 @@ const Engine = (function () {
     return ev;
   }
   function social(s) {
+    // 市井机缘（游历）：始终从「游历池」(EVENTS.shejiao) 抽取 3 桩际遇，玩家 3 选 1
     if (!canAction(s, 1)) return false;
-    let pool;
-    if (s.sect) {
-      const bi = bigIdxOf(s);
-      pool = SECT_SOCIAL[s.sect].filter(function (ev) {
-        return ev.min <= bi && ev.max >= bi && (!ev.once || !s.seen[ev.id]);
-      });
-    } else {
-      // 游历池包含社交+秘境+机缘事件
-      pool = EVENTS.shejiao.concat(EVENTS.mijing).concat(EVENTS.jiyuan).filter(evOK(s, 1));
-    }
+    const pool = EVENTS.shejiao.filter(evOK(s, 1));
     if (!pool.length) { spend(s, 1); return '这一带没有值得交集的人与事，你独自练剑半日。'; }
     spend(s, 1);
-    // 抽取 3 桩际遇，供玩家 3 选 1（不足 3 则全取）
     const picks = shuffle(pool.slice()).slice(0, Math.min(3, pool.length));
     return { multi: true, events: picks };
+  }
+  function sectSocial(s) {
+    // 宗门交游（行动点·1点）：消费 SECT_SOCIAL，剑峰习剑等 once 事件仅出现一次
+    if (!s.sect) return '你尚未加入宗门。';
+    if (!canAction(s, 1)) return false;
+    const bi = bigIdxOf(s);
+    const pool = (SECT_SOCIAL[s.sect] || []).filter(function (ev) {
+      return ev.min <= bi && ev.max >= bi && (!ev.once || !s.seen[ev.id]);
+    });
+    if (!pool.length) { spend(s, 1); return '今日同门皆在闭关，你独自于剑坪练剑半日。'; }
+    spend(s, 1);
+    const ev = pickWeighted(pool);
+    s.seen[ev.id] = 1;
+    return ev;
   }
   function sectCombat(s) {
     if (!s.sect) return '你尚未加入宗门。';
@@ -1953,7 +2172,7 @@ const Engine = (function () {
   }
   function forgeChoices(s) {
     if (!s.materials) s.materials = {};
-    return FORMULAS.filter(function (f) { return f.type === '法宝' && bigIdxOf(s) >= f.needRealm; });
+    return FORMULAS.filter(function (f) { return f.type === '装备' && bigIdxOf(s) >= f.needRealm; });
   }
   function doForge(s, f) {
     if (!s.materials) s.materials = {};
@@ -1966,12 +2185,10 @@ const Engine = (function () {
     s.materials[costKey] -= costAmount;
     const chance = Math.min(0.9, 0.75 + (s.ti - 5) * 0.01);
     if (Math.random() < chance) {
-      if (s.arts.indexOf(f.out) < 0) s.arts.push(f.out);
-      // 添加到inventory以便装备
-      if (!s.inventory) s.inventory = [];
-      if (s.inventory.indexOf(f.out) < 0) s.inventory.push(f.out);
+      // 装备只可炼制，法宝仅能从剧情获得
+      const out = gainEquip(s, f.out);
       refreshStats(s); saveState(s);
-      return { ok: true, msg: '宝光一闪！【' + ARTIFACTS[f.out].name + '】炼成了。可在装备栏法宝位装备。' };
+      return { ok: true, msg: '炉火纯青！' + out.join('') + '可在角色页装备栏穿戴。' };
     }
     saveState(s);
     return { ok: false, msg: '火候过了三分，灵铁化作废渣。你深吸一口气，下次再来。' };
@@ -2006,9 +2223,9 @@ const Engine = (function () {
     } else if (nxt.realm !== st.realm) {
       mode = 'trib'; trib = nxt.realm;
       base = 0.55;
-      let body = s.linggen.body || {};
+      let eff = linggenTrait(s) || {};
       let dujieBonus = (s.talents && s.talents.indexOf('dujie') >= 0) ? 0.1 : 0;
-      base += (body.trib || 0) + dujieBonus + (s.sect === 'xuantian' ? 0.05 : 0) + (s.arts.indexOf('jinylv') >= 0 ? 0.1 : 0);
+      base += (eff.tribPct || 0) + dujieBonus + (s.sect === 'xuantian' ? 0.05 : 0);
       const eid = BREAK_ELIXIR[nxt.realm];
       if (eid && (s.elixirs[eid] || 0) > 0) { base += 0.25; desc = '你摸出一枚【' + ELIXIRS[eid].name + '】含入口中。'; }
       if (trib === '金丹') base = Math.min(base, 0.9);
@@ -2295,6 +2512,7 @@ const Engine = (function () {
     for (var q = 0; q < qty; q++) {
       totalGain += sd.gain[0] + Math.floor(Math.random() * (sd.gain[1] - sd.gain[0] + 1));
     }
+    totalGain = Math.round(totalGain * (1 + (artifactStats(s).farmEff || 0))); // 神农锄：灵田产量 +30%
     // 产出分级灵草
     var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
     s.materials[herbKey] = (s.materials[herbKey] || 0) + totalGain;
@@ -2318,7 +2536,7 @@ const Engine = (function () {
       msg = '你在岩缝里寻到几株伴生灵草（' + MATERIALS[herbKey].name + ' +' + h + '）。';
     }
     else {
-      const n = (2 + Math.floor(d / 2) + Math.floor(Math.random() * (3 + Math.floor(d / 3)))) * 10;
+      const n = Math.round((2 + Math.floor(d / 2) + Math.floor(Math.random() * (3 + Math.floor(d / 3)))) * 10 * (1 + (artifactStats(s).mineEff || 0))); // 寻矿罗盘：灵矿产量 +30%
       s.materials[ironKey] = (s.materials[ironKey] || 0) + n;
       msg = '你抡起卦锤一凿一凿，挖出' + MATERIALS[ironKey].name + ' ' + n + ' 块。';
     }
@@ -2346,7 +2564,7 @@ const Engine = (function () {
     if (formula.type === '丹') {
       var timeReduce = (s.reinc && s.reinc.alchemyTimeReduce) || 0;
       craftYears = Math.max(0, craftYears - timeReduce);
-    } else if (formula.type === '法宝') {
+    } else if (formula.type === '装备') {
       var forgeTimeReduce = (s.reinc && s.reinc.forgeTimeReduce) || 0;
       craftYears = Math.max(0, craftYears - forgeTimeReduce);
     }
@@ -2354,13 +2572,12 @@ const Engine = (function () {
     if (craftYears <= 0) {
       if (formula.type === '丹') {
         s.elixirs[formula.out] = (s.elixirs[formula.out] || 0) + 1;
+        var instantMsg = '丹心通明，瞬间成丹！';
       } else {
-        if (s.arts.indexOf(formula.out) < 0) s.arts.push(formula.out);
-        if (!s.inventory) s.inventory = [];
-        if (s.inventory.indexOf(formula.out) < 0) s.inventory.push(formula.out);
+        grantEquipChecked(s, formula.out);
+        var instantMsg = '器魂觉醒，瞬间成器！';
       }
       refreshStats(s); saveState(s);
-      var instantMsg = formula.type === '丹' ? '丹心通明，瞬间成丹！' : '器魂觉醒，瞬间成器！';
       return { ok: true, msg: instantMsg, instant: true };
     }
     s.craftQueue.push({
@@ -2449,6 +2666,10 @@ const Engine = (function () {
     if (s.age >= 200) return 'fate';
     if (s.idx >= 15) return 'end';
     s.year += 1;
+    // —— 年度结算：聚灵阵年耗 + 宗门地位自动晋升（杂役筑基升内门 / 正式档按功业晋升）——
+    julingYearEnd(s);
+    const ru = sectYearPromote(s);
+    if (ru) s.lastYearRankUp = ru.rank;
     // 命格年度效果
     applyDestinyYearly(s);
     // 命格灵石年度效果
@@ -2461,6 +2682,10 @@ const Engine = (function () {
     s.actionsLeft = actionPoints(s);
     s.hp = s.hpMax;
     s.cultedThisYear = false;
+    s.cultTimes = 0;
+    // 法宝：聚宝盆（每年得灵石 = 当前 ×5%）
+    const artY = artifactStats(s);
+    if (artY.stoneYearPct) { const add = Math.round(s.stone * artY.stoneYearPct); s.stone += add; s.lastYearStoneBonus = add; }
     let fenglu = null;
     if (s.sect && SECT_FENGLU[s.sect]) {
       const f = SECT_FENGLU[s.sect];
@@ -2495,13 +2720,35 @@ const Engine = (function () {
     // 主线剧情触发检查
     for (var mi = 0; mi < MAINLINE.length; mi++) {
       var ml = MAINLINE[mi];
-      if (ml.idx <= s.idx && !s.seen['ml_' + ml.id]) {
+      if (ml.idx <= s.idx && !s.seen['ml_' + ml.id] && (!ml.req || evReqOK(s, ml))) {
         s.pendingMainline = ml;
         saveState(s);
         return 'mainline';
       }
     }
+    // 宗门大比：每 intervalYears 年一次（外门及以上可参与）
+    if (s.sect && s.sectRank && s.sectRank !== '杂役') {
+      const iv = (SECT_DABI && SECT_DABI.intervalYears) || 3;
+      if (iv > 0 && s.year % iv === 0 && s.lastDabiYear !== s.year) {
+        s.pendingDabi = true;
+        saveState(s);
+        return 'dabi';
+      }
+    }
     return null;
+  }
+  // T4：mainline 年初连播辅助——当前主线播完后探测并取「下一条」未触发的满足主线。
+  // 用途：同一新年可将已达 idx 的多条主线依次连播（不被逐年后延）。返回 true 并设 s.pendingMainline。
+  function moreMainline(s) {
+    for (var mi = 0; mi < MAINLINE.length; mi++) {
+      var ml = MAINLINE[mi];
+      if (ml.idx <= s.idx && !s.seen['ml_' + ml.id] && (!ml.req || evReqOK(s, ml))) {
+        s.pendingMainline = ml;
+        saveState(s);
+        return true;
+      }
+    }
+    return false;
   }
   function fateBattle(s) {
     const winChance = { '炼气': 0.02, '筑基': 0.08, '金丹': 0.22, '元婴': 0.5 }[s.realm] || 0.02;
@@ -2617,9 +2864,315 @@ const Engine = (function () {
     return gains;
   }
 
-  return {
-    loadMeta: loadMeta, saveMeta: saveMeta, loadState: loadState, saveState: saveState, clearState: clearState,
+  /* ============================================================
+     P1–P7 系统：开荒 / 聚灵阵 / 五行阵 / 功业 / 宗门 / 委托 / 大比
+     ============================================================ */
+  function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+  const RANK_REALM_MAX = { '外门': 1, '内门': 2, '真传': 2, '核心': 3, '首席': 3 }; // 可承接委托的境界上限 idx
+
+  // —— 开荒初始化写入（§3.5）——
+  function finalizeNewLife(s) {
+    const meta = loadMeta();
+    applyReinc(s, meta);
+    s.actionsLeft = actionPoints(s);
+    refreshStats(s);
+    s.hp = s.hpMax;
+    saveState(s);
+    return s;
+  }
+  function applyInit(s, sel) {
+    const lg = LINGGEN_POOL.filter(function (l) { return l.id === sel.linggenId; })[0] || LINGGEN_POOL[LINGGEN_POOL.length - 1];
+    s.linggen = lg; s.linggenRaw = lg;
+    if (lg.wuBonus) s.wu += lg.wuBonus;
+    if (lg.lingBonus) s.ling += lg.lingBonus;
+    s.craft = {};
+    CRAFT_KINDS.forEach(function (k) { s.craft[k.id] = { lv: (sel.craft && sel.craft[k.id] != null ? sel.craft[k.id] : 1), exp: 0 }; });
+    const bg = findBackground(sel.bgId) || BACKGROUNDS[0];
+    s.bg = bg.id;
+    const f = bg.flavor || {};
+    if (f.ti) s.ti += f.ti; if (f.wu) s.wu += f.wu; if (f.dun) s.dun += f.dun;
+    if (f.shen) s.shen += f.shen; if (f.dao) s.dao += f.dao; if (f.ling) s.ling += f.ling;
+    if (f.stone) s.stone += f.stone; if (f.life) s.lifeMax += f.life;
+    // 开荒点数分配（六维）
+    if (sel.points) {
+      ['wu', 'ti', 'dun', 'shen', 'dao', 'ling'].forEach(function (k) { if (sel.points[k]) s[k] += sel.points[k]; });
+    }
+    s.initPoints = sel.initPoints || 0;
+    s.gongye = 0; s.gongyeEarned = 0; s.sectRank = null;
+    if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
+    if (!s.array.wuxing) s.array.wuxing = {};
+    if (!s.reincTalent) s.reincTalent = 1;
+    if (s.reincPoints === undefined) s.reincPoints = 0;
+    return finalizeNewLife(s);
+  }
+  function openPointsTotal(s) { return INIT_POINTS + reincTalentBonus(s.reincTalent || 1); }
+
+  // —— 轮回阁天赋（开荒池永久 +点）——
+  function reincTalentUpgrade(s) {
+    const cur = s.reincTalent || 1;
+    const cost = reincTalentNextCost(cur);
+    if (cost == null) return { ok: false, msg: '轮回阁天赋已满级。' };
+    if ((s.reincPoints || 0) < cost) return { ok: false, msg: '轮回点不足（需 ' + cost + '）。' };
+    s.reincPoints -= cost; s.reincTalent = cur + 1; saveState(s);
+    return { ok: true, msg: '轮回阁天赋提升至 Lv' + s.reincTalent + '，开荒池 +4 点（现 ' + openPointsTotal(s) + ' 点）。' };
+  }
+
+  // —— 聚灵阵（§5.1）——
+  function julingSet(s, lv) {
+    if (lv < 0 || lv > 3) return { ok: false, msg: '层数无效。' };
+    if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
+    if (lv > 0) {
+      const cost = JULING_ARRAY[lv].stonePerYear;
+      if (s.stone < cost) return { ok: false, msg: '灵石不足，无法布置聚灵阵（年耗 ' + cost + '）。' };
+      s.stone -= cost;
+    }
+    s.array.juling = { level: lv, paid: lv > 0 };
+    refreshStats(s); saveState(s);
+    return { ok: true, lv: lv, pct: JULING_ARRAY[lv].pct, msg: '聚灵阵设为 Lv' + lv + (lv > 0 ? '（年耗灵石 ' + JULING_ARRAY[lv].stonePerYear + '）' : '') };
+  }
+  function julingYearEnd(s) {
+    if (!s.array || !s.array.juling || s.array.juling.level === 0) return;
+    const lv = s.array.juling.level;
+    const cost = JULING_ARRAY[lv].stonePerYear;
+    if (s.stone < cost) { s.array.juling.level = 0; s.array.juling.paid = false; logLife(s, 'juling', '聚灵阵因灵石断供而失效。'); }
+    else { s.stone -= cost; s.array.juling.paid = true; }
+  }
+
+  // —— 五行阵（§5.2）——
+  function wuxingToggle(s, key) {
+    if (!WUXING_ARRAY[key]) return { ok: false, msg: '无此阵。' };
+    if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
+    if (!s.array.wuxing) s.array.wuxing = {};
+    s.array.wuxing[key] = !s.array.wuxing[key];
+    refreshStats(s); saveState(s);
+    return { ok: true, on: s.array.wuxing[key], name: WUXING_ARRAY[key].name };
+  }
+
+  // —— 功业货币 ——
+  function addGongye(s, n) { s.gongye = (s.gongye || 0) + n; s.gongyeEarned = (s.gongyeEarned || 0) + n; }
+  function spendGongye(s, n) { if ((s.gongye || 0) < n) return false; s.gongye -= n; return true; }
+
+  // —— 百艺研习（§5.3，消耗行动点提升百艺等级）——
+  function craftStudy(s, kind) {
+    if (!s.craft || !s.craft[kind]) return { ok: false, msg: '无此百艺。' };
+    if (!canAction(s, 1)) return { ok: false, msg: '行动点不足。' };
+    const c = s.craft[kind];
+    if (c.lv >= 5) return { ok: false, msg: '已臻化境（Lv5），无须再研习。' };
+    spend(s, 1);
+    const art = artifactStats(s);
+    let gain = 1;
+    if (art.craftEff) gain += art.craftEff;             // 百艺天书：全百艺效率 +20%
+    if (art.craftKind && art.craftKind[kind]) gain += art.craftKind[kind]; // 丹道传承/匠神锤：特定种类 +1
+    c.exp += gain;
+    let leveled = false;
+    if (c.exp >= c.lv) { c.exp = 0; c.lv += 1; leveled = true; }
+    refreshStats(s); saveState(s);
+    return { ok: true, leveled: leveled, lv: c.lv, msg: '研习百艺，心得 +' + (Math.round(gain * 100) / 100) + (leveled ? '，等级提升至 Lv' + c.lv + '！' : '') };
+  }
+
+  // —— 宗门地位模型（§6.4 / §6.6，2026-09-08 重构）——
+  //   地位谱：杂役(-1) < 外门(0) < 内门(1) < 真传(2) < 核心(3) < 首席(4)
+  //   s.sectRank = null      已择宗但未应考（仅可见入宗考验）
+  //   s.sectRank = '杂役'    应考失败；每年可重考；到筑基自动升内门
+  //   s.sectRank ∈ SECT_RANKS 正式弟子，享完整宗门功能
+  // 门禁：sectPassed() 为真才算正式入宗，未过考验一律无法用商人/任务/晋升等。
+  function sectPassed(s) {
+    return !!(s.sect && s.sectRank && s.sectRank !== '杂役' && sectRankIndex(s.sectRank) >= 0);
+  }
+  function tryRankUp(s) {
+    if (!s.sect || !s.sectRank || s.sectRank === '杂役') return null;
+    const order = ['外门', '内门', '真传', '核心', '首席'];
+    let cur = order.indexOf(s.sectRank);
+    if (cur < 0) return null;
+    while (cur < order.length - 1) {
+      const nx = SECT_RANKS[cur + 1];
+      const ri = realmIdx(nx.realm);
+      if ((s.gongyeEarned || 0) >= nx.gongye && bigIdxOf(s) >= ri) {
+        cur++; s.sectRank = nx.id;
+        return { rank: nx.id, via: '功业', info: sectRankInfo(nx.id) };
+      } else break;
+    }
+    return null;
+  }
+  // 年度宗门晋升（endYear 调用）：
+  //   - 杂役：到筑基(bigIdx≥1)自动升内门（唯一出口，除非重考被评更高）
+  //   - 正式档：按功业/境界自动晋升（tryRankUp）
+  function sectYearPromote(s) {
+    if (!s.sect || !s.sectRank) return null;
+    if (s.sectRank === '杂役') {
+      if (bigIdxOf(s) >= 1) { s.sectRank = '内门'; return { rank: '内门', via: '筑基', info: sectRankInfo('内门') }; }
+      return null;
+    }
+    return tryRankUp(s);
+  }
+  function realmIdx(name) { return BIG_REALMS.indexOf(name); }
+
+  // —— 入宗考验（§6.5）——
+  // sectTrial：纯评分计算，返回 { rank, gift, A, B, C }（不写状态）
+  function sectTrial(s, win) {
+    const A = s.wu >= 8, B = s.dao >= 8, C = win;
+    let rank, gift = 0;
+    if (A && B && C) { rank = '真传'; gift = 100; }
+    else if ((A && B) || (A && C) || (B && C)) { rank = '内门'; gift = 50; }
+    else if (A || B || C) { rank = '外门'; gift = 0; }
+    else { rank = '杂役'; gift = 0; }
+    return { rank: rank, gift: gift, A: A, B: B, C: C };
+  }
+  // applySectTrial：执行入宗考验并写入地位。杂役/未考 → 按评分定级；已过更高档则不高更低降级。
+  function applySectTrial(s, win) {
+    const r = sectTrial(s, win);
+    const prevIdx = sectRankIndex(s.sectRank);           // 杂役/未考 = -1
+    const newIdx = sectRankIndex(r.rank);
+    if (prevIdx >= 0 && prevIdx > newIdx) {
+      return { ok: true, rank: s.sectRank, gift: 0, passed: true, changed: false, msg: '你已是【' + s.sectRank + '】，无须再考。' };
+    }
+    s.sectRank = r.rank;
+    if (r.gift) addGongye(s, r.gift);
+    ensureTechEquip(s); refreshStats(s); saveState(s);
+    const passed = s.sectRank !== '杂役';
+    return { ok: true, rank: r.rank, gift: r.gift, passed: passed, changed: true, msg: '入宗考验评定为【' + r.rank + '】' + (r.gift ? ('，功业 +' + r.gift) : '') + '。' };
+  }
+
+  // —— 委托框架（§6.2，宗门/游历共用）——
+  function commissionAvailable(s) {
+    if (!sectPassed(s)) return [];
+    const maxR = RANK_REALM_MAX[s.sectRank] || 1;
+    return COMMISSIONS.filter(function (c) { return realmIdx(c.realm) <= maxR; });
+  }
+  function commissionCanAccept(s, c) {
+    if (!sectPassed(s)) return false;
+    if (realmIdx(c.realm) > (RANK_REALM_MAX[s.sectRank] || 1)) return false;
+    if (c.type === 'craft' && (!s.craft || !s.craft[c.craft] || s.craft[c.craft].lv < c.minLv)) return false;
+    return true;
+  }
+  function commissionComplete(s, id) {
+    const c = COMMISSIONS.filter(function (x) { return x.id === id; })[0];
+    if (!c) return { ok: false, msg: '委托不存在。' };
+    if (!commissionCanAccept(s, c)) return { ok: false, msg: '不满足承接条件（境界或百艺等级不足）。' };
+    if (!canAction(s, c.ap)) return { ok: false, msg: '行动点不足。' };
+    if (c.check) {
+      for (const k in c.check) if ((s[k] || 0) < c.check[k]) return { ok: false, msg: '属性不足：' + k + ' 需 ≥ ' + c.check[k] + '。' };
+    }
+    if (c.enemy) {
+      combatStart(s, { name: c.enemy.name, line: '', atk: c.enemy.atk, hp: c.enemy.hp, loot: {}, mechanic: null });
+      const ar = combatAuto(s);
+      if (ar.lost) { saveState(s); return { ok: false, msg: '战斗失败，委托未完成。' }; }
+    }
+    spend(s, c.ap);
+    const st = rnd(c.stone[0], c.stone[1]);
+    s.stone += st;
+    let gy = 0;
+    if (c.gongye) { gy = rnd(c.gongye[0], c.gongye[1]); addGongye(s, gy); }
+    refreshStats(s); saveState(s);
+    return { ok: true, stone: st, gongye: gy, msg: '委托完成：灵石 +' + st + (gy ? '，功业 +' + gy : '') + '。' };
+  }
+
+  // —— 练神峰 / 聚灵潭（§6.8）——
+  function sectTrain(s, type) {
+    if (!s.sect) return { ok: false, msg: '尚未拜入宗门。' };
+    if (type !== 'shen' && type !== 'ling') return { ok: false, msg: '类型无效。' };
+    if (!canAction(s, 2)) return { ok: false, msg: '行动点不足（需 2）。' };
+    if (!s.sectTrain) s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
+    const bi = bigIdxOf(s);
+    const key = BIG_REALMS[bi];
+    s.sectTrain[type + 'ByRealm'][key] = s.sectTrain[type + 'ByRealm'][key] || 0;
+    if (s.sectTrain[type + 'ByRealm'][key] >= 10) return { ok: false, msg: '此大境界「' + (type === 'shen' ? '神识' : '灵力') + '」已锤炼至极限（10 次），需突破后方再进。' };
+    spend(s, 2);
+    if (type === 'shen') s.shen += 1; else s.ling += 1;
+    s.sectTrain[type + 'ByRealm'][key]++;
+    refreshStats(s); saveState(s);
+    return { ok: true, msg: (type === 'shen' ? '神识' : '灵力') + ' +1（本境已锤炼 ' + s.sectTrain[type + 'ByRealm'][key] + '/10）。' };
+  }
+
+  // —— 宗门大比（§6.6 连战 gauntlet）——
+  function sectDabiStart(s) {
+    s.dabi = { idx: 0, full: false, done: false };
+    s.lastDabiYear = s.year;
+    return { ok: true, foe: SECT_DABI.foes[0] };
+  }
+  function sectDabiStep(s, win) {
+    if (!s.dabi || s.dabi.done) return { done: true };
+    const fi = s.dabi.idx;
+    if (!win) {
+      const rw = SECT_DABI.reward[Math.max(1, fi)];
+      s.dabi.done = true;
+      s.stone += rw.stone; addGongye(s, rw.gongye);
+      saveState(s);
+      return { done: true, win: false, gongye: rw.gongye, stone: rw.stone, msg: '止步第 ' + (fi + 1) + ' 层，功业 +' + rw.gongye + '，灵石 +' + rw.stone + '。' };
+    }
+    s.dabi.idx++;
+    if (s.dabi.idx >= SECT_DABI.foes.length) {
+      const rw = SECT_DABI.reward[5];
+      s.dabi.done = true; s.dabi.full = true;
+      s.hp = s.hpMax; s.mp = s.mpMax; // 唯一回满机制
+      s.stone += rw.stone; addGongye(s, rw.gongye);
+      saveState(s);
+      return { done: true, win: true, full: true, gongye: rw.gongye, stone: rw.stone, msg: '五层全胜！功业 +' + rw.gongye + '，灵石 +' + rw.stone + '，气血与灵力尽数回满！' };
+    }
+    return { done: false, win: true, foe: SECT_DABI.foes[s.dabi.idx], layer: s.dabi.idx + 1 };
+  }
+
+  // —— 宗门商人（§6.3 单货币按类型）——
+  // 货币规则：tech/dun/art/equip → 灵石(stone)；elixir/mat → 功业(gongye)。每件仅一种货币。
+  function sectGoodCoin(g) {
+    if (g.coin) return g.coin;                       // data 显式声明优先
+    if (g.kind === 'elixir' || g.kind === 'mat') return 'gongye';
+    return 'stone';
+  }
+  function sectGoodCost(g) {
+    return sectGoodCoin(g) === 'gongye'
+      ? (g.gongye || 0)
+      : (g.stoneFix || GRADE_STONE[g.grade] || 0);
+  }
+  function sectGoods(s) {
+    if (!sectPassed(s)) return [];          // 未过考验/杂役一律无货
+    const ri = sectRankIndex(s.sectRank);
+    return SECT_GOODS.filter(function (g) {
+      const gi = sectRankIndex(g.rankMin);
+      return gi <= ri;
+    });
+  }
+  function sectBuy(s, ref) {
+    if (!sectPassed(s)) return { ok: false, msg: '尚未通过入宗考验，宗门商人不予接待。' };
+    const g = SECT_GOODS.filter(function (x) { return x.ref === ref; })[0];
+    if (!g) return { ok: false, msg: '商品不存在。' };
+    if (sectRankIndex(g.rankMin) > sectRankIndex(s.sectRank || '外门')) return { ok: false, msg: '地位不足，无法购买。' };
+    const coin = sectGoodCoin(g);
+    const cost = sectGoodCost(g);
+    if (coin === 'gongye') {
+      if (!spendGongye(s, cost)) return { ok: false, msg: '功业不足（需 ' + cost + '）。' };
+    } else {
+      if (s.stone < cost) return { ok: false, msg: '灵石不足（需 ' + cost + '）。' };
+      s.stone -= cost;
+    }
+    const qty = g.qty || 1;
+    if (g.kind === 'art') {
+      if (s.arts.indexOf(g.ref) < 0) s.arts.push(g.ref);
+    } else if (g.kind === 'tech' || g.kind === 'dun') {
+      if (s.techs.indexOf(g.ref) < 0) s.techs.push(g.ref);
+    } else if (g.kind === 'elixir') {
+      s.elixirs[g.ref] = (s.elixirs[g.ref] || 0) + qty;
+    } else if (g.kind === 'mat') {
+      if (!s.materials) s.materials = {};
+      s.materials[g.ref] = (s.materials[g.ref] || 0) + qty;
+    } else if (g.kind === 'equip') {
+      grantEquipChecked(s, g.ref);
+    }
+    ensureTechEquip(s); refreshStats(s); saveState(s);
+    let nm = g.ref;
+    if (g.kind === 'art' && ARTIFACTS[g.ref]) nm = ARTIFACTS[g.ref].name;
+    else if ((g.kind === 'tech' || g.kind === 'dun') && TECHNIQUES[g.ref]) nm = TECHNIQUES[g.ref].name;
+    else if (g.kind === 'elixir' && ELIXIRS[g.ref]) nm = ELIXIRS[g.ref].name;
+    else if (g.kind === 'mat' && MATERIALS[g.ref]) nm = MATERIALS[g.ref].name;
+    else if (g.kind === 'equip') { const it = findEquip(g.ref); if (it) nm = it.name; }
+    const cname = coin === 'gongye' ? '功业' : '灵石';
+    return { ok: true, coin: coin, cost: cost, msg: '购得【' + nm + '】（' + cname + ' -' + cost + '）。' };
+  }
+
+
+    return {
     slotExists: slotExists, slotInfo: slotInfo, isUsableSave: isUsableSave,
+    loadMeta: loadMeta, saveMeta: saveMeta, loadState: loadState, saveState: saveState, clearState: clearState,
     ensureTechEquip: ensureTechEquip, equippedShufa: equippedShufa,
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,
     startLife: startLife, commitStart: commitStart,
@@ -2629,9 +3182,9 @@ const Engine = (function () {
     forgeChoices: forgeChoices, doForge: doForge,
     canBreak: canBreak, breakInfo: breakInfo, breakthrough: breakthrough,
     perfectBreakthrough: perfectBreakthrough, normalBreakthrough: normalBreakthrough,
-    sectCombat: sectCombat, sectLecture: sectLecture,
+    sectCombat: sectCombat, sectLecture: sectLecture, sectSocial: sectSocial,
     cultCost: cultCost, actionPoints: actionPoints,
-    endYear: endYear, checkYearEvents: checkYearEvents, fateBattle: fateBattle,
+    endYear: endYear, checkYearEvents: checkYearEvents, moreMainline: moreMainline, fateBattle: fateBattle,
     endLife: endLife, useElixir: useElixir,
     runEvent: runEvent, applyOps: applyOps,
     combatStart: combatStart, combatAct: combatAct, combatAuto: combatAuto,
@@ -2666,6 +3219,21 @@ const Engine = (function () {
     getDestinyBonus: getDestinyBonus, getDestinyAttrBonus: getDestinyAttrBonus,
     getDestinyAttrMult: getDestinyAttrMult, applyDestinyYearly: applyDestinyYearly,
     effAttr: effAttr, getCritRate: getCritRate, getDodgeRate: getDodgeRate, getExtraAtkChance: getExtraAtkChance,
+    // —— P1–P7 新增导出 ——
+    linggenTrait: linggenTrait, linggenAffinityMul: linggenAffinityMul,
+    applyWuxing: applyWuxing, recalcLinggenBonus: recalcLinggenBonus,
+    cultModes: cultModes,
+    finalizeNewLife: finalizeNewLife, applyInit: applyInit,
+    openPointsTotal: openPointsTotal, reincTalentUpgrade: reincTalentUpgrade,
+    julingSet: julingSet, julingYearEnd: julingYearEnd, wuxingToggle: wuxingToggle,
+    addGongye: addGongye, spendGongye: spendGongye,
+    craftStudy: craftStudy,
+    tryRankUp: tryRankUp, sectYearPromote: sectYearPromote, sectPassed: sectPassed, realmIdx: realmIdx,
+    RANK_REALM_MAX: RANK_REALM_MAX,
+    sectTrial: sectTrial, applySectTrial: applySectTrial,
+    commissionAvailable: commissionAvailable, commissionCanAccept: commissionCanAccept, commissionComplete: commissionComplete,
+    sectTrain: sectTrain, sectDabiStart: sectDabiStart, sectDabiStep: sectDabiStep,
+    sectGoods: sectGoods, sectBuy: sectBuy, sectGoodCoin: sectGoodCoin, sectGoodCost: sectGoodCost,
     DESTINIES: DESTINIES
   };
 })();

@@ -83,6 +83,21 @@ async function enterGame(win, doc, name) {
     click(win, 'name-ok');
   }
   await new Promise(r => setTimeout(r, 250));
+  // P1 开荒页：玩家自选灵根 / 出身后落定命数，再进入章节 → 主界面
+  if (visible(doc, 'screen-create') === true) {
+    const firstLg = doc.querySelector('#create-body [data-lg]');
+    if (firstLg) firstLg.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    const firstBg = doc.querySelector('#create-body [data-bg]');
+    if (firstBg) firstBg.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    // 开荒页分两步：先点「预览命数 · 下一页」进入总览页，再落定命数
+    const nx = doc.getElementById('ct-next');
+    if (nx && !nx.disabled) nx.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const cf = doc.getElementById('ct-confirm');
+    if (cf && !cf.disabled) cf.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+  }
   await advanceChapters(win, doc);
   await new Promise(r => setTimeout(r, 200));
 }
@@ -169,6 +184,20 @@ module.exports = async function build() {
       t.note(`命格候选项 ${pool ? pool.children.length : 0} 个`);
       await new Promise(r => setTimeout(r, 80));
       t.ok(click(win, 'enter-start'), '点击“开始这一世”失败');
+      // P1 开荒页：自选灵根 / 出身后落定命数，再进入章节 → 主界面
+      if (visible(doc, 'screen-create') === true) {
+        const firstLg = doc.querySelector('#create-body [data-lg]');
+        if (firstLg) firstLg.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        const firstBg = doc.querySelector('#create-body [data-bg]');
+        if (firstBg) firstBg.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        await new Promise(r => setTimeout(r, 150));
+        const nx = doc.getElementById('ct-next');
+        if (nx && !nx.disabled) nx.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        await new Promise(r => setTimeout(r, 150));
+        const cf = doc.getElementById('ct-confirm');
+        if (cf && !cf.disabled) cf.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+        await new Promise(r => setTimeout(r, 200));
+      }
       const steps = await advanceChapters(win, doc);
       t.note();
     } else {
@@ -572,9 +601,9 @@ module.exports = async function build() {
       Engine.combatStart(s, { name:'测试', atk:10, hp:50, line:'' });
       return JSON.stringify({ low:low, high:high, cap:cap, before:before, after:s.mp, afterMax:s.mpMax });
     })()`));
-    t.eq(v.low, 50, '灵力=1 时灵力上限应为 30+1×20=50（初始灵力上限=50）');
-    t.eq(v.high, 90, '灵力=3 时灵力上限应为 30+3×20=90');
-    t.eq(v.cap, 70, '灵力=2 时灵力上限应为 70');
+    t.eq(v.low, 10, '灵力=1 时灵力上限应为 10+（1-1）×20=10（初始灵力上限=10）');
+    t.eq(v.high, 50, '灵力=3 时灵力上限应为 10+（3-1）×20=50');
+    t.eq(v.cap, 30, '灵力=2 时灵力上限应为 10+（2-1）×20=30');
     const expectMp = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.10));
     t.eq(v.after, expectMp, '战斗前仅恢复 10% 最大灵力（不补满）');
     t.lt(v.after, v.afterMax, '战斗前灵力不应被补满');
@@ -623,6 +652,42 @@ module.exports = async function build() {
     t.ok(/灵力/.test(joined), '战斗属性区应显示「灵力」条');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('寿元移出战斗属性流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 宗门页门禁：未过考验仅受限应考界面（无商人/任务/晋升） ===
+  S.case('宗门页门禁：未入宗/未过考验 仅受限应考界面', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '宗门门禁');
+    const btn = doc.getElementById('btn-sect-bottom') || doc.getElementById('btn-sect');
+    t.ok(!!btn, '宗门入口缺失');
+    if (!btn) return;
+    btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-sect'), true, '宗门屏未打开');
+    let body = doc.getElementById('sect-body');
+    t.ok(!!body, 'sect-body 缺失');
+    if (!body) return;
+    let txt = body.textContent;
+    // 散修态A：只见择宗/应考提示，不得出现完整宗门功能
+    t.ok(/散修|择一仙门/.test(txt), '未入宗应见散修择宗提示');
+    t.ok(txt.indexOf('宗门商人') < 0, '未过考验不应显示宗门商人');
+    t.ok(txt.indexOf('宗门任务') < 0, '未过考验不应显示宗门任务');
+    t.ok(txt.indexOf('申请晋升') < 0, '未过考验不应显示申请晋升');
+    t.ok(txt.indexOf('宗门大比') < 0, '未过考验不应显示宗门大比');
+    // 择一仙门 → 转为「待考」，出现入宗考验入口（仍无完整功能）
+    const card = body.querySelector('[data-sect]');
+    t.ok(!!card, '无宗门可选卡');
+    if (card) {
+      card.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 150));
+    }
+    body = doc.getElementById('sect-body');
+    txt = body ? body.textContent : '';
+    t.ok(txt.indexOf('入宗考验') >= 0, '择宗后应显示「入宗考验」');
+    t.ok(txt.indexOf('宗门商人') < 0, '择宗未过考验仍不应有宗门商人');
+    t.ok(txt.indexOf('宗门任务') < 0, '择宗未过考验仍不应有宗门任务');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('宗门页门禁流程报错: ' + real.slice(0, 4).join(' ;; '));
   });
 
   return S;

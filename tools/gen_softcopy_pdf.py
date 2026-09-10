@@ -12,8 +12,9 @@
   - A4 纵向、单面、黑白；等宽字体优先。
 
 实现要点：
-  1) 读取合并代码 → 2) 剔除空行与纯注释行 → 3) 每页严格 50 行有效代码
-  4) Canvas 逐行定高绘制，超长行截断，确保不折行、每页行数精确。
+  1) 读取合并代码 → 2) 剔除空行与纯注释行 → 3) 超长行按实测宽度**折行**（不截断，
+     保证代码完整且不越出页面右边界）→ 4) 每页严格 50 条打印行
+  5) Canvas 逐行定高绘制，确保行数精确、版面不越界。
 
 用法：python gen_softcopy_pdf.py
 输出：dist/taptap/软著源程序_得道飞升模拟器.pdf
@@ -41,9 +42,11 @@ LINES_PER_PAGE = 50
 FRONT_PAGES = 30
 BACK_PAGES = 30
 
-FONT_SIZE = 7.2
-LINE_LEAD = 13.6
-MAX_CHARS = 168
+FONT = "STSong-Light"
+FONT_SIZE = 7.0
+LINE_LEAD = 13.4
+CONTINUE_INDENT = "    "     # 超长行折行后，续行的缩进
+MARGIN = 15 * mm             # 左右页边距
 
 
 # ---------------- 1. 读取并合并代码 ----------------
@@ -108,32 +111,88 @@ print(f"注释/空行剔除占比: {(1 - total / total_raw) * 100:.1f}%")
 FRONT_N = LINES_PER_PAGE * FRONT_PAGES
 BACK_N = LINES_PER_PAGE * BACK_PAGES
 
-if total <= FRONT_N + BACK_N:
-    pages = [effective[i:i + LINES_PER_PAGE] for i in range(0, total, LINES_PER_PAGE)]
-    print(f"有效代码不足 {FRONT_N + BACK_N} 行，全部提交，共 {len(pages)} 页")
-else:
-    front_lines = effective[:FRONT_N]
-    back_lines = effective[-BACK_N:]
-    pages = []
-    for i in range(0, len(front_lines), LINES_PER_PAGE):
-        pages.append(front_lines[i:i + LINES_PER_PAGE])
-    for i in range(0, len(back_lines), LINES_PER_PAGE):
-        pages.append(back_lines[i:i + LINES_PER_PAGE])
-    print(f"页数: {len(pages)}（前 {FRONT_PAGES} 页 + 后 {BACK_PAGES} 页）")
-
-# ---------------- 2. 绘制 ----------------
+# ---------------- 1b. 版面几何 + 超长行折行 ----------------
 os.makedirs(OUT_DIR, exist_ok=True)
-c = pdfcanvas.Canvas(OUT_PDF, pagesize=A4)
 PW, PH = A4
-LEFT = 15 * mm
-RIGHT = PW - 15 * mm
+LEFT = MARGIN
+RIGHT = PW - MARGIN
 TOP = PH - 20 * mm
 HEADER_Y = PH - 13 * mm
+USABLE = RIGHT - LEFT
+
+_wcache = {}
+
+
+def _cw(ch):
+    """单字符渲染宽度（缓存），避免逐字符调用 stringWidth 造成 O(n^2)。"""
+    w = _wcache.get(ch)
+    if w is None:
+        w = pdfmetrics.stringWidth(ch, FONT, FONT_SIZE)
+        _wcache[ch] = w
+    return w
+
+
+def _sw(s):
+    return sum(_cw(ch) for ch in s)
+
+
+CONT_WIDTH = USABLE - _sw(CONTINUE_INDENT)
+
+
+def wrap_line(s, first_width=USABLE, cont_width=CONT_WIDTH):
+    """
+    按实测渲染宽度把一条源码行拆成多条「打印行」。
+    超过版面宽度时折行（续行加缩进），**不截断**，保证代码完整可读。
+    """
+    chunks = []
+    cur = ""
+    cur_w = 0.0
+    limit = first_width
+    for ch in s:
+        w = _cw(ch)
+        if cur and cur_w + w > limit:
+            chunks.append(cur)
+            cur = CONTINUE_INDENT
+            cur_w = _sw(CONTINUE_INDENT)
+            limit = cont_width
+        cur += ch
+        cur_w += w
+    chunks.append(cur)
+    return chunks
+
+
+physical = []           # [(打印行文本, 对应的有效代码行序号)]
+for idx, ln in enumerate(effective):
+    for part in wrap_line(ln):
+        physical.append((part, idx))
+
+wrapped_src = sum(1 for ln in effective if _sw(ln) > USABLE)
+print(f"超长行（按版面宽度折行）: {wrapped_src} 行 → 折行后打印行总数 {len(physical)}")
+
+if len(physical) <= FRONT_N + BACK_N:
+    pages = [physical[i:i + LINES_PER_PAGE]
+             for i in range(0, len(physical), LINES_PER_PAGE)]
+    print(f"打印行不足 {FRONT_N + BACK_N} 行，全部提交，共 {len(pages)} 页")
+else:
+    front_lines = physical[:FRONT_N]
+    back_lines = physical[-BACK_N:]
+    pages = [front_lines[i:i + LINES_PER_PAGE]
+             for i in range(0, len(front_lines), LINES_PER_PAGE)]
+    pages += [back_lines[i:i + LINES_PER_PAGE]
+              for i in range(0, len(back_lines), LINES_PER_PAGE)]
+    cov_f = len({i for _, i in front_lines})
+    cov_b = len({i for _, i in back_lines})
+    print(f"页数: {len(pages)}（前 {FRONT_PAGES} 页 + 后 {BACK_PAGES} 页）")
+    print(f"覆盖范围: 前 30 页 = 有效代码第 1~{cov_f} 行；"
+          f"后 30 页 = 有效代码第 {total - cov_b + 1}~{total} 行")
+
+# ---------------- 2. 绘制 ----------------
+c = pdfcanvas.Canvas(OUT_PDF, pagesize=A4)
 TOTAL_PAGES = len(pages)
 
 
 def draw_header(page_no):
-    c.setFont("STSong-Light", 8)
+    c.setFont(FONT, 8)
     c.setFillColor(colors.black)
     c.drawString(LEFT, HEADER_Y, f"{SOFT_NAME} {VERSION}")
     c.drawRightString(RIGHT, HEADER_Y, f"第 {page_no} 页 / 共 {TOTAL_PAGES} 页")
@@ -142,17 +201,13 @@ def draw_header(page_no):
     c.line(LEFT, HEADER_Y - 4, RIGHT, HEADER_Y - 4)
 
 
-def truncate(line, max_chars=MAX_CHARS):
-    return line if len(line) <= max_chars else line[:max_chars - 3] + "..."
-
-
 for page_no, page_lines in enumerate(pages, start=1):
     draw_header(page_no)
-    c.setFont("STSong-Light", FONT_SIZE)
+    c.setFont(FONT, FONT_SIZE)
     c.setFillColor(colors.black)
     y = TOP
-    for ln in page_lines:
-        c.drawString(LEFT, y, truncate(ln))
+    for txt, _idx in page_lines:
+        c.drawString(LEFT, y, txt)
         y -= LINE_LEAD
     c.showPage()
 

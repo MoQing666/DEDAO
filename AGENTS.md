@@ -209,3 +209,8 @@ node test/automated/run.js     # 依次跑 01~07，当前 104/104 全过（0 风
     **三脚本同口径**：清洗与折行逻辑抽到 **`tools/softcopy_common.py`**（`strip_comments_and_blanks` / `load_effective` / `fold_lines` / `slice_pages`），被 `gen_softcopy_pdf.py`、`gen_softcopy_docx.py`、`verify_softcopy.py` 共用，避免口径漂移。
     **Word 版**：新增 **`tools/gen_softcopy_docx.py`**（python-docx 直出，SimSun 7pt / 行距固定 13.4pt / 每 50 行 `page_break_before` 强制分页 / 页眉 PAGE+NUMPAGES 域）→ `软著源程序_得道飞升模拟器.docx`（3000 段、59 处分页、100KB）。
     自检工具 **`tools/verify_softcopy.py`** 覆盖 PDF（R0~R8：页数/行数/清洗/页眉/页码位置/连续性/不截断不越界/字体中文）+ Word（段落数/分页数/页眉域/版心宽度不换行/字号行距/连续性），当前全过。改源码后跑一遍即可。
+15. **源程序 Word 版 63 页 → 60 页修复（2026-09-10）**：Word 打开显示 **63 页**（多 3 页）。
+    **根因**：折行按 **STSong-Light**（比例字体，`a`=0.42em / 空格=0.21em / `,`=0.24em）测量，而 Word 实际用 **SimSun** 渲染，其 ASCII 为**等宽半角**（每字符固定 0.5em，含空格/逗号）——中文源码 ASCII 占比极高，Word 实际行宽比折行估算**宽 20~40%**，触发自动换行把行挤到下一页（9052/13012 行超版心）。
+    **修法**：`softcopy_common.py` 新增 **`make_simsun_measure()`**（PIL 读 `C:\Windows\Fonts\simsun.ttc` 字形宽度，逐字符缓存；无字形字符 emoji 等按 1.0em 保守计），`fold_lines` 默认改用它，`gen_softcopy_pdf.py` 亦显式传入 → **PDF/Word 折行口径统一为 SimSun 度量**，PDF 绘制仍用 STSong-Light（更窄）故两端都不越界。折行后 12919 → **13211 打印行**（原 13005），最大行宽 497pt < 版心 510pt，0 行超宽。
+    **验证**：`verify_softcopy.py` 新增 **Word 实际渲染页数校验**（PowerShell + Word COM `ComputeStatistics(2)`，`SKIP_WORD_RENDER=1` 可跳过）→ 实测 **60 页**、3000 段。
+    **教训**：凡「每页恰好 N 行」的硬分页材料，折行必须按**最终渲染字体的实际度量**算；等宽字体（SimSun）与比例字体（STSong-Light）的 ASCII 宽度差可达一倍，用错必翻车。

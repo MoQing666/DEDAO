@@ -89,31 +89,84 @@ def load_effective():
 
 
 # ---------------------------------------------------------------- 宽度测量 / 折行
-_wcache = {}
+#
+# 【重要】折行必须按 Word 端最终渲染字体 SimSun（宋体）的度量来算：
+#   SimSun 的 ASCII 是「等宽半角」（每字符固定 0.5em，含空格/逗号/百分号），
+#   而 STSong-Light 是比例字体（a=0.42em、空格=0.21em、,=0.24em、%=0.80em）。
+#   中文源码里 ASCII 占比极高，用 STSong-Light 折行会低估 20~40%，
+#   导致 Word 端自动换行 → 每页挤出多余行 → 总页数从 60 变 63。
+#   PIL 对 SimSun 缺字形的字符（emoji 等）返回 1.0em，恰等于 Word 回退渲染的
+#   保守宽度，因此按 SimSun 折行对 PDF/Word 两端都安全。
+_SIMSUN_PATHS = [
+    r"C:\Windows\Fonts\simsun.ttc",                    # Windows SimSun
+    "/System/Library/Fonts/Supplemental/Songti.ttc",   # macOS
+    "/usr/share/fonts/truetype/arphic/uming.ttc",      # Linux 备用
+]
+_EM = 1000
+_simsun_font = None
+
+
+def _load_simsun():
+    global _simsun_font
+    if _simsun_font is None:
+        _simsun_font = False                      # 先置为不可用，失败则回退
+        try:
+            from PIL import ImageFont
+            for p in _SIMSUN_PATHS:
+                if os.path.exists(p):
+                    try:
+                        _simsun_font = ImageFont.truetype(p, _EM, index=0)
+                        break
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+    return _simsun_font or None
 
 
 def make_measure(font=FONT, size=FONT_SIZE):
-    """返回 measure(text) -> 渲染宽度(pt)。逐字符缓存，避免 O(n^2)。"""
+    """STSong-Light（比例字体）度量，逐字符缓存。"""
+    cache = {}
+
     def measure(text):
         total = 0.0
         for ch in text:
-            w = _wcache.get(ch)
+            w = cache.get(ch)
             if w is None:
                 w = pdfmetrics.stringWidth(ch, font, size)
-                _wcache[ch] = w
+                cache[ch] = w
+            total += w
+        return total
+    return measure
+
+
+def make_simsun_measure(size=FONT_SIZE):
+    """按 SimSun（宋体）实际字形宽度测量；SimSun 不可用时回退 STSong-Light。"""
+    font = _load_simsun()
+    if font is None:
+        return make_measure()
+    cache = {}
+
+    def measure(text):
+        total = 0.0
+        for ch in text:
+            w = cache.get(ch)
+            if w is None:
+                w = font.getlength(ch) * size / _EM
+                cache[ch] = w
             total += w
         return total
     return measure
 
 
 def fold_lines(lines, measure=None, max_width=USABLE,
-               cont_indent=CONTINUE_INDENT, safety=0.97):
+               cont_indent=CONTINUE_INDENT, safety=0.98):
     """
     把源码行按实测渲染宽度折成「打印行」；不截断，续行加缩进。
     返回 [(打印行文本, 原有效行序号)]。
-    safety：留 3% 余量，防止 Word 端字体度量微小差异导致自动换行。
+    默认按 SimSun 度量（Word 端最终字体）；safety 留 2% 余量。
     """
-    measure = measure or make_measure()
+    measure = measure or make_simsun_measure()
     limit_first = max_width * safety
     limit_cont = limit_first - measure(cont_indent)
     out = []

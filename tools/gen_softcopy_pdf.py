@@ -31,8 +31,8 @@ from reportlab.pdfgen import canvas as pdfcanvas
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from softcopy_common import (FONT, FONT_SIZE, LINES_PER_PAGE,  # noqa: E402
                              LINE_LEAD, MARGIN, SOFT_NAME, TAP_DIR, USABLE,
-                             VERSION, fold_lines, load_effective, make_measure,
-                             slice_pages)
+                             VERSION, fold_lines, load_effective,
+                             make_simsun_measure, slice_pages)
 
 OUT_PDF = os.path.join(TAP_DIR, "软著源程序_得道飞升模拟器.pdf")
 
@@ -44,7 +44,9 @@ print(f"有效代码行数（已剔除空行与纯注释行）: {total}")
 print(f"注释/空行剔除占比: {(1 - total / total_raw) * 100:.1f}%")
 
 # ---------------- 2. 折行 ----------------
-measure = make_measure(FONT, FONT_SIZE)
+# 折行按 Word 端最终字体 SimSun 的度量（与 Word 版同口径），
+# 绘制仍用 STSong-Light（更窄）→ 两端都不会越出页面。
+measure = make_simsun_measure(FONT_SIZE)
 physical = fold_lines(effective, measure=measure)
 wrapped_src = sum(1 for ln in effective if measure(ln) > USABLE)
 print(f"超长行（按版面宽度折行）: {wrapped_src} 行 → 折行后打印行总数 {len(physical)}")

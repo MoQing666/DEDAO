@@ -23,7 +23,7 @@ import pdfplumber
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from softcopy_common import (FONT_SIZE, LINES_PER_PAGE, LINE_LEAD, SOFT_NAME,  # noqa: E402
                              TAP_DIR, USABLE, VERSION, fold_lines,
-                             load_effective, make_measure, slice_pages)
+                             load_effective, make_simsun_measure, slice_pages)
 
 PDF = os.path.join(TAP_DIR, "软著源程序_得道飞升模拟器.pdf")
 DOCX = os.path.join(TAP_DIR, "软著源程序_得道飞升模拟器.docx")
@@ -31,7 +31,9 @@ WORD_FONT = "SimSun"
 
 PASS, FAIL, WARN = "[PASS]", "[FAIL]", "[WARN]"
 issues, warns = [], []
-_sw = make_measure()
+# Word 侧宽度校验必须用 SimSun 度量（Word 实际渲染字体）；其 ASCII 为等宽半角，
+# 比 STSong-Light 宽 20~40%，用错度量会漏掉 Word 端自动换行的风险。
+_sw = make_simsun_measure()
 
 
 def ok(m):
@@ -54,6 +56,68 @@ def norm(s):
 
 def is_header_line(l):
     return SOFT_NAME in l or re.match(r"^第\s*\d+\s*页", l.strip())
+
+
+def check_word_rendered_pages(expected):
+    """
+    用 Word 实际渲染统计页数——这是「每页恰好 50 行」的最终验证：
+    若某行超出 Word 版心会触发自动换行，把行挤到下一页，页数就会 > 期望值。
+    设 SKIP_WORD_RENDER=1 可跳过（需已安装 Word）。
+    """
+    import base64
+    import shutil
+    import subprocess
+    import tempfile
+
+    if os.environ.get("SKIP_WORD_RENDER") == "1":
+        warn("已按 SKIP_WORD_RENDER=1 跳过 Word 实际渲染校验")
+        return
+    if os.name != "nt":
+        warn("非 Windows 环境，跳过 Word 实际渲染页数校验")
+        return
+
+    tmp_docx = os.path.join(tempfile.gettempdir(), "_sc_render.docx")
+    tmp_out = os.path.join(tempfile.gettempdir(), "_sc_render.txt")
+    try:
+        shutil.copyfile(DOCX, tmp_docx)
+        if os.path.exists(tmp_out):
+            os.remove(tmp_out)
+    except Exception as e:                                    # noqa: BLE001
+        warn(f"无法准备渲染校验临时文件：{e}")
+        return
+
+    ps = (
+        "$ErrorActionPreference='Stop';"
+        "$w=New-Object -ComObject Word.Application;"
+        "$w.Visible=$false;$w.DisplayAlerts=0;"
+        f"$d=$w.Documents.Open('{tmp_docx}',$false,$true);"
+        "$p=$d.ComputeStatistics(2);$l=$d.ComputeStatistics(1);"
+        "$d.Close($false);$w.Quit();"
+        f"'{{0}} {{1}}' -f $p,$l | Set-Content -Path '{tmp_out}' -Encoding UTF8"
+    )
+    enc = base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive",
+                        "-EncodedCommand", enc],
+                       capture_output=True, timeout=240)
+    except Exception as e:                                    # noqa: BLE001
+        warn(f"Word 渲染校验未完成：{e}")
+        return
+    if not os.path.exists(tmp_out):
+        warn("Word 渲染校验无输出（未安装 Word？）")
+        return
+    with open(tmp_out, encoding="utf-8-sig") as fh:
+        parts = fh.read().split()
+    try:
+        got = int(parts[0])
+    except (IndexError, ValueError):
+        warn(f"Word 渲染输出无法解析：{parts!r}")
+        return
+    if got == expected:
+        ok(f"Word 实际渲染 {got} 页 = 期望 {expected} 页（无自动换行溢出）")
+    else:
+        bad(f"Word 实际渲染 {got} 页 ≠ 期望 {expected} 页"
+            f"（有行超宽触发自动换行，须按 SimSun 度量折行）")
 
 
 raw, eff = load_effective()
@@ -265,6 +329,8 @@ if Document is not None:
             warn(f"{len(trunc)} 行以「...」结尾")
         else:
             ok("无截断行（超长行已折行，代码完整）")
+
+        check_word_rendered_pages(len(pages))
 
 print("\n" + "=" * 74)
 if issues:

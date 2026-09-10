@@ -588,8 +588,8 @@ module.exports = async function build() {
     }
   });
 
-  // === 回归：灵力条（上限=30+灵力×20，初始 50；战斗前仅恢复 10%） ===
-  S.case('灵力条：上限=30+灵力×20（初始50），战斗前仅恢复 10% 不补满', async (t) => {
+  // === 回归：灵力条（统一口径 mpMax = 20 + (灵力-1)×20；战斗前仅恢复 10%） ===
+  S.case('灵力条：上限=20+(灵力-1)×20，战斗前仅恢复 10% 不补满', async (t) => {
     const { win } = await boot();
     const v = JSON.parse(win.eval(`(function(){
       var s = Engine.startLife('灵力条');
@@ -601,9 +601,9 @@ module.exports = async function build() {
       Engine.combatStart(s, { name:'测试', atk:10, hp:50, line:'' });
       return JSON.stringify({ low:low, high:high, cap:cap, before:before, after:s.mp, afterMax:s.mpMax });
     })()`));
-    t.eq(v.low, 10, '灵力=1 时灵力上限应为 10+（1-1）×20=10（初始灵力上限=10）');
-    t.eq(v.high, 50, '灵力=3 时灵力上限应为 10+（3-1）×20=50');
-    t.eq(v.cap, 30, '灵力=2 时灵力上限应为 10+（2-1）×20=30');
+    t.eq(v.low, 20, '灵力=1 时灵力上限应为 20+(1-1)×20=20');
+    t.eq(v.high, 60, '灵力=3 时灵力上限应为 20+(3-1)×20=60');
+    t.eq(v.cap, 40, '灵力=2 时灵力上限应为 20+(2-1)×20=40');
     const expectMp = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.10));
     t.eq(v.after, expectMp, '战斗前仅恢复 10% 最大灵力（不补满）');
     t.lt(v.after, v.afterMax, '战斗前灵力不应被补满');

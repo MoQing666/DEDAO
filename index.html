@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
-  <link rel="stylesheet" href="css/style.css?v=37">
+  <link rel="stylesheet" href="css/style.css?v=41">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -103,6 +103,7 @@
         </div>
         <div class="destiny-actions">
           <button id="enter-reroll" class="btn-small">重新抽取 (1点)</button>
+          <button id="enter-xianming" class="btn-small" style="display:none">命格觉醒·仙命 (1点)</button>
         </div>
       </div>
 
@@ -169,7 +170,7 @@
     <footer class="actions">
       <div class="act-grid">
         <button id="btn-cult" class="act"><span id="btn-cult-label">修炼</span></button>
-        <button id="btn-explore" class="act"><span>秘境（2点）</span></button>
+        <button id="btn-explore" class="act"><span>秘境</span></button>
         <button id="btn-sect" class="act"><span>宗门</span></button>
         <button id="btn-arts" class="act"><span id="btn-arts-label">锻体</span></button>
         <button id="btn-social" class="act"><span id="btn-social-label">游历</span></button>
@@ -232,14 +233,6 @@
     <button id="btn-bag-bottom" class="bottom-btn">
       <span class="bottom-icon">📦</span>
       <span class="bottom-text">储物袋</span>
-    </button>
-    <button id="btn-sect-bottom" class="bottom-btn">
-      <span class="bottom-icon">⛩️</span>
-      <span class="bottom-text">宗门</span>
-    </button>
-    <button id="btn-travel-bottom" class="bottom-btn">
-      <span class="bottom-icon">🗺️</span>
-      <span class="bottom-text">游历</span>
     </button>
     <button id="btn-npc-bottom" class="bottom-btn">
       <span class="bottom-icon">🐾</span>
@@ -541,9 +534,9 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=37"></script>
-  <script src="js/engine.js?v=37"></script>
-  <script src="js/audio.js?v=37"></script>
-  <script src="js/ui.js?v=37"></script>
+  <script src="js/data.js?v=43"></script>
+  <script src="js/engine.js?v=43"></script>
+  <script src="js/audio.js?v=43"></script>
+  <script src="js/ui.js?v=43"></script>
 </body>
 </html>

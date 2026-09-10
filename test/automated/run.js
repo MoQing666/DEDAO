@@ -17,6 +17,9 @@ const MODULES = [
   ['02-engine-sim.test.js', '引擎单元测试 & 长时模拟'],
   ['03-ui.test.js', 'UI / DOM 层'],
   ['04-adventure.test.js', '秘境重构（横版地图/体力/探索度/Boss）'],
+  ['05-xianyuan.test.js', '仙缘统一触发（概率门/上限/权重/门槛）'],
+  ['06-travel.test.js', '游历 3 选 1（年度上限/独立池/带权）'],
+  ['07-favor.test.js', '仙缘 NPC 缘法系统（解锁/好感分级/互动/单抽/主线触发）'],
 ];
 
 function bar(pass, fail) {

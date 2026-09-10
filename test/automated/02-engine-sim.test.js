@@ -76,6 +76,8 @@ module.exports = async function build() {
   S.case('法宝 system：artifactStats 真实生效（机制层贯通）', (t) => {
     const s = E.startLife('法宝测试');
     E.commitStart(s, TALENTS[0].id);
+    // 装备型法宝改为「需装备后生效、受槽位上限约束」：测试放大槽位上限以覆盖全部效果
+    s.reinc = s.reinc || {}; s.reinc.treasureSlot = 20; E.refreshStats(s);
     const dao0 = E.effAttr(s, 'dao');
     const gB = E.cultGain(s).gain;
     const crit0 = E.getCritRate(s);
@@ -121,8 +123,10 @@ module.exports = async function build() {
     E.applyOps(s, { art: 'shixue_zhu' });
     t.gt(s.atk, atkPre, '嗜血珠击杀累计未提升攻击');
 
-    // 去重：重复授予同一法宝不应叠加
-    t.eq(s.arts.filter(a => a === 'linghu_pei').length, 1, '重复授予法宝未被去重');
+    // 去重：重复授予同一法宝不应叠加（装备槽唯一、库存去重）
+    E.applyOps(s, { art: 'linghu_pei' });
+    t.eq(s.equip.treasure.filter(a => a === 'linghu_pei').length, 1, '重复授予法宝在装备槽未去重');
+    t.eq(s.arts.indexOf('linghu_pei'), -1, '重复授予法宝未在库存去重');
     checkInvariants(t, s, '法宝测试末态');
   });
 
@@ -264,6 +268,22 @@ module.exports = async function build() {
     t.eq(s.age, a + 1, '年龄未增长');
     t.eq(s.cultedThisYear, false, '新的一年应重置修炼标记');
     checkInvariants(t, s, 'endYear');
+  });
+
+  S.case('endYear 年末气血与灵力同步回满', (t) => {
+    const s = E.startLife('回满'); E.commitStart(s, TALENTS[0].id);
+    E.refreshStats(s);
+    const hpM = s.hpMax, mpM = s.mpMax;
+    t.ok(hpM > 0 && mpM > 0, '上限应 >0');
+    // 先扣血扣灵（确保非满状态）
+    s.hp = Math.max(1, Math.round(s.hpMax * 0.3));
+    s.mp = Math.max(1, Math.round(s.mpMax * 0.2));
+    const hpBefore = s.hp, mpBefore = s.mp;
+    t.ok(hpBefore < s.hpMax && mpBefore < s.mpMax, '前置：血灵应先处于非满状态');
+    try { E.endYear(s); } catch (e) { t.fail('endYear 抛异常: ' + e.message); return; }
+    t.eq(s.hp, s.hpMax, '年末气血应回满');
+    t.eq(s.mp, s.mpMax, '年末灵力应同步回满');
+    checkInvariants(t, s, 'endYear 回满');
   });
 
   /* ---------- 长时模拟 ---------- */
@@ -519,15 +539,15 @@ module.exports = async function build() {
 
     // 灵石类：功法/装备/法宝只扣灵石，不扣功业
     s0 = s.stone; g0 = s.gongye;
-    r = E.sectBuy(s, 'qingfeng');                         // 青锋剑(equip) stoneFix=100
+    r = E.sectBuy(s, 'qingfeng');                         // 青锋剑(宝物/equip.treasure) stoneFix=100
     t.ok(r.ok, '青锋剑购买应成功: ' + r.msg);
-    t.ok(s.inventory.indexOf('qingfeng') >= 0, '青锋剑应入 s.inventory');
+    t.ok(s.arts.indexOf('qingfeng') >= 0 || s.equip.treasure.indexOf('qingfeng') >= 0, '青锋剑作为宝物应入法宝囊(s.arts)或已装备');
     t.eq(s0 - s.stone, 100, '青锋剑应扣灵石 100');
     t.eq(s.gongye, g0, '青锋剑不应扣功业');
 
     r = E.sectBuy(s, 'duangu_bian');                      // 锻骨鞭(art 地) 灵石 GRADE_STONE.地=1400
     t.ok(r.ok, '锻骨鞭购买应成功: ' + r.msg);
-    t.ok(s.arts.indexOf('duangu_bian') >= 0, '锻骨鞭应入 s.arts');
+    t.ok((s.arts.indexOf('duangu_bian') >= 0) || (s.equip.treasure.indexOf('duangu_bian') >= 0), '锻骨鞭应已获得（库存或已装备）');
     t.eq(s0 - s.stone, 100 + GRADE_STONE['地'], '锻骨鞭灵石应为 GRADE_STONE.地=1400（实扣含青锋剑100）');
     t.eq(s.gongye, g0, '法宝不应扣功业（单货币）');
   });
@@ -632,6 +652,99 @@ module.exports = async function build() {
     t.eq(E.sectPassed(s), true, '升内门后 sectPassed=true');
     // 正式档不因大境界乱降/自动越级到内门之上（内门再晋升需功业）
     t.ok(up && up.rank === '内门', 'sectYearPromote 应返回内门');
+  });
+
+  /* ================= Part I：百艺 灵田播种（买苗/下种/株数/境界门禁） ================= */
+  S.case('灵田：买苗受境界门禁；自备灵草下种不限境界', (t) => {
+    function fresh() { const s = E.startLife('田'); E.commitStart(s, 'wuxing'); s.stone = 100000; s.materials = { herb_huang: 100, herb_xuan: 50, herb_di: 30 }; return s; }
+    // 炼气(bigIdx0)：灵石买玄级苗 → 拒绝
+    let s = fresh();
+    let r = E.plantField(s, 'lingshen_xuan', 1, 'buy');
+    t.ok(typeof r === 'string' && r.indexOf('你翻土') !== 0, '炼气期灵石买玄级苗应被拒');
+    t.eq(s.stone, 100000, '被拒时不应扣灵石');
+    // 炼气：灵石买黄级苗 → 成功并扣灵石
+    r = E.plantField(s, 'lingshen_huang', 1, 'buy');
+    t.ok(typeof r === 'string' && r.indexOf('你翻土') === 0, '炼气期灵石买黄级苗应成功');
+    t.eq(s.stone, 100000 - 10, '买 1 株黄级苗应扣 10 灵石');
+    // 炼气：自备玄级灵草下种 → 成功（不限境界）
+    const s2 = fresh();
+    r = E.plantField(s2, 'lingshen_xuan', 1, 'own');
+    t.ok(typeof r === 'string' && r.indexOf('你翻土') === 0, '自备玄级灵草下种应成功（炼气亦可）');
+    t.eq(s2.materials.herb_xuan, 50 - 3, '自备下种玄级应扣 3 株玄级灵草');
+    // 株数成本线性（买6株黄）
+    const s3 = fresh();
+    E.plantField(s3, 'lingshen_huang', 6, 'buy');
+    t.eq(s3.stone, 100000 - 60, '买 6 株黄级苗应扣 60 灵石');
+    t.ok(!!(s3.field && s3.field[0]), '第 1 块田应有作物');
+    if (s3.field && s3.field[0]) t.eq(s3.field[0].quantity, 6, '单亩株数应为 6');
+  });
+
+  S.case('灵田：成熟判定 + 采收按株数翻产出', (t) => {
+    const s = E.startLife('收'); E.commitStart(s, 'wuxing'); s.stone = 100000; s.materials = { herb_huang: 0 };
+    E.plantField(s, 'lingshen_huang', 6, 'buy'); // 黄级 1 年熟，6 株
+    let fi = E.fieldInfo(s, 0);
+    t.ok(fi && fi.done === false, '刚种下未成熟');
+    s.year += 1; s.year = Math.max(s.year, 2);
+    fi = E.fieldInfo(s, 0);
+    t.ok(fi && fi.done === true, '1 年后应成熟（实 ' + (fi && fi.years) + '/' + (fi && fi.needYears) + '）');
+    const h = E.harvestField(s, 0);
+    t.ok(typeof h === 'string' && h.indexOf('黄级灵草') >= 0, '采收应产黄级灵草');
+    t.ok(s.materials.herb_huang >= 6 * 3, '6 株至少产出 ' + (6 * 3) + ' 黄级灵草（实 ' + s.materials.herb_huang + '）');
+    t.ok(s.materials.herb_huang <= 6 * 6 + 0.001, '6 株至多产出 ' + (6 * 6) + ' 黄级灵草');
+    t.ok(s.field[0] === null || !s.field[0], '采收后田应清空');
+  });
+
+  /* ================= Part I：挖矿 digMine 重构（投入轮次 + 档位 + 深度） ================= */
+  S.case('灵矿：digMine 按投入轮次产出、境界定档位、深度成长', (t) => {
+    const s = E.startLife('矿'); E.commitStart(s, 'wuxing'); s.stone = 5000; s.materials = {};
+    s.actionsLeft = 10;
+    const r1 = E.digMine(s, 3);
+    t.ok(!!r1 && r1.ok === true, 'digMine 应返回 {ok:true}');
+    t.eq(r1.rounds, 3, '应连挖 3 下');
+    const ironBefore = s.materials.iron_huang || 0;
+    t.gte(s.materials.iron_huang || 0, ironBefore, '铁不应减少');
+    t.gte((s.materials.herb_huang || 0), 0, '伴生草不应为负');
+    t.gte(s.stone, 5000, '挖矿只增灵石不应减少');
+    t.ok(r1.depth >= 0 && r1.depth <= 10, '深度应在 0-10');
+    const mi = E.mineInfo(s);
+    t.ok(!!mi && mi.ironKey === 'iron_huang', '炼气期挖矿应产黄级灵铁');
+    // 深处挖矿（深度封顶不越界）
+    for (let i = 0; i < 20; i++) E.digMine(s, 1);
+    t.lte(s.mine.depth, 10, '深度应封顶 10');
+  });
+
+  /* ================= Part II：秘境连锁解锁（境界 or 通关上一级） ================= */
+  S.case('秘境：advUnlocked 双通道 + markAdvClear 持久', (t) => {
+    function fresh(idx) { const s = E.startLife('探'); E.commitStart(s, 'wuxing'); s.idx = idx || 0; s.actionsLeft = 6; s.flags = s.flags || {}; return s; }
+    // 炼气(idx0)：玄级锁定（未通关黄）
+    let s = fresh(0);
+    t.eq(E.advUnlocked(s, 'huang'), true, '黄级恒开');
+    t.eq(E.advUnlocked(s, 'xuan'), false, '炼气未通关时玄级应锁');
+    t.eq(E.advUnlocked(s, 'di'), false, '地级应锁');
+    // 通关黄 → 玄级直接开（仍炼气）
+    E.markAdvClear(s, 'huang');
+    t.ok(s.flags.advClear && s.flags.advClear.huang, 'markAdvClear 应写入 flags');
+    t.eq(E.advUnlocked(s, 'xuan'), true, '通关黄级后玄级应开（无视境界）');
+    t.eq(E.advUnlocked(s, 'di'), false, '地级仍需通关玄');
+    // 通关玄 → 地开
+    E.markAdvClear(s, 'xuan');
+    t.eq(E.advUnlocked(s, 'di'), true, '通关玄级后地级应开');
+    // 元婴(idx9)：不靠通关也全开至仙(仙另需事件现身，此处仅测解锁通道)
+    const s2 = fresh(9);
+    t.eq(E.advUnlocked(s2, 'tian'), true, '元婴境界直开天级');
+    t.eq(E.advUnlocked(s2, 'xian'), true, '元婴境界直开仙级（解锁通道）');
+    // 通关天 → 仙级解锁通道开
+    const s3 = fresh(0);
+    E.markAdvClear(s3, 'huang'); E.markAdvClear(s3, 'xuan'); E.markAdvClear(s3, 'di'); E.markAdvClear(s3, 'tian');
+    t.eq(E.advUnlocked(s3, 'xian'), true, '通关天级后仙级解锁通道应开（无视境界）');
+    // startAdventure 服务端兜底：炼气未通关玄 → 拒绝
+    const s4 = fresh(0); s4.year = 1;
+    const rr = E.startAdventure(s4, 'xuan', { ap: 2, items: [] });
+    t.ok(rr && rr.ok === false, '炼气未通关时进玄级秘境应被拒');
+    // 通关黄后炼气可进玄级
+    const s5 = fresh(0); E.markAdvClear(s5, 'huang'); s5.year = 1; s5.actionsLeft = 6;
+    const r5 = E.startAdventure(s5, 'xuan', { ap: 2, items: [] });
+    t.ok(r5 && r5.ok === true, '通关黄后炼气应能进入玄级秘境');
   });
 
   return S;

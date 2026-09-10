@@ -208,7 +208,8 @@ const TECHNIQUES = {
 };
 const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05a7a', 仙: '#9adcff' };
 
-/* ---------------- 法宝（仅可经由剧情/商店获取，不可炼制） ----------------
+/* ---------------- 法宝（可经由剧情/商店/秘境BOSS获取，不可炼制） ----------------
+   秘境BOSS 掉落按阶位分层：见下方 BOSS_TREASURE_BAND（秘境阶位 → 可掉落 grade 区间）
    effect 字段语义（小数 = 百分比）：
    wu/ti/dun/shen/dao/ling 六维；atk/hpMax/def 加算；atkPct/defPct/critPct/dodgePct/cult 百分比(小数)
    modeBonus{normal,focus,seclusion} 修炼倍率加算；stealPct 吸血(造成伤害%回血)；defToAtk 防御值×N 转攻击
@@ -223,12 +224,12 @@ const ARTIFACTS = {
   dashen_bian:     { name: '打神鞭',   type: '攻', grade: '地', desc: '缠满雷纹的长鞭，曾斩过三山妖王，与血脉隐隐共鸣。', effect: { shen: 1 } },
   /* —— A 六维类（8） —— */
   taixu_zhu:       { name: '太虚灵珠', type: '辅', grade: '仙', desc: '魔渊之战中不肯散去的一点光，凝作混沌之珠。', effect: { wu: 1, ti: 1, dun: 1, shen: 1, dao: 1, ling: 1 } },
-  wudao_yujian:    { name: '悟道玉简', type: '辅', grade: '天', desc: '论道台上一位老修塞来的玉简，只记了一句话。', effect: { wu: 1 } },
+  wudao_yujian:    { name: '悟道玉简', type: '辅', grade: '地', desc: '论道台上一位老修塞来的玉简，只记了一句话。', effect: { wu: 1 } },
   xuanwu_guijia:   { name: '玄武龟甲', type: '守', grade: '地', desc: '玄冰老龟遗下的磨盘大甲，浮冰般凝着寒气。', effect: { def: 20 } },
   fengxing_yuyi:   { name: '风行羽衣', type: '辅', grade: '地', desc: '虚空乱流中残破的羽衣，触身化青衫薄如蝉翼。', effect: { dun: 2 } },
-  yuanshen_deng:   { name: '元神灯',   type: '辅', grade: '天', desc: '聂小倩所托的一盏青灯，灯灭人亦在。', effect: { shen: 1 } },
+  yuanshen_deng:   { name: '元神灯',   type: '辅', grade: '地', desc: '聂小倩所托的一盏青灯，灯灭人亦在。', effect: { shen: 1 } },
   mingxin_jing:    { name: '明心镜',   type: '辅', grade: '地', desc: '心魔溃散处落下的蒙尘铜镜，擦净照见的只是自己。', effect: { dao: 2 } },
-  zhoutian_xingpan: { name: '周天星盘', type: '辅', grade: '天', desc: '星落谷深处仍在缓缓转动的星盘，周天星力倒灌。', effect: { wu: 1 } },
+  zhoutian_xingpan: { name: '周天星盘', type: '辅', grade: '地', desc: '星落谷深处仍在缓缓转动的星盘，周天星力倒灌。', effect: { wu: 1 } },
   huixin_jian:     { name: '清净明心剑', type: '辅', grade: '天', desc: '山中隐士暗层抽出的无鞘斑驳旧剑：「心明，则剑利。」', effect: { daoAtkPct: 0.005, daoCap: 0.30 } },
   /* —— B 战力类（9） —— */
   zhanxian_feidao: { name: '斩仙飞刀', type: '攻', grade: '天', desc: '插在仙人喉头三寸的小刀，人散千年刀犹鸣。', effect: { atkPct: 0.05 } },
@@ -265,6 +266,17 @@ const ARTIFACTS = {
   jinjing_jia:     { name: '金精甲',   type: '守', grade: '天', desc: '金线织就的软甲，底气也要拿灵石换。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'defPct', cap: 1.0 } } }
 };
 
+/* ---------------- 秘境BOSS 法宝掉落分层 ----------------
+   秘境阶位(advKey) → 可掉落法宝 grade 区间（取区间内「上位80% / 下位20%」随机，排除已拥有）。
+   注：ARTIFACTS 无「黄」阶法宝，故 huang 区间(黄~玄)实际落在玄阶。 */
+const BOSS_TREASURE_BAND = {
+  huang: ['黄', '玄'],
+  xuan:  ['玄', '地'],
+  di:    ['地', '天'],
+  tian:  ['天', '仙'],
+  xian:  ['天', '仙']
+};
+
 /* ---------------- 材料与货币 ---------------- */
 const MATERIALS = {
   herb:  { name: '灵草', emoji: '🌿' },
@@ -297,12 +309,19 @@ const FORMULAS = [
   { id: 'wudao_pill', out: 'wudao',  type: '丹',  cost: { herb_tian: 40 }, needRealm: 3, grade: '天', years: 8 }
 ];
 
-/* ---------------- 灵田种子（百艺 · 种植） ---------------- */
+/* ---------------- 灵田种子（百艺 · 种植） ----------------
+   境界/成本/规模三要素：
+     realmMin: 大境界下限(0炼气/1筑基/2金丹/3元婴)——仅「灵石买苗」受此限；
+               玩家自备同等级灵草(herb)作苗可直接下种，不受此限。
+     stone   : 灵石买 1 株苗的成本（主通道，打破「灵草种灵草」自循环）。
+     herb    : 自备 1 株苗需消耗的同等级灵草（辅通道；= 旧 cost）。
+     years   : 生长年数；gain: 成熟单株产出区间；grade: 档位。
+------------------------------------------------------------------ */
 const FIELD_SEEDS = {
-  lingshen_huang: { name: '黄级灵草田', cost: 1, years: 1, gain: [3, 6], grade: '黄', desc: '种黄级灵草苗，一年后收3~6株。' },
-  lingshen_xuan:  { name: '玄级灵草田', cost: 3, years: 2, gain: [4, 8], grade: '玄', desc: '种玄级灵草苗，两年后收4~8株。' },
-  lingshen_di:    { name: '地级灵草田', cost: 6, years: 3, gain: [5, 10], grade: '地', desc: '种地级灵草苗，三年后收5~10株。' },
-  lingshen_tian:  { name: '天级灵草田', cost: 10, years: 4, gain: [6, 12], grade: '天', desc: '种天级灵草苗，四年后收6~12株。' }
+  lingshen_huang: { name: '黄级灵草田', realmMin: 0, stone: 10, herb: 1, years: 1, gain: [3, 6], grade: '黄', desc: '种黄级灵草苗，一年后收3~6株。' },
+  lingshen_xuan:  { name: '玄级灵草田', realmMin: 1, stone: 40, herb: 3, years: 2, gain: [4, 8], grade: '玄', desc: '种玄级灵草苗，两年后收4~8株。' },
+  lingshen_di:    { name: '地级灵草田', realmMin: 2, stone: 120, herb: 6, years: 3, gain: [5, 10], grade: '地', desc: '种地级灵草苗，三年后收5~10株。' },
+  lingshen_tian:  { name: '天级灵草田', realmMin: 3, stone: 300, herb: 10, years: 4, gain: [6, 12], grade: '天', desc: '种天级灵草苗，四年后收6~12株。' }
 };
 
 // 灵田产出映射
@@ -643,7 +662,7 @@ const MAINLINE = [
     ],
     choices: [
       { t: '买只烧鸡给他（50灵石）', req: { stone: 50 },
-        effect: { stone: -50, flags: { beggar_kind: 1 } },
+        effect: { stone: -50, flags: { beggar_kind: 1, beggar_met: 1 } },
         lines: [
           '你从摊上买了只肥鸡递过去。老乞丐愣了愣，忽然笑了："行，是个心善的。"',
           '他撕下一只鸡腿，吃得满嘴流油。吃完了，他抹抹嘴，从怀里摸出一枚铜钱递给你：',
@@ -651,7 +670,7 @@ const MAINLINE = [
           '你接过铜钱——入手微沉。你看了看他，他已经在打瞌睡了。'
         ] },
       { t: '施舍一个热馒头',
-        effect: { flags: { beggar_cold: 1 } },
+        effect: { flags: { beggar_cold: 1, beggar_met: 1 } },
         lines: [
           '你到路边买了个热气腾腾的馒头，轻轻放在他手边。',
           '他看了你很久，点了点头："好孩子。"',
@@ -705,6 +724,19 @@ const MAINLINE = [
       { t: '请教飞升之道', effect: { trib: 0.10 }, lines: ['他传授你飞升心得，你受益匪浅。（渡劫+10%）'] },
       { t: '求赐仙宝', effect: { atk: 10 }, lines: ['他赠你一柄仙剑，剑光如虹。（攻击+10）'] }
     ] },
+
+  /* —— 练气后期：老乞丐传《锻体诀》（解锁锻体，先于原筑基后期机缘）—— */
+  { id: 'ml_2_beggar_duanti', idx: 2, title: '老乞丐的锻体诀', chapter: true,
+    req: { flags: { beggar_met: 1 } },
+    lines: [
+      '练气后期，你对这副肉身愈发不满——灵力日盛，筋骨却拖了后腿。',
+      '这一夜，城隍庙前那道佝偻的身影竟又出现了。老乞丐盘腿坐在墙根，冲你招了招手。',
+      '"小娃娃，修为见长，可身子骨还是软趴趴的。"他哑声一笑，"老头子早年学过两手锻体的门道，今日兴致好，传你一招半式。"',
+      '他屈指在你肩井、命门连点数下，一股暖流顺着经脉炸开，皮肉筋骨竟隐隐作响。',
+      '"记着——淬体魄以固其基，炼遁速以轻其身，凝神识以明其念。每一大境界，每种淬炼至多十次，过则需破境再进。"',
+      '言罢他嘿嘿一笑，缩回墙角打起瞌睡，再不言语。（习得《锻体诀》，从此可锻体）'
+    ],
+    effect: { flags: { duanti: 1 }, hpMax: 20 } },
 
   { id: 'ml_0_6', idx: 0, title: '青梅往事', chapter: true,
     setFlags: { lin: 1, linChildhood: 1 },
@@ -913,13 +945,12 @@ const MAINLINE = [
           '石壁缓缓开启，里面是一本泛黄的功法总纲。'
         ] }
     ] },
-  { id: 'ml_5_t3', idx: 5, title: '得授《锻体诀》', chapter: true,
-    effect: { flags: { duanti: 1 }, hpMax: 20 },
+  { id: 'ml_5_t3', idx: 5, title: '锻体小成', chapter: true,
+    effect: { hpMax: 20 },
     lines: [
-      '功法总纲之上，只三个古字——《锻体诀》。',
-      '「炼体非弃法。法体两全，方为大道：淬体魄以固其基，炼遁速以轻其身，凝神识以明其念。」',
-      '「然大境界有涯，肉身亦有涯。每一大境界，每一种淬炼，至多十次。十次之后，非突破大境界，不可再进。」',
-      '你盘膝而坐，将《锻体诀》一字一字刻进识海。从今往后，「锻体」一门，正式入了你的修行。'
+      '筑基后期，你重读早年所得《锻体诀》，断崖桩印、炼体遗府的记忆次第浮现。',
+      '「炼体非弃法。法体两全，方为大道」——你忽有所悟，将过往心得融于一炉。',
+      '肉身如炉，痛为薪火，这一回淬得比当年更深一分。（锻体小成，气血上限 +20）'
     ] },
 
   // 第五章：九州风云（金丹前期 idx 6，第26-35年）
@@ -1047,10 +1078,58 @@ const DEATH_EVENTS = [
     fight: { name: '魔祖仙帝', atk: 2000, hp: 22500 } }
 ];
 
+/* ---------------- 敌人固定基线模型（v4：所有敌人共用，不再随玩家自身攻/血缩放） ----------------
+   设计原则（修复"敌人随玩家自身攻/血缩放 → 命格/装备加成被抵消、越强越弱"问题）：
+   - 敌人属性 = ENEMY_REALM_BASE[tier] 参考攻/血 × 递增系数(atkMul/hpMul) × JIE_DATA[jie].diff(叠劫)；
+   - 玩家自身 atk/hp 不参与敌人缩放，故命格/装备/天赋带来的数值优势可真实转化为通过率；
+   - 秘境 / 入宗考验 / 死劫 / 心魔 / 天劫 全部复用同一套 enemyStats(tier, atkMul, hpMul, jieDiff, opts)；
+   - 真实威胁来自 JIE_DATA[jie].diff 叠劫（jie0→1.0 … jie9→4.0），需靠命格/法宝/转世堆叠扛过。
+   模拟验证见 tools/player_sim.js。
+------------------------------------------------------------------------------------------------ */
+// 重平衡（v5.2，2026-09）：仅动死劫专属缩放，不动 JIE_DATA.diff（秘境/渡劫共用）。
+// 旧表在 jie9 下呈双峰：死劫2-5/8 恒为 100%（无脑），但死劫1=19%、死劫11-14=62-65%（断崖崩坏）。
+// 经 player_sim 蒙特卡洛校准（目标 硬核@jie9≈80%）：先重塑为均匀带（v5），再整体 ×1.15 加压（v5.2）压到目标：
+//   - jie9（JIE_DATA[9].diff=4.0）实测：硬核3命格≈77%、3仙命≈89%、blended≈80%；
+//   - jie0（diff=1.0）仍 普通99.7% / 硬核100%（不破坏早期，准备充分的玩家可过）；
+//   - 普通2命格 后期（jie6+）归零卡住（预期内，需命格/法宝/转世堆叠）。
+// enemies 仅死劫使用本表；若需调难度，整体缩放本表 atkMul/hpMul 即可。
+const DEATH_SCALES = [
+  { atkMul: 0.605, hpMul: 1.727 },
+  { atkMul: 1.391, hpMul: 3.928 },
+  { atkMul: 1.393, hpMul: 4.103 },
+  { atkMul: 1.705, hpMul: 5.197 },
+  { atkMul: 1.705, hpMul: 5.337 },
+  { atkMul: 1.182, hpMul: 3.782 },
+  { atkMul: 1.182, hpMul: 3.852 },
+  { atkMul: 1.762, hpMul: 5.830 },
+  { atkMul: 1.705, hpMul: 5.724 },
+  { atkMul: 1.690, hpMul: 5.739 },
+  { atkMul: 1.682, hpMul: 5.770 },
+  { atkMul: 1.684, hpMul: 5.822 },
+  { atkMul: 1.686, hpMul: 5.879 },
+  { atkMul: 1.684, hpMul: 5.912 }
+];
+
+// 通用敌人固定境界基准（= 该境界「正常发育玩家」的参考攻/血，见 tools/player_sim.js 第7节实测）
+// 秘境 / 入宗考验 / 死劫 / 心魔 / 天劫 全部共用这一套基线，不再随玩家自身攻/血缩放。
+const ENEMY_REALM_BASE = [
+  { atk: 171, hp: 1100 },  // 0 炼气
+  { atk: 339, hp: 1508 },  // 1 筑基
+  { atk: 489, hp: 2319 },  // 2 金丹
+  { atk: 502, hp: 2629 }   // 3 元婴
+];
+// 死劫复用同一基线（向后兼容旧字段名）
+const DEATH_REALM_BASE = ENEMY_REALM_BASE;
+// 14 个死劫依次锚定的境界档（与触发年份同步递增：year10-30 炼气 / 40-50 筑基 / 60-80 金丹 / 90-140 元婴）
+const DEATH_IDX_REALM = [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3];
+
 /* ---------------- 普通事件库 ---------------- */
 const EVENTS = { jiyuan: [], shejiao: [], mijing: [], year: [] };
 
-function E(tag, ev) { ev.tag = tag; EVENTS[tag].push(ev); return ev; }
+// 统一仙缘池：仅 jiyuan/shejiao（游历机缘）+ NPCS 缘法事件并入；mijing(秘境)/year(年度) 不在此列
+const XIANYUAN = [];
+
+function E(tag, ev) { ev.tag = tag; EVENTS[tag].push(ev); if (tag === 'jiyuan' || tag === 'shejiao') XIANYUAN.push(ev); return ev; }
 
 /* ================ 机缘 ================ */
 E('jiyuan', {
@@ -2407,26 +2486,35 @@ const SECT_SOCIAL = {
 
 /* ---------------- 成就 ---------------- */
 const ACHIEVEMENTS = {
+  /* ===== 保留（进度 / 人生，非战斗） ===== */
   shou_zhuji:   { name: '破境·筑基',  desc: '第一次突破筑基。',            pts: 2 },
   shou_jiejin:  { name: '金丹大道',    desc: '第一次结成金丹。',            pts: 3 },
   shou_yuanying:{ name: '元婴出窍',    desc: '第一次凝出元婴。',            pts: 4 },
   feisheng:     { name: '羽化登仙',    desc: '渡劫飞升，得道而去。',        pts: 10 },
   daolu:        { name: '道侣同心',    desc: '此生结下道侣。',              pts: 2 },
   shou_zhong:   { name: '寿终正寝',    desc: '安然走完一世凡尘。',          pts: 1 },
-  mo_yuan:      { name: '镇魔渊',      desc: '以身镇魔渊，护九州黎民。',    pts: 8 },
   binjie_3:     { name: '三次渡劫',    desc: '一生渡劫三次而不陨。',        pts: 3 },
-  ai_renzi:     { name: '双甲子',      desc: '活过二百岁。',                pts: 2 }
+  ai_renzi:     { name: '双甲子',      desc: '活过二百岁。',                pts: 2 },
+  /* ===== 新增（去战斗向：探索 / 结局 / 人生多样性） ===== */
+  chu_tan:      { name: '初探秘境',    desc: '首次探索度满并通关一处秘境。', pts: 1 },
+  shou_cang:    { name: '秘境收藏家',  desc: '当世通关全部四种常规秘境。',  pts: 6 },
+  yi_shi:       { name: '遗世寻仙',    desc: '通关遗世仙踪秘境。',          pts: 4 },
+  wudao:        { name: '悟道',        desc: '以道侣同心之境，终至飞升悟道。', pts: 5 },
+  bai_jia:      { name: '百家之长',    desc: '同时修习三类不同功法技艺。',  pts: 3 },
+  chang_sheng:  { name: '长生久视',    desc: '寿元逾三百。',                pts: 3 },
+  san_xiu:      { name: '散修成道',    desc: '无宗门而修至金丹以上。',      pts: 4 }
 };
 
 /* ---------------- 轮回天赋（局外成长） ---------------- */
 const REINCARNATION = [
   /* ===== 新六维相关天赋（排列在最上方） ===== */
-  { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 6, max: 5,  apply: { wu: 1 } },
-  { id: 'ti',         name: '强体',     desc: '体魄 +1（肉身根基）',            cost: 3, max: 5,  apply: { ti: 1 } },
-  { id: 'dun',        name: '灵步',     desc: '遁速 +1（先天身法）',            cost: 3, max: 5,  apply: { dun: 1 } },
-  { id: 'shen',       name: '神念',     desc: '神识 +1（先天感知）',            cost: 3, max: 5,  apply: { shen: 1 } },
-  { id: 'dao',        name: '定心',     desc: '道心 +1（先天心境）',            cost: 6, max: 5,  apply: { dao: 1 } },
-  { id: 'ling',       name: '灵海',     desc: '灵力 +1（灵力上限+20、攻击+5）', cost: 3, max: 5,  apply: { ling: 1 } },
+  { id: 'wu',         name: '慧根',     desc: '悟性 +1（先天资质）',            cost: 6, max: 9,  apply: { wu: 1 } },
+  { id: 'ti',         name: '强体',     desc: '体魄 +1（肉身根基）',            cost: 3, max: 9,  apply: { ti: 1 } },
+  { id: 'dun',        name: '灵步',     desc: '遁速 +1（先天身法）',            cost: 3, max: 9,  apply: { dun: 1 } },
+  { id: 'shen',       name: '神念',     desc: '神识 +1（先天感知）',            cost: 3, max: 9,  apply: { shen: 1 } },
+  { id: 'dao',        name: '定心',     desc: '道心 +1（先天心境）',            cost: 6, max: 9,  apply: { dao: 1 } },
+  { id: 'ling',       name: '灵海',     desc: '灵力 +1（灵力上限+20、攻击+5）', cost: 3, max: 9,  apply: { ling: 1 } },
+  { id: 'xianling',  name: '先天灵宝', desc: '法宝装备槽 +1',                  cost: 5, max: 3,  apply: { treasureSlot: 1 } },
   /* ===== 其余天赋 ===== */
   { id: 'stone',      name: '殷实',     desc: '出生时灵石 +100',                cost: 2, max: 4,  apply: { stone: 100 } },
   { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 3, max: 3,  apply: { elixirs: { juling: 3 } } },
@@ -2652,6 +2740,16 @@ const ADVENTURE_CONFIG = {
     boss: { name: '仙人残念', line: '一缕仙人残念，金光万丈，威压如山。', mechanic: 'multicast' },
     drops: { herb: 'herb_tian', iron: 'iron_tian' },
     isSpecial: true
+  },
+  // 试炼路线：入宗考验 / 死劫 复用秘境横版 DAG 逻辑，节点仅含 敌人 / 精英 / 静室，收束为大 BOSS
+  trial: {
+    name: '试炼',
+    grade: '试',
+    realmReq: 0,
+    desc: '试炼之路，途遇敌人、精英与静室，尽头是大敌当前。',
+    monsters: MONSTER_POOL.huang,
+    boss: { name: '试炼之主', line: '一道身影挡在试炼尽头。', mechanic: null },
+    drops: { herb: 'herb_huang', iron: 'iron_huang' }
   }
 };
 
@@ -2661,7 +2759,8 @@ const ADVENTURE_GRADE = {
   xuan: 1,
   di: 2,
   tian: 3,
-  xian: 3
+  xian: 3,
+  trial: 0
 };
 
 // 秘境功法掉落映射
@@ -2739,10 +2838,24 @@ const ADV_NODES = {
  * 每个节点带 type 与 next（指向下一列/ Boss 的节点 id 数组）。
  * 保证：起点可达 Boss；除第 0 列外每个节点都有入边（无孤儿）。
  */
-function genAdvMap(grade) {
-  const NORMAL_COLS = 9;            // col 0..8 普通节点，col 9 为 Boss（长度增加）
+function genAdvMap(grade, opts) {
+  opts = opts || {};
+  const TYPES = opts.types || null;   // 限定节点类型（试炼：['combat','elite','rest']）
+  const NORMAL_COLS = opts.cols || 9; // col 0..N-1 普通节点，col N 为 Boss
   const STEP_COST = 5;              // 每走一步消耗秘境体力
   function pickType(col) {
+    if (TYPES) {
+      // 限定类型模式：以敌人为主、精英其次、静室点缀
+      const bag = [];
+      TYPES.forEach(function (t) { const w = (t === 'combat' ? 4 : (t === 'elite' ? 3 : 2)); for (let i = 0; i < w; i++) bag.push(t); });
+      if (col === NORMAL_COLS - 1) {
+        const r = Math.random();
+        if (r < 0.55) return 'combat';
+        if (r < 0.85 && TYPES.indexOf('elite') >= 0) return 'elite';
+        return TYPES.indexOf('rest') >= 0 ? 'rest' : 'combat';
+      }
+      return bag[Math.floor(Math.random() * bag.length)];
+    }
     if (col === 0) return Math.random() < 0.6 ? 'combat' : 'event';
     if (col === NORMAL_COLS - 1) {
       const r = Math.random();
@@ -2763,10 +2876,10 @@ function genAdvMap(grade) {
     for (let i = 0; i < n; i++) arr.push({ id: 'c' + c + '_' + i, col: c, type: pickType(c), next: [], visited: false });
     cols.push(arr);
   }
-  // 保证至少 1 个静室（回血）
+  // 保证至少 1 个静室（回血）——仅在允许 rest 时强制
   let restCount = 0;
   cols.forEach(function (col) { col.forEach(function (n) { if (n.type === 'rest') restCount++; }); });
-  if (restCount < 1) {
+  if (restCount < 1 && (!TYPES || TYPES.indexOf('rest') >= 0)) {
     const cand = [];
     for (let c = 1; c <= NORMAL_COLS - 2; c++) cols[c].forEach(function (n) { cand.push(n); });
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp; }
@@ -3143,18 +3256,55 @@ E('shejiao', {
   result: '（灵草+5）'
 });
 
-/* ---------- 仙缘 NPC（提纯：仅留 4 个纯仙缘角色，各配真实缘法事件） ---------- */
+/* ---------- 仙缘 NPC 缘法系统 ----------
+ * 每个 NPC 含：立绘(portrait) / 解锁门槛(unlock.story=需先达成的剧情) / 好感分级(tiers: 阈值+奖励)
+ * / 互动(gifts 送礼、talk 叙话)。
+ * surface 决定缘法从哪条线触发：
+ *   'mainline' → 并入 MAINLINE（境界触发），如老乞丐由主线引出；
+ *   'travel'   → 解锁后动态并入游历 3 选 1 池，如林婉儿、白素、黑猫由游历触发。
+ */
 const NPCS = {
-  laoqigai: { id: 'laoqigai', name: '老乞丐', loc: '城中出现', role: '炼体传承',
+  laoqigai: {
+    id: 'laoqigai', name: '老乞丐', portrait: 'npc_laoqigai',
+    loc: '城中出现', role: '炼体传承', surface: 'mainline',
     intro: '一个衣衫褴褛的老乞丐缩在墙角，眼神却清亮。',
+    unlock: { story: 'ml_0_5', label: '城中老乞丐' },
+    maxFavor: 10,
+    tiers: [
+      { min: 0,  grade: '陌路', note: '萍水相逢' },
+      { min: 3,  grade: '相识', note: '略有交情', reward: { effect: { wu: 0.5 }, text: '老丐随口指点吐纳，悟性 +0.5' } },
+      { min: 6,  grade: '故交', note: '可托后背', reward: { effect: { ti: 1, atk: 3 }, text: '老丐授你炼体门道，体魄 +1、攻击 +3' } },
+      { min: 10, grade: '忘年', note: '亦师亦友', reward: { effect: { art: 'tongqian_jian' }, text: '老丐赠你铜钱剑' } }
+    ],
+    gifts: {
+      roast: { name: '烧鸡', favor: 2, cost: 20 },
+      wine:  { name: '灵酒', favor: 3, cost: 50 }
+    },
+    talk: { line: '你与老丐蹲在墙根闲谈，听他讲些前朝江湖旧事，颇有所获。（好感 +1）' },
     event: { id: 'xian_laoqigai', title: '老丐传艺', chapter: true, weight: 5, min: 0, max: 11, once: true,
+      idx: 0, req: { flags: { beggar_met: 1 } },
       lines: ['老乞丐忽然抬眼："小友，老夫观你筋骨，倒是块炼体的好材料。"', '他枯手在你肩头一按，一股暖流窜遍四肢百骸。'],
       choices: [
         { t: '恭敬请教炼体之法', effect: { ti: 1, atk: 3 }, lines: ['老丐咧嘴一笑，口授吐纳导引之术。你依法而行，只觉体魄渐凝。（体魄+1，攻击+3）'] },
         { t: '赠以干粮，结个善缘', effect: { stone: -10, wu: 0.5 }, lines: ['你将干粮奉上，老丐也不推辞。临去前他低声指点："炼体先炼脊，莫急于求成。"（悟性+0.5）'] }
       ] } },
-  lin: { id: 'lin', name: '林婉儿', loc: '主线', role: '女主候选',
+  lin: {
+    id: 'lin', name: '林婉儿', portrait: 'npc_lin',
+    loc: '主线', role: '女主候选', surface: 'travel',
     intro: '一位青衣少女，眉眼含笑。',
+    unlock: { story: 'ml_0_6', label: '青梅往事' },
+    maxFavor: 10,
+    tiers: [
+      { min: 0,  grade: '陌路', note: '初遇' },
+      { min: 3,  grade: '相识', note: '同游之谊', reward: { effect: { wu: 0.5 }, text: '林婉儿教你辨识灵药，悟性 +0.5' } },
+      { min: 6,  grade: '知己', note: '心意相通', reward: { effect: { hpMax: 20 }, text: '林婉儿赠你温养丹，气血上限 +20' } },
+      { min: 10, grade: '红颜', note: '生死与共', reward: { effect: { art: 'daolv_tongxin_pei' }, text: '林婉儿赠你道侣同心佩' } }
+    ],
+    gifts: {
+      flower: { name: '灵花', favor: 2, cost: 20 },
+      wine:   { name: '清酒', favor: 3, cost: 50 }
+    },
+    talk: { line: '你与林婉儿并肩坐在山崖上，听她说些儿时旧事，心中微暖。（好感 +1）' },
     event: { id: 'xian_lin', title: '药庐初遇', chapter: true, weight: 6, min: 0, max: 11, once: true,
       setFlags: { linMet: 1 },
       lines: ['药庐外传来轻唤，青衣少女正扶着门框看你。', '"这位道友，可否……替我上山采一味药？我腿受了伤。"她眉眼含忧。'],
@@ -3162,16 +3312,45 @@ const NPCS = {
         { t: '应允，护她上山采药', effect: { wu: 0.5 }, lines: ['你护她上山采得灵药。归途她轻声道："还未谢过道友姓名。"（悟性+0.5，结下善缘）'] },
         { t: '留下灵药便离去', effect: { stone: -15 }, lines: ['你将灵药递予她便转身。身后一声轻唤，你未回头。（灵石-15）'] }
       ] } },
-  baisu: { id: 'baisu', name: '白素', loc: '主线', role: '女主（狐）',
+  baisu: {
+    id: 'baisu', name: '白素', portrait: 'npc_baisu',
+    loc: '主线', role: '女主（狐）', surface: 'travel',
     intro: '白衣胜雪的女子静静而立，耳畔隐约有狐影。',
+    unlock: { story: 'ml_1_0', label: '云游散修' },
+    maxFavor: 10,
+    tiers: [
+      { min: 0,  grade: '陌路', note: '初遇' },
+      { min: 3,  grade: '相识', note: '报恩之谊', reward: { effect: { dao: 0.5 }, text: '白素与你论道，道心 +0.5' } },
+      { min: 6,  grade: '知交', note: '狐影相随', reward: { effect: { shen: 1 }, text: '白素授你凝神之法，神识 +1' } },
+      { min: 10, grade: '挚友', note: '恩义两全', reward: { effect: { art: 'juling_art' }, text: '白素赠你聚灵珠' } }
+    ],
+    gifts: {
+      jade: { name: '狐玉', favor: 2, cost: 30 },
+      brew: { name: '仙酿', favor: 3, cost: 60 }
+    },
+    talk: { line: '白素执壶为你斟了一杯灵茶，二人对坐无言，却自有一段清欢。（好感 +1）' },
     event: { id: 'xian_baisu', title: '白衣报恩', chapter: true, weight: 5, min: 0, max: 11, once: true,
       lines: ['白衣女子静静立在你身前，耳畔狐影浮动。', '"恩公，当年一饭之恩，白素从未敢忘。"她指尖轻点，一枚温润玉佩落入你掌心。'],
       choices: [
         { t: '受玉佩，记此恩义', effect: { dao: 0.5, wu: 0.5 }, lines: ['玉佩触手生温，道心与悟性俱有所感。（道心+0.5，悟性+0.5）'] },
         { t: '婉拒，但结个善缘', effect: { wu: 0.5 }, lines: ['你笑拒玉佩，只与她对饮清茶。狐影轻摆，她笑说后会有期。（悟性+0.5）'] }
       ] } },
-  heimao: { id: 'heimao', name: '神秘黑猫', loc: '游历/秘境', role: '引路人（教学）',
+  heimao: {
+    id: 'heimao', name: '神秘黑猫', portrait: 'npc_heimao',
+    loc: '游历/秘境', role: '引路人（教学）', surface: 'travel',
     intro: '一只黑猫蹲在墙头，尾巴轻摆，竟口吐人言。',
+    unlock: { story: 'ml_0_4', label: '离乡修行' },
+    maxFavor: 8,
+    tiers: [
+      { min: 0, grade: '陌路', note: '初遇' },
+      { min: 3, grade: '相识', note: '一路同行', reward: { effect: { wu: 1 }, text: '黑猫指点修行门径，悟性 +1' } },
+      { min: 8, grade: '灵契', note: '默契暗生', reward: { effect: { stone: 100 }, text: '黑猫衔来一袋灵石，灵石 +100' } }
+    ],
+    gifts: {
+      fish:   { name: '鲜鱼', favor: 2, cost: 15 },
+      lfish:  { name: '灵鱼', favor: 3, cost: 40 }
+    },
+    talk: { line: '黑猫跳上你肩头，尾巴扫过你脸颊，喵了一声，似在点拨什么。（好感 +1）' },
     event: { id: 'xian_heimao', title: '黑猫引路', chapter: true, weight: 5, min: 0, max: 11, once: true,
       lines: ['墙头黑猫尾巴轻摆，竟口吐人言："喵——小子，想知道这方天地怎么走？"', '它跃下墙头，在前引路，带你穿过一条从未见过的巷弄。'],
       choices: [
@@ -3179,3 +3358,14 @@ const NPCS = {
         { t: '问它大道何在', effect: { dao: 0.5 }, lines: ['黑猫歪头："大道？你脚下便是。"说完化作一缕青烟。（道心+0.5）'] }
       ] } }
 };
+
+// 仙缘 NPC 缘法事件并入统一仙缘池（tag:'npc'），并按 surface 分流：
+//   mainline → 推入 MAINLINE（境界触发，如老乞丐）；travel → 由 travel() 在解锁后动态并入游历池。
+Object.keys(NPCS).forEach(function (k) {
+  const n = NPCS[k];
+  if (n.event) {
+    n.event.tag = 'npc'; n.event.npc = k;
+    XIANYUAN.push(n.event);
+    if (n.surface === 'mainline') MAINLINE.push(n.event);
+  }
+});

@@ -8,3 +8,6 @@ assets/img/_src/
 
 # 测试运行生成报告（自动产物）
 test/reports/
+
+# 仿真输出（自动产物）
+tools/player_sim_output.txt

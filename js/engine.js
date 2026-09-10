@@ -47,11 +47,19 @@ const Engine = (function () {
         if (s.dao === undefined) s.dao = 0;
         if (s.ling === undefined) s.ling = 0;
         // 灵力条（法力）兼容：旧档无 mp 字段则按公式补算
-        if (s.mpMax === undefined) { s.mpMax = 10 + Math.max(0, (s.ling || 0) - 1) * 20; s.mp = s.mpMax; }
+        if (s.mpMax === undefined) { s.mpMax = 20 + Math.max(0, (s.ling || 0) - 1) * 20; s.mp = s.mpMax; }
         if (!s.destinies) s.destinies = [];
         if (!s.destinySlots) s.destinySlots = 1;
         if (!s.equip) s.equip = { head: null, body: null, leg: null, weapon: null, accessory: null, treasure: [] };
         if (s.equip.treasure === undefined) s.equip.treasure = [];
+        // 法宝统一为装备型：旧档中处于 s.arts（原「本命型·自动生效」）的法宝，
+        // 迁移进装备槽（按当前上限尽量自动装备，超出上限的留在库存 s.arts）。
+        if (Array.isArray(s.arts) && Array.isArray(s.equip.treasure)) {
+          s.arts.slice().forEach(function (id) {
+            if (s.equip.treasure.indexOf(id) >= 0) return;
+            if (s.equip.treasure.length < maxTreasure(s)) s.equip.treasure.push(id);
+          });
+        }
         // P1–P7 新字段兼容
         if (s.gongye === undefined) s.gongye = 0;
         if (s.gongyeEarned === undefined) s.gongyeEarned = 0;
@@ -64,6 +72,10 @@ const Engine = (function () {
         if (!s.craft) s.craft = { liandan: { lv: 1, exp: 0 }, lianqi: { lv: 1, exp: 0 }, zhenfa: { lv: 1, exp: 0 }, lingtian: { lv: 1, exp: 0 }, lingkuang: { lv: 1, exp: 0 } };
         ['liandan', 'lianqi', 'zhenfa', 'lingtian', 'lingkuang'].forEach(function (k) { if (!s.craft[k]) s.craft[k] = { lv: 1, exp: 0 }; });
         if (!s.sectTrain) s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
+        // 兼容旧存档：确保 flags 存在；原老乞丐线仅置 beggar_kind/beggar_cold，
+        // 新锻体主线（练气后期）需 beggar_met 才能触发解锁《锻体诀》。
+        if (!s.flags) s.flags = {};
+        if ((s.flags.beggar_kind || s.flags.beggar_cold) && !s.flags.beggar_met) s.flags.beggar_met = 1;
       }
       // 修复旧版遗留的“虚假存档”：早期版本的 confirmEnterPage 未调用 commitStart，
       // 导致自动存档里 linggen 为 null（且天赋/命格仅其一为空）。这类存档在“读档菜单”
@@ -234,10 +246,12 @@ const Engine = (function () {
     }
     return st;
   }
-  // 法宝聚合：遍历 s.arts，累计所有 effect（含 scale 资源缩放 / stack 累计 / 血量条件 / 道心向）
+  // 法宝聚合：遍历「已装备」的法宝（s.equip.treasure，统一为装备型），累计其 effect。
+  // 仅装备槽内的法宝生效；库存（s.arts）中的法宝不生效。
+  // 含 scale 资源缩放 / stack 累计 / 血量条件 / 道心向 等子机制。
   // 选项门槛（道心≥10 等）由 UI 的 c.req 在前端拦截，此处只负责数值生效。
   function artifactStats(s) {
-    const arts = s.arts || [];
+    const arts = (s.equip && s.equip.treasure) || [];
     const st = {
       wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0,
       atk: 0, hpMax: 0, def: 0, critPct: 0, dodgePct: 0, defPct: 0, atkPct: 0,
@@ -429,8 +443,8 @@ const Engine = (function () {
 
   /* ---------------- 属性基础 ---------------- */
   function calcMpMax(s) {
-    // 灵力条上限：灵力=1 时 10，此后每点 +20（初始灵力上限=10、灵力条=1/10，符合设定）
-    let m = 10 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
+    // 灵力条上限（统一口径）：灵力=1 时 20，此后每点 +20 → mpMax = 20 + (灵-1)×20
+    let m = 20 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
     const eff = linggenTrait(s);
     if (eff && eff.mpMax) m += eff.mpMax;
     m = applyWuxing(s, 'mpMax', m);
@@ -593,6 +607,7 @@ const Engine = (function () {
     s.reinc.extraField = meta.reinc.extra_field || 0;
     s.reinc.destinySlot = meta.reinc.destiny_slot || 0;
     s.reinc.extraDestiny = meta.reinc.extra_destiny || 0;
+    s.reinc.treasureSlot = meta.reinc.xianling || 0;     // 先天灵宝：每级 +1 法宝槽，最高 3 级
     const list = REINCARNATION;
     list.forEach(function (r) {
       const n = meta.reinc[r.id] || 0;
@@ -755,7 +770,17 @@ const Engine = (function () {
         case 'dun': s.dun = (s.dun || 0) + v; out.push('遁速 +' + v); break;
         case 'atk': s.extraAtk += v; out.push('攻击 +' + v); break;
         case 'hpMax': s.hpMaxBonus = (s.hpMaxBonus || 0) + v; s.hp += v; out.push('气血上限 +' + v); break;
-        case 'art': if (s.arts.indexOf(v) < 0) { s.arts.push(v); out.push('获得法宝【' + ARTIFACTS[v].name + '】'); } break;
+        case 'art': {
+          const owned = s.arts.indexOf(v) >= 0 || (s.equip.treasure && s.equip.treasure.indexOf(v) >= 0);
+          if (!owned) {
+            s.arts.push(v);
+            out.push('获得法宝【' + ARTIFACTS[v].name + '】');
+            if (equipTreasureAuto(s, v)) out.push('已自动装备');
+          } else {
+            out.push('已拥有法宝【' + ARTIFACTS[v].name + '】（重复授予已忽略）');
+          }
+          break;
+        }
         case 'tech': if (s.techs.indexOf(v) < 0) { s.techs.push(v); out.push('习得功法【' + TECHNIQUES[v].name + '】'); } break;
         case 'elixirs': Object.keys(v).forEach(function (id) {
           const n = v[id];
@@ -784,7 +809,46 @@ const Engine = (function () {
   }
 
   /* ---------------- 装备管理 ---------------- */
-  function maxTreasure(s) { return Math.min(4, bigIdxOf(s) + 1); }
+  // 法宝槽位：初始 3 + 每大境界 +1；道心/神识 每 10 点再 +1（最多各 +3）；
+  // 另受轮回阁天赋「先天灵宝」加成（每级 +1，最高 3 级）。
+  function maxTreasure(s) {
+    var n = 3 + bigIdxOf(s);                                   // 炼气3/筑基4/金丹5/元婴6
+    n += Math.min(3, Math.floor((s.dao || 0) / 10));           // 道心 10/20/30 → +1/+2/+3
+    n += Math.min(3, Math.floor((s.shen || 0) / 10));          // 神识 10/20/30 → +1/+2/+3
+    n += (s.reinc && s.reinc.treasureSlot) || 0;               // 先天灵宝（轮回阁天赋）
+    return n;
+  }
+  // 统一查找法宝（本命型 ARTIFACTS 或 装备型 EQUIPS.treasure），返回规整结构
+  function treasureItem(id) {
+    if (ARTIFACTS && ARTIFACTS[id]) {
+      const a = ARTIFACTS[id];
+      return { id: id, name: a.name, grade: a.grade, isArt: true, item: a };
+    }
+    const it = findEquip(id);
+    if (it) return { id: id, name: it.name, tier: it.tier, isArt: false, item: it };
+    return null;
+  }
+  // 自动装备法宝到空闲槽（满则留库存），返回是否成功装备
+  function equipTreasureAuto(s, id) {
+    if (!Array.isArray(s.equip.treasure)) s.equip.treasure = [];
+    if (s.equip.treasure.indexOf(id) >= 0) return true;
+    if (s.equip.treasure.length >= maxTreasure(s)) return false;
+    s.equip.treasure.push(id);
+    if (s.arts) s.arts = s.arts.filter(function (x) { return x !== id; });
+    if (s.inventory) s.inventory = s.inventory.filter(function (x) { return x !== id; });
+    return true;
+  }
+  function unequipTreasure(s, id) {
+    if (!Array.isArray(s.equip.treasure)) return false;
+    const i = s.equip.treasure.indexOf(id);
+    if (i < 0) return false;
+    s.equip.treasure.splice(i, 1);
+    // 卸下后统一回法宝囊(S.arts)：本命型法宝与装备型宝物(EQUIPS.treasure)都归法宝体系
+    if (!s.arts) s.arts = [];
+    if (s.arts.indexOf(id) < 0) s.arts.push(id);
+    refreshStats(s); saveState(s);
+    return true;
+  }
   function findEquip(id) {
     for (const slot in EQUIPS) if (EQUIPS[slot][id]) return EQUIPS[slot][id];
     return null;
@@ -797,6 +861,16 @@ const Engine = (function () {
     const it = findEquip(id);
     if (!it) return [];
     const out = [];
+    const isTreasure = slotOf(id) === 'treasure';
+    if (isTreasure) {
+      // 宝物（EQUIPS.treasure）属「法宝/珍宝」体系，统一入法宝囊(S.arts)而非储物袋，
+      // 由玩家在法宝页手动装备，避免装备页无法展示法宝槽导致「装备凭空消失」。
+      if (!Array.isArray(s.arts)) s.arts = [];
+      if (s.arts.indexOf(id) < 0) s.arts.push(id);
+      refreshStats(s);
+      out.push('获得宝物【' + it.name + '】（收入法宝囊，可于法宝页穿戴）');
+      return out;
+    }
     if (!Array.isArray(s.inventory)) s.inventory = [];
     // 得到装备不再自动穿上：一律收入储物袋，由玩家在角色页手动穿戴
     s.inventory.push(id);
@@ -805,6 +879,22 @@ const Engine = (function () {
     return out;
   }
   function wearEquip(s, id) {
+    const isArt = !!(ARTIFACTS && ARTIFACTS[id]);
+    if (isArt) {
+      // 本命型法宝（ARTIFACTS）：仅可装备到法宝槽
+      if (!Array.isArray(s.equip.treasure)) s.equip.treasure = [];
+      if (s.equip.treasure.indexOf(id) >= 0) return true;
+      const max = maxTreasure(s);
+      if (s.equip.treasure.length >= max) {
+        const old = s.equip.treasure.shift();
+        if (ARTIFACTS && ARTIFACTS[old]) { if (!s.arts) s.arts = []; if (s.arts.indexOf(old) < 0) s.arts.push(old); }
+        else s.inventory.push(old);
+      }
+      s.equip.treasure.push(id);
+      if (s.arts) s.arts = s.arts.filter(function (x) { return x !== id; });
+      refreshStats(s); saveState(s);
+      return true;
+    }
     const it = findEquip(id);
     if (!it) return false;
     const slot = slotOf(id);
@@ -814,10 +904,12 @@ const Engine = (function () {
       const max = maxTreasure(s);
       if (s.equip.treasure.length >= max) {
         const old = s.equip.treasure.shift();
-        s.inventory.push(old);
+        if (!s.arts) s.arts = [];
+        if (s.arts.indexOf(old) < 0) s.arts.push(old);
       }
       s.equip.treasure.push(id);
-      s.inventory = s.inventory.filter(function (x) { return x !== id; });
+      if (s.arts) s.arts = s.arts.filter(function (x) { return x !== id; });
+      if (s.inventory) s.inventory = s.inventory.filter(function (x) { return x !== id; });
       refreshStats(s); saveState(s);
       return true;
     }
@@ -1229,6 +1321,22 @@ const Engine = (function () {
     if (allPool.length === 0) return null;
     return allPool[Math.floor(Math.random() * allPool.length)];
   }
+  /* 统一固定基线敌人生成（v4 模型，所有敌人共用）
+     敌人属性 = ENEMY_REALM_BASE[tier].atk/.hp × atkMul/hpMul × JIE_DATA[jie].diff(叠劫)
+     玩家自身 atk/hp 不参与缩放 → 命格/装备/天赋的数值优势可真实转化。
+     - atkRef:'hp' 时 atk 取基线.hp（旧逻辑以 s.hpMax 为基准的场合）
+     - hpRef:'atk' 时 hp 取基线.atk（旧逻辑以 s.atk 为基准的场合） */
+  function enemyStats(tier, atkMul, hpMul, jieDiff, opts) {
+    const base = (ENEMY_REALM_BASE && ENEMY_REALM_BASE[tier]) ? ENEMY_REALM_BASE[tier] : (ENEMY_REALM_BASE ? ENEMY_REALM_BASE[ENEMY_REALM_BASE.length - 1] : { atk: 10, hp: 180 });
+    const jd = jieDiff || 1;
+    const o = opts || {};
+    const aBase = (o.atkRef === 'hp') ? base.hp : base.atk;
+    const hBase = (o.hpRef === 'atk') ? base.atk : base.hp;
+    return {
+      atk: Math.max(1, Math.round(aBase * atkMul * jd)),
+      hp: Math.max(1, Math.round(hBase * hpMul * jd))
+    };
+  }
   function enemyGen(s, tag, depth, advType) {
     // advType: 'huang', 'xuan', 'di', 'tian'
     const advKey = advType || s.advType || 'huang';
@@ -1240,8 +1348,11 @@ const Engine = (function () {
     const jie = s.jie || 0;
     const jieDiff = JIE_DATA[jie] ? JIE_DATA[jie].diff : 1;
     const hits = (elite ? 5.0 : 4.0) + depth * 0.5;
-    const hp = Math.round(s.atk * hits * (boss ? 2.0 : 1) * jieDiff);
-    const atk = Math.max(1, Math.round(s.hpMax / (boss ? 9 : (5 + depth * 0.4)) * (elite ? 1.3 : 1) * jieDiff));
+    const realmTier = (advKey === 'tian' || advKey === 'xian') ? 3 : (advKey === 'di' ? 2 : (advKey === 'xuan' ? 1 : 0));
+    // 旧: hp = s.atk * hits * (boss?2:1) → 固定基线.atk；atk = s.hpMax / denom * elite → 固定基线.hp
+    const st = enemyStats(realmTier, (elite ? 1.3 : 1) / (boss ? 9 : (5 + depth * 0.4)), hits * (boss ? 2.0 : 1), jieDiff, { atkRef: 'hp', hpRef: 'atk' });
+    const hp = st.hp;
+    const atk = st.atk;
     const realmM = 1 + bi * 0.6;
     const loot = { stone: Math.round((10 + depth * 10) * realmM * (elite ? 1.5 : 1) * (boss ? 2 : 1)) };
     // 产出对应等级灵材
@@ -1270,6 +1381,14 @@ const Engine = (function () {
     const mechanic = (boss || tag === 'final') ? (advConfig.boss.mechanic || null) : null;
     return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait, mechanic: mechanic };
   }
+  /* 死劫敌人生成（v4 重做：固定境界基准 × 递增系数 × 叠劫难度，不再随玩家自身攻/血缩放）
+     敌人属性 = ENEMY_REALM_BASE[DEATH_IDX_REALM[idx]] × DEATH_SCALES[idx] × JIE_DATA[s.jie].diff
+     玩家自身 atk/hp 不参与缩放 → 命格/装备/天赋的数值优势可真实转化为通过率 */
+  function deathEnemyGen(s, idx) {
+    const sc = (DEATH_SCALES && DEATH_SCALES[idx]) ? DEATH_SCALES[idx] : (DEATH_SCALES ? DEATH_SCALES[DEATH_SCALES.length - 1] : { atkMul: 1, hpMul: 1 });
+    const jd = (JIE_DATA[s.jie] && JIE_DATA[s.jie].diff) ? JIE_DATA[s.jie].diff : 1;
+    return enemyStats(DEATH_IDX_REALM[idx], sc.atkMul, sc.hpMul, jd);
+  }
   function getAdvItemCap(s) { return s.advCap || 2; }
   function moveItemsToAdv(s, items) {
     if (!s.adv.items) s.adv.items = [];
@@ -1294,6 +1413,36 @@ const Engine = (function () {
     s.adv.items.forEach(function (it) { s.elixirs[it.id] = (s.elixirs[it.id] || 0) + it.count; });
     s.adv.items = [];
   }
+  /* ---------------- 秘境连锁解锁（境界 或 通关上一级） ---------------- */
+  const ADV_ORDER = ['huang', 'xuan', 'di', 'tian', 'xian'];
+  function advPrev(key) {
+    const i = ADV_ORDER.indexOf(key);
+    return (i > 0) ? ADV_ORDER[i - 1] : null;
+  }
+  // 通关记录持久于 s.flags.advClear[key]；随 flags 存档持久，转世重开清空（不随轮回保留）
+  function advCleared(s, key) {
+    return !!(s.flags && s.flags.advClear && s.flags.advClear[key]);
+  }
+  function markAdvClear(s, key) {
+    if (!s.flags) s.flags = {};
+    if (!s.flags.advClear) s.flags.advClear = {};
+    s.flags.advClear[key] = true;
+    saveState(s);
+    return true;
+  }
+  // 双通道：境界达标(realmReq) 或 上一级已通关。黄级 realmReq=0 恒开。
+  function advUnlocked(s, key) {
+    const cfg = ADVENTURE_CONFIG[key];
+    if (!cfg) return false;
+    if (bigIdxOf(s) >= cfg.realmReq) return true;
+    const prev = advPrev(key);
+    return !!prev && advCleared(s, prev);
+  }
+  // 已通关的下一级（供通关结算提示用）
+  function advNextOf(key) {
+    const i = ADV_ORDER.indexOf(key);
+    return (i >= 0 && i < ADV_ORDER.length - 1) ? ADV_ORDER[i + 1] : null;
+  }
   function startAdventure(s, advType, opts) {
     opts = opts || {};
     const ap = (opts.ap === 3) ? 3 : 2;
@@ -1303,7 +1452,13 @@ const Engine = (function () {
     const advKey = advType || 'huang';
     const advConfig = ADVENTURE_CONFIG[advKey];
     if (!advConfig) return { ok: false, msg: '秘境不存在' };
-    if (bigIdxOf(s) < advConfig.realmReq) return { ok: false, msg: '修为不足，需要' + BIG_REALMS[advConfig.realmReq] + '以上方可进入。' };
+    // 双通道解锁：境界达标 或 已通关上一级；仙级另须事件现身
+    if (!advUnlocked(s, advKey)) {
+      const prev = advPrev(advKey);
+      const reason = prev ? ('需' + BIG_REALMS[advConfig.realmReq] + '以上，或先通关【' + ADVENTURE_CONFIG[prev].name + '】秘境') : ('修为不足，需要' + BIG_REALMS[advConfig.realmReq] + '以上方可进入。');
+      return { ok: false, msg: reason };
+    }
+    if (advKey === 'xian' && !isXianAdventureAvailable(s)) return { ok: false, msg: '遗世仙踪须逢甲子之期方现世（每十年）。（须元婴 + 通关天级可直入）' };
     spend(s, ap);
     s.adventuredYear = s.year;
     s.advType = advKey;
@@ -1327,6 +1482,50 @@ const Engine = (function () {
     moveItemsToAdv(s, opts.items);
     saveState(s);
     return { ok: true };
+  }
+  /* ---------------- 试炼路线（入宗考验 / 死劫 复用秘境横版 DAG 逻辑） ----------------
+   * 路线节点仅含【敌人 combat / 精英 elite / 静室 rest】，最终收束为大 BOSS。
+   * kind: 'sect'（入宗考验，boss 按境界缩放） | 'death'（死劫，boss 按死劫缩放） */
+  function startTrial(s, kind, opts) {
+    opts = opts || {};
+    const map = genAdvMap('trial', { types: ['combat', 'elite', 'rest'], cols: 5 });
+    const settings = [
+      '试炼之地，杀机暗藏，唯有向前。',
+      '风声鹤唳，似有强敌环伺于前。',
+      '道旁静室可暂歇，前方大敌已候多时。'
+    ];
+    const staminaMax = 50;
+    s.advType = 'trial';
+    s.adv = {
+      grade: 'trial', trial: kind,
+      trialTitle: opts.title || (kind === 'death' ? '死劫 · 试炼之路' : '入宗试炼'),
+      depth: 1, maxDepth: map.normalCols,
+      setting: settings[Math.floor(Math.random() * settings.length)],
+      gains: [], status: 'running', caught: false, done: false,
+      apSpent: 0, stamina: staminaMax, staminaMax: staminaMax,
+      explore: 0, exploreMax: 1, // 试炼：boss 始终可达，无需探索度门槛
+      map: map, nodeId: map.startId, items: [], itemsUsed: 0, cleared: false,
+      deathIdx: (opts.deathIdx != null ? opts.deathIdx : 0)
+    };
+    if (map.byId[map.startId]) map.byId[map.startId].visited = true;
+    s.adv.trialBoss = (kind === 'death') ? trialBossDeath(s, s.adv.deathIdx) : trialBossSect(s);
+    if (kind === 'death' && opts.dev) s.adv.trialDev = opts.dev;
+    refreshStats(s); saveState(s);
+    return { ok: true };
+  }
+  function trialBossSect(s) {
+    const jd = (JIE_DATA[s.jie] && JIE_DATA[s.jie].diff) ? JIE_DATA[s.jie].diff : 1;
+    // 入宗考验：玩家约练气后期，锚定炼气基线(0)；旧: atk=s.atk*1.4 / hp=s.hpMax*2.0
+    const st = enemyStats(0, 1.4, 2.0, jd);
+    return { name: '演武教头', line: '演武场上，一名须发皆白的老教头横矛而立：「入我门墙，先过老夫这关！」', atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, portrait: 'foe', mechanic: null };
+  }
+  function trialBossDeath(s, idx) {
+    const sc = (DEATH_SCALES && DEATH_SCALES[idx]) ? DEATH_SCALES[idx] : (DEATH_SCALES ? DEATH_SCALES[DEATH_SCALES.length - 1] : { atkMul: 1, hpMul: 1 });
+    const jd = (JIE_DATA[s.jie] && JIE_DATA[s.jie].diff) ? JIE_DATA[s.jie].diff : 1;
+    // 死劫BOSS 在原缩放基础上 ×1.15（旧模型的终局加成），其余与死劫杂兵同基线
+    const st = enemyStats(DEATH_IDX_REALM[idx], sc.atkMul * 1.15, sc.hpMul * 1.15, jd);
+    const name = (DEATH_EVENTS[idx] && DEATH_EVENTS[idx].fight) ? DEATH_EVENTS[idx].fight.name : '死劫之主';
+    return { name: name, line: '生死一线，大劫当前，一道恐怖的身影自虚空中浮现。', atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, portrait: 'boss', mechanic: null };
   }
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
@@ -1693,6 +1892,7 @@ const Engine = (function () {
   function advCanFightBoss(s) {
     const a = s.adv;
     if (!a) return false;
+    if (a.trial) return true; // 试炼：大敌始终可达，无需探索度门槛
     return (a.explore || 0) >= (a.exploreMax || 100);
   }
 
@@ -1792,14 +1992,32 @@ const Engine = (function () {
   }
   function advBossBonus(s) {
     const advKey = s.advType || 'huang';
+    // 灵物（按秘境阶位固定）
     const spiritMap = { huang: 'shangpin_lingjing', xuan: 'shangpin_yaodan', di: 'dongxu_micui', tian: 'mohex_suibian', xian: 'mohex_suibian' };
     const spirit = spiritMap[advKey] || 'shangpin_lingjing';
-    const tech = getRandomTechFromPools(advKey, s);
     const sp = SPIRIT_ITEMS[spirit];
-    const techName = tech ? (TECHNIQUES[tech].name + '（' + (TECHNIQUES[tech].cls === 'xinfa' ? '心法' : TECHNIQUES[tech].cls === 'dunshu' ? '遁术' : '法术') + '）') : '（已学全）';
+    // 法宝（按秘境阶位分层：区间内 上位80% / 下位20%，排除已拥有）
+    const band = (BOSS_TREASURE_BAND && BOSS_TREASURE_BAND[advKey]) || ['玄', '地'];
+    const owned = function (id) {
+      return (s.arts || []).indexOf(id) >= 0 || (s.equip && s.equip.treasure && s.equip.treasure.indexOf(id) >= 0);
+    };
+    const graded = Object.keys(ARTIFACTS).filter(function (id) {
+      return band.indexOf(ARTIFACTS[id].grade) >= 0 && !owned(id);
+    });
+    let pick = null;
+    if (graded.length) {
+      const g = Math.random() < 0.8 ? band[1] : band[0];
+      let sub = graded.filter(function (id) { return ARTIFACTS[id].grade === g; });
+      if (!sub.length) sub = graded;
+      pick = sub[Math.floor(Math.random() * sub.length)];
+    }
+    const art = pick ? ARTIFACTS[pick] : null;
+    const artDesc = art
+      ? (art.name + '（' + art.grade + '级·' + (art.type || '辅') + '）——' + art.desc)
+      : '（已无可授予的法宝）';
     return [
       { label: '夺·秘藏灵物', desc: sp ? (sp.name + '——' + sp.effect) : '灵物', apply: function () { return applyOps(s, { spirit: spirit }); } },
-      { label: '取·无上功法', desc: techName, apply: function () { return tech ? applyOps(s, { tech: tech }) : ['未获得新功法']; } }
+      { label: '取·法宝', desc: artDesc, apply: function () { return pick ? applyOps(s, { art: pick }) : ['法宝囊已满，无法再纳入。']; } }
     ];
   }
 
@@ -2125,6 +2343,56 @@ const Engine = (function () {
     spend(s, 1);
     return ev;
   }
+  // 游历：独立事件池（jiyuan 名山大川 + shejiao 市井机缘），用于「额外提升」，
+  // 与 MAINLINE 境界主线【不互通】（主线由 checkYearEvents 单独触发）。
+  // 每次游历消耗 1 行动点，呈「三桩际遇」由玩家择一；采用带权不放回抽 3 个，
+  // 高权重（剧情/关键节点）事件优先冒头；每年上限 5 次，年末归零，达上限提示「机缘已尽」。
+  const TRAVEL_CFG = { perYearMax: 5 };
+  function travel(s) {
+    if (!canAction(s, 1)) return false;
+    if ((s.travelYearCount || 0) >= TRAVEL_CFG.perYearMax) {
+      return '今年游历机缘已尽，你走遍九州却再难遇奇事。来日方长，待来年再寻。';
+    }
+    const pool = EVENTS.jiyuan.concat(EVENTS.shejiao).filter(evOK(s, 1));
+    // 追加「已解锁」的 NPC 游历缘法（林婉儿/白素/黑猫等，需先达成对应剧情才入池，避免提前误触）
+    if (typeof NPCS !== 'undefined') {
+      Object.keys(NPCS).forEach(function (k) {
+        const n = NPCS[k];
+        if (n.surface === 'travel' && n.event && npcUnlocked(s, n) && evOK(s, 1)(n.event)) pool.push(n.event);
+      });
+    }
+    if (!pool.length) { spend(s, 1); return '这一带风平浪静，你游历半日，无所遇。'; }
+    spend(s, 1);
+    const picks = pickWeightedN(pool, Math.min(3, pool.length));
+    s.travelYearCount = (s.travelYearCount || 0) + 1;
+    return { multi: true, events: picks };
+  }
+  // 带权不放回抽样 n 个（高权重大概率先被抽中，且互不相同）
+  function pickWeightedN(pool, n) {
+    const bag = pool.slice();
+    const out = [];
+    while (out.length < n && bag.length) {
+      let total = 0; bag.forEach(function (e) { total += (e.weight || 1); });
+      let r = Math.random() * total, chosen = bag[bag.length - 1];
+      for (let i = 0; i < bag.length; i++) { r -= (bag[i].weight || 1); if (r <= 0) { chosen = bag[i]; break; } }
+      out.push(chosen);
+      bag.splice(bag.indexOf(chosen), 1);
+    }
+    return out;
+  }
+  // —— 仙缘统一触发（替代旧 travel/social/jiyuan 三分裂）——
+  // 每次游历按概率掷骰，命中则从统一池 XIANYUAN 加权单抽 1 个；未中不占「仙缘名额」，也不消耗事件。
+  const XIANYUAN_CFG = { chance: 0.35, perYearMax: 3 };
+  function rollXianyuan(s) {
+    if ((s.xianyuanYearCount || 0) >= XIANYUAN_CFG.perYearMax) return null;   // 本年仙缘已达上限
+    if (Math.random() > XIANYUAN_CFG.chance) return null;                     // 概率门未中
+    const pool = XIANYUAN.filter(evOK(s, 1));                                 // min/max/once/req 门槛
+    if (!pool.length) return null;
+    const ev = pickWeighted(pool);                                           // weight 真正生效（修复旧 travel 用 shuffle 忽略权重）
+    s.seen[ev.id] = 1;
+    s.xianyuanYearCount = (s.xianyuanYearCount || 0) + 1;
+    return ev;
+  }
   function evOK(s, tag) {
     return function (ev) {
       if (ev.min > s.idx || ev.max < s.idx) return false;
@@ -2366,11 +2634,13 @@ const Engine = (function () {
   /* ---------------- 渡劫：人劫（心魔/强敌） · 天劫（对战劫身） ---------------- */
   function xinmoSpec(s) {
     const bi = bigIdxOf(s);
+    // 心魔：锚定玩家当前境界(bi)；旧: atk=s.atk*1.05 / hp=s.atk*(5+bi)*1.15 → hp 用基线.atk
+    const st = enemyStats(bi, 1.05, (5 + bi) * 1.15, 1, { hpRef: 'atk' });
     return {
       name: '心魔 · 执念化形',
       line: '心魔借你记忆成形，招招都指向你心底最深的破绽。它不认得痛——它就是你的影子。',
-      atk: Math.max(18, Math.round(s.atk * 1.05)),
-      hp: Math.round(Math.max(120, s.atk * (5 + bi) * 1.15)),
+      atk: st.atk,
+      hp: st.hp,
       loot: {}, loseLoot: { hp: -0.3 }, bi: 0, xinmo: true,
       dunSpeed: s.dunSpeed || 1
     };
@@ -2379,12 +2649,15 @@ const Engine = (function () {
     const bi = bigIdxOf(s);
     const isYuan = trib === '元婴';
     const name = isYuan ? '天劫化身 · 紫霄神霄双雷形' : '天劫化身 · 九天应元之形';
-    const atk = Math.max(18, Math.round(s.atk * (isYuan ? 1.1 : 1.05)));
+    // 天劫：锚定玩家当前境界(bi)；旧: atk=s.atk*(1.1/1.05) / hp=s.hpMax*(0.95/0.72)
+    const atkMul = isYuan ? 1.1 : 1.05;
+    const hpMul = isYuan ? 0.95 : 0.72;
+    const st = enemyStats(bi, atkMul, hpMul, 1);
     return {
       name: name,
       line: '劫云滚滚而下，天雷凝作一具人形，掌中握着整片翻涌的雷霆。它无声地看着你——这一关，没有退路。',
-      atk: atk,
-      hp: Math.round(s.hpMax * (isYuan ? 0.95 : 0.72)),
+      atk: st.atk,
+      hp: st.hp,
       loot: {}, loseLoot: { stone: Math.round(s.stone * 0.2) }, bi: 0, dujie: true, noFlee: true,
       dunSpeed: (s.dunSpeed || 1) + 1
     };
@@ -2455,7 +2728,7 @@ const Engine = (function () {
     const done = years >= needYears;
     return { seed: p.seed, name: sd.name, years: years, needYears: needYears, done: done, desc: sd.desc };
   }
-  function plantField(s, seedId, quantity) {
+  function plantField(s, seedId, quantity, mode) {
     if (!s.materials) s.materials = {};
     const sd = FIELD_SEEDS[seedId];
     if (!sd) return '没有这种种子。';
@@ -2464,12 +2737,22 @@ const Engine = (function () {
     var maxFields = getMaxFields(s);
     var usedFields = plots.filter(function(p) { return p !== null; }).length;
     if (usedFields >= maxFields) return '灵田已满（最多' + maxFields + '亩），先采收再种吧。';
-    // 使用分级灵草播种
-    var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
     var qty = quantity || 1;
-    var totalCost = sd.cost * qty;
-    if ((s.materials[herbKey] || 0) < totalCost) return MATERIALS[herbKey].name + '不足（播种需 ' + totalCost + ' 株）。';
-    s.materials[herbKey] -= totalCost;
+    var mode2 = mode || 'buy'; // buy=灵石买苗(受境界限) / own=自备灵草下种(不限境界)
+    // 档位门槛：仅「买苗」受 realmMin 限制；自备同等级灵草下种不受限
+    var bi = bigIdxOf(s);
+    if (mode2 === 'buy' && bi < sd.realmMin) return '修为不足——' + BIG_REALMS[sd.realmMin] + '方可去灵田买入【' + sd.name + '】之苗。（若你已有' + MATERIALS[FIELD_GRADE_MAP[sd.grade]].name + '，可自备下种）';
+    var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
+    // 结算成本
+    if (mode2 === 'buy') {
+      var costStone = sd.stone * qty;
+      if (s.stone < costStone) return '灵石不足，买' + qty + '株【' + sd.name + '】苗需 ' + costStone + ' 灵石。';
+      s.stone -= costStone;
+    } else {
+      var costHerb = sd.herb * qty;
+      if ((s.materials[herbKey] || 0) < costHerb) return MATERIALS[herbKey].name + '不足（自备下种需 ' + costHerb + ' 株）。';
+      s.materials[herbKey] -= costHerb;
+    }
     // 找到第一个空闲的灵田槽位
     var slotIndex = -1;
     for (var i = 0; i < plots.length; i++) {
@@ -2481,7 +2764,22 @@ const Engine = (function () {
       plots[slotIndex] = { seed: seedId, planted: s.year, quantity: qty };
     }
     refreshStats(s); saveState(s);
-    return '你翻土、下种、引灵泉灌溉，一亩【' + sd.name + '】（' + qty + '株）就此落成。' + sd.desc;
+    return '你翻土、下种、引灵泉灌溉，一亩【' + sd.name + '】（' + qty + '株）就此落成。' + (mode2 === 'own' ? '自备' + MATERIALS[herbKey].name + '作苗，省去灵石。' : '灵石' + sd.stone * qty + '买苗已付。');
+  }
+  // 该级种子是否可「买苗」（境界达标）；灵草是否够自备下种
+  function fieldPlantable(s, seedId) {
+    const sd = FIELD_SEEDS[seedId];
+    if (!sd) return null;
+    const herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
+    const bi = bigIdxOf(s);
+    return {
+      grade: sd.grade, realmMin: sd.realmMin,
+      canBuy: bi >= sd.realmMin,
+      buyStone: sd.stone, buyStoneOk: s.stone >= sd.stone,
+      canOwn: (s.materials && s.materials[herbKey] || 0) >= sd.herb,
+      ownHerb: sd.herb, ownHerbKey: herbKey, herbName: MATERIALS[herbKey] ? MATERIALS[herbKey].name : '灵草',
+      buyMsg: bi < sd.realmMin ? '需' + BIG_REALMS[sd.realmMin] : null
+    };
   }
   function getMaxFields(s) {
     return 3; // 最多3块灵田
@@ -2520,29 +2818,50 @@ const Engine = (function () {
     refreshStats(s); saveState(s);
     return '你挥锄采收【' + sd.name + '】（' + qty + '株），得' + MATERIALS[herbKey].name + ' ' + totalGain + ' 株';
   }
-  function digMine(s) {
+  // 挖矿：境界定档位(ironKey/伴生草/灵石)，depth(0→10) 深化提升保底与产出率。
+  // rounds = 投入强度（连挖几锤）；消耗(行动点/气血)由调用方按轮次先行扣除。
+  function digMine(s, rounds) {
     if (!s.materials) s.materials = {};
     if (!s.mine) s.mine = { depth: 0 };
-    const d = s.mine.depth || 0;
+    const bi = bigIdxOf(s);
+    const grades = ['huang', 'xuan', 'di', 'tian'];
+    const g = grades[bi] || 'huang';
+    const ironKey = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
+    const herbKey = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang';
+    const R = Math.max(1, Math.floor(rounds || 1));
+    let stoneGot = 0, herbGot = 0, ironGot = 0, depthUp = 0;
+    const parts = [];
+    for (let k = 0; k < R; k++) {
+      const d = s.mine.depth || 0;
+      const r = Math.random();
+      if (r < 0.15) {
+        const st = (8 + d * 2) * 10;
+        s.stone += st; stoneGot += st;
+      } else if (r < 0.30) {
+        const h = (1 + Math.floor(Math.random() * 2)) * 10;
+        s.materials[herbKey] = (s.materials[herbKey] || 0) + h; herbGot += h;
+      } else {
+        const n = Math.round((2 + Math.floor(d / 2) + Math.floor(Math.random() * (3 + Math.floor(d / 3)))) * 10 * (1 + (artifactStats(s).mineEff || 0))); // 寻矿罗盘：灵矿产量 +30%
+        s.materials[ironKey] = (s.materials[ironKey] || 0) + n; ironGot += n;
+      }
+      if (Math.random() < 0.35 && s.mine.depth < 10) { s.mine.depth += 1; depthUp++; }
+    }
+    const bits = [];
+    if (stoneGot) bits.push('灵石 +' + stoneGot);
+    if (herbGot) bits.push(MATERIALS[herbKey].name + ' +' + herbGot);
+    if (ironGot) bits.push(MATERIALS[ironKey].name + ' +' + ironGot);
+    let msg = '你抡起卦锤连凿' + R + '下：' + (bits.length ? bits.join('、') : '只得些碎岩，聊胜于无。') + '。';
+    if (depthUp) msg += ' 矿脉愈挖愈深（矿脉深度 +' + depthUp + '，现 ' + (s.mine.depth || 0) + '/10）。';
+    refreshStats(s); saveState(s);
+    return { ok: true, rounds: R, depth: s.mine.depth || 0, msg: msg, stone: stoneGot, herb: herbGot, iron: ironGot, grade: g };
+  }
+  // 矿脉信息（供 UI 展示当前档位/深度/已存材料）
+  function mineInfo(s) {
+    if (!s.mine) s.mine = { depth: 0 };
     const bi = bigIdxOf(s);
     const ironKey = ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
-    const r = Math.random();
-    let msg;
-    if (r < 0.15) { const st = (8 + d * 2) * 10; s.stone += st; msg = '矿脉深处竟嵌着几条灵石原矿（灵石 +' + st + '）。'; }
-    else if (r < 0.3) {
-      var herbKey = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang';
-      const h = (1 + Math.floor(Math.random() * 2)) * 10;
-      s.materials[herbKey] = (s.materials[herbKey] || 0) + h;
-      msg = '你在岩缝里寻到几株伴生灵草（' + MATERIALS[herbKey].name + ' +' + h + '）。';
-    }
-    else {
-      const n = Math.round((2 + Math.floor(d / 2) + Math.floor(Math.random() * (3 + Math.floor(d / 3)))) * 10 * (1 + (artifactStats(s).mineEff || 0))); // 寻矿罗盘：灵矿产量 +30%
-      s.materials[ironKey] = (s.materials[ironKey] || 0) + n;
-      msg = '你抡起卦锤一凿一凿，挖出' + MATERIALS[ironKey].name + ' ' + n + ' 块。';
-    }
-    if (Math.random() < 0.35 && d < 10) { s.mine.depth = d + 1; msg += ' 矿脉愈挖愈深，灵气渐盛（矿脉深度 +1）。'; }
-    refreshStats(s); saveState(s);
-    return msg;
+    const herbKey = ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang';
+    return { grade: BIG_REALMS[bi], ironKey: ironKey, ironName: MATERIALS[ironKey].name, herbKey: herbKey, herbName: MATERIALS[herbKey].name, depth: s.mine.depth || 0 };
   }
 
   /* ---------------- 炼制队列系统 ---------------- */
@@ -2612,22 +2931,102 @@ const Engine = (function () {
     return { ok: true, msg: msg };
   }
 
-  /* ---------------- 结缘系统 ---------------- */
-  function giveGift(s, targetId, giftType) {
+  /* ---------------- 仙缘 NPC 缘法 · 好感系统 ----------------
+   * NPC 缘法事件（NPCS）的「好感度分级 / 好感奖励 / 互动」统一在此实现：
+   *   npcUnlocked  —— 是否达成解锁剧情
+   *   favorTier    —— 当前好感分级（含奖励阈值）
+   *   grantFavor   —— 加好感并结算越级奖励
+   *   giveGift     —— 送礼（每年一次，扣灵石）
+   *   talkNpc      —— 叙话（每年一次，+1）
+   *   drawXianyuan —— 游历内独立的仙缘单抽入口
+   */
+  function npcById(id) { return (typeof NPCS !== 'undefined') ? NPCS[id] : null; }
+  function npcUnlocked(s, n) { return !!(s.seen && n.unlock && s.seen[n.unlock.story]); }
+  function favorOf(s, id) { if (!s.favor) s.favor = {}; return s.favor[id] || 0; }
+  function favorTier(n, favor) {
+    let cur = n.tiers[0];
+    for (let i = 0; i < n.tiers.length; i++) if (favor >= n.tiers[i].min) cur = n.tiers[i];
+    return cur;
+  }
+  function ensureFavorReward(s) { if (!s.favorReward) s.favorReward = {}; }
+  // 跨过好感阈值时结算一次性奖励（避免重复发放）
+  function crossTierRewards(s, n, before, after) {
+    ensureFavorReward(s);
+    const claimed = s.favorReward[n.id] || (s.favorReward[n.id] = []);
+    const msgs = [];
+    n.tiers.forEach(function (t, i) {
+      if (t.reward && before < t.min && after >= t.min && claimed.indexOf(i) < 0) {
+        claimed.push(i);
+        applyOps(s, t.reward.effect);
+        msgs.push(t.reward.text);
+      }
+    });
+    return msgs;
+  }
+  function grantFavor(s, id, amt) {
+    const n = npcById(id); if (!n) return { ok: false, msg: '对象不存在' };
     if (!s.favor) s.favor = {};
-    if (!s.giftCooldown) s.giftCooldown = {};
-    if (!s.materials) s.materials = {};
-    var target = FAVOR_SYSTEM[targetId];
-    if (!target) return { ok: false, msg: '目标不存在' };
-    var gift = target.gifts[giftType];
-    if (!gift) return { ok: false, msg: '礼物不存在' };
-    if (s.giftCooldown[targetId] >= s.year) return { ok: false, msg: '今年已赠送过礼物' };
-    if ((s.materials[giftType] || 0) <= 0) return { ok: false, msg: '材料不足' };
-    s.materials[giftType]--;
-    s.favor[targetId] = Math.min(target.maxFavor, (s.favor[targetId] || 0) + gift.favor);
-    s.giftCooldown[targetId] = s.year;
+    const before = favorOf(s, id);
+    const after = Math.min(n.maxFavor, before + amt);
+    s.favor[id] = after;
+    const rw = crossTierRewards(s, n, before, after);
     refreshStats(s); saveState(s);
-    return { ok: true, msg: '赠送' + gift.name + '，好感度+' + gift.favor };
+    return { ok: true, before: before, after: after, rewards: rw };
+  }
+  function giveGift(s, id, giftType) {
+    const n = npcById(id); if (!n) return { ok: false, msg: '对象不存在' };
+    if (!n.gifts || !n.gifts[giftType]) return { ok: false, msg: '没有此礼物' };
+    if (!npcUnlocked(s, n)) return { ok: false, msg: '尚未结识，无法赠礼' };
+    if (!s.giftCooldown) s.giftCooldown = {};
+    if ((s.giftCooldown[id] || 0) >= s.year) return { ok: false, msg: '今年已赠过礼' };
+    const g = n.gifts[giftType];
+    if ((s.stone || 0) < (g.cost || 0)) return { ok: false, msg: '灵石不足' };
+    s.stone -= (g.cost || 0);
+    s.giftCooldown[id] = s.year;
+    const r = grantFavor(s, id, g.favor);
+    return { ok: true, msg: '赠' + g.name + '，好感 +' + g.favor + (r.rewards.length ? '；' + r.rewards.join('、') : '') };
+  }
+  function talkNpc(s, id) {
+    const n = npcById(id); if (!n) return { ok: false, msg: '对象不存在' };
+    if (!npcUnlocked(s, n)) return { ok: false, msg: '尚未结识，无法叙话' };
+    if (!s.talkCooldown) s.talkCooldown = {};
+    if ((s.talkCooldown[id] || 0) >= s.year) return { ok: false, msg: '今年已叙话' };
+    s.talkCooldown[id] = s.year;
+    const r = grantFavor(s, id, 1);
+    const line = (n.talk && n.talk.line) ? n.talk.line : ('你与' + n.name + '闲谈片刻，好感 +1');
+    return { ok: true, msg: line + (r.rewards.length ? '；' + r.rewards.join('、') : '') };
+  }
+  // 游历内独立的仙缘单抽：从统一仙缘池 XIANYUAN 抽取（无概率门槛，但每年限 3 次），消耗 1 行动点
+  const XIANYUAN_DRAW_CFG = { perYearMax: 3 };
+  // 探寻仙缘：单独从已解锁的 NPC 游历缘法中抽 1 桩，1 行动点/年，与常规游历不冲突
+  const NPC_TRAVEL_CFG = { perYearMax: 1 };
+  function seekNpcXianyuan(s) {
+    if (!canAction(s, 1)) return false;
+    if ((s.npcTravelYearCount || 0) >= NPC_TRAVEL_CFG.perYearMax) return '今年已探寻过仙缘，来日方长。';
+    const pool = [];
+    if (typeof NPCS !== 'undefined') {
+      Object.keys(NPCS).forEach(function (k) {
+        const n = NPCS[k];
+        if (n.surface === 'travel' && n.event && npcUnlocked(s, n) && evOK(s, 1)(n.event)) pool.push(n.event);
+      });
+    }
+    if (!pool.length) { spend(s, 1); s.npcTravelYearCount = (s.npcTravelYearCount || 0) + 1; return '你寻访相识之人，却遍寻不见。空耗一日，只得作罢。'; }
+    spend(s, 1);
+    const ev = pickWeighted(pool);
+    s.seen[ev.id] = 1;
+    s.npcTravelYearCount = (s.npcTravelYearCount || 0) + 1;
+    return ev;
+  }
+  function drawXianyuan(s) {
+    if (!canAction(s, 1)) return '行动点不足，无法叩问仙缘。';
+    if ((s.xianyuanYearCount || 0) >= XIANYUAN_DRAW_CFG.perYearMax) return '今年仙缘已尽，来日方长。';
+    const pool = XIANYUAN.filter(evOK(s, 1));
+    if (!pool.length) { spend(s, 1); s.xianyuanYearCount = (s.xianyuanYearCount || 0) + 1; return '机缘未至，你叩问半日，只闻风声。'; }
+    const ev = pickWeighted(pool);
+    spend(s, 1);
+    s.seen[ev.id] = 1;
+    s.xianyuanYearCount = (s.xianyuanYearCount || 0) + 1;
+    return ev;
   }
 
   /* ---------------- 事件系统 ---------------- */
@@ -2656,6 +3055,9 @@ const Engine = (function () {
   function endYear(s) {
     s.age += 1;
     s.yearActions = 0;
+    s.xianyuanYearCount = 0;      // 每年重置仙缘触发计数（配合 rollXianyuan 的 perYearMax 频率控制）
+    s.travelYearCount = 0;        // 每年重置游历次数（配合 travel 的 TRAVEL_CFG.perYearMax 频率控制）
+    s.npcTravelYearCount = 0;     // 每年重置探寻仙缘次数
     const exceed = s.age >= s.lifeMax || s.hp <= 0;
     if (exceed) {
       s.dead = true;
@@ -2680,7 +3082,9 @@ const Engine = (function () {
       }
     });
     s.actionsLeft = actionPoints(s);
-    s.hp = s.hpMax;
+    refreshStats(s);              // 先刷新上限（灵力提升后 mpMax 可能增长）
+    s.hp = s.hpMax;               // 年末：气血回满
+    s.mp = s.mpMax;               // 年末：灵力同步回满
     s.cultedThisYear = false;
     s.cultTimes = 0;
     // 法宝：聚宝盆（每年得灵石 = 当前 ×5%）
@@ -2712,7 +3116,11 @@ const Engine = (function () {
     // 20年死劫检查
     for (var di = 0; di < DEATH_EVENTS.length; di++) {
       if (s.year >= DEATH_EVENTS[di].year && !s.seen['death_' + DEATH_EVENTS[di].year]) {
-        s.pendingDeathEvent = DEATH_EVENTS[di];
+        var dev = Object.assign({}, DEATH_EVENTS[di]);
+        var dyn = deathEnemyGen(s, di);
+        dev.fight = { name: DEATH_EVENTS[di].fight.name, atk: dyn.atk, hp: dyn.hp };
+        dev.deathIdx = di;
+        s.pendingDeathEvent = dev;
         saveState(s);
         return 'death_event';
       }
@@ -2768,30 +3176,39 @@ const Engine = (function () {
     if (!s.lifeLog) s.lifeLog = [];
     s.lifeLog.push({ type: type, text: text, pts: pts || 0 });
   }
+  function computeAdvPoints(s) {
+    const TIER_PTS = { huang: 2, xuan: 4, di: 7, tian: 11, xian: 15 };
+    const ORDER = ['huang', 'xuan', 'di', 'tian', 'xian'];
+    const cleared = ORDER.filter(function (k) { return advCleared(s, k); });
+    let pts = 0;
+    cleared.forEach(function (k) { pts += TIER_PTS[k]; });
+    const n = cleared.length;
+    if (n >= 4) pts += 8; else if (n >= 3) pts += 4; else if (n >= 2) pts += 2;
+    const tier = { '炼气': 2, '筑基': 4, '金丹': 7, '元婴': 11, '仙': 25 };
+    const cap = (tier[s.realm] || 2) * 2;
+    return Math.min(pts, cap);
+  }
   function settlePoints(s, meta) {
     var ach = earnPoints(s, meta);
     var realmTier = { '炼气': 2, '筑基': 4, '金丹': 7, '元婴': 11, '仙': 25 };
     var realmPts = realmTier[s.realm] || 2;
     var breakPts = Math.min(10, Math.floor(s.broken / 3));
-    var agePts = s.age >= 200 ? 2 : 0;
-    var specPts = 0;
-    if (s.endReason === '飞升') specPts = 10;
+    var deathPts = (s.deathPassed || 0) * 2;
+    var advPts = computeAdvPoints(s);
     var achPts = 0;
     ach.forEach(function (a) { if (a.new) achPts += ACHIEVEMENTS[a.id].pts; });
     var top5 = [];
-    if (s.endReason === '飞升') top5.push({ text: '渡劫飞升，得道成仙', pts: 10, cls: 'gold' });
-    if (s.flags.daoLu) top5.push({ text: '感悟大道真意', pts: 0, cls: 'gold' });
+    if (s.flags && s.flags.daoLu) top5.push({ text: '感悟大道真意', pts: 0, cls: 'gold' });
     if (s.idx >= 9) top5.push({ text: '凝出元婴，阳神出窍', pts: 0, cls: 'realm' });
     if (s.idx >= 6) top5.push({ text: '结成金丹，踏入金丹大道', pts: 0, cls: 'realm' });
     if (s.sect) top5.push({ text: '拜入' + SECTS[s.sect].name, pts: 0, cls: 'sect' });
     if (s.broken >= 3) top5.push({ text: '一生渡劫' + s.broken + '次而不陨', pts: 0, cls: 'realm' });
     if (s.broken >= 1 && s.idx < 6) top5.push({ text: '初次突破筑基', pts: 0, cls: 'realm' });
-    if (s.age >= 200) top5.push({ text: '活过二百岁', pts: 2, cls: 'dim' });
     top5.sort(function (a, b) { return b.pts - a.pts; });
     top5 = top5.slice(0, 5);
     return {
       total: s.earnedPoints || 0,
-      breakdown: { realm: realmPts, break: breakPts, age: agePts, spec: specPts, ach: achPts },
+      breakdown: { realm: realmPts, trib: breakPts, death: deathPts, explore: advPts, ach: achPts },
       ach: ach,
       top5: top5
     };
@@ -2800,12 +3217,17 @@ const Engine = (function () {
   /* ---------------- 结局结算 / 轮回 ---------------- */
   function earnPoints(s, meta) {
     const tier = { '炼气': 2, '筑基': 4, '金丹': 7, '元婴': 11, '仙': 25 };
-    let pts = tier[s.realm] || 2;
-    pts += Math.min(10, Math.floor(s.broken / 3));
+    const realmPts = tier[s.realm] || 2;
+    const tribPts = Math.min(10, Math.floor(s.broken / 3));
+    const deathPts = (s.deathPassed || 0) * 2;
+    const advPts = computeAdvPoints(s);
     const ach = checkAchievements(s, meta);
-    ach.forEach(function (a) { if (a.new) pts += ACHIEVEMENTS[a.id].pts; });
-    var jie = s.jie || 0;
-    pts = Math.round(pts * (1 + jie * 0.2)) + jie * 2;
+    let achPts = 0;
+    ach.forEach(function (a) { if (a.new) achPts += ACHIEVEMENTS[a.id].pts; });
+    const base = realmPts + tribPts + deathPts + advPts + achPts;
+    const jie = s.jie || 0;
+    const K = 0.05;
+    let pts = Math.round(base * (1 + jie * 0.2)) + Math.round(base * jie * K);
     s.earnedPoints = pts;
     return ach;
   }
@@ -2819,7 +3241,19 @@ const Engine = (function () {
       daolu: !!s.flags.daoLu,
       shou_zhong: s.endReason === '寿元耗尽',
       binjie_3: s.broken >= 3,
-      ai_renzi: s.age >= 200
+      ai_renzi: s.age >= 200,
+      chu_tan: !!(s.flags && s.flags.advClear && Object.keys(s.flags.advClear).some(function (k) { return s.flags.advClear[k]; })),
+      shou_cang: !!(s.flags && s.flags.advClear) && ['huang', 'xuan', 'di', 'tian'].every(function (k) { return s.flags.advClear[k]; }),
+      yi_shi: !!(s.flags && s.flags.advClear && s.flags.advClear.xian),
+      wudao: !!(s.flags && s.flags.daoLu) && s.endReason === '飞升',
+      bai_jia: (function () {
+        if (!s.techs || !s.techs.length) return false;
+        const c = {};
+        s.techs.forEach(function (t) { const x = TECHNIQUES[t]; if (x && x.cls) c[x.cls] = 1; });
+        return Object.keys(c).length >= 3;
+      })(),
+      chang_sheng: s.age >= 300,
+      san_xiu: !s.sect && s.idx >= 6
     };
     Object.keys(defs).forEach(function (id) {
       if (defs[id] && !meta.achievements[id]) {
@@ -2909,14 +3343,16 @@ const Engine = (function () {
   }
   function openPointsTotal(s) { return INIT_POINTS + reincTalentBonus(s.reincTalent || 1); }
 
-  // —— 轮回阁天赋（开荒池永久 +点）——
+  // —— 开荒池天赋（REINC_TALENT，次要系统；扣费池统一为 meta.points，与轮回阁同池）——
   function reincTalentUpgrade(s) {
     const cur = s.reincTalent || 1;
     const cost = reincTalentNextCost(cur);
-    if (cost == null) return { ok: false, msg: '轮回阁天赋已满级。' };
-    if ((s.reincPoints || 0) < cost) return { ok: false, msg: '轮回点不足（需 ' + cost + '）。' };
-    s.reincPoints -= cost; s.reincTalent = cur + 1; saveState(s);
-    return { ok: true, msg: '轮回阁天赋提升至 Lv' + s.reincTalent + '，开荒池 +4 点（现 ' + openPointsTotal(s) + ' 点）。' };
+    if (cost == null) return { ok: false, msg: '开荒池天赋已满级。' };
+    const meta = loadMeta();
+    if ((meta.points || 0) < cost) return { ok: false, msg: '轮回点不足（需 ' + cost + '）。' };
+    meta.points -= cost; s.reincTalent = cur + 1;
+    saveMeta(meta); saveState(s);
+    return { ok: true, msg: '开荒池天赋提升至 Lv' + s.reincTalent + '，开荒池 +4 点（现 ' + openPointsTotal(s) + ' 点）。' };
   }
 
   // —— 聚灵阵（§5.1）——
@@ -3154,7 +3590,11 @@ const Engine = (function () {
     }
     const qty = g.qty || 1;
     if (g.kind === 'art') {
-      if (s.arts.indexOf(g.ref) < 0) s.arts.push(g.ref);
+      const owned = s.arts.indexOf(g.ref) >= 0 || (s.equip.treasure && s.equip.treasure.indexOf(g.ref) >= 0);
+      if (!owned) {
+        s.arts.push(g.ref);
+        equipTreasureAuto(s, g.ref); // 自动装备到空闲槽，若满则留库存
+      }
     } else if (g.kind === 'tech' || g.kind === 'dun') {
       if (s.techs.indexOf(g.ref) < 0) s.techs.push(g.ref);
     } else if (g.kind === 'elixir') {
@@ -3184,7 +3624,8 @@ const Engine = (function () {
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,
     startLife: startLife, commitStart: commitStart,
     cultivate: cultivate, canAction: canAction, spend: spend,
-    explore: explore, social: social, jiyuan: jiyuan,
+    explore: explore, social: social, jiyuan: jiyuan, travel: travel, rollXianyuan: rollXianyuan,
+    evEligible: function (s, ev) { return evOK(s, 1)(ev); },
     alchemyChoices: alchemyChoices, doAlchemy: doAlchemy,
     forgeChoices: forgeChoices, doForge: doForge,
     canBreak: canBreak, breakInfo: breakInfo, breakthrough: breakthrough,
@@ -3197,7 +3638,7 @@ const Engine = (function () {
     combatStart: combatStart, combatAct: combatAct, combatAuto: combatAuto,
     equipStats: equipStats, cultGain: cultGain, getBestShufa: getBestShufa, getDunshu: getDunshu,
     findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, sellEquipAll: sellEquipAll, gainEquip: gainEquip,
-    startAdventure: startAdventure, advGenLayer: advGenLayer, advResolve: advResolve,
+    startAdventure: startAdventure, startTrial: startTrial, advGenLayer: advGenLayer, advResolve: advResolve,
     advAdvance: advAdvance, advEnd: advEnd, advClearReward: advClearReward,
     enemyGen: enemyGen, randomEquip: randomEquip,
     advNextChoices: advNextChoices, advMove: advMove, advCanMove: advCanMove,
@@ -3207,16 +3648,20 @@ const Engine = (function () {
     ADV_EXPLORE_GAIN: ADV_EXPLORE_GAIN,
     getAdvItemCap: getAdvItemCap, returnUnusedAdvItems: returnUnusedAdvItems,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
+    wearEquip: wearEquip, treasureItem: treasureItem, equipTreasureAuto: equipTreasureAuto, unequipTreasure: unequipTreasure, findEquip: findEquip,
     refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure, calcMpMax: calcMpMax,
     xinmoSpec: xinmoSpec, tianjieSpec: tianjieSpec,
     dujieWin: dujieWin, dujieFail: dujieFail, xinmoDone: xinmoDone,
-    fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, digMine: digMine,
+    fieldInfo: fieldInfo, plantField: plantField, harvestField: harvestField, fieldPlantable: fieldPlantable, digMine: digMine, mineInfo: mineInfo,
     unlockField: unlockField, getMaxFields: getMaxFields, fieldPlots: fieldPlots,
     grantEquipChecked: grantEquipChecked,
     isXianAdventureAvailable: isXianAdventureAvailable,
+    advUnlocked: advUnlocked, markAdvClear: markAdvClear, advNextOf: advNextOf,
     shopStock: shopStock, buyStock: buyStock, sellMaterial: sellMaterial,
     startCraft: startCraft, accelerateCraft: accelerateCraft,
-    giveGift: giveGift, getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,
+    giveGift: giveGift, talkNpc: talkNpc, drawXianyuan: drawXianyuan, seekNpcXianyuan: seekNpcXianyuan,
+    npcUnlocked: npcUnlocked, favorOf: favorOf, favorTier: favorTier,
+    getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,
     bigIdxOf: bigIdxOf,
     duantiInfo: duantiInfo, doDuanti: doDuanti,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,

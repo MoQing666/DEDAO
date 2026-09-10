@@ -208,7 +208,7 @@
     $('btn-arts-label').textContent = duantiOn ? '锻体' : '锻体（未解锁）';
     $('btn-explore').classList.toggle('disabled', !Engine.canAction(S, 2));
     $('btn-social-label').textContent = '游历';
-    // 宗门入口已统一到主界面底部栏（btn-sect-bottom），行动网格不再放置宗门按钮
+    // 宗门入口在行动栏（btn-sect），游历入口在行动栏（btn-social）；底部栏不再放宗门/游历
     // 百艺：加入宗门后解锁，消耗0
     const baiyiUnlocked = !!S.sect;
     $('btn-baiyi').disabled = !baiyiUnlocked;
@@ -363,6 +363,7 @@
           } else {
             lines.push('你见势不妙，抽身而退。');
           }
+          if (c.effect) { const g = Engine.applyOps(S, c.effect); g.forEach(function (x) { lines.push(x); }); }
           resolve({ pick: c, win: r.win, lines: lines });
         });
         return;
@@ -697,6 +698,14 @@
       chap.style.background = 'linear-gradient(180deg, rgba(10,8,16,.82), rgba(20,15,30,.90)), url(' + url + ')';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
+    } else {
+      // 无对应美术图（如试炼路线）时，使用暗色渐变兜底，保证不透明不漏底
+      ov.style.background = 'linear-gradient(180deg, rgba(10,8,16,.92), rgba(18,13,28,.96))';
+      ov.style.backgroundSize = 'cover';
+      ov.style.backgroundPosition = 'center';
+      chap.style.background = 'linear-gradient(180deg, rgba(10,8,16,.90), rgba(20,15,30,.95))';
+      chap.style.backgroundSize = 'cover';
+      chap.style.backgroundPosition = 'center';
     }
   }
   function resetAdvBackground() {
@@ -751,13 +760,19 @@
     box.appendChild(desc);
 
     advConfigs.forEach(function(adv) {
-      const canEnter = bi >= adv.realmReq;
+      const canEnter = Engine.advUnlocked(S, adv.key);
+      // 未解锁时的双通道理由
+      let lockTxt = '';
+      if (!canEnter) {
+        const prevName = ({ xuan: '匪徒营寨', di: '大黑山', tian: '洞天福地', xian: '魔道祖地' })[adv.key] || '';
+        lockTxt = '<b style="color:#e05a7a;"> 需' + adv.realmName + '以上，或通关【' + prevName + '】</b>';
+      }
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;' + (canEnter ? '' : 'opacity:0.5;');
       card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
         '<b style="color:' + adv.color + ';font-size:16px;">' + adv.grade + '级秘境 · ' + adv.name + '</b>' +
         '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
-        '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : '<b style="color:#e05a7a;"> 需要' + adv.realmName + '以上方可进入</b>') + '</p>' +
+        '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : lockTxt) + '</p>' +
         '<div style="font-size:12px;color:#6a6a7a;">产出：' + adv.drops + '</div>';
       const btnWrap = document.createElement('div');
       btnWrap.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
@@ -815,13 +830,13 @@
     const ov = $('adv-screen');
     ov.style.display = 'flex';
     const cfg = ADVENTURE_CONFIG[a.grade];
-    $('adv-title').textContent = (cfg ? cfg.name : '秘境') + ' · 探幽';
+    $('adv-title').textContent = a.trialTitle || ((cfg ? cfg.name : '秘境') + ' · 探幽');
     $('adv-sub').textContent = '第 ' + a.depth + ' 层 · 体力决定能走多远（已耗 ' + (a.staminaMax - a.stamina) + '）';
     const sp = Math.max(0, Math.min(100, a.stamina / a.staminaMax * 100));
     $('adv-stamina-bar').style.width = sp + '%';
     $('adv-stamina-num').textContent = a.stamina + ' / ' + a.staminaMax;
     // 探索度：满 100% 方可直面秘境之主
-    const exNow = Math.min(100, a.explore || 0);
+    const exNow = a.trial ? 100 : Math.min(100, a.explore || 0);
     const exPct = Math.max(0, Math.min(100, exNow / (a.exploreMax || 100) * 100));
     const exBar = $('adv-explore-bar');
     if (exBar) {
@@ -860,7 +875,7 @@
       if (a.nodeId === 'boss') bcls += ' current';
       if (sel['boss']) bcls += ' selectable';
       bossNode.className = bcls;
-      bossNode.innerHTML = '<div class="n-icon">☠</div><div class="n-name">洞天决战</div>' + (sel['boss'] ? '<div class="n-badge">可往</div>' : '');
+      bossNode.innerHTML = '<div class="n-icon">☠</div><div class="n-name">' + (a.trial ? '大敌当前' : '洞天决战') + '</div>' + (sel['boss'] ? '<div class="n-badge">可往</div>' : '');
       if (sel['boss']) bossNode.onclick = function () { onAdvNode('boss'); };
       bossCol.appendChild(bossNode);
       mapEl.appendChild(bossCol);
@@ -887,7 +902,9 @@
     mapEl.scrollTop = mapEl.scrollHeight;
     const hint = $('adv-hint');
     const exHint = Math.min(100, a.explore || 0);
-    if (!Engine.advCanMove(S) && a.nodeId !== 'boss') {
+    if (a.trial) {
+      hint.textContent = '沿试炼之路择路而行（每步耗 ' + (map.stepCost || 5) + ' 体力）· 途遇敌人、精英与静室，尽头为大敌。';
+    } else if (!Engine.advCanMove(S) && a.nodeId !== 'boss') {
       hint.textContent = '秘境体力已耗尽——仍可点击前方节点，以 1 年寿元强行前行一步。';
     } else {
       hint.textContent = '选择高亮节点继续深入（每步耗 ' + (map.stepCost || 5) + ' 体力）· 探索度 ' + exHint + '%，满 100% 方可直面秘境之主。';
@@ -897,6 +914,7 @@
     // 若探索度未满，BOSS 列不渲染；当唯一可选项是（隐藏的）BOSS 时，按「前路已尽」处理，避免卡死
     const bossOnly = choices.length > 0 && choices.every(function (c) { return c.id === 'boss'; });
     if ((choices.length === 0 || (bossOnly && !canBossNow)) && a.nodeId !== 'boss') {
+      if (a.trial) { openBossGate({ id: 'boss', type: 'final' }); return; }
       const canBoss = Engine.advCanFightBoss(S);
       const opts = [];
       if (canBoss) opts.push({ t: '直面秘境之主', special: 'adv_to_boss' });
@@ -909,10 +927,7 @@
         const pick = r.pick || {};
         if (pick.special === 'adv_retreat') { advFinish('撤退'); return; }
         if (pick.special === 'adv_to_boss') { openBossGate({ id: 'boss', type: 'final' }); return; }
-        const fr = Engine.advForceExplore(S);
-        (r.lines || []).concat(fr.ok ? fr.lines : [fr.msg]).forEach(function (l) { log(l, 'bad'); });
-        refresh();
-        renderAdvMap();
+        offerForceExploreLoop(true);
       });
       return;
     }
@@ -955,6 +970,41 @@
     if (node.type === 'final') { openBossGate(node); return; }
     advResolveNode(node);
   }
+  // 折寿强搜循环：强搜一次后弹出结果与后续选择，避免直接回到原页面造成「无限循环」
+  function offerForceExploreLoop(deadEnd, bossNode, carryLines) {
+    const fr = Engine.advForceExplore(S);
+    const fl = (carryLines || []).concat(fr.ok ? fr.lines : [fr.msg]);
+    fl.forEach(function (l) { log(l, 'bad'); });
+    refresh();
+    if (!deadEnd && bossNode && Engine.advCanFightBoss(S)) {
+      showChapter('秘境 · 水落石出', fl.concat([
+        '探索度已达 100%，秘境之主的气息再无遮掩。'
+      ]), {
+        choices: [
+          { t: '直面秘境之主', special: 'adv_fight_boss' },
+          { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+        ]
+      }).then(function (r2) {
+        const p = r2.pick || {};
+        if (p.special === 'adv_fight_boss') fightBoss(bossNode);
+        else advFinish('撤退');
+      });
+      return;
+    }
+    const choices = [
+      { t: '继续以寿元强行探查\n再 -1 年寿元，硬搜一处造化（不计探索度）', special: 'adv_force_explore' },
+      { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
+    ];
+    const title = deadEnd ? '前路已尽 · 强搜所得' : '秘境 · 未明之地';
+    const lines = deadEnd
+      ? fl.concat(['此处已无去路，你只能选择继续硬搜，或带着收获撤退。'])
+      : fl.concat(['探索度仍未满，你可以继续强搜，或就此退去。']);
+    showChapter(title, lines, { choices: choices }).then(function (r) {
+      const p = r.pick || {};
+      if (p.special === 'adv_retreat') { advFinish('撤退'); return; }
+      offerForceExploreLoop(deadEnd, bossNode);
+    });
+  }
   // 探索度未满 100% 不得直面秘境之主：可折寿强行探查，或撤退
   function openBossGate(bossNode, extra) {
     const a = S.adv;
@@ -972,34 +1022,114 @@
     return showChapter('秘境 · 未明之地', lines, { choices: choices }).then(function (r) {
       const pick = r.pick || {};
       if (pick.special === 'adv_retreat') { advFinish('撤退'); return; }
-      const fr = Engine.advForceExplore(S);
-      const fl = (r.lines || []).concat(fr.ok ? fr.lines : [fr.msg]);
-      if (Engine.advCanFightBoss(S)) {
-        return showChapter('秘境 · 水落石出', fl.concat([
-          '探索度已达 100%，秘境之主的气息再无遮掩。'
-        ]), {
-          choices: [
-            { t: '直面秘境之主', special: 'adv_fight_boss' },
-            { t: '就此撤退\n保住已有收获', special: 'adv_retreat' }
-          ]
-        }).then(function (r2) {
-          if ((r2.pick || {}).special === 'adv_fight_boss') fightBoss(bossNode);
-          else advFinish('撤退');
-        });
-      }
-      return openBossGate(bossNode, fl);
+      offerForceExploreLoop(false, bossNode, (r.lines || []));
     });
   }
   function fightBoss(bossNode) {
+    const a = S.adv;
+    if (a && a.trial) { fightTrialBoss(bossNode); return; }
     const res = Engine.advResolve(S, bossNode);
     openBattle(res.spec, { title: '决战 · ' + res.spec.name, adventure: true }).then(function (br) {
       if (br.win) {
         S.adv.cleared = true;
-        const extra = Engine.advClearReward(S);
+        const advKey = S.advType || 'huang';
+        Engine.markAdvClear(S, advKey);
+        const nxt = Engine.advNextOf(advKey);
+        let extra = Engine.advClearReward(S);
+        if (nxt) {
+          const ncfg = { xuan: ['大黑山', '筑基'], di: ['洞天福地', '金丹'], tian: ['魔道祖地', '元婴'], xian: ['遗世仙踪', '元婴'] }[nxt];
+          if (ncfg) extra = extra.concat(['—— 你已通关' + ({ huang: '黄', xuan: '玄', di: '地', tian: '天' })[advKey] + '级秘境，【' + ncfg[0] + '】已向有缘人敞开（可无视境界直入）。']);
+        }
         showBossChoice(extra);
       } else if (br.lost) { advFinish('战败', { boss: true }); }
       else { advFinish('撤退'); }
     });
+  }
+  // —— 试炼路线启动（入宗考验 / 死劫 复用秘境横版地图 UI）——
+  function startTrialFlow(kind, opts) {
+    opts = opts || {};
+    const res = Engine.startTrial(S, kind, opts);
+    if (!res || !res.ok) { log((res && res.msg) || '无法开始试炼', 'bad'); return; }
+    $('modal').style.display = 'none'; // 关闭可能打开的面板（如入宗考验）
+    if (typeof AudioManager !== 'undefined') AudioManager.playSfx('explore');
+    const a = S.adv;
+    applyAdvBackground(a.grade);
+    $('chapter').classList.add('explore-mode');
+    $('screen-game').classList.add('explore-active');
+    showChapter(a.trialTitle || '试炼', [
+      (a.setting || ''),
+      '沿试炼之路择路而行——途中所遇，唯有【敌人】、【精英】与【静室】三类。',
+      '一路向前，尽头是大敌当前。胜之，方见分晓。'
+    ], { subtitle: '试炼体力 ' + a.stamina + ' / ' + a.staminaMax }).then(renderAdvMap);
+  }
+  // —— 试炼 BOSS 战（入宗考验 / 死劫 共用的决战结算）——
+  function fightTrialBoss(bossNode) {
+    const a = S.adv;
+    const kind = a.trial;
+    const spec = a.trialBoss || (function () { const r = Engine.advResolve(S, bossNode); return r.spec; })();
+    openBattle(spec, { title: '决战 · ' + spec.name, adventure: true }).then(function (br) {
+      $('adv-screen').style.display = 'none';
+      Engine.advEnd(S, br.win ? 'done' : 'lost');
+      resetAdvBackground();
+      $('chapter').classList.remove('explore-mode');
+      $('screen-game').classList.remove('explore-active');
+      if (typeof AudioManager !== 'undefined') AudioManager.playBgm('game');
+      if (br.win) {
+        if (kind === 'sect') {
+          const r = Engine.applySectTrial(S, true);
+          Engine.saveState(S);
+          showChapter('入宗试炼 · 功成', [
+            '演武教头收矛大笑：「好小子，有种！入我门墙，当得起。」',
+            '三关观人——武骨（悟性 ' + Math.round(S.wu) + '）、道心（道心 ' + Math.round(S.dao) + '）、实战（胜），评定身份：【' + r.rank + '】' + (r.gift ? ('，功业 +' + r.gift) : '') + '。'
+          ]).then(function () {
+            log('入宗试炼通过，身份定为【' + r.rank + '】', 'good');
+            refresh(); renderSect();
+          });
+        } else {
+          S.deathPassed = (S.deathPassed || 0) + 1;
+          Engine.saveState(S);
+          const dev = a.trialDev || {};
+          showChapter('劫后余生', [(dev.resultWin || '你从死劫中挣出一条生路。')].concat(br.gains || [])).then(function () {
+            afterAction();
+          });
+        }
+      } else {
+        if (kind === 'sect') {
+          Engine.applySectTrial(S, false);
+          Engine.saveState(S);
+          showChapter('入宗试炼 · 受挫', [
+            '演武教头摇了摇头：「火候未到，回去再练练吧。」',
+            '实战不敌，此次试炼未过（身份维持【' + (S.sectRank || '杂役') + '】），来年可再来。'
+          ]).then(function () {
+            log('入宗试炼实战未过，维持【' + (S.sectRank || '杂役') + '】', 'bad');
+            refresh(); renderSect();
+          });
+        } else {
+          S.dead = true;
+          S.endReason = (a.trialDev ? a.trialDev.title : '死劫') + '陨落';
+          Engine.saveState(S);
+          endLifeFlow();
+        }
+      }
+    });
+  }
+  // 试炼中途退出处理
+  function handleTrialAbort(a) {
+    $('adv-screen').style.display = 'none';
+    Engine.advEnd(S, 'done');
+    resetAdvBackground();
+    $('chapter').classList.remove('explore-mode');
+    $('screen-game').classList.remove('explore-active');
+    if (typeof AudioManager !== 'undefined') AudioManager.playBgm('game');
+    if (a.trial === 'sect') {
+      log('你中途退出了入宗试炼。', 'bad');
+      refresh(); renderSect();
+    } else {
+      S.dead = true; // 死劫不可退：视为陨落
+      S.endReason = (a.trialDev ? a.trialDev.title : '死劫') + '陨落';
+      Engine.saveState(S);
+      endLifeFlow();
+    }
   }
   function advAdvanceToMap() {
     Engine.advAdvance(S);
@@ -1363,6 +1493,7 @@
   }
   function advFinish(why, opts) {
     const a = S.adv;
+    if (a && a.trial) { handleTrialAbort(a); return; }
     $('adv-screen').style.display = 'none';
     Engine.advEnd(S, why === '战败' ? 'lost' : 'done');
     // 还原主界面背景与秘境层样式
@@ -1488,6 +1619,14 @@
     if (r && r.multi) { openEventChoice(r.events); return; }
     runEvent(r);
   }
+  function actTravel() {
+    if (!Engine.canAction(S, 1)) { log('行动点不足，无法游历。'); return; }
+    const res = Engine.travel(S);        // 游历独立池：三桩际遇择一，每年上限 5 次
+    if (typeof res === 'string') { log(res); afterAction(); return; }
+    if (res && res.multi) { openEventChoice(res.events); return; }
+    if (res) { runEvent(res); return; }
+    afterAction();
+  }
   function openEventChoice(events) {
     const ov = $('modal');
     const box = $('modal-body');
@@ -1502,9 +1641,9 @@
     desc.textContent = '你游历四方，眼前浮现三桩际遇。择其一而往——其余擦肩而过。';
     desc.style.marginBottom = '16px';
     box.appendChild(desc);
-    const tagName = { shejiao: '社交', mijing: '秘境', jiyuan: '机缘' };
+    const tagName = '游历';
     events.forEach(function (ev) {
-      const tag = tagName[ev.tag] || '游历';
+      const tag = tagName;
       const card = document.createElement('div');
       card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;cursor:pointer;transition:border-color .15s;';
       const head = document.createElement('div');
@@ -1569,7 +1708,7 @@
     if (!(S.flags && S.flags.duanti)) {
       showChapter('锻体 · 未解之法', [
         '你尚未习得《锻体诀》，无从锻体。',
-        '听闻上古炼体一脉的传承隐于名山大川，待修为臻至筑基后期，或有机缘可得。'
+        '传闻练气后期，若于城隍庙前遇着那位老乞丐，或可得传一身锻体门道。'
       ], { subtitle: '未解之法', choices: [{ t: '且修前行，静待机缘' }] });
       return;
     }
@@ -1917,19 +2056,8 @@
       S.seen['death_' + dev.year] = 1;
       delete S.pendingDeathEvent;
       showChapter(dev.title, dev.lines, { subtitle: '生死之战' }).then(function () {
-        return openBattle(dev.fight, { title: dev.title });
-      }).then(function (br) {
-        if (br.win) {
-          showChapter('劫后余生', [dev.resultWin].concat(br.gains || [])).then(function () {
-            Engine.saveState(S);
-            afterAction();
-          });
-        } else {
-          S.dead = true;
-          S.endReason = dev.title + '陨落';
-          Engine.saveState(S);
-          endLifeFlow();
-        }
+        // 死劫复用秘境横版路线：敌人/精英/静室 → 大BOSS（按死劫缩放）
+        startTrialFlow('death', { deathIdx: dev.deathIdx != null ? dev.deathIdx : 0, dev: dev, title: '死劫 · 试炼之路' });
       });
       return;
     }
@@ -1979,6 +2107,7 @@
     const ml = S.pendingMainline;
     if (!ml) { afterAction(); return; }
     S.seen['ml_' + ml.id] = 1;
+    S.seen[ml.id] = 1;   // 主线事件若即某 NPC 缘法（如老乞丐），同步标记其缘法 id 已达成
     delete S.pendingMainline;
     const done = function () {
       if (Engine.moreMainline(S)) playMainlineChain();
@@ -2000,27 +2129,13 @@
         }
       });
     } else if (ml.choices) {
-      showChapter(ml.title, ml.lines, { subtitle: '主线剧情', choices: ml.choices }).then(function (cr) {
-        if (cr && cr.pick) {
-          if (cr.pick.effect) Engine.applyOps(S, cr.pick.effect);
-          if (cr.pick.fight) {
-            openBattle(cr.pick.fight, { title: ml.title }).then(function (br) {
-              if (br.win) {
-                showChapter('胜', [cr.pick.resultWin || '你技高一筹。'].concat(br.gains || [])).then(function () {
-                  Engine.saveState(S); done();
-                });
-              } else {
-                showChapter('败', [cr.pick.resultLose || '你败了。']).then(function () {
-                  Engine.saveState(S); done();
-                });
-              }
-            });
-          } else if (cr.pick.lines) {
-            showChapter('结果', cr.pick.lines).then(function () {
-              Engine.saveState(S); done();
-            });
-          } else { Engine.saveState(S); done(); }
-        } else { Engine.saveState(S); done(); }
+      // 注意：choose() 已完整处理「选项级 effect 施加 / 文案续播(chapterAppend) / 内嵌战斗(openBattle)与原地结算」。
+      // 此处绝不能再 applyOps / showChapter('结果') / 再开 battle，否则会导致：效果重复施加、选项文案播放两遍、
+      // 带 fight 的选项打两场，以及「结果」以独立弹窗【单独再跑一次】。
+      // 顶层 ml.effect（与选项无关的剧情奖励）仅在此施加一次。
+      if (ml.effect) Engine.applyOps(S, ml.effect);
+      showChapter(ml.title, ml.lines, { subtitle: '主线剧情', choices: ml.choices }).then(function () {
+        Engine.saveState(S); done();
       });
     } else {
       if (ml.effect) Engine.applyOps(S, ml.effect);
@@ -2110,11 +2225,11 @@
     const secPts = document.createElement('div');
     secPts.className = 'settle-section';
     secPts.innerHTML = '<h4>轮回点明细</h4>' +
-      '<div class="settle-row"><span>最终境界（' + S.realm + '）</span><span class="gold">+' + bd.realm + '</span></div>' +
-      '<div class="settle-row"><span>渡劫次数（' + S.broken + '）</span><span class="gold">+' + bd.break + '</span></div>' +
-      (bd.age ? '<div class="settle-row"><span>长寿</span><span class="gold">+' + bd.age + '</span></div>' : '') +
-      (bd.spec ? '<div class="settle-row"><span>特殊壮举</span><span class="gold">+' + bd.spec + '</span></div>' : '') +
-      (bd.ach ? '<div class="settle-row"><span>新解锁成就</span><span class="gold">+' + bd.ach + '</span></div>' : '') +
+      '<div class="settle-row"><span>境界（' + S.realm + '）</span><span class="gold">+' + bd.realm + '</span></div>' +
+      '<div class="settle-row"><span>渡劫（' + S.broken + ' 次）</span><span class="gold">+' + bd.trib + '</span></div>' +
+      '<div class="settle-row"><span>死劫（' + (S.deathPassed || 0) + ' 次通过）</span><span class="gold">+' + bd.death + '</span></div>' +
+      '<div class="settle-row"><span>秘境探索</span><span class="gold">+' + bd.explore + '</span></div>' +
+      (bd.ach ? '<div class="settle-row"><span>新成就</span><span class="gold">+' + bd.ach + '</span></div>' : '') +
       '<div class="settle-total"><span>合计</span><span class="gold">' + sp.total + '</span></div>';
     wrap.appendChild(secPts);
     const currentJie = S.jie || 0;
@@ -2353,6 +2468,9 @@
     $('enter-reroll').onclick = function () {
       rerollDestiny(maxJie);
     };
+    $('enter-xianming').onclick = function () {
+      rerollXianming(maxJie);
+    };
     $('enter-start').onclick = function () {
       confirmEnterPage();
     };
@@ -2387,14 +2505,20 @@
     const rpGain = jie * 3 + (jie >= 3 ? 1 : 0) + (jie >= 6 ? 2 : 0);
     $('enter-jie-reward').textContent = '轮回点 +' + rpGain;
 
-    // 计算选择数量
+    // 计算选择数量（2命格/3命格机制）
+    // 凡尘(jie<3) 基础 2 选；3 劫+(硬核) 基础 3 选；轮回投资可再追加
     const meta = Engine.loadMeta();
     const reinc = meta.reinc || {};
     const extraDestiny = reinc.extra_destiny || 0;
     const destinySlot = reinc.destiny_slot || 0;
-    enterState.pickCount = 3 + extraDestiny;
-    enterState.slotCount = 1 + destinySlot + (jie >= 3 ? 1 : 0);
+    const base = jie >= 3 ? 3 : 2;
+    enterState.pickCount = base + extraDestiny;
+    enterState.slotCount = base + destinySlot;
     enterState.lockedSlots = reinc.destiny_lock || 0;
+
+    // 仙命觉醒按钮：仅 3 劫+(硬核) 可见
+    const xmBtn = $('enter-xianming');
+    if (xmBtn) xmBtn.style.display = (jie >= 3) ? '' : 'none';
 
     // 抽取命格池
     if (enterState.pool.length === 0) {
@@ -2405,7 +2529,16 @@
     updateDestinyTitle();
   }
 
-  function rollDestinyPool(count, jie) {
+  function rollDestinyPool(count, jie, forceGold) {
+    // 仙命觉醒：直接抽取 count 个仙命(金)组成命格池
+    if (forceGold) {
+      const golds = Object.keys(DESTINIES).filter(function (k) { return DESTINIES[k].grade === '金'; });
+      for (let i = golds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = golds[i]; golds[i] = golds[j]; golds[j] = t;
+      }
+      return golds.slice(0, Math.min(count, golds.length));
+    }
     const allKeys = Object.keys(DESTINIES);
     // 根据劫数过滤命格池
     let poolKeys;
@@ -2537,6 +2670,23 @@
     // 未选择任何命格时禁用“开始这一世”，避免出现无命格的虚假存档
     const startBtn = $('enter-start');
     if (startBtn) startBtn.disabled = (enterState.selected || []).length === 0;
+  }
+
+  function rerollXianming(maxJie) {
+    const meta = Engine.loadMeta();
+    if (meta.points < 1) {
+      uiAlert('轮回点不足！');
+      return;
+    }
+    // 消耗 1 轮回点，觉醒为仙命（3 个金命格）
+    meta.points -= 1;
+    Engine.saveMeta(meta);
+    enterState.pool = rollDestinyPool(enterState.pickCount, enterState.jie, true);
+    enterState.selected = enterState.pool.slice();   // 仙命自动选定
+    enterState.locked = [];
+    renderDestinyPool();
+    updateDestinyTitle();
+    log('命格觉醒！你以轮回点换取了三道仙命加身。', 'legend');
   }
 
   function rerollDestiny(maxJie) {
@@ -2877,7 +3027,7 @@
       { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 道心×2% + 命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2% + 命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
-      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=10，此后每点+20）' },
+      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '遁速', val: S.dunSpeed || 1, color: '#4ec9a0', desc: '影响逃跑成功率' }
     ];
@@ -3208,10 +3358,17 @@
       const g = TECHNIQUES[t].grade;
       return '<p><b style="color:' + GRADE_COLOR[g] + '">' + TECHNIQUES[t].name + '</b><span class="dim"> · ' + TECHNIQUES[t].desc + '</span></p>';
     }).join('') : '<p class="dim">无</p>') +
-      '<h4>法宝</h4>' + (S.arts.length ? S.arts.map(function (a) {
-        if (!ARTIFACTS[a]) return '';
-        return '<p><b>' + ARTIFACTS[a].name + '</b><span class="dim"> · ' + artEffectText(a) + '</span></p>';
-      }).join('') : '<p class="dim">无</p>');
+      '<h4>法宝</h4>' + (function () {
+        var all = [];
+        (S.equip.treasure || []).forEach(function (id) { if (all.indexOf(id) < 0) all.push(id); });
+        (S.arts || []).forEach(function (id) { if (all.indexOf(id) < 0) all.push(id); });
+        if (!all.length) return '<p class="dim">无</p>';
+        return all.map(function (a) {
+          if (!ARTIFACTS[a]) return '';
+          var on = (S.equip.treasure || []).indexOf(a) >= 0;
+          return '<p><b>' + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#4ec9a0"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
+        }).join('');
+      })();
     body.appendChild(gear);
 
     $('bag-back').onclick = function () { showScreen('game'); refresh(); };
@@ -3231,6 +3388,10 @@
   function renderFavorPage() {
     const body = $('favor-body');
     body.innerHTML = '';
+    if (typeof FAVOR_SYSTEM === 'undefined' || !FAVOR_SYSTEM) {
+      body.appendChild(Object.assign(document.createElement('p'), { className: 'dim', textContent: '（结缘系统暂未开放，仙缘众生尽在「仙缘」页。）' }));
+      return;
+    }
 
     // 道侣部分
     if (S.flags && S.flags.daoLu) {
@@ -3559,12 +3720,15 @@
       card.style.fontSize = '12px';
       const id = treasures[ti];
       if (id) {
-        const it = Engine.findEquip(id);
-        if (it) {
-          const tc = EQUIP_TIERS[it.tier].color;
+        const v = Engine.treasureItem(id);
+        if (v) {
+          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                             : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+          const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+          const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
           card.innerHTML = '<b>法宝' + (ti + 1) + '</b><br>' +
-            '<span style="color:' + tc + '">[' + EQUIP_TIERS[it.tier].name + ']' + esc(it.name) + '</span><br>' +
-            '<span class="dim">' + equipStatStr(it) + '</span>';
+            '<span style="color:' + tc + '">[' + tierTxt + ']' + esc(v.name) + '</span><br>' +
+            '<span class="dim">' + statTxt + '</span>';
         }
       } else {
         card.innerHTML = '<b>法宝' + (ti + 1) + '</b><br><span class="dim">未装备</span>';
@@ -3608,6 +3772,44 @@
       row.appendChild(sell);
       box.appendChild(row);
     });
+    // 法宝库存（S.arts）：需装备后生效
+    var artInv2 = (S.arts || []).filter(function (id) {
+      return Array.isArray(S.equip.treasure) && S.equip.treasure.indexOf(id) < 0;
+    });
+    if (artInv2.length) {
+      const p = document.createElement('p');
+      p.className = 'dim';
+      p.textContent = '储物袋法宝（装备后生效）：';
+      box.appendChild(p);
+      var maxT3 = Engine.maxTreasure(S);
+      var full3 = (S.equip.treasure || []).length >= maxT3;
+      artInv2.forEach(function (id) {
+        const v = Engine.treasureItem(id);
+        if (!v) return;
+        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                           : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+        const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+        const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
+        const row = document.createElement('div');
+        row.className = 'formula-row';
+        const info = document.createElement('div');
+        info.innerHTML = '<span style="color:' + tc + '">[法宝·' + tierTxt + ']' + esc(v.name) + '</span><br>' +
+          '<span class="dim" style="font-size:12px">' + statTxt + '</span>';
+        row.appendChild(info);
+        const wear = document.createElement('button');
+        wear.textContent = '装备';
+        wear.className = 'btn-small';
+        wear.disabled = full3;
+        wear.onclick = function () {
+          Engine.equipTreasureAuto(S, id);
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('你装备了【' + v.name + '】。', 'good');
+          repaint();
+        };
+        row.appendChild(wear);
+        box.appendChild(row);
+      });
+    }
   }
   function equipStatStr(it) {
     const out = [];
@@ -3643,20 +3845,19 @@
       card.className = 'gear-slot';
       const id = treasures[ti];
       if (id) {
-        const it = Engine.findEquip(id);
-        if (it) {
-          const tc = EQUIP_TIERS[it.tier].color;
+        const v = Engine.treasureItem(id);
+        if (v) {
+          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                             : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+          const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+          const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
           card.innerHTML = '<h5>法宝' + (ti + 1) + '</h5>' +
-            '<div class="item-name" style="color:' + tc + '">[' + EQUIP_TIERS[it.tier].name + ']' + esc(it.name) + '</div>' +
-            '<div class="item-stat">' + equipStatStr(it) + '</div>' +
+            '<div class="item-name" style="color:' + tc + '">[' + tierTxt + ']' + esc(v.name) + '</div>' +
+            '<div class="item-stat">' + statTxt + '</div>' +
             '<div class="g-actions"><button class="btn-small">卸下</button></div>';
           card.querySelector('button').onclick = function () {
-            S.equip.treasure.splice(ti, 1);
-            S.wu -= it.wu || 0;
-            S.ti -= it.ti || 0;
-            S.inventory.push(id);
-            Engine.refreshStats(S); Engine.saveState(S);
-            log('你卸下了【' + it.name + '】。', 'dim');
+            Engine.unequipTreasure(S, id);
+            log('你卸下了【' + v.name + '】。', 'dim');
             renderGear();
           };
         }
@@ -3738,6 +3939,38 @@
         inv.appendChild(d);
       });
     });
+    // 法宝库存（S.arts）：统一为装备型，需装备后生效
+    var artInv = (S.arts || []).filter(function (id) {
+      return Array.isArray(S.equip.treasure) && S.equip.treasure.indexOf(id) < 0;
+    });
+    if (artInv.length) {
+      var ahead = document.createElement('h5');
+      ahead.style.cssText = 'margin:10px 0 4px;color:#c9a86a;letter-spacing:2px;';
+      ahead.textContent = '── 法宝（' + artInv.length + '，装备后生效）──';
+      inv.appendChild(ahead);
+      var maxT2 = Engine.maxTreasure(S);
+      var full2 = (S.equip.treasure || []).length >= maxT2;
+      artInv.forEach(function (id) {
+        const v = Engine.treasureItem(id);
+        if (!v) return;
+        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                           : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+        const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+        const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
+        const d = document.createElement('div');
+        d.className = 'gear-item';
+        d.innerHTML = '<div style="color:' + tc + '">[法宝·' + tierTxt + ']' + esc(v.name) + '</div>' +
+          '<div class="dim" style="font-size:12px">' + statTxt + '</div>' +
+          '<div class="g-actions"><button' + (full2 ? ' disabled' : '') + '>装备</button></div>';
+        if (!full2) d.querySelector('button').onclick = function () {
+          Engine.equipTreasureAuto(S, id);
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('你装备了【' + v.name + '】。', 'good');
+          renderGear();
+        };
+        inv.appendChild(d);
+      });
+    }
     const hb = $('sell-herb');
     const ib = $('sell-iron');
     // 汇总灵草灵铁
@@ -3984,10 +4217,17 @@
         const g = TECHNIQUES[t].grade;
         return '<p><b style="color:' + GRADE_COLOR[g] + '">' + TECHNIQUES[t].name + '</b><span class="dim"> · ' + TECHNIQUES[t].desc + '</span></p>';
       }).join('') : '<p class="dim">无</p>') +
-        '<h4>法宝</h4>' + (S.arts.length ? S.arts.map(function (a) {
-          if (!ARTIFACTS[a]) return '';
-          return '<p><b>' + ARTIFACTS[a].name + '</b><span class="dim"> · ' + artEffectText(a) + '</span></p>';
-        }).join('') : '<p class="dim">无</p>');
+        '<h4>法宝</h4>' + (function () {
+          var all = [];
+          (S.equip.treasure || []).forEach(function (id) { if (all.indexOf(id) < 0) all.push(id); });
+          (S.arts || []).forEach(function (id) { if (all.indexOf(id) < 0) all.push(id); });
+          if (!all.length) return '<p class="dim">无</p>';
+          return all.map(function (a) {
+            if (!ARTIFACTS[a]) return '';
+            var on = (S.equip.treasure || []).indexOf(a) >= 0;
+            return '<p><b>' + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#4ec9a0"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
+          }).join('');
+        })();
       box.appendChild(gear);
     }
   }
@@ -4132,44 +4372,34 @@
         body.appendChild(unlockDiv);
       }
 
-      // 播种区域
+      // 播种区域（买苗：须境界达标；自备下种见主百艺页）
       const h5 = document.createElement('h4');
-      h5.textContent = '播种';
+      h5.textContent = '播种（灵石买苗）';
       body.appendChild(h5);
       const seeds = document.createElement('div');
       Object.keys(FIELD_SEEDS).forEach(function (id) {
         const sd = FIELD_SEEDS[id];
-        var herbKey = FIELD_GRADE_MAP[sd.grade] || 'herb_huang';
-        var herbName = MATERIALS[herbKey] ? MATERIALS[herbKey].name : '灵草';
+        const fb = Engine.fieldPlantable(S, id);
         const rowEl = document.createElement('div');
         rowEl.className = 'formula-row';
         rowEl.innerHTML = '<div><b>[' + sd.name + ']</b><br><span class="dim">' + sd.desc + '</span></div>';
         const btnGroup = document.createElement('div');
         btnGroup.style.cssText = 'display: flex; gap: 4px;';
-        // 播种1株按钮
-        const btn1 = document.createElement('button');
-        btn1.className = 'btn-small';
-        btn1.textContent = herbName + ' ×' + sd.cost + ' → 种1株';
-        btn1.disabled = (S.materials[herbKey] || 0) < sd.cost;
-        btn1.onclick = function () {
-          const r = Engine.plantField(S, id, 1);
-          log(r, r.indexOf('你翻土') === 0 ? 'good' : 'bad');
-          renderArtsTab('land', body);
-          refresh();
+        const mkB = function (q) {
+          const b = document.createElement('button');
+          b.className = 'btn-small';
+          const need = sd.stone * q;
+          b.textContent = '买' + q + '株·' + need + '灵石';
+          b.disabled = !fb.canBuy || S.stone < need;
+          b.onclick = function () {
+            const r = Engine.plantField(S, id, q, 'buy');
+            log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');
+            renderArtsTab('land', body);
+            refresh();
+          };
+          btnGroup.appendChild(b);
         };
-        btnGroup.appendChild(btn1);
-        // 播种3株按钮
-        const btn3 = document.createElement('button');
-        btn3.className = 'btn-small';
-        btn3.textContent = '种3株（' + (sd.cost * 3) + '）';
-        btn3.disabled = (S.materials[herbKey] || 0) < sd.cost * 3;
-        btn3.onclick = function () {
-          const r = Engine.plantField(S, id, 3);
-          log(r, r.indexOf('你翻土') === 0 ? 'good' : 'bad');
-          renderArtsTab('land', body);
-          refresh();
-        };
-        btnGroup.appendChild(btn3);
+        mkB(1); mkB(3); mkB(6);
         rowEl.appendChild(btnGroup);
         seeds.appendChild(rowEl);
       });
@@ -4277,30 +4507,59 @@
     const ov = $('modal');
     const box = $('modal-body');
     ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) closeModal(); };
     box.innerHTML = '';
 
     const title = document.createElement('h3');
-    title.textContent = '选择种子';
+    title.textContent = '灵田' + (fieldIdx + 1) + ' · 选苗下种';
     box.appendChild(title);
+    const tip = document.createElement('p');
+    tip.className = 'dim';
+    tip.textContent = '灵石买苗（须境界达标）或自备同等级灵草下种（不限境界）。株数 1/3/6。';
+    tip.style.marginBottom = '12px';
+    box.appendChild(tip);
 
     Object.keys(FIELD_SEEDS).forEach(function(id) {
       const sd = FIELD_SEEDS[id];
+      const fb = Engine.fieldPlantable(S, id);
       const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;';
+      card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
       card.innerHTML = '<h4 style="color:#90e8b0;">' + sd.name + '</h4>' +
         '<p class="desc">' + sd.desc + '</p>' +
-        '<p class="desc">成长时间：' + sd.years + '年</p>';
-      card.onclick = function() {
-        const result = Engine.plantField(S, id, 1);
-        if (result.ok) {
-          log(result.msg, 'good');
-          closeModal();
-          renderBaiyiPage();
-          refresh();
-        } else {
-          log(result.msg, 'bad');
-        }
-      };
+        '<p class="desc">' + (fb.canBuy ? '' : '<span style="color:#e05a7a;">灵石买苗需' + fb.buyMsg + '以上　</span>') +
+        '自备' + fb.herbName + '×' + sd.herb + '/株可下种</p>';
+      const QS = [1, 3, 6];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;';
+      // 灵石买苗按钮（境界达标才可）
+      QS.forEach(function (q) {
+        const b = document.createElement('button');
+        b.className = 'btn-small';
+        const need = sd.stone * q;
+        b.textContent = '买' + q + '株·' + need + '灵石';
+        b.disabled = !fb.canBuy || S.stone < need;
+        b.onclick = function () {
+          const r = Engine.plantField(S, id, q, 'buy');
+          log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');
+          closeModal(); renderBaiyiPage(); refresh();
+        };
+        row.appendChild(b);
+      });
+      // 自备下种按钮
+      QS.forEach(function (q) {
+        const b = document.createElement('button');
+        b.className = 'btn-small ghost';
+        const need = sd.herb * q;
+        b.textContent = '自备种' + q + '株·' + fb.herbName + '×' + need;
+        b.disabled = (S.materials[fb.ownHerbKey] || 0) < need;
+        b.onclick = function () {
+          const r = Engine.plantField(S, id, q, 'own');
+          log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');
+          closeModal(); renderBaiyiPage(); refresh();
+        };
+        row.appendChild(b);
+      });
+      card.appendChild(row);
       box.appendChild(card);
     });
 
@@ -4467,22 +4726,20 @@
         const card = document.createElement('div');
         card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
         if (plot) {
-          const seed = FIELD_SEEDS[plot.seed];
-          const yearsLeft = plot.endYear - S.year;
+          const fi = Engine.fieldInfo(S, idx);
+          const qty = plot.quantity || 1;
           card.innerHTML = '<h4>灵田' + (idx + 1) + '</h4>' +
-            '<p class="desc" style="color:#90e8b0;">' + (seed ? seed.name : plot.seed) + '</p>' +
-            '<p class="desc">' + (yearsLeft > 0 ? '还需' + yearsLeft + '年' : '可收获') + '</p>';
-          if (yearsLeft <= 0) {
+            '<p class="desc" style="color:#90e8b0;">' + fi.name + '（' + qty + '株）</p>' +
+            '<p class="desc">已种 ' + fi.years + '/' + fi.needYears + ' 年' + (fi.done ? ' · <b style="color:#90e8b0;">可采收</b>' : '') + '</p>';
+          if (fi.done) {
             const harvestBtn = document.createElement('button');
             harvestBtn.className = 'btn-small';
-            harvestBtn.textContent = '收获';
+            harvestBtn.textContent = '采收';
             harvestBtn.onclick = function() {
-              const result = Engine.harvestField(S, idx);
-              if (result.ok) {
-                log(result.msg, 'good');
-                renderBaiyiPage();
-                refresh();
-              }
+              const r = Engine.harvestField(S, idx);
+              log(r, 'good');
+              renderBaiyiPage();
+              refresh();
             };
             card.appendChild(harvestBtn);
           }
@@ -4504,6 +4761,62 @@
       p.textContent = '暂无灵田';
       body.appendChild(p);
     }
+
+    // 解锁新灵田（有余力时可扩展亩数）
+    const fieldLen = S.field ? S.field.length : 0;
+    if (fieldLen < Engine.getMaxFields(S)) {
+      const unlockCost = fieldLen === 0 ? 100 : 200;
+      const uRow = document.createElement('div');
+      uRow.style.cssText = 'background:rgba(232,193,90,0.1);border:1px solid rgba(232,193,90,0.3);border-radius:4px;padding:8px 12px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;';
+      uRow.innerHTML = '<span style="color:#e8c15a;">解锁新灵田</span><span class="dim">（' + unlockCost + ' 灵石）</span>';
+      const ub = document.createElement('button');
+      ub.className = 'btn-small';
+      ub.textContent = '解锁';
+      ub.disabled = S.stone < unlockCost;
+      ub.onclick = function () {
+        const r = Engine.unlockField(S);
+        log(r.msg, r.ok ? 'good' : 'bad');
+        renderBaiyiPage();
+        refresh();
+      };
+      uRow.appendChild(ub);
+      body.appendChild(uRow);
+    }
+
+    // 灵矿部分（挖矿：境界定档位 · 深度成长 · 投入管规模）
+    const mineTitle = document.createElement('h4');
+    mineTitle.style.cssText = 'color:#b8a86a;margin-top:16px;margin-bottom:8px;';
+    mineTitle.textContent = '── 灵矿 ──';
+    body.appendChild(mineTitle);
+    if (!S.materials) S.materials = {};
+    const mi = Engine.mineInfo(S);
+    const mineTip = document.createElement('p');
+    mineTip.className = 'dim';
+    mineTip.textContent = '『' + mi.grade + '』期矿脉 · 现采' + mi.ironName + ' · 矿脉深度 ' + mi.depth + '/10（越深越丰）。挖矿耗行动点与气血。';
+    mineTip.style.marginBottom = '8px';
+    body.appendChild(mineTip);
+    const mkDig = function (label, ap, hpCost, rounds, hint) {
+      const row = document.createElement('div');
+      row.className = 'formula-row';
+      row.innerHTML = '<div><b>[' + label + ']</b><br><span class="dim">' + hint + '</span></div>';
+      const b = document.createElement('button');
+      b.textContent = '开挖';
+      b.disabled = !Engine.canAction(S, ap) || S.hp <= hpCost;
+      b.onclick = function () {
+        Engine.spend(S, ap);
+        S.hp -= hpCost;
+        Engine.refreshStats(S);
+        Engine.saveState(S);
+        const r = Engine.digMine(S, rounds);
+        log(r.msg, 'good');
+        renderBaiyiPage();
+        refresh();
+      };
+      row.appendChild(b);
+      body.appendChild(row);
+    };
+    mkDig('挖掘', 1, 100, 1, '抡锤一番，气血 -100（耗1行动点）。');
+    mkDig('奋力连挖', 1, 400, 4, '榨干气血连挖四锤，气血 -400（耗1行动点）。');
 
     $('crafts-back').onclick = function () { showScreen('game'); refresh(); };
   }
@@ -5141,10 +5454,8 @@
     $('btn-bag-bottom').onclick = function () { sfx('click'); openBag(); };
     $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
 
-    // 新场景底部导航
-    $('btn-sect-bottom').onclick = function () { if (!S) return; sfx('click'); openSect(); };
+    // 新场景底部导航（宗门/游历已移除底部栏，入口在行动栏：btn-sect / btn-social）
     if ($('btn-sect')) $('btn-sect').onclick = function () { if (!S) return; sfx('click'); openSect(); };
-    $('btn-travel-bottom').onclick = function () { if (!S) return; sfx('click'); openTravel(); };
     $('btn-npc-bottom').onclick = function () { if (!S) return; sfx('click'); openNpc(); };
     // 秘境【说明】按钮：点开详细规则（原来进场就弹的长文改为可点开）
     if ($('adv-info')) $('adv-info').onclick = function () {
@@ -5352,7 +5663,7 @@
       { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1%+道心×2%+命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2%+命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×2%：几率额外攻击一次' },
-      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=10，此后每点+20）' },
+      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
       { name: '修炼', val: '+' + cultR.gain, color: '#4ec9a0', desc: '(60+悟性×10)×境界' }
     ];
@@ -5530,6 +5841,8 @@
     S.inventory.forEach(function (id, idx) {
       const it = Engine.findEquip(id);
       if (!it) return;
+      // 宝物(EQUIPS.treasure)归法宝页，装备页只展示头部/躯干/腿部等常规装备
+      if (EQUIPS.treasure && EQUIPS.treasure[id]) return;
       const tc = EQUIP_TIERS[it.tier].color;
       const d = document.createElement('div');
       d.className = 'gear-item';
@@ -5557,38 +5870,63 @@
     const slotsBox = $('char-treasure-slots');
     if (!slotsBox) return;
     slotsBox.innerHTML = '';
-    // 法宝 = 储物袋法宝（s.arts / ARTIFACTS，自动生效）+ 已装备的装备型法宝（S.equip.treasure / EQUIPS.treasure）
-    const list = [];
-    (S.arts || []).forEach(function (id) {
-      if (!ARTIFACTS[id]) return;
-      list.push({ kind: 'art', id: id, name: ARTIFACTS[id].name, tier: ARTIFACTS[id].grade });
-    });
-    (S.equip.treasure || []).forEach(function (id) {
-      const it = Engine.findEquip(id);
-      if (!it) return;
-      list.push({ kind: 'equip', id: id, name: it.name, tier: it.tier });
-    });
-    if (!list.length) {
-      slotsBox.innerHTML = '<p class="dim">未持有法宝。</p>';
+    const maxT = Engine.maxTreasure(S);
+    const equipped = Array.isArray(S.equip.treasure) ? S.equip.treasure : [];
+    const inv = (S.arts || []).filter(function (id) { return equipped.indexOf(id) < 0; });
+    if (!equipped.length && !inv.length) {
+      slotsBox.innerHTML = '<p class="dim">未持有法宝。法宝需于「装备」页穿戴后生效（当前装备槽 ' + maxT + ' 个）。</p>';
       return;
     }
-    list.forEach(function (item) {
+    // 已装备法宝（生效中）
+    equipped.forEach(function (id) {
+      const v = Engine.treasureItem(id);
+      if (!v) return;
       const card = document.createElement('div');
       card.className = 'treasure-slot';
-      if (item.kind === 'art') {
-        const tc = (GRADE_COLOR && GRADE_COLOR[item.tier]) || 'var(--gold)';
-        card.innerHTML = '<h5>法宝</h5>' +
-          '<div class="item-name" style="color:' + tc + '">[' + item.tier + ']' + esc(item.name) + '</div>' +
-          '<div class="item-stat">' + artEffectText(item.id) + '</div>';
-      } else {
-        const it = Engine.findEquip(item.id);
-        const tier = EQUIP_TIERS[item.tier] || {};
-        card.innerHTML = '<h5>法宝</h5>' +
-          '<div class="item-name" style="color:' + (tier.color || 'var(--gold)') + '">[' + (tier.name || item.tier) + ']' + esc(item.name) + '</div>' +
-          '<div class="item-stat">' + equipStatStr(it) + '</div>';
-      }
+      const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                         : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+      const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+      const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
+      card.innerHTML = '<h5>法宝 · 已装备</h5>' +
+        '<div class="item-name" style="color:' + tc + '">[' + tierTxt + ']' + esc(v.name) + '</div>' +
+        '<div class="item-stat">' + statTxt + '</div>' +
+        '<div class="g-actions"><button class="btn-small">卸下</button></div>';
+      card.querySelector('button').onclick = function () {
+        Engine.unequipTreasure(S, id);
+        log('你卸下了【' + v.name + '】。', 'dim');
+        renderCharTreasure();
+      };
       slotsBox.appendChild(card);
     });
+    // 储物袋法宝（未装备，不生效）
+    if (inv.length) {
+      const head = document.createElement('p');
+      head.className = 'dim';
+      head.textContent = '储物袋法宝（穿戴后生效，上限 ' + maxT + ' 个）：';
+      slotsBox.appendChild(head);
+      const full = equipped.length >= maxT;
+      inv.forEach(function (id) {
+        const v = Engine.treasureItem(id);
+        if (!v) return;
+        const card = document.createElement('div');
+        card.className = 'treasure-slot';
+        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
+                           : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
+        const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
+        const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
+        card.innerHTML = '<h5>法宝 · 未装备</h5>' +
+          '<div class="item-name" style="color:' + tc + '">[' + tierTxt + ']' + esc(v.name) + '</div>' +
+          '<div class="item-stat">' + statTxt + '</div>' +
+          '<div class="g-actions"><button class="btn-small"' + (full ? ' disabled' : '') + '>装备</button></div>';
+        if (!full) card.querySelector('button').onclick = function () {
+          Engine.equipTreasureAuto(S, id);
+          Engine.refreshStats(S); Engine.saveState(S);
+          log('你装备了【' + v.name + '】。', 'good');
+          renderCharTreasure();
+        };
+        slotsBox.appendChild(card);
+      });
+    }
   }
   
   function renderCharTech() {
@@ -6096,26 +6434,57 @@
       return;
     }
     const isServant = S.sectRank === '杂役';
-    const box = openPanel('<h3>入宗考验</h3><p class="dim">' + (isServant ? '你身为杂役，宗门允你再来一试，评得更高身份便当授之。' : '宗门以三项观人：武骨（悟性≥8）、道心（道心≥8）、实战（胜一场）。') + '</p>'
-      + '<p>当前：悟性 ' + S.wu + '　道心 ' + S.dao + '</p><div id="trial-result"></div>'
-      + '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn-main" id="trial-go">接受考验（实战）</button>'
-      + '<button class="btn-small" id="trial-done" data-close="1" style="display:none;">踏入宗门</button></div>');
-    $('trial-go').onclick = function () {
-      const ar = autoFight(S, { name: '宗门巡守', line: '', atk: 12, hp: 80, loot: {} });
-      const win = !ar.lost;
-      const r = Engine.applySectTrial(S, win);     // 写入身份（杂役/外门/内门/真传）
-      if (r.blocked) {                              // 防御：今年已应考（入口已拦，通常不达）
-        uiAlert(r.msg || '今年已应考过入宗考验，来年再来吧。');
+    const critHtml = function (win) {
+      const A = S.wu >= 8, B = S.dao >= 8;
+      const mk = function (ok) { return ok ? '<span class="tc-mark ok">✓</span>' : '<span class="tc-mark no">✗</span>'; };
+      const wMark = win === undefined ? '<span class="tc-mark">·</span>'
+        : (win ? '<span class="tc-mark ok">✓</span>' : '<span class="tc-mark no">✗</span>');
+      const wVal = win === undefined ? '待考' : (win ? '胜' : '败');
+      return '<div class="trial-crit">'
+        + '<div class="tc-row"><span class="tc-name">武骨</span><span class="tc-req">悟性 ≥ 8</span><span class="tc-val">当前 ' + S.wu + '</span>' + mk(A) + '</div>'
+        + '<div class="tc-row"><span class="tc-name">道心</span><span class="tc-req">道心 ≥ 8</span><span class="tc-val">当前 ' + S.dao + '</span>' + mk(B) + '</div>'
+        + '<div class="tc-row"><span class="tc-name">实战</span><span class="tc-req">胜一场</span><span class="tc-val">' + wVal + '</span>' + wMark + '</div>'
+        + '</div>';
+    };
+    const renderPanel = function () {
+      if (!S.sect) {
+        // 未选宗门：面板内先自选
+        let h = '<h3>入宗考验</h3><p class="dim">请先择一仙门——过【入宗考验】方录入籍。三关：武骨（悟性≥8）、道心（道心≥8）、实战（胜一场）；三关皆过为【真传】，过两关【内门】，过一关【外门】，皆不过【杂役】。</p>'
+          + '<div class="ct-grid sect-pick">';
+        Object.keys(SECTS).forEach(function (id) {
+          const sc = SECTS[id];
+          h += '<div class="ct-card" data-sect="' + id + '"><div class="ct-card-h"><b>' + sc.name + '</b></div><div class="ct-desc">' + (sc.desc || '') + '</div></div>';
+        });
+        h += '</div><div id="trial-result"></div>';
+        const box = openPanel(h);
+        box.querySelectorAll('[data-sect]').forEach(function (c) {
+          c.onclick = function () {
+            S.sect = c.getAttribute('data-sect'); S.sectRank = null;
+            Engine.saveState(S);
+            log('你意属【' + SECTS[S.sect].name + '】，执事弟子引你至演武场应考。', 'good');
+            refresh(); renderSect(); renderPanel();
+          };
+        });
         return;
       }
-      $('trial-result').innerHTML = '实战' + (win ? '胜' : '败') + ' → 评定身份：<b>' + r.rank + '</b>' + (r.gift ? ('，功业 +' + r.gift) : '');
-      log('入宗考验：实战' + (win ? '胜' : '败') + (r.changed ? '，身份定为【' + r.rank + '】' : '，维持【' + r.rank + '】'), r.passed ? 'good' : 'bad');
-      if (r.passed) {
-        $('trial-go').style.display = 'none';
-        const done = $('trial-done'); if (done) done.style.display = '';
-      }
-      refresh(); renderSect();
+      const sc = SECTS[S.sect];
+      let h = '<h3>入宗考验 · ' + sc.name + '</h3>'
+        + '<p class="dim">' + (isServant ? '你身为杂役，宗门允你再来一试，评得更高身份便当授之。' : '宗门以三项观人，过对应关数定身份。') + '</p>'
+        + critHtml(undefined)
+        + '<div id="trial-result"></div>'
+        + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">'
+        + '<button class="btn-small" id="trial-repick">重选宗门</button>'
+        + '<button class="btn-main" id="trial-go">接受考验（实战）</button>'
+        + '<button class="btn-small" id="trial-done" data-close="1" style="display:none;">踏入宗门</button></div>';
+      const box = openPanel(h);
+      box.querySelector('#trial-repick').onclick = function () { S.sect = null; renderPanel(); };
+      box.querySelector('#trial-go').onclick = function () {
+        if (!S.sect) { uiAlert('请先择一仙门。'); return; }
+        closeModal(); // 关闭入宗考验面板，转入试炼之路（复用秘境横版路线：敌人/精英/静室→大BOSS）
+        startTrialFlow('sect', { title: '入宗试炼 · ' + (SECTS[S.sect] ? SECTS[S.sect].name : '') });
+      };
     };
+    renderPanel();
   }
   function sectDoPromote() {
     const before = S.sectRank;
@@ -6215,7 +6584,7 @@
       const coin = Engine.sectGoodCoin(g);
       const cost = Engine.sectGoodCost(g);
       const owned = (g.kind === 'elixir' || g.kind === 'mat') ? false
-        : (g.kind === 'art') ? (S.arts.indexOf(g.ref) >= 0)
+        : (g.kind === 'art') ? ((S.arts.indexOf(g.ref) >= 0) || (Array.isArray(S.equip.treasure) && S.equip.treasure.indexOf(g.ref) >= 0))
         : (g.kind === 'tech' || g.kind === 'dun') ? (S.techs.indexOf(g.ref) >= 0)
         : (g.kind === 'equip') ? (Array.isArray(S.inventory) && S.inventory.indexOf(g.ref) >= 0)
         : false;
@@ -6261,8 +6630,9 @@
     let h = '<p class="dim">山河辽阔，择一处而往。游历消耗行动点，机缘自在其中。</p><div class="travel-map">';
     const nodes = [
       { id: 'shang', name: '流动商贩', icon: '🛒', desc: '仅以灵石交易的行商，或有奇货。', act: 'shop' },
-      { id: 'story', name: '市井机缘', icon: '🍵', desc: '市井之中，偶遇人事机缘（耗 1 点）。', act: 'social' },
-      { id: 'mingshan', name: '名山大川', icon: '⛰️', desc: '访名山、探大川，或有天地机缘（耗 1 点）。', act: 'jiyuan' }
+      { id: 'youli', name: '游历', icon: '🧭', desc: '访名山、入市井，山野与人间机缘尽汇于此（耗 1 点，每年至多 5 次）。', act: 'travel' },
+      { id: 'xianyuan', name: '仙缘', icon: '🍀', desc: '叩问机缘，或遇一段尘缘（耗 1 点，每年至多 3 次）。', act: 'xianyuan' },
+      { id: 'xunxian', name: '探寻仙缘', icon: '🐾', desc: '寻访已结识的仙缘之人，单独触发 NPC 缘法（耗 1 点，每年限 1 次）。', act: 'xunxian' }
     ];
     nodes.forEach(function (n) {
       h += '<div class="travel-node" data-act="' + n.act + '"><div class="tn-icon">' + n.icon + '</div><div class="tn-name">' + n.name + '</div><div class="tn-desc">' + n.desc + '</div></div>';
@@ -6273,8 +6643,20 @@
       b.onclick = function () {
         const a = b.getAttribute('data-act');
         if (a === 'shop') return travelShop();
-        if (a === 'social') { showScreen('game'); actSocial(); }
-        else if (a === 'jiyuan') { showScreen('game'); actJiyuan(); }
+        if (a === 'travel') { showScreen('game'); actTravel(); return; }
+        if (a === 'xianyuan') {
+          if (!Engine.canAction(S, 1)) { log('行动点不足，无法叩问仙缘。'); return; }
+          const r = Engine.drawXianyuan(S);
+          if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+          if (r && r.multi) { openEventChoice(r.events); return; }
+          if (r) { showScreen('game'); runEvent(r); }
+        }
+        if (a === 'xunxian') {
+          if (!Engine.canAction(S, 1)) { log('行动点不足，无法探寻仙缘。'); return; }
+          const r = Engine.seekNpcXianyuan(S);
+          if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+          if (r) { showScreen('game'); runEvent(r); }
+        }
       };
     });
   }
@@ -6304,38 +6686,66 @@
   }
   function renderNpc() {
     const body = $('npc-body'); if (!body) return;
-    const list = Object.keys(NPCS).map(function (k) { return NPCS[k]; });
-    let h = '<p class="dim">红尘众生，皆有缘法。点选一人，听其言、观其行。</p><div class="ct-grid">';
-    list.forEach(function (n) {
-      h += '<div class="ct-card" data-npc="' + n.id + '"><div class="ct-card-h"><b>' + n.name + '</b><span class="ct-tier">' + (n.loc || '') + '</span></div>'
-        + '<div class="ct-sub">' + (n.role || '') + '</div><div class="ct-desc">' + (n.intro || '') + '</div></div>';
+    if (typeof NPCS === 'undefined' || !Object.keys(NPCS).length) {
+      body.innerHTML = '<p class="dim">此际红尘，暂无可结之缘。</p>'; return;
+    }
+    let h = '<p class="dim">仙缘众生，皆有定数。需先达成相应剧情方得结识；既识之后，可赠礼、叙话以厚其缘，缘深则有回报。</p>';
+    Object.keys(NPCS).forEach(function (id) {
+      const n = NPCS[id];
+      const unlocked = Engine.npcUnlocked(S, n);
+      const portrait = 'assets/img/portrait/' + (n.portrait || ('npc_' + id)) + '.png';
+      h += '<div class="npc-card' + (unlocked ? '' : ' npc-locked') + '">';
+      h += '<div class="npc-portrait">'
+        + '<img src="' + portrait + '" alt="' + n.name + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">'
+        + '<span class="npc-avatar-fallback" style="display:none">' + n.name.charAt(0) + '</span></div>';
+      h += '<div class="npc-main">';
+      h += '<div class="npc-head"><b>' + n.name + '</b><span class="ct-tier">' + (n.loc || '') + '</span></div>';
+      h += '<div class="ct-sub">' + (n.role || '') + '</div>';
+      if (!unlocked) {
+        h += '<p class="ct-desc">未解锁：需先达成【' + n.unlock.label + '】剧情。</p>';
+      } else {
+        const fav = Engine.favorOf(S, id);
+        const tier = Engine.favorTier(n, fav);
+        let stars = '';
+        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? '#e8c15a' : '#3a3450') + '">★</span>';
+        h += '<div class="npc-favor">' + stars + ' <span class="npc-grade">(' + fav + '/' + n.maxFavor + ') ' + tier.grade + '·' + tier.note + '</span></div>';
+        h += '<div class="npc-tiers">';
+        n.tiers.forEach(function (t) {
+          const reached = fav >= t.min;
+          h += '<div class="npc-tier' + (reached ? ' reached' : '') + '">' + (reached ? '✓ ' : '· ') + t.grade + (t.reward ? ('：' + t.reward.text) : '') + '</div>';
+        });
+        h += '</div>';
+        h += '<div class="npc-actions">';
+        if (n.gifts) Object.keys(n.gifts).forEach(function (gk) {
+          const g = n.gifts[gk];
+          h += '<button class="btn-small npc-gift" data-npc="' + id + '" data-gift="' + gk + '">赠' + g.name + '（' + g.cost + '灵石 +' + g.favor + '）</button>';
+        });
+        h += '<button class="btn-small npc-talk" data-npc="' + id + '">叙话（+1）</button>';
+        if (n.event && !(S.seen[n.event.id] || S.seen['ml_' + n.event.id])) {
+          h += '<button class="btn-small npc-event" data-npc="' + id + '">缘法</button>';
+        }
+        h += '</div>';
+      }
+      h += '</div></div>';
     });
-    h += '</div>';
     body.innerHTML = h;
-    body.querySelectorAll('[data-npc]').forEach(function (b) {
+    body.querySelectorAll('.npc-gift').forEach(function (b) {
+      b.onclick = function () {
+        const r = Engine.giveGift(S, b.getAttribute('data-npc'), b.getAttribute('data-gift'));
+        log(r.msg, r.ok ? 'good' : 'bad'); renderNpc(); refresh();
+      };
+    });
+    body.querySelectorAll('.npc-talk').forEach(function (b) {
+      b.onclick = function () {
+        const r = Engine.talkNpc(S, b.getAttribute('data-npc'));
+        log(r.msg, r.ok ? 'good' : 'bad'); renderNpc(); refresh();
+      };
+    });
+    body.querySelectorAll('.npc-event').forEach(function (b) {
       b.onclick = function () {
         const n = NPCS[b.getAttribute('data-npc')];
-        if (n.event) {
-          if (n.event.once && S.seen[n.event.id]) { log('你与' + n.name + '的缘分已了，不必再寻。', 'dim'); return; }
-          if (n.event.once) { S.seen[n.event.id] = 1; Engine.saveState(S); }
-          closeModal();
-          runEvent(n.event);
-          return;
-        }
-        // 旧逻辑（兼容无 event 的 NPC）
-        let h2 = '<h3>' + n.name + '</h3><p class="dim">' + (n.role || '') + '　｜　所在：' + (n.loc || '未知') + '</p>';
-        h2 += '<div class="ct-desc" style="margin:8px 0;">' + (n.intro || '') + '</div>';
-        (n.lines || []).forEach(function (l) { h2 += '<p>「' + l + '」</p>'; });
-        h2 += '<div style="margin-top:10px;"><button class="btn-small" id="npc-go">前往' + (n.loc || '') + '</button></div>';
-        const box = openPanel(h2);
-        const go = $('npc-go');
-        if (go) go.onclick = function () {
-          closeModal();
-          const loc = n.loc;
-          if (loc === '宗门') openSect();
-          else if (loc === '游历' || loc === '游历/秘境' || loc === '城中出现') openTravel();
-          else { showScreen('game'); refresh(); }
-        };
+        if (!n.event) return;
+        S.seen[n.event.id] = 1; Engine.saveState(S); closeModal(); runEvent(n.event);
       };
     });
   }

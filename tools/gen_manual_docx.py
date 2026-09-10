@@ -16,6 +16,8 @@ SHOT = os.path.join(TAP, "screenshots")
 THUMB = os.path.join(SHOT, "_docx")
 BUILD = os.path.join(TAP, "_build")
 OUT = os.path.join(TAP, "软著使用说明书_得道飞升模拟器.docx")
+if len(sys.argv) > 1:                       # 可选：覆盖输出路径（目标被 Word 占用时用）
+    OUT = os.path.abspath(sys.argv[1])
 
 HTML_TO_DOCX_PY = r"C:\Users\Lenovo\.venv-html-to-docx\Scripts\python.exe"
 H2D_SCRIPTS = (r"C:\Users\Lenovo\.workbuddy\plugins\cache\workbuddy-builtin"
@@ -139,7 +141,7 @@ COVER = f"""
 <tr><td>开发完成日期</td><td>2026 年 09 月</td></tr>
 <tr><td>首次发表状态</td><td>未发表</td></tr>
 <tr><td>编程语言</td><td>JavaScript（HTML / CSS 辅助）</td></tr>
-<tr><td>源程序量</td><td>14125 行（有效代码 12877 行）</td></tr>
+<tr><td>源程序量</td><td>14169 行（有效代码 12919 行）</td></tr>
 <tr><td>运行平台</td><td>支持 HTML5 的现代浏览器（Windows / macOS / Android / iOS）</td></tr>
 <tr><td>文档版本</td><td>{VER}　编制日期：2026-09-10</td></tr>
 </table>
@@ -637,7 +639,12 @@ r = subprocess.run(cmd, cwd=H2D_SCRIPTS, capture_output=True, text=True,
                    encoding="utf-8", errors="replace")
 print("STDOUT:", (r.stdout or "").strip()[:800])
 if r.returncode != 0:
-    print("STDERR:", (r.stderr or "").strip()[:1500])
+    err = (r.stderr or "").strip()
+    print("STDERR:", err[:1500])
+    if "Permission denied" in err or "Errno 13" in err:
+        print("!! 目标文件被占用（Word/WPS 正打开该 docx）。")
+        print("!! 请关闭文档后重跑，或指定其它输出路径：")
+        print("!!   python tools/gen_manual_docx.py <输出路径>")
     sys.exit(1)
 print("已生成:", OUT)
 print("大小: %.1f KB" % (os.path.getsize(OUT) / 1024))

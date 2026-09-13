@@ -120,6 +120,12 @@ async function boot(opts = {}) {
     virtualConsole: vc,
     beforeParse(win) {
       win.localStorage.clear();
+      // 允许预置 localStorage（用于「中途退出后重新开机」这类跨会话场景）
+      if (opts.seed) {
+        Object.keys(opts.seed).forEach(function (k) {
+          if (opts.seed[k] != null) win.localStorage.setItem(k, opts.seed[k]);
+        });
+      }
       win.alert = () => {};
       win.confirm = () => true;
       win.prompt = () => '自动化测试';
@@ -346,10 +352,10 @@ module.exports = async function build() {
     t.eq(visible(doc, 'screen-duanti'), true, '解锁后应进入锻体页');
     t.eq(apEl ? apEl.textContent : '', apEnter, '进入锻体页不应消耗行动点');
     const rows = [...doc.querySelectorAll('#duanti-body .formula-row')];
-    t.eq(rows.length, 3, '锻体页应有 3 种淬炼（体魄/遁速/神识）');
-    if (rows.length !== 3) return;
+    t.eq(rows.length, 2, '锻体页应有 2 种淬炼（体魄/遁速；神识由宗门提供，已移除）');
+    if (rows.length !== 2) return;
     t.ok(/1 行动点/.test(rows[0].textContent) && /0\.5/.test(rows[0].textContent), '体魄淬炼应为 1点→+0.5');
-    t.ok(/2 行动点/.test(rows[2].textContent) && /0\.5/.test(rows[2].textContent), '神识淬炼应为 2点→+0.5');
+    t.ok(/1 行动点/.test(rows[1].textContent) && /0\.5/.test(rows[1].textContent), '遁速淬炼应为 1点→+0.5');
     // 淬炼体魄：行动点 -1，计数 1/10
     const firstBtn = rows[0] && rows[0].querySelector('button');
     t.ok(firstBtn && !firstBtn.disabled, '淬炼按钮应可用');
@@ -393,12 +399,9 @@ module.exports = async function build() {
     if (!entryBtn) return;
     entryBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
     await new Promise(r => setTimeout(r, 250));
-    // 第二步：整备弹窗（选择携带丹药，可空手进入）
-    const prepBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /空手进入|进入秘境/.test(b.textContent) && !b.disabled);
-    t.ok(!!prepBtn, '整备弹窗应出现进入按钮');
-    if (!prepBtn) return;
-    prepBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-    await new Promise(r => setTimeout(r, 300));
+    // 不再有整备弹窗：选完行动点直接进秘境（携带丹药机制已删除）
+    const prepBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /空手进入|携带丹药/.test(b.textContent));
+    t.ok(!prepBtn, '整备弹窗应已删除（不应再出现携带丹药页）');
     // 关键回归点：章节层应可见且位于主界面之上
     const chap = doc.getElementById('chapter');
     t.ok(chap && chap.style.display !== 'none', '章节层应在秘境入口后可见（修复 z-index 后不再卡死）');
@@ -411,6 +414,126 @@ module.exports = async function build() {
     t.ok(/mijing/.test(chapBg), '章节层背景应切换到秘境图（包含 mijing 关键字）');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('秘境入口交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // 回归：秘境地图必须做成「杀戮尖塔式」——canvas 绝对定位节点 + SVG 连线 + 多条真实可选路线。
+  // 历史 bug：每层只连 1 条相邻边，玩家经常「只有一条路可走」，选了等于没选。
+  S.case('秘境地图：SVG 连线 + ≥2 条真实可选路线（杀戮尖塔式）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '地图回归');
+    click(win, 'btn-explore');
+    await new Promise(r => setTimeout(r, 160));
+    const entryBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /入秘境|深探/.test(b.textContent) && !b.disabled);
+    t.ok(!!entryBtn, '未找到秘境入口按钮');
+    if (!entryBtn) return;
+    entryBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 300));
+    // 关键回归：不再有「携带丹药」整备页，点完行动点直接进秘境
+    const prepLeft = [...doc.querySelectorAll('#modal-body button')].find(b => /空手进入|携带丹药/.test(b.textContent));
+    t.ok(!prepLeft, '不应再出现「携带丹药」整备页（已删除）');
+    // 点掉入口引导章节，直到秘境地图层出现
+    const advOv = doc.getElementById('adv-screen');
+    for (let i = 0; i < 25; i++) {
+      if (advOv && advOv.style.display === 'flex') break;
+      const chap = doc.getElementById('chapter');
+      let btn = null;
+      if (chap && chap.style.display !== 'none') btn = [...chap.querySelectorAll('button')].filter(b => !b.disabled)[0];
+      if (!btn) {
+        const mb = doc.getElementById('modal-body');
+        if (mb) btn = [...mb.querySelectorAll('button')].filter(b => !b.disabled)[0];
+      }
+      if (!btn) break;
+      btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 180));
+    }
+    t.eq(advOv.style.display, 'flex', '秘境地图层应已打开');
+    const mapEl = doc.getElementById('adv-map');
+    t.ok(!!mapEl.querySelector('.adv-canvas'), '地图应渲染为 canvas 容器（不再是 .adv-col 竖列）');
+    const paths = [...mapEl.querySelectorAll('svg.adv-links path')];
+    t.gte(paths.length, 100, 'SVG 连线数量过少：' + paths.length + '（50 层地图应上百条）');
+    t.gte(mapEl.querySelectorAll('.adv-node').length, 100, '地图节点数量过少：' + mapEl.querySelectorAll('.adv-node').length);
+    t.eq(mapEl.querySelectorAll('.adv-node.current').length, 1, '应有且仅有 1 个当前节点');
+    t.gte(mapEl.querySelectorAll('.adv-node.selectable').length, 2, '当前节点应有 ≥2 条真实可选路线（不再是独木桥）');
+    t.eq(mapEl.querySelectorAll('.adv-node.boss').length, 1, '地图应始终渲染出 Boss 节点');
+    t.eq(mapEl.querySelectorAll('.adv-node.boss.locked').length, 1, '探索度未满时 Boss 应处于锁定态');
+    // —— 几何回归：连线必须只走「层间空隙」，不得压在选项块上 ——
+    // 节点高 56px、行距 88px，故一条正常连线的纵向跨度 = 88 − 56 = 32px。
+    let longLink = 0, maxSpan = 0;
+    paths.forEach((p) => {
+      if (/reveal/.test(p.getAttribute('class') || '')) return; // 血色虚线允许跨行
+      const nums = (p.getAttribute('d') || '').match(/-?\d+(\.\d+)?/g);
+      if (!nums || nums.length < 8) return;
+      const span = Math.abs(Number(nums[1]) - Number(nums[nums.length - 1]));
+      maxSpan = Math.max(maxSpan, span);
+      if (span > 34) longLink++;
+    });
+    t.eq(longLink, 0, '存在压在选项块上的连线（' + longLink + ' 条，最长跨度 ' + maxSpan + 'px；正常应 ≤32px）');
+    // 每行 3 个选项：同一 top 值的节点不超过 3 个
+    const tops = {};
+    [...mapEl.querySelectorAll('.adv-node')].forEach((n) => {
+      const m = /top:\s*(-?\d+(?:\.\d+)?)px/.exec(n.getAttribute('style') || '');
+      if (m) tops[m[1]] = (tops[m[1]] || 0) + 1;
+    });
+    const maxPerRow = Object.keys(tops).reduce((a, k) => Math.max(a, tops[k]), 0);
+    t.lte(maxPerRow, 3, '同一层出现 ' + maxPerRow + ' 个节点（应为每行 3 个）');
+    // HUD：实时气血 / 灵力条已就位（替代原「说明」按钮的位置）
+    t.ok(!!doc.getElementById('adv-hp-bar') && !!doc.getElementById('adv-mp-bar'), '秘境 HUD 应显示实时气血 / 灵力条');
+    // 手游版 HUD：行动 / 灵石在六维右侧**竖排**（不再挤在 header 与名字同一行）
+    const resCol = doc.querySelector('#screen-game .stats .stats-top-row .action-info-col');
+    t.ok(!!resCol, '行动 / 灵石应位于六维右侧的 .action-info-col 竖排容器内');
+    if (resCol) {
+      t.eq(resCol.children.length, 2, '资源列应恰好 2 块（上=行动、下=灵石）');
+      if (resCol.children.length === 2) {
+        t.ok(/行动/.test(resCol.children[0].textContent), '资源列第一块应为「行动」（一上）');
+        t.ok(/灵石/.test(resCol.children[1].textContent), '资源列第二块应为「灵石」（一下）');
+      }
+      t.ok(!!resCol.querySelector('#h-actions-left') && !!resCol.querySelector('#h-stone'), '资源列应含 h-actions-left / h-stone 两个数值节点');
+    }
+    t.ok(!doc.querySelector('#screen-game .hud-actions'), 'header 内不应再有 .hud-actions（已移至六维右侧竖排）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('地图渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('秘境右下角【强行撤离】按钮已接线（不再点击无反应）+ HUD 左右分栏', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '撤离开线');
+    click(win, 'btn-explore');
+    await new Promise(r => setTimeout(r, 160));
+    const entryBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /入秘境|深探/.test(b.textContent) && !b.disabled);
+    t.ok(!!entryBtn, '未找到秘境入口按钮');
+    if (!entryBtn) return;
+    entryBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 300));
+    const advOv = doc.getElementById('adv-screen');
+    for (let i = 0; i < 25; i++) {
+      if (advOv && advOv.style.display === 'flex') break;
+      const chap = doc.getElementById('chapter');
+      let btn = null;
+      if (chap && chap.style.display !== 'none') btn = [...chap.querySelectorAll('button')].filter(b => !b.disabled)[0];
+      if (!btn) {
+        const mb = doc.getElementById('modal-body');
+        if (mb) btn = [...mb.querySelectorAll('button')].filter(b => !b.disabled)[0];
+      }
+      if (!btn) break;
+      btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 180));
+    }
+    t.eq(advOv.style.display, 'flex', '秘境地图层应已打开');
+    // 1) 按钮存在且有 onclick（此前无接线 → 点击无反应）
+    const rt = doc.getElementById('adv-retreat');
+    t.ok(!!rt, '右下角应存在 #adv-retreat 按钮');
+    t.ok(typeof rt.onclick === 'function', '右下角按钮必须已接线 onclick（否则点击无反应）');
+    t.ok(/强行撤离/.test(rt.textContent || ''), '按钮文案应为【强行撤离】，实际: ' + (rt.textContent || ''));
+    // 2) HUD 左右分栏：气血/灵力在左(.adv-vitals)、体力/探索在右(.adv-right)
+    t.ok(!!doc.querySelector('.adv-hud .adv-vitals'), 'HUD 应含左侧气血/灵力块 .adv-vitals');
+    t.ok(!!doc.querySelector('.adv-hud .adv-right'), 'HUD 应含右侧体力/探索块 .adv-right');
+    // 3) 点击按钮应弹出确认层（验证接线真正生效，而非仅绑定函数）
+    rt.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    const chap = doc.getElementById('chapter');
+    t.ok(chap && chap.style.display !== 'none' && /强行撤离/.test(chap.textContent || ''), '点击后应弹出「强行撤离」确认层');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('撤离开线报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   // === 回归：角色属性删除（轮回加成）（天赋），灵根注明效果 ===
@@ -532,8 +655,78 @@ module.exports = async function build() {
     t.ok(Math.abs((v.c2 - v.c1) - 0.20) < 1e-9, '道心每点应 +2% 暴击（dao 1→11 共 +20%）');
     t.ok(Math.abs(v.d1 - 0.02) < 1e-9, '闪避率=遁速2%×1=2%');
     t.ok(Math.abs((v.d2 - v.d1) - 0.20) < 1e-9, '遁速每点应 +2% 闪避（dun 1→11 共 +20%）');
-    t.ok(Math.abs(v.e1 - 0.02) < 1e-9, '攻速=遁速2%×1=2%（几率额外攻击一次）');
-    t.ok(Math.abs((v.e2 - v.e1) - 0.20) < 1e-9, '遁速每点应 +2% 攻速（dun 1→11 共 +20%）');
+    t.ok(Math.abs(v.e1 - 0.01) < 1e-9, '攻速=遁速1%×1=1%（几率额外攻击一次）');
+    t.ok(Math.abs((v.e2 - v.e1) - 0.10) < 1e-9, '遁速每点应 +1% 攻速（dun 1→11 共 +10%）');
+  });
+
+  // === 回归：顶栏 防御/暴击/闪避 与角色页属性面板同源（都走引擎统一口径） ===
+  S.case('顶栏与角色页属性口径一致（防御/暴击/闪避同源）', async (t) => {
+    const { win, doc } = await boot();
+    await enterGame(win, doc, '口径一致');
+    const readTop = (id) => (doc.getElementById(id) || {}).textContent;
+    const topDef = (readTop('st-def') || '').trim();
+    const topCrit = (readTop('st-crit') || '').trim();
+    const topDodge = (readTop('st-dodge') || '').trim();
+    t.ok(/^\d+$/.test(topDef), '顶栏防御应为整数，实为「' + topDef + '」');
+    t.ok(/^\d+%$/.test(topCrit), '顶栏暴击应为百分比，实为「' + topCrit + '」');
+    t.ok(/^\d+%$/.test(topDodge), '顶栏闪避应为百分比，实为「' + topDodge + '」');
+
+    t.ok(click(win, 'btn-char-bottom'), '应能进入角色页');
+    await new Promise(r => setTimeout(r, 200));
+    const pick = (name) => {
+      const cells = [...doc.querySelectorAll('#char-attr-content .attr-combat-cell')];
+      const c = cells.filter(x => {
+        const l = x.querySelector('.attr-combat-label');
+        return l && l.textContent.trim() === name;
+      })[0];
+      if (!c) return null;
+      const v = c.querySelector('.attr-combat-val');
+      return v ? v.textContent.trim() : null;
+    };
+    t.eq(pick('防御'), topDef, '角色页「防御」应与顶栏一致（同走 Engine.getDefense）');
+    t.eq(pick('暴击'), topCrit, '角色页「暴击」应与顶栏一致（同走 Engine.getCritRate）');
+    t.eq(pick('闪避'), topDodge, '角色页「闪避」应与顶栏一致（同走 Engine.getDodgeRate）');
+    t.note('顶栏 st-def/st-crit/st-dodge 与属性面板共用引擎统一口径，杜绝各自自算');
+  });
+
+  // === 回归：灵根面板必须展示真实灵根效果（旧实现只读已废弃的 linggen.body → 战斗加成全不显示） ===
+  S.case('灵根面板展示 = 真实灵根数据（trait.effect 口径）', async (t) => {
+    const { win, doc } = await boot();
+    await enterGame(win, doc, '灵根展示');
+    click(win, 'btn-char-bottom');
+    await new Promise(r => setTimeout(r, 200));
+
+    const lg = JSON.parse(win.localStorage.getItem('dedao_save')).linggen;
+    t.ok(!!lg, '存档应含灵根');
+    const section = [...doc.querySelectorAll('#char-attr-content .attr-section')]
+      .map(x => x.textContent).filter(x => x.indexOf(lg.name) >= 0).join(' ');
+    t.ok(section.length > 0, '角色页应渲染灵根区块');
+
+    // 独立口径（与 ui.js 的展示映射互为对照，故意重写一遍）
+    const LABEL = { atk: '攻击', hpMax: '气血', mpMax: '灵力上限', def: '防御', critPct: '暴击', dodgePct: '闪避', tribPct: '渡劫' };
+    const PCT = { critPct: 1, dodgePct: 1, tribPct: 1 };
+    t.ok(section.indexOf('修炼速度 +' + Math.round((lg.qiMul - 1) * 100) + '%') >= 0, '应展示修炼速度加成');
+
+    const eff = (lg.trait && lg.trait.effect) || {};
+    let checked = 0;
+    for (const k in eff) {
+      if (!LABEL[k]) continue;
+      const txt = LABEL[k] + '+' + Math.round(eff[k]) + (PCT[k] ? '%' : '');
+      t.ok(section.indexOf(txt) >= 0, '灵根词条未展示：' + txt);
+      checked++;
+    }
+    if (lg.trait && lg.trait.name) {
+      t.ok(section.indexOf('特质【' + lg.trait.name + '】') >= 0, '应展示特质名【' + lg.trait.name + '】');
+      checked++;
+    }
+    if ((lg.affinity || []).length && lg.affinityBonus) {
+      const lead = lg.affinity.length >= 5 ? '全系' : lg.affinity.join('/') + '系';
+      t.ok(section.indexOf(lead + '功法/法术伤害 +' + lg.affinityBonus + '%') >= 0, '应展示功法/法术亲和加成');
+      checked++;
+    }
+    t.gt(checked, 0, '本次随机到的灵根至少应有一条可展示效果');
+    t.ok(!/特质：(jin|mu|shui|huo|tu|tian|hundun|wei)/.test(section), '不应再把内部 quirk 代码（如 jin）当作特质文案暴露');
+    t.note('灵根="' + lg.name + '" 词条=' + JSON.stringify(eff) + '；面板读 Engine.linggenTrait（trait.effect / body 兜底）');
   });
 
   // === 回归：自动存档真实可读（旧版 linggen=null 虚假存档应在读取时修复，而非“已失效”） ===
@@ -588,25 +781,33 @@ module.exports = async function build() {
     }
   });
 
-  // === 回归：灵力条（统一口径 mpMax = 20 + (灵力-1)×20；战斗前仅恢复 10%） ===
-  S.case('灵力条：上限=20+(灵力-1)×20，战斗前仅恢复 10% 不补满', async (t) => {
+  // === 回归：灵力条（统一口径 mpMax = 20 + (灵力-1)×20；战前 +75% 加法、不覆盖回满） ===
+  S.case('灵力条：上限=20+(灵力-1)×20，战前 +75% 灵力且不覆盖年末回满', async (t) => {
     const { win } = await boot();
     const v = JSON.parse(win.eval(`(function(){
       var s = Engine.startLife('灵力条');
       s.talents=[]; s.sect=null; s.arts=[]; s.extraAtk=0; s.destinies=[];
       s.equip={head:null,body:null,leg:null,treasure:[]}; s.linggen=null;
-      s.ling=1; Engine.refreshStats(s); var low=s.mpMax;
-      s.ling=3; Engine.refreshStats(s); var high=s.mpMax;
-      s.ling=2; Engine.refreshStats(s); var cap=s.mpMax; var before=s.mp;
+      s.ling=1; Engine.refreshStats(s); var lowL=s.mpMax;
+      s.ling=3; Engine.refreshStats(s); var highL=s.mpMax;
+      s.ling=2; Engine.refreshStats(s); var cap=s.mpMax;
+      s.mp=5; var before=s.mp;
       Engine.combatStart(s, { name:'测试', atk:10, hp:50, line:'' });
-      return JSON.stringify({ low:low, high:high, cap:cap, before:before, after:s.mp, afterMax:s.mpMax });
+      var aLow = s.mp;
+      s.mp=cap; // 满蓝进战（模拟年末回满后开打）
+      Engine.combatStart(s, { name:'测试', atk:10, hp:50, line:'' });
+      var aFull = s.mp;
+      return JSON.stringify({ lowL:lowL, highL:highL, cap:cap, before:before, aLow:aLow, aFull:aFull, afterMax:s.mpMax });
     })()`));
-    t.eq(v.low, 20, '灵力=1 时灵力上限应为 20+(1-1)×20=20');
-    t.eq(v.high, 60, '灵力=3 时灵力上限应为 20+(3-1)×20=60');
+    t.eq(v.lowL, 20, '灵力=1 时灵力上限应为 20+(1-1)×20=20');
+    t.eq(v.highL, 60, '灵力=3 时灵力上限应为 20+(3-1)×20=60');
     t.eq(v.cap, 40, '灵力=2 时灵力上限应为 20+(2-1)×20=40');
-    const expectMp = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.10));
-    t.eq(v.after, expectMp, '战斗前仅恢复 10% 最大灵力（不补满）');
-    t.lt(v.after, v.afterMax, '战斗前灵力不应被补满');
+    // 场景A：低蓝进战，+75% 加法封顶
+    const expectLow = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.75));
+    t.eq(v.aLow, expectLow, '低蓝进战：灵力应为 进战前 + 75% 上限（加法封顶）');
+    t.gt(v.aLow, v.before, '低蓝进战：灵力应净增');
+    // 场景B：满蓝进战（年末回满后），应保持满蓝，不被战前恢复压回 75%
+    t.eq(v.aFull, v.cap, '满蓝进战：灵力应保持满蓝（不覆盖年末回满）');
   });
 
   // === 回归：神识×5攻击、灵力×5攻击（原神识×10已下调） ===
@@ -631,9 +832,10 @@ module.exports = async function build() {
     const v = JSON.parse(win.eval(`(function(){
       var s = Engine.startLife('装备');
       s.bg=null; s.destinies=[]; Engine.commitStart(s, null);
-      var id='ling_toujin';
+      var id='tietou_kui';
       var out = Engine.gainEquip(s, id);
-      return JSON.stringify({ inInv: s.inventory.indexOf(id) >= 0, equipped: s.equip.head === id, msg: out.join('') });
+      var inInv = s.inventory.some(function(x){ var e=(x&&x.id)?x:{id:x}; return e.id===id; });
+      return JSON.stringify({ inInv: inInv, equipped: (s.equip.head && s.equip.head.id ? s.equip.head.id===id : s.equip.head===id), msg: out.join('') });
     })()`));
     t.ok(v.inInv, '获得装备应进入储物袋（inventory）');
     t.ok(!v.equipped, '获得装备不应自动穿上（equip.head 不应被设置）');
@@ -688,6 +890,143 @@ module.exports = async function build() {
     t.ok(txt.indexOf('宗门任务') < 0, '择宗未过考验仍不应有宗门任务');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('宗门页门禁流程报错: ' + real.slice(0, 4).join(' ;; '));
+  });
+
+  // === 回归：大境界渡劫前必须弹「败则身死道消 + 建议先存档」确认，且可直达存档面板 ===
+  S.case('渡劫前提示存档：败则身死道消，可先去存档再回来渡劫', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '渡劫存档提示');
+    // 造一个「筑基后期 · 修为圆满」的存档，再读档载入
+    const raw = JSON.parse(win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(!!raw, '自动存档不存在');
+    if (!raw) return;
+    raw.idx = 5; raw.realm = '筑基'; raw.qi = 999999;
+    if (!raw.talents || !raw.talents.length) raw.talents = ['t_dao2'];
+    if (!raw.linggen) raw.linggen = { id: 'lg_trib_test' };
+    win.localStorage.setItem('dedao_save', JSON.stringify(raw));
+    click(win, 't-load');
+    await new Promise(r => setTimeout(r, 150));
+    const loadBtn = [...doc.querySelectorAll('#modal-body button')].find(b => b.textContent === '读档' && !b.disabled);
+    t.ok(!!loadBtn, '存档弹窗中无可用「读档」按钮');
+    if (!loadBtn) return;
+    loadBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const card0 = doc.getElementById('dialog-card');
+    const okBtn = card0 ? [...card0.querySelectorAll('button')].find(b => /确定/.test(b.textContent)) : null;
+    if (okBtn) okBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+
+    // 突破按钮 → 突破弹窗 → 直接突破 → 渡劫确认框
+    t.ok(click(win, 'btn-break'), '突破按钮不存在');
+    await new Promise(r => setTimeout(r, 200));
+    const direct = [...doc.querySelectorAll('#modal-body button')].find(b => /直接突破/.test(b.textContent));
+    t.ok(!!direct, '突破弹窗中无「直接突破」按钮');
+    if (!direct) return;
+    direct.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+
+    const card = doc.getElementById('dialog-card');
+    const txt = card ? card.textContent : '';
+    t.ok(/渡劫 · 金丹劫/.test(txt), '渡劫确认框应标明「渡劫 · 金丹劫」，实为「' + txt.slice(0, 40) + '」');
+    t.ok(txt.indexOf('此劫共 1 重劫境') >= 0, '应写明劫境重数');
+    t.ok(txt.indexOf('须以实战连胜') >= 0, '应写明以实战决胜负');
+    t.ok(txt.indexOf('身死道消') >= 0, '必须写明败则身死道消');
+    t.ok(txt.indexOf('直接结档') >= 0, '必须写明直接结档');
+    t.ok(txt.indexOf('此战不可重来') >= 0, '必须写明不可重来');
+    t.ok(txt.indexOf('建议道友做好准备') >= 0, '必须提示玩家做好准备（先去存档）');
+    t.ok(!/渡劫成功率/.test(txt), '大境界渡劫以实战决胜负，弹窗不再展示「渡劫成功率」数字');
+    const btns = card ? [...card.querySelectorAll('button')].map(b => b.textContent) : [];
+    t.ok(btns.indexOf('立即渡劫') >= 0, '应有「立即渡劫」按钮');
+    t.ok(btns.indexOf('先去存档') >= 0, '应有「先去存档」按钮');
+
+    // 点「先去存档」→ 关掉确认框，打开存档面板，且不得开始渡劫
+    const goSave = card ? [...card.querySelectorAll('button')].find(b => b.textContent === '先去存档') : null;
+    t.ok(!!goSave, '找不到「先去存档」按钮');
+    if (goSave) goSave.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'dialog-overlay'), false, '点「先去存档」后确认框应关闭');
+    const modalTxt = (doc.getElementById('modal-body') || {}).textContent || '';
+    t.ok(modalTxt.indexOf('存档一') >= 0 && modalTxt.indexOf('自动存档') >= 0, '应先打开存档面板（含自动存档 / 存档一）');
+    t.eq(visible(doc, 'adv-screen'), false, '不得进入劫境（玩家选择先去存档）');
+    t.eq(visible(doc, 'battle'), false, '不得进入战斗');
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('渡劫前提示存档流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* 注：自动续档（autoResumeSave 开机自动读档）已按需求移除；开机停在标题页，
+     由玩家手动点【继续征途】读取存档。相关断言（存活自动进游戏 / 结档停标题页）随之删除。 */
+
+  // === 回归 2026-09-13：宗门页菜单（切磋演武未开放 / 任务年上限 / 大比倒计时） ===
+  S.case('宗门页菜单：切磋演武（未开放）+ 宗门任务年上限 + 大比倒计时', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '宗门菜单');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    raw.sect = 'qingyunjian'; raw.sectRank = '内门';
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 200));
+    await advanceChapters(win, doc);
+    click(win, 'btn-sect');
+    await new Promise(r => setTimeout(r, 220));
+    const body = doc.getElementById('sect-body');
+    const txt = body ? body.textContent : '';
+    t.ok(/切磋演武（未开放）/.test(txt), '宗门页应标「切磋演武（未开放）」（实：' + txt.slice(0, 90) + '）');
+    t.ok(/本年剩余 3\/3 件/.test(txt), '宗门任务应显示「本年剩余 3/3 件」');
+    t.ok(/距离下次大比还有 \d+ 年/.test(txt), '宗门大比应显示「距离下次大比还有 X 年」');
+    const fb = doc.querySelector('[data-act="sect-fight"]');
+    t.ok(!!fb, '切磋演武入口应存在');
+    if (fb) {
+      fb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 180));
+      const dc = doc.getElementById('dialog-card');
+      t.ok(dc && /尚未开放/.test(dc.textContent), '点击切磋演武应提示「尚未开放」（不再静默无效）');
+      t.eq(visible(doc, 'battle'), false, '切磋演武不应进入战斗层');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('宗门页交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 回归 2026-09-13：百艺「阵法」板块（研习改名 + 内容归位 + 不再重复追加） ===
+  S.case('百艺「阵法」板块：只做阵法研习；炼丹/炼器各自带研习入口', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '百艺阵法');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    raw.sect = 'qingyunjian'; raw.sectRank = '内门';
+    raw.craft = { liandan: { lv: 2, exp: 0 }, lianqi: { lv: 2, exp: 0 }, zhenfa: { lv: 2, exp: 0 } };
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 200));
+    await advanceChapters(win, doc);
+    click(win, 'btn-baiyi');
+    await new Promise(r => setTimeout(r, 220));
+    const cb = () => doc.getElementById('crafts-body');
+    if (!cb()) { t.fail('百艺页未打开（#crafts-body 缺失）'); return; }
+    const tabs = [...cb().querySelectorAll('.tab')].map(x => x.textContent);
+    t.eq(tabs.join('/'), '炼丹/炼器/灵田/灵矿/阵法', '第 5 个板块应叫「阵法」（旧名「研习」）');
+    t.eq(cb().querySelectorAll('.crafts-body').length, 0, '不应再嵌套 .crafts-body（同名 class 嵌套会叠加间距/滚动）');
+    const pickTab = (name) => {
+      const b = [...cb().querySelectorAll('.tab')].find(x => x.textContent === name);
+      if (b) b.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    };
+    pickTab('阵法'); await new Promise(r => setTimeout(r, 140));
+    let txt = cb().textContent;
+    t.ok(/五行阵/.test(txt), '阵法板块应含五行阵');
+    t.ok(/阵法研习/.test(txt), '阵法板块应含「阵法研习」');
+    t.ok(!/百艺研习/.test(txt), '标题「百艺研习」应已改为「阵法研习」');
+    t.eq([...cb().querySelectorAll('button')].filter(b => b.textContent === '研习').length, 1, '阵法板块应只有 1 个研习按钮（仅阵法）');
+    const h4Before = cb().querySelectorAll('h4').length;
+    pickTab('阵法'); await new Promise(r => setTimeout(r, 140));
+    t.eq(cb().querySelectorAll('h4').length, h4Before, '重复点击「阵法」不得重复追加内容（用户反馈的「下拉后弹出新内容」）');
+    pickTab('炼丹'); await new Promise(r => setTimeout(r, 140));
+    t.ok(/炼丹研习/.test(cb().textContent), '炼丹板块应带「炼丹研习」入口（否则炼丹等级无处提升）');
+    t.eq([...cb().querySelectorAll('button')].filter(b => b.textContent === '研习').length, 1, '炼丹板块应有 1 个研习按钮');
+    pickTab('炼器'); await new Promise(r => setTimeout(r, 140));
+    t.ok(/炼器研习/.test(cb().textContent), '炼器板块应带「炼器研习」入口');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('百艺页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   return S;

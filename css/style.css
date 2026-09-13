@@ -129,8 +129,11 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- HUD ---------------- */
 .hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
-.hud-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.hud-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hud-top { display: flex; justify-content: space-between; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.hud-name { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; min-width: 0; }
+.hud-destiny-inline { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
+.hud-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.hud-actions .action-info-item { display: inline-flex; align-items: baseline; gap: 4px; background: rgba(0,0,0,.22); border: 1px solid #2e2942; padding: 2px 8px; border-radius: 4px; min-width: 0; }
 .name { font-size: 18px; color: #fff; letter-spacing: 2px; }
 .realm-badge {
   display: inline-block;
@@ -177,7 +180,25 @@ button:disabled { opacity: .4; cursor: default; }
 #screen-gear, #screen-tech, #screen-favor, #screen-crafts, #screen-bag {
   overflow-y: auto;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
+/* 仙缘页：结构与上面几页不同（.screen > .panel > head + body），
+   改为「标题固定 + 内容区内部滚动」，否则 content 超出时被 .screen 的 overflow:hidden 裁掉（用户反馈「显示不完整」）。
+   滚动条为「隐藏式」：默认全透明，指针移入该页才淡淡显形。 */
+#screen-npc .panel { flex: 1 1 auto; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column; }
+#screen-npc .screen-head { flex: none; }
+#screen-npc .screen-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+  scrollbar-width: thin; scrollbar-color: transparent transparent;
+}
+#screen-npc .screen-body:hover,
+#screen-npc .screen-body:focus-within { scrollbar-color: rgba(232,193,90,.38) transparent; }
+#screen-npc .screen-body::-webkit-scrollbar { width: 5px; }
+#screen-npc .screen-body::-webkit-scrollbar-track { background: transparent; }
+#screen-npc .screen-body::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+#screen-npc .screen-body:hover::-webkit-scrollbar-thumb,
+#screen-npc .screen-body:focus-within::-webkit-scrollbar-thumb { background: rgba(232,193,90,.38); }
 .gear-head { text-align: center; flex: none; }
 .gear-footer { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex: none; }
 .gear-footer .btn-main { flex: 1; max-width: 220px; }
@@ -330,8 +351,11 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- 属性 ---------------- */
 .stats { flex: none; }
-.stats-top-row { display: flex; gap: 8px; margin-bottom: 6px; }
-.six-dim-wrap { flex: 1; min-width: 0; }
+/* 六维 + 资源：左=六维（3 列 × 2 行），右=行动/灵石**竖排**（上行动、下灵石）。
+   PC 版 index_pc.html 仍在 header 内横排（另有 style_pc.css 接管），本规则只服务手机版入口。 */
+.stats-top-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: stretch; }
+.six-dim-wrap { flex: 1 1 auto; min-width: 0; }
+.six-dim-wrap .stat-grid.six-dim { margin-bottom: 0; }
 .action-info-col { display: flex; flex-direction: column; gap: 4px; justify-content: center; flex-shrink: 0; }
 .action-info-item {
   display: flex; align-items: center; gap: 6px;
@@ -349,8 +373,9 @@ button:disabled { opacity: .4; cursor: default; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
 .stat-grid.six-dim { grid-template-columns: repeat(3, 1fr); margin-bottom: 4px; }
 .stat-grid.six-dim .kv { border-left: 3px solid #4ec9a0; }
+.stat-grid.six-dim .kv b { white-space: nowrap; }
 .stat-grid.combat-stats { grid-template-columns: repeat(4, 1fr); margin-bottom: 0; }
-.stat-grid.combat-stats .kv { background: rgba(60,20,20,.25); border-color: #5a3340; border-left: 3px solid #e0604a; padding: 2px 4px; }
+.stat-grid.combat-stats .kv { background: rgba(60,20,20,.25); border-color: #5a3340; border-left: 3px solid #e0604a; padding: 2px 6px; justify-content: flex-start; gap: 6px; }
 .stat-grid.combat-stats .kv label { color: #e8a090; font-size: 11px; }
 .stat-grid.combat-stats .kv b { color: #ff9080; font-size: 12px; }
 .stat-grid.combat-stats .kv.below-hp { border-left-color: #4ec9a0; background: rgba(20,60,40,.25); }
@@ -373,7 +398,7 @@ button:disabled { opacity: .4; cursor: default; }
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
 .log-year-body { padding-left: 4px; }
@@ -393,6 +418,8 @@ button:disabled { opacity: .4; cursor: default; }
 .log-line.year { color: var(--dim); }
 .log-line.evtitle { color: #d9a6ff; margin-top: 4px; }
 .log-line.choice { color: #7ad1ff; font-size: 13px; }
+/* 噩兆玉符：识海黑字（死劫倒计时） */
+.log-line.omen { color: #b06cff; text-shadow: 0 0 6px rgba(120, 40, 200, 0.55); letter-spacing: 0.5px; }
 .gear-text { font-size: 12px; line-height: 1.5; word-break: break-all; }
 
 /* ---------------- 行动按钮 ---------------- */
@@ -546,7 +573,7 @@ button:disabled { opacity: .4; cursor: default; }
 .attr-realm-bar .realm-name { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
 
 /* 六维属性大格子 */
-.attr-six-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 4px; }
+.attr-six-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 4px; }
 .attr-six-card {
   background: rgba(0,0,0,.25); border: 1px solid #2e2942; border-left: 3px solid #4ec9a0;
   border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px;
@@ -699,6 +726,9 @@ button:disabled { opacity: .4; cursor: default; }
 .bottom-text {
   line-height: 1;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 更新提示 */
@@ -814,6 +844,22 @@ button:disabled { opacity: .4; cursor: default; }
   cursor: not-allowed;
   border-style: dashed;
 }
+.treasure-slot.locked {
+  opacity: 0.62;
+  border-style: dashed;
+  border-color: var(--accent);
+  background: rgba(231, 76, 60, .06);
+}
+.treasure-sec-title {
+  grid-column: 1 / -1;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 10px 0 2px;
+  padding-left: 2px;
+  border-left: 3px solid var(--gold);
+  letter-spacing: 1px;
+}
 .equip-slot .empty, .treasure-slot .empty {
   color: #5a5270;
   font-size: 13px;
@@ -905,12 +951,9 @@ button:disabled { opacity: .4; cursor: default; }
 .destiny-pool-wrap {
   max-height: 240px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-width: none;
 }
-.destiny-pool-wrap::-webkit-scrollbar { width: 4px; }
-.destiny-pool-wrap::-webkit-scrollbar-track { background: transparent; }
-.destiny-pool-wrap::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+.destiny-pool-wrap::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .destiny-pool {
   display: flex;
   flex-direction: column;
@@ -1019,40 +1062,78 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .enter-footer .btn-main { flex: 1; }
 
-/* ============ 秘境横版地图 ============ */
-.adv-inner { max-width: 760px; }
-.adv-hud { display: flex; align-items: center; gap: 14px; margin: 8px 0 12px; flex-wrap: wrap; }
-.adv-stamina { display: flex; align-items: center; gap: 8px; min-width: 200px; flex: 1; }
-.adv-bar { flex: 1; height: 14px; }
-.adv-items { display: flex; gap: 6px; flex-wrap: wrap; }
+/* ============ 秘境网格长卷地图 ============ */
+.adv-hud { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 10px; }
+.adv-hud-row { display: flex; align-items: stretch; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+/* 左侧：气血(红) / 灵力(蓝)；右侧：体力(上) / 探索(下) —— 红蓝条一眼可辨 */
+.adv-vitals, .adv-right { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+.adv-vital { display: flex; align-items: center; gap: 8px; }
+.adv-vital .who { display: inline-flex; align-items: center; gap: 4px; width: 46px; flex: none; font-size: 12px; color: #cfc3ee; }
+.adv-vital .who .vd { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 4px rgba(0,0,0,.45); }
+.adv-vital.vital-hp .who .vd { background: #e8443e; }
+.adv-vital.vital-mp .who .vd { background: #3a86d6; }
+.adv-bar { flex: 1; height: 12px; min-width: 0; }
+.adv-items { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 100%; }
 .adv-item-chip {
   font-size: 12px; padding: 2px 8px; border-radius: 20px;
   border: 1px solid var(--gold); color: var(--gold);
 }
+/* 长卷地图：隐藏滚动条（右侧滚动条非常出戏），保留滚动手感。
+   视口高度 = 固定「4 行道路」：行高 / 节点高 / 可见行数由 ui.js 经 CSS 变量单一来源写入
+   （--adv-row-h / --adv-node-h / --adv-visible-rows），避免 JS 与 CSS 两处数字分叉。
+   旧版是 flex:1 自适应高度 —— 屏幕越高一次露出的层数越多（长屏实测露 9 行），与设计不符。 */
 .adv-map {
-  display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
-  padding: 6px 2px 14px; align-items: stretch; min-height: 280px;
-  flex: 1 1 auto; min-height: 0;
+  display: block; padding: 0 2px 10px;
+  flex: 0 0 auto;
+  height: calc(var(--adv-visible-rows, 4) * var(--adv-row-h, 70px) + var(--adv-node-h, 46px) + 10px);
+  max-height: 62vh;   /* 兜底：超矮视口（横屏 / 小窗）不让地图把页头页脚挤出屏幕 */
+  min-height: 0; overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
-.adv-col {
-  display: flex; flex-direction: row; justify-content: space-around; gap: 10px;
-  padding: 8px 6px; position: relative; min-width: 0;
-  border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,.18);
+.adv-map::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* 秘境入口卡片上的「剩余法宝 N」一行（口径同 advArtRemain：灵物豁免上限，单独计 1 件） */
+.adv-art-remain {
+  font-size: 12px; color: #c9a86a; margin-top: 4px;
+  padding-top: 4px; border-top: 1px dashed rgba(201,168,106,.22);
 }
-.adv-col::after { display: none; }
+.adv-canvas { position: relative; width: 100%; }
+.adv-links {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.adv-link { fill: none; stroke: rgba(255,255,255,.13); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.adv-link.walked { stroke: rgba(138,107,255,.5); }
+.adv-link.active { stroke: var(--gold); stroke-width: 2.5; }
+.adv-link.reveal { stroke: #e05a7a; stroke-width: 2.5; stroke-dasharray: 7 6; opacity: .85; }
+/* 节点：固定 46px 高 —— JS 的连线锚点依赖这个数值（连线只走层间空隙，不穿方块） */
+.adv-canvas .adv-node {
+  position: absolute; transform: translateX(-50%);
+  flex: none; max-width: none; box-sizing: border-box;
+  width: clamp(58px, 22%, 108px); height: 46px; min-height: 0;
+  padding: 3px 3px; gap: 0;
+}
+.adv-node.locked { opacity: .38; filter: grayscale(.5); }
+.adv-node .n-badge.lock { background: #555f78; color: #cfd6e6; }
 .adv-node {
-  flex: 1 1 0; min-width: 0; max-width: 130px; min-height: 64px; border-radius: 12px; cursor: default;
+  border-radius: 10px; cursor: default;
   border: 1px solid var(--line); background: rgba(0,0,0,.28);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 6px 4px; transition: transform .12s, box-shadow .12s;
+  gap: 2px; padding: 6px 4px;
+  /* 不做 transform 过渡：位移过渡会与滚动重绘打架，产生「滑动 + 虚影」 */
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
   position: relative;
 }
-.adv-node .n-icon { font-size: 22px; line-height: 1; }
+.adv-node .n-icon { font-size: 20px; line-height: 1; }
 .adv-node .n-name { font-size: 11px; color: var(--text); text-align: center; }
 .adv-node.selectable { cursor: pointer; border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
-.adv-node.selectable:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,.4), 0 0 0 1px var(--gold) inset; }
+/* hover 只改描边/阴影，不做位移动画 */
+.adv-node.selectable:hover { border-color: var(--gold); box-shadow: 0 0 12px rgba(232,193,90,.45), 0 0 0 1px var(--gold) inset; }
+.adv-node.selectable:active { background: rgba(232,193,90,.1); }
 .adv-node.visited { opacity: .45; }
 .adv-node.current { border-color: #6ad1ff; box-shadow: 0 0 0 2px #6ad1ff inset; opacity: 1; }
+.adv-node.entry { border-style: dashed; opacity: .6; }
+.adv-node.entry .n-icon { font-size: 16px; }
 .adv-node.boss { border-color: #e05a7a; box-shadow: 0 0 0 1px #e05a7a inset; }
 .adv-node.boss.selectable { box-shadow: 0 0 0 2px #e05a7a inset, 0 0 18px rgba(224,90,122,.5); }
 .adv-node .n-badge { position: absolute; top: -6px; right: -6px; font-size: 10px; background: #6ad1ff; color:#10121e; border-radius: 10px; padding: 0 5px; }
@@ -1061,26 +1142,53 @@ button:disabled { opacity: .4; cursor: default; }
 .adv-node.treasure .n-icon, .adv-node.shop .n-icon { color: var(--gold); }
 .adv-node.herb .n-icon { color: #4ec9a0; }
 .adv-node.explore .n-icon { color: #7aa2ff; }
-.adv-foot { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-.adv-foot #adv-hint { flex: 1; }
+.adv-foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.adv-foot #adv-hint { flex: 1; font-size: 12px; line-height: 1.4; }
 .adv-prep-elixir { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .adv-prep-elixir .ae-name { flex: 1; }
 .adv-prep-elixir .ae-count { color: var(--gold); font-size: 13px; }
 /* 秘境：说明按钮 / 撤退按钮 精简 */
-.adv-info-btn { flex: 0 0 auto; margin-right: auto; }
+.adv-info-btn { flex: 0 0 auto; padding: 3px 10px; font-size: 11px; }
 .adv-retreat { padding: 5px 12px; font-size: 12px; }
 /* 秘境地图页面加宽（桌面更宽、手机满宽），纵向滚动更顺手 */
 .adv-inner { max-width: 880px; width: 100%; }
 /* 宗门字体统一：去除散乱加粗，统一字重，仅靠颜色区分重点 */
 #sect-body { font-weight: 400; }
 #sect-body b { font-weight: 400; color: var(--gold); }
-/* 手机端：秘境 HUD 与节点进一步收窄，保证不溢出 */
+/* 手机端：秘境 HUD 压成 2 行、节点收紧，把视口留给地图（可见层数 4 行 → 6 行左右） */
 @media (max-width: 520px) {
-  .adv-stamina { min-width: 130px; }
-  .adv-node { max-width: none; min-height: 58px; }
+  /* ⚠ 根因修复：.adv-vitals / .adv-right 的 min-width:200px 在窄屏（360~414px）会直接触发换行，
+     把 HUD 从 2 行撑成 4 行 —— 上半个屏幕被信息条吃满，地图只剩 4 行可见。此处必须一并归零。 */
+  .adv-vitals, .adv-right { min-width: 0; flex: 1 1 46%; gap: 4px; }
+  .adv-hud { gap: 4px; margin: 4px 0 6px; }
+  .adv-hud-row { gap: 6px 10px; }
+  .adv-vital { gap: 5px; }
+  .adv-vital .who { width: 34px; font-size: 11px; }
+  .adv-bar { height: 11px; }
   .adv-node .n-name { font-size: 10px; }
-  .adv-node .n-icon { font-size: 18px; }
-  .adv-col { gap: 6px; padding: 6px 4px; }
+  .adv-node .n-icon { font-size: 16px; }
+  .adv-foot { gap: 6px; }
+  .adv-foot #adv-hint { font-size: 11px; }
+  /* 秘境页专项：外层留白与标题间距各收一点，空丹药提示不占行 —— 都是为了让地图多露出 1~2 层 */
+  .chapter-overlay { padding: 10px; }
+  .chapter-head { margin-bottom: 8px; }
+  .adv-items .dim { display: none; }
+  /* 手游版 HUD：行动/灵石在六维右侧竖排 —— 窄屏把两块资源块压扁，给六维留出 3 列宽度 */
+  .stats-top-row { gap: 6px; }
+  .action-info-col { gap: 3px; }
+  .action-info-item { min-width: 68px; padding: 3px 6px; gap: 4px; }
+  .action-info-item label { font-size: 10px; }
+  .action-val { font-size: 13px; }
+  /* ⚠ 战斗血蓝条：窄屏下 who(64px) + num(70px) 会把 flex:1 的进度条挤到 0 宽，
+     表现就是「只看得到数值、看不到条」。收窄标签/数值列 + 给条兜底最小宽度。 */
+  .battle-board { padding: 8px; }
+  .battle-board .hp-row { gap: 5px; margin: 3px 0; font-size: 11px; }
+  .battle-board .hp-row .who { width: 16px; overflow: hidden; }
+  .battle-board .hp-bar { height: 12px; min-width: 40px; }
+  .battle-board .hp-num { width: 56px; font-size: 10px; }
+  .portrait { width: 76px; height: 100px; }
+  .ph-fallback { font-size: 36px; }
+  .fighter .fname { font-size: 12px; }
 }
 /* ===== 新增界面 P1–P7（开荒 / 洞府 / 宗门 / 游历 / 仙缘） ===== */
 .screen-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -1156,6 +1264,22 @@ button:disabled { opacity: .4; cursor: default; }
 .tn-name { color: var(--gold); font-size: 15px; font-weight: 400; margin: 4px 0; }
 .tn-desc { font-size: 13px; font-weight: 400; color: var(--dim); }
 .dabi-foe { background: rgba(224,96,74,.1); border: 1px solid rgba(224,96,74,.4); border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 13px; }
+/* ===== 宗门大比 · 一条直线 5 连战（秘境化阶梯） ===== */
+.dabi-ladder { position: relative; margin: 12px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.dabi-ladder::before { content: ''; position: absolute; left: 5px; top: 10px; bottom: 10px; width: 2px;
+  background: linear-gradient(180deg, rgba(232,193,90,.55), rgba(232,193,90,.10)); }
+.dabi-node { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); font-size: 12px; }
+.dabi-node::before { content: ''; position: absolute; left: -19px; top: 50%; transform: translateY(-50%);
+  width: 9px; height: 9px; border-radius: 50%; background: var(--panel); border: 2px solid rgba(232,193,90,.4); }
+.dabi-node-n { color: var(--text); }
+.dabi-node-s { color: var(--dim); white-space: nowrap; }
+.dabi-node.done { opacity: .75; }
+.dabi-node.done::before { background: var(--good); border-color: var(--good); }
+.dabi-node.cur { border-color: rgba(232,193,90,.65); box-shadow: inset 0 0 0 1px rgba(232,193,90,.18); }
+.dabi-node.cur::before { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 8px rgba(232,193,90,.7); }
+.dabi-node.future { opacity: .48; }
+@media (max-width: 520px) { .dabi-node { font-size: 11px; padding: 6px 8px; } }
 .char-linggen { background: rgba(232,193,90,.08); border: 1px solid rgba(232,193,90,.3); border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 8px; }
 .char-linggen b { color: var(--gold); }
 
@@ -1171,6 +1295,118 @@ button:disabled { opacity: .4; cursor: default; }
 .npc-favor { margin: 6px 0 8px; font-size: 14px; letter-spacing: 1px; }
 .npc-grade { font-size: 12px; letter-spacing: 0; color: var(--dim); }
 .npc-tiers { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.npc-tier { font-size: 12px; padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--dim); }
+/* 单个徽章的文案（如「✓ 相识：老丐随口指点吐纳，悟性 +0.5」）可能长于卡片宽度，
+   flex item 默认 min-width:auto 不收缩 → 横向溢出把整张卡片右侧顶出屏幕外被裁掉
+   （用户反馈「仙缘页显示不完整」的横向成因）。 */
+.npc-tier { font-size: 12px; padding: 3px 8px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--dim); max-width: 100%; overflow-wrap: anywhere; }
 .npc-tier.reached { color: #e8c15a; border-color: rgba(232,193,90,.4); background: rgba(232,193,90,.08); }
 .npc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.npc-actions .btn-small { max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+/* 地名/称号等右侧短标签过长时不要顶破卡片 */
+.npc-head { gap: 8px; }
+.npc-head .ct-tier { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ================= 成就页 ================= */
+.ach-body { max-height: 58vh; overflow-y: auto; }
+.ach-cat {
+  font-size: 14px; font-weight: 700; color: var(--gold);
+  margin: 14px 0 8px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  letter-spacing: 2px;
+}
+.ach-cat:first-child { margin-top: 0; }
+.ach-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ach-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px;
+  opacity: .5;
+}
+.ach-card.got {
+  opacity: 1;
+  border-color: rgba(232,193,90,.55);
+  background: linear-gradient(135deg, rgba(232,193,90,.10), var(--panel2));
+}
+.ach-card.hidden { opacity: .38; filter: grayscale(.5); }
+.ach-ico { flex: 0 0 auto; font-size: 22px; line-height: 1; }
+.ach-info { flex: 1 1 auto; min-width: 0; }
+.ach-name { font-size: 14px; color: var(--text); }
+.ach-card.got .ach-name { color: var(--gold); font-weight: 700; }
+.ach-desc { font-size: 12px; color: var(--dim); margin-top: 2px; line-height: 1.35; }
+.ach-pts { flex: 0 0 auto; font-size: 13px; color: var(--gold); font-weight: 700; }
+.ach-card:not(.got) .ach-pts { color: var(--dim); }
+
+/* ================= 成就解锁提示 toast ================= */
+.ach-toast-box {
+  position: fixed; top: 16px; right: 16px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.ach-toast {
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, #3a2f18, var(--panel));
+  border: 2px solid var(--gold); border-radius: 10px;
+  padding: 10px 14px; min-width: 220px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.6), 0 0 0 1px rgba(232,193,90,.25);
+  opacity: 0; transform: translateX(40px);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.ach-toast.show { opacity: 1; transform: translateX(0); }
+.ach-toast-ico { font-size: 26px; }
+.ach-toast-txt { font-size: 13px; color: var(--text); line-height: 1.45; }
+.ach-toast-txt b { color: var(--gold); }
+
+/* ================= 图鉴 ================= */
+.codex-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.codex-tab {
+  background: var(--panel2); border: 1px solid var(--line); color: var(--dim);
+  border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+  transition: all .15s ease;
+}
+.codex-tab.active {
+  color: var(--gold); border-color: var(--gold);
+  background: rgba(232,193,90,.12);
+}
+.codex-body { max-height: 56vh; overflow-y: auto; }
+.codex-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.codex-card {
+  display: flex; gap: 10px;
+  background: var(--panel2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 11px;
+}
+.codex-card.locked { opacity: .42; filter: grayscale(.65); }
+.codex-ico { flex: 0 0 auto; font-size: 22px; line-height: 1; margin-top: 2px; }
+.codex-info { flex: 1 1 auto; min-width: 0; }
+.codex-name { font-size: 14px; color: var(--text); }
+.codex-desc { font-size: 12px; color: var(--dim); margin-top: 3px; line-height: 1.4; }
+.codex-meta { font-size: 12px; color: var(--dim); margin-top: 3px; }
+.codex-eff { font-size: 12px; color: var(--good); margin-top: 3px; }
+/* 品阶色：法宝/功法 黄玄地天仙；命格 白绿蓝紫金 */
+.g-黄, .g-白 { color: #b8b0a0; }
+.g-玄, .g-绿 { color: #4ec9a0; }
+.g-地, .g-蓝 { color: #5a9fd4; }
+.g-天, .g-紫 { color: #b06ad4; }
+.g-仙, .g-金 { color: var(--gold); }
+.codex-grade {
+  font-size: 11px; border: 1px solid currentColor; border-radius: 4px;
+  padding: 0 5px; margin-left: 6px; vertical-align: 1px;
+}
+
+/* ---------- 全局隐藏滚动条（保留滚动能力） ---------- */
+/* 荒野坊市（#modal-body/.modal-inner）及所有可滚动区域：不显示滚动条，
+   仍可用触摸滑动 / 滚轮 / 拖拽滚动，视觉更干净。放在文件末尾以覆盖前缀样式。 */
+* {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* 旧 Edge / IE */
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;              /* Chrome / Safari / Android WebView / 小游戏 WebView */
+}
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-corner {
+  display: none;
+  background: transparent;
+}

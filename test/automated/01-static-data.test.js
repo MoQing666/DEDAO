@@ -173,7 +173,18 @@ module.exports = async function build() {
     t.gt(F.length, 5, '配方数量过少');
     const badOut = [], badCost = [];
     for (const f of F) {
-      if (!ART[f.out] && !ELX[f.out] && !equipIds.has(f.out)) badOut.push(`${f.id} → ${f.out}`);
+      // 丹方用 out；装备配方用 slot+sub（炼器，品质由炼器等级驱动，无固定 out）
+      if (f.type === '丹') {
+        if (!ART[f.out] && !ELX[f.out]) badOut.push(`${f.id} → ${f.out}`);
+      } else if (f.slot && f.sub) {
+        // 校验 slot 存在，且该 slot 内存在该 sub 的至少一个模板
+        const bucket = EQ[f.slot];
+        let hasSub = false;
+        if (bucket) for (const id in bucket) if (bucket[id].sub === f.sub) { hasSub = true; break; }
+        if (!bucket || !hasSub) badOut.push(`${f.id} → slot:${f.slot}/sub:${f.sub}`);
+      } else if (!ART[f.out] && !ELX[f.out] && !equipIds.has(f.out)) {
+        badOut.push(`${f.id} → ${f.out}`);
+      }
       for (const k of Object.keys(f.cost || {})) {
         if (!MAT[k]) badCost.push(`${f.id}:${k}`);
       }
@@ -242,8 +253,8 @@ module.exports = async function build() {
       const a = ART[id];
       types.add(a.type);
       if (!a.name) noName.push(id);
-      // 法宝以 type 区分：攻 / 守 / 辅
-      if (!['攻', '守', '辅'].includes(a.type)) badType.push(`${id}:${a.type}`);
+      // 法宝以 type 区分：攻 / 守 / 辅；灵物类法宝（秘境秘藏专属）为「灵」
+      if (!['攻', '守', '辅', '灵'].includes(a.type)) badType.push(`${id}:${a.type}`);
     }
     if (noName.length) t.fail(`法宝缺少 name: ${noName.slice(0, 8).join(', ')}`);
     if (badType.length) t.fail(`法宝 type 非法: ${badType.slice(0, 8).join(', ')}`);
@@ -254,13 +265,19 @@ module.exports = async function build() {
     if (fa.length) t.fail(`存在可炼制法宝配方: ${fa.map(x => x.id).join(', ')} — 法宝应仅由剧情获取`);
   });
 
-  S.case('法宝系统：39 件完整 & 全链路挂载 & 数值单位校验', (t) => {
+  S.case('法宝系统：44 件完整 & 全链路挂载 & 数值单位校验', (t) => {
     const ART = get('ARTIFACTS') || {};
     const ids = Object.keys(ART);
-    t.eq(ids.length, 39, `法宝应为 39 件（剧情26+商店13），实际 ${ids.length}`);
+    // 44 = 剧情26 + 商店13 + 山河1 + 灵物4（2026-09-13 灵物由独立道具改制成法宝）
+    t.eq(ids.length, 44, `法宝应为 44 件（剧情26+商店13+山河1+灵物4），实际 ${ids.length}`);
+    // 灵物类法宝：4 件，必须带 spirit:true（否则会被随机法宝池抽走）
+    const spiritArts = ids.filter(id => ART[id].spirit);
+    t.eq(spiritArts.length, 4, `灵物类法宝应为 4 件，实际 ${spiritArts.length}`);
+    if (spiritArts.some(id => ART[id].type !== '灵')) t.fail('灵物类法宝 type 应为「灵」');
+    t.eq(spiritArts.filter(id => ['黄','玄','地','天'].includes(ART[id].grade)).length, 4, '灵物阶位应为 黄/玄/地/天 各一件');
 
-    const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale'];
-    const pctFields = ['critPct','dodgePct','defPct','atkPct','cult','stealPct','daoAtkPct','craftEff','tiHpBonus','duantiEff','farmEff','mineEff','stoneYearPct'];
+    const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiShenEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale','atkSpd','doubleCult','doubleDmg'];
+    const pctFields = ['critPct','dodgePct','defPct','atkPct','cult','stealPct','daoAtkPct','craftEff','tiHpBonus','duantiEff','duantiShenEff','farmEff','mineEff','stoneYearPct','doubleCult','doubleDmg'];
     const noEffect = [], empty = [], badPct = [];
     for (const id of ids) {
       const e = ART[id].effect;
@@ -321,6 +338,78 @@ module.exports = async function build() {
       if (expect === 'stone' && !(g.stoneFix > 0) && !(g.grade)) t.fail(`${g.ref} 灵石类缺少 stoneFix/grade 定价`);
     });
     t.note(`宗门商品 ${SECT_GOODS.length} 件，全部单货币（灵石 ${SECT_GOODS.filter(g => STONE_KINDS.indexOf(g.kind) >= 0).length} / 功业 ${SECT_GOODS.filter(g => GONGYE_KINDS.indexOf(g.kind) >= 0).length}）`);
+  });
+
+
+  /* 守卫：法宝效果文案不得出现「++」与水词
+     历史 bug：UI 侧 pct() 自带「+」、调用处又补了一次「+」→「灵矿产量++30%」。
+     现 artEffectText 已收敛到引擎唯一实现，UI 只做转发。 */
+  S.case('法宝效果文案：无「++」重复加号 / 不出现栏位解锁水词', (t) => {
+    const E = get('Engine');
+    const ART = get('ARTIFACTS') || {};
+    const bad = [], water = [];
+    Object.keys(ART).forEach(function (id) {
+      const txt = E.artEffectText(id);
+      if (txt.indexOf('++') >= 0 || txt.indexOf('+-') >= 0) bad.push(id + ':' + txt);
+      if (txt.indexOf('解锁') >= 0 || txt.indexOf('栏位') >= 0) water.push(id + ':' + txt);
+    });
+    if (bad.length) t.fail('法宝文案出现重复加号：' + bad.slice(0, 5).join(' | '));
+    if (water.length) t.fail('法宝文案出现「解锁/栏位」水词：' + water.slice(0, 5).join(' | '));
+    // 抽样校验绝对值
+    t.ok(E.artEffectText('xunkuang_luopan').indexOf('灵矿产量+30%') >= 0, '寻矿罗盘应显示「灵矿产量+30%」，实际：' + E.artEffectText('xunkuang_luopan'));
+    t.ok(E.artEffectText('shangpin_lingjing').indexOf('气血上限+100') >= 0, '上品灵晶应显示「气血上限+100」');
+    t.ok(E.artEffectText('mohex_suibian').indexOf('伤害翻倍') >= 0, '魔核碎片应显示双倍伤害');
+  });
+
+  /* 守卫：六维面板文案只说「一共加了多少」
+     用户 2026-09-13 定稿：不写「（基础+命格）」、不写「每点+多少」、不写栏位解锁。 */
+  S.case('六维面板文案：只给总增益，无「基础/命格/每点/解锁」', (t) => {
+    const E = get('Engine');
+    const st = E.startLife('测试');
+    t.ok(!!st, '无法构造存档（startLife 失败）');
+    if (!st) return;
+    const keys = ['wu', 'ti', 'dun', 'dao', 'ling', 'shen'];
+    keys.forEach(function (k) {
+      E.refreshStats(st);
+      const txt = E.attrGainText(st, k);
+      if (!txt) t.fail('六维 ' + k + ' 缺少收益文案');
+      if (txt.indexOf('基础') >= 0 || txt.indexOf('命格+') >= 0) t.fail('六维 ' + k + ' 文案出现「基础/命格+」：' + txt);
+      if (txt.indexOf('每点') >= 0) t.fail('六维 ' + k + ' 文案出现「每点」：' + txt);
+      if (txt.indexOf('解锁') >= 0 || txt.indexOf('栏位') >= 0) t.fail('六维 ' + k + ' 文案出现栏位解锁：' + txt);
+    });
+    t.note('六维文案样例：体魄「' + E.attrGainText(st, 'ti') + '」/ 道心「' + E.attrGainText(st, 'dao') + '」');
+  });
+
+  /* ---------- 事件 effect 的键必须被 applyOps 白名单支持 ----------
+     历史 bug：applyOps 的 `case 'trib'` 写进死字段 s.linggen.body.trib（现代存档只认 linggen.trait.effect）；
+     而 `case 'shen'/'dun'` 写好了、白名单数组却没开 → effect:{dun:1}/{shen:1} 点下去等于什么都没给，
+     文案却写着「遁速+1 / 神识+0.5」。此守卫把「文案承诺但静默无效」挡在提交前。 */
+  S.case('事件 effect 的键必须被 applyOps 白名单支持', (t) => {
+    const opsStart = engineJs.indexOf("['qi', 'hp', 'stone'");
+    const allow = engineJs.slice(opsStart, engineJs.indexOf(']', opsStart) + 1).match(/'([a-zA-Z]+)'/g).map(s => s.replace(/'/g, ''));
+    t.gte(allow.length, 20, 'applyOps 白名单应能解析出来（实 ' + allow.length + ' 项）');
+    const G = createGameContext();
+    const bad = [];
+    const chk = function (where, eff) {
+      if (!eff || typeof eff !== 'object') return;
+      Object.keys(eff).forEach(function (k) { if (allow.indexOf(k) < 0) bad.push(where + ' → ' + k); });
+    };
+    const walk = function (where, ev) {
+      if (!ev || typeof ev !== 'object') return;
+      if (Array.isArray(ev)) { ev.forEach((e, i) => walk(where + '[' + i + ']', e)); return; }
+      chk(where, ev.effect);
+      (ev.choices || []).forEach((c, i) => chk(where + '.choice' + i, c.effect));
+    };
+    const EVENTS = G.get('EVENTS') || {};
+    Object.keys(EVENTS).forEach(p => walk('EVENTS.' + p, EVENTS[p]));
+    walk('XIANYUAN', G.get('XIANYUAN') || []);
+    walk('MAINLINE', G.get('MAINLINE') || []);
+    const NPCS = G.get('NPCS') || {};
+    Object.keys(NPCS).forEach(id => walk('NPCS.' + id, NPCS[id]));
+    walk('SECT_SOCIAL', G.get('SECT_SOCIAL') || {});
+    walk('SECT_COMBAT', G.get('SECT_COMBAT') || {});
+    if (bad.length) t.fail('以下 effect 键不在 applyOps 白名单里（玩家点了等于没给）：\n    ' + bad.join('\n    '));
+    t.note('白名单 ' + allow.length + ' 项：' + allow.join(','));
   });
 
   return S;

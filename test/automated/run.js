@@ -20,6 +20,11 @@ const MODULES = [
   ['05-xianyuan.test.js', '仙缘统一触发（概率门/上限/权重/门槛）'],
   ['06-travel.test.js', '游历 3 选 1（年度上限/独立池/带权）'],
   ['07-favor.test.js', '仙缘 NPC 缘法系统（解锁/好感分级/互动/单抽/主线触发）'],
+  ['08-death-omen.test.js', '五劫主线（噩兆玉符/渡劫劫境/隐藏线）'],
+  ['09-achievements.test.js', '成就判定（境界/渡劫/里程碑文案）'],
+  ['10-year-end.test.js', '年末结算（回满血蓝/岁增/行动点重置）'],
+  ['11-dead-config.test.js', '死配置实装（命格/心法/法术）'],
+  ['12-boss-element.test.js', 'BOSS 五行属性与法术适配（生克/施法/免控）'],
 ];
 
 function bar(pass, fail) {
@@ -78,7 +83,9 @@ function bar(pass, fail) {
   console.log('='.repeat(70));
 
   /* ---------- 生成 Markdown 报告 ---------- */
-  const outDir = path.join(ROOT, 'test', 'reports');
+  // 报告固定写回「本仓库」的 test/reports（基于 run.js 位置），
+  // 不写进 ROOT —— 否则用 DEDAO_ROOT 指向 dist 发布包时会污染发布包。
+  const outDir = path.join(__dirname, '..', 'reports');
   fs.mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
   const outFile = path.join(outDir, `test-report-${stamp}.md`);

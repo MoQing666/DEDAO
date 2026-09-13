@@ -2,13 +2,14 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=1280, initial-scale=1.0">
   <meta name="theme-color" content="#12101a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <title>得道飞升模拟器</title>
+  <title>得道飞升模拟器 · PC测试版（异世轮回录式）</title>
   <link rel="stylesheet" href="css/style.css?v=107">
+  <link rel="stylesheet" href="css/style_pc.css?v=10">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -42,7 +43,7 @@
     })();
   </script>
 </head>
-<body>
+<body class="pc">
 
   <!-- ============ 标题 ============ -->
   <div class="screen" id="screen-title" data-bg="assets/img/bg/bg_title_yunhai.png">
@@ -116,8 +117,6 @@
   </div>
 
   <!-- ============ 游戏主界面 ============ -->
-  <!-- 主界面背景: bg_main（专门设计：浮空仙山云海修行全景）
-       洞府(bg_dongfu)预留给修炼界面（目前未接入，不会在主界面显示） -->
   <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <header class="hud">
       <div class="hud-top">
@@ -126,28 +125,22 @@
           <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
           <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
         </div>
+        <div class="hud-actions">
+          <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
+          <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">50</b></div>
+        </div>
       </div>
     </header>
 
     <section class="stats panel">
-      <!-- 六维 + 资源：六维在左（3 列 × 2 行），行动/灵石在右**竖排**（上=行动、下=灵石）
-           2026-09 手机端专项：原先两枚资源块挤在 header 右侧、与名字同一行，
-           窄屏会把 header 顶出一行；现移到六维右侧竖排，HUD 更紧凑、一眼可读。 -->
-      <div class="stats-top-row">
-        <div class="six-dim-wrap">
-          <div class="stat-grid six-dim">
-            <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
-            <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
-            <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
-            <div class="kv"><label>神识</label><b id="st-shen">0</b></div>
-            <div class="kv"><label>道心</label><b id="st-dao">0</b></div>
-            <div class="kv"><label>灵力</label><b id="st-ling">0</b></div>
-          </div>
-        </div>
-        <div class="action-info-col">
-          <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
-          <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">50</b></div>
-        </div>
+      <!-- 六维：独占整行，3 列 × 2 行，单元格加宽以容纳小数 -->
+      <div class="stat-grid six-dim">
+        <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
+        <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
+        <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
+        <div class="kv"><label>神识</label><b id="st-shen">0</b></div>
+        <div class="kv"><label>道心</label><b id="st-dao">0</b></div>
+        <div class="kv"><label>灵力</label><b id="st-ling">0</b></div>
       </div>
       <!-- 战斗属性：整行，4 列 × 2 行，紧凑以免过宽 -->
       <div class="stat-grid combat-stats combat-full">
@@ -242,15 +235,16 @@
       <span class="bottom-icon">⚙️</span>
       <span class="bottom-text">设置</span>
     </button>
-    <button id="btn-ach-bottom" class="bottom-btn">
+    <!-- 以下按钮在 PC 端由右上角文字入口代理触发（见 js/ui_pc.js），此处仅保留可点击靶点 -->
+    <button id="btn-ach-bottom" class="bottom-btn" style="display:none">
       <span class="bottom-icon">🏆</span>
       <span class="bottom-text">成就</span>
     </button>
-    <button id="btn-codex-bottom" class="bottom-btn">
+    <button id="btn-codex-bottom" class="bottom-btn" style="display:none">
       <span class="bottom-icon">📖</span>
       <span class="bottom-text">图鉴</span>
     </button>
-    <button id="btn-omen-bottom" class="bottom-btn">
+    <button id="btn-omen-bottom" class="bottom-btn" style="display:none">
       <span class="bottom-icon">🧿</span>
       <span class="bottom-text">玉符</span>
     </button>
@@ -548,8 +542,7 @@
     </div>
   </div>
 
-  <!-- ============ 弹窗（炼丹/炼器/储物袋/功法/设置/存档） ============ -->
-  <!-- ============ 成就页 ============ -->
+  <!-- ============ 成就页（2026-09-13 补：PC 版此前缺这两屏，boot 绑定 ach-back 直接抛错、角落「成就/图鉴」点了白屏） ============ -->
   <div class="screen" id="screen-achievements" style="display:none">
     <div class="panel gear-head">
       <h2 class="tower-title">成就 · 轮回印记</h2>
@@ -574,6 +567,7 @@
     </div>
   </div>
 
+  <!-- ============ 弹窗（炼丹/炼器/储物袋/功法/设置/存档） ============ -->
   <div class="modal" id="modal" style="display:none">
     <div class="modal-inner panel">
       <div class="modal-head">
@@ -589,5 +583,6 @@
   <script src="js/audio.js?v=107"></script>
   <script src="js/backend-api.js?v=107"></script>
   <script src="js/ui.js?v=107"></script>
+  <script src="js/ui_pc.js?v=10"></script>
 </body>
 </html>

@@ -26,7 +26,7 @@ REINC.forEach(r => {
   console.log('  ' + r.id.padEnd(14) + ' cost=' + r.cost + ' max=' + r.max + ' 满级=' + c);
 });
 check('六维核心全满 = 1080', sixTotal === 1080, sixTotal);
-check('全部天赋全满 = 1396', allTotal === 1396, allTotal);
+check('全部天赋全满 = 1406', allTotal === 1406, allTotal);
 check('道心(dao)+悟性(wu) = 540（单维各270）', (costOf(REINC.find(x=>x.id==='dao')) + costOf(REINC.find(x=>x.id==='wu'))) === 540);
 
 /* ---------- 2. 复刻最终 earnPoints 公式 ---------- */

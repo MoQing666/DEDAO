@@ -37,6 +37,8 @@ var AudioManager = (function () {
   };
 
   // BGM文件映射
+  //   ⚠ xianmo（仙魔浩劫）＝ bgm_battle.mp3：本项目「仙魔浩劫」与战斗曲是**同一首**。
+  //     秘境【探索】与秘境战斗都播它。不要再指向不存在的 bgm_xianmo.mp3（那只能靠兜底映射绕一圈）。
   var BGM_FILES = {
     title: 'assets/audio/bgm/bgm_main.mp3',
     game: 'assets/audio/bgm/bgm_main.mp3',
@@ -44,8 +46,13 @@ var AudioManager = (function () {
     peaceful: 'assets/audio/bgm/bgm_main.mp3',
     sect: 'assets/audio/bgm/bgm_main.mp3',
     adventure: 'assets/audio/bgm/bgm_main.mp3',
+    xianmo: 'assets/audio/bgm/bgm_battle.mp3',
     ending: 'assets/audio/bgm/bgm_main.mp3'
   };
+
+  // 音频文件缺失时的兜底映射：某曲缺文件时回落到同氛围的替代曲，绝不落到合成单音（单音极出戏）
+  //   当前为空 —— 仙魔浩劫已指向真实存在的 bgm_battle.mp3，无缺失项。
+  var BGM_FALLBACK = {};
 
   // 初始化音频上下文
   function initCtx() {
@@ -176,11 +183,20 @@ var AudioManager = (function () {
           });
         }, { once: true });
         
+        // 文件缺失/解码失败的兜底：先试 BGM_FALLBACK 指定的替代曲，再退到合成单音
+        var fallbackTried = false;
         audio.addEventListener('error', function() {
-          if (bgmAudio && bgmAudio._audioId === audioId) {
-            playSynthBgm(name);
+          if (!bgmAudio || bgmAudio._audioId !== audioId) return;
+          var fbKey = BGM_FALLBACK[name];
+          if (!fallbackTried && fbKey && BGM_FILES[fbKey]) {
+            fallbackTried = true;
+            currentBgmSrc = BGM_FILES[fbKey];
+            audio.src = BGM_FILES[fbKey];
+            audio.load();
+            return;
           }
-        }, { once: true });
+          playSynthBgm(name);
+        });
         
         bgmAudio = audio;
         audio.src = targetSrc;
@@ -203,7 +219,7 @@ var AudioManager = (function () {
         
         var freqs = {
           title: 262, game: 330, battle: 196,
-          peaceful: 392, sect: 294, adventure: 349, ending: 523
+          peaceful: 392, sect: 294, adventure: 349, xianmo: 165, ending: 523
         };
         
         osc.type = 'sine';

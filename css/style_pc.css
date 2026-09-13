@@ -1,0 +1,257 @@
+/* ============================================================
+   DEDAO 得道 · PC 端样式（异世轮回录风格重设计 / 测试性）
+   作用域：body.pc（index_pc.html 的 <body class="pc">）。
+   依赖：ui.js 的 showScreen() 对可见屏写 inline display:flex、隐藏屏写 display:none；
+        故用 #screen-game[style*="display: flex"] 仅对“可见游戏主屏”套 grid。
+   ============================================================ */
+
+/* ---------- 基础 ---------- */
+body.pc {
+  font-size: 16px;
+  overflow: auto;
+  background-attachment: fixed;
+}
+body.pc .screen {
+  max-width: 1400px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 16px 18px;
+  gap: 14px;
+  overflow: hidden;
+}
+body.pc .panel {
+  box-shadow: 6px 6px 0 rgba(0,0,0,.5);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+body.pc button { transition: transform .05s, background .12s, box-shadow .12s; }
+body.pc button:hover:not(:disabled) { transform: translateY(-1px); }
+
+/* ---------- 游戏主屏：异世轮回录式四区 ---------- */
+body.pc #screen-game[style*="display: flex"] {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "top   top"
+    "map   side"
+    "ctrl  side";
+  gap: 14px;
+  padding: 16px 18px;
+  overflow: hidden;
+}
+body.pc #screen-game .hud        { grid-area: top;   margin: 0; }
+body.pc #screen-game .pc-scene   { grid-area: map;   margin: 0; min-height: 0; }
+body.pc #screen-game .pc-side    { grid-area: side;  margin: 0; min-height: 0; }
+body.pc #screen-game .footer.actions { grid-area: ctrl; margin: 0; display: flex; }
+
+/* ---------- 顶部状态条（头像 | 表格化属性填满 | 右上角 仙缘/设置） ---------- */
+body.pc #screen-game .hud {
+  position: relative;
+  display: flex; flex-direction: row; align-items: stretch;
+  gap: 12px;
+  padding: 10px 14px; padding-right: 272px; /* 给右上角 5 个按钮留位（仙缘/成就/玉符/图鉴/设置） */
+  background: linear-gradient(180deg, #221c30, #1b1726);
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+  min-height: 86px;
+}
+/* 头像（左上，点击=角色） */
+body.pc .pc-portrait {
+  flex: 0 0 auto; width: 74px; height: 74px; align-self: center;
+  border: 2px solid var(--gold); border-radius: 10px; overflow: hidden;
+  background: #15111f; cursor: pointer; position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  transition: transform .12s ease, box-shadow .15s ease;
+}
+body.pc .pc-portrait:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,193,90,.35), 0 6px 14px rgba(0,0,0,.55); }
+body.pc .pc-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.pc .pc-portrait-fb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--gold); }
+/* 信息列：头像右侧表格化填满 */
+body.pc .pc-info-col {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 5px; justify-content: center;
+}
+/* 身份行：道号·ID + 境界 + 命格 */
+body.pc #screen-game .hud-top {
+  display: flex; flex-direction: row; align-items: center; gap: 10px;
+  flex-wrap: nowrap; margin: 0; padding: 0; border: none;
+  min-width: 0;
+}
+body.pc #screen-game .hud-name { display: flex; align-items: center; gap: 6px; font-size: 18px; min-width: 0; }
+body.pc .pc-id-tag {
+  font-size: 10px; font-weight: 700; color: #221a06; background: var(--gold);
+  border-radius: 4px; padding: 1px 5px; align-self: center; flex-shrink: 0;
+}
+body.pc #screen-game .realm-badge { font-size: 13px; }
+body.pc #screen-game .hud-destiny-inline {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; min-width: 0; flex: 0 1 auto;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+body.pc #screen-game .hud-destiny-inline .destiny-label { color: var(--dim); font-size: 12px; flex-shrink: 0; }
+body.pc #screen-game .hud-destiny-inline .destiny-text { color: #e8c15a; }
+
+/* 属性表格化：六维 / 战斗 / 修为 */
+body.pc #screen-game .hud .stats {
+  display: flex; flex-direction: column; gap: 5px;
+  margin: 0; padding: 0;
+  background: transparent; border: none; box-shadow: none;
+}
+/* 六维：独占整行，3 列 × 2 行 */
+body.pc #screen-game .hud .stats .stat-grid.six-dim {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px;
+  margin-bottom: 4px;
+}
+/* 战斗属性：整行，4 列 × 2 行 */
+body.pc #screen-game .hud .stats .stat-grid.combat-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px;
+  margin-bottom: 0;
+}
+body.pc #screen-game .hud .stats .kv {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  background: #252138; border: 1px solid #3b3552; border-left-width: 3px; border-radius: 5px;
+  padding: 2px 7px; font-size: 12px; margin: 0; min-width: 0;
+}
+body.pc #screen-game .hud .stats .stat-grid.six-dim .kv { border-left-color: #4ec9a0; }
+body.pc #screen-game .hud .stats .stat-grid.combat-stats .kv { border-left-color: #e0604a; }
+body.pc #screen-game .hud .stats .kv label { color: var(--dim); font-size: 11px; flex-shrink: 0; }
+body.pc #screen-game .hud .stats .kv b { color: var(--gold); text-align: right; white-space: nowrap; }
+body.pc #screen-game .hud .stats .stat-row {
+  display: flex; align-items: center; gap: 6px;
+  background: #252138; border: 1px solid #3b3552; border-radius: 5px;
+  padding: 2px 8px;
+}
+body.pc #screen-game .hud .stats .stat-row label { color: var(--dim); font-size: 11px; flex-shrink: 0; }
+body.pc #screen-game .hud .stats .stat-row .bar-box { flex: 1 1 auto; min-width: 0; }
+body.pc #screen-game .hud .stats .stat-row .num { font-size: 11px; flex-shrink: 0; }
+
+/* 顶栏右上：行动 / 灵石（已上提到 hud-top） */
+body.pc #screen-game .hud-top .hud-actions {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+body.pc #screen-game .hud-top .hud-actions .action-info-item {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  background: #252138; border: 1px solid #3b3552; border-radius: 5px; padding: 2px 8px; min-width: 0;
+}
+body.pc #screen-game .hud-top .hud-actions .action-info-item label { color: var(--dim); font-size: 11px; flex-shrink: 0; }
+body.pc #screen-game .hud-top .hud-actions .action-info-item b { color: #9adcff; font-size: 13px; }
+body.pc #screen-game .hud-top .hud-actions .stone-val { color: #e8c15a !important; }
+
+/* 右上角：仙缘 / 成就 / 玉符 / 图鉴 / 设置 */
+body.pc .pc-corner {
+  position: absolute; top: 8px; right: 10px; display: flex; gap: 6px; z-index: 6;
+  flex-wrap: nowrap; justify-content: flex-end;
+}
+body.pc .pc-corner-btn {
+  background: transparent; border: 1px solid var(--gold); color: var(--gold);
+  border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer;
+  white-space: nowrap;
+}
+body.pc .pc-corner-btn:hover { background: rgba(232,193,90,.12); }
+
+/* ---------- PC：成就页 / 图鉴页（宽屏多列） ---------- */
+body.pc #screen-achievements,
+body.pc #screen-codex { max-width: 1180px; margin: 0 auto; }
+body.pc #screen-achievements .panel,
+body.pc #screen-codex .panel { max-width: 1180px; }
+body.pc .ach-grid { grid-template-columns: repeat(3, 1fr); }
+body.pc .codex-grid { grid-template-columns: repeat(3, 1fr); }
+body.pc .ach-body,
+body.pc .codex-body { max-height: 64vh; }
+body.pc .codex-tab { font-size: 14px; padding: 7px 14px; }
+
+/* ---------- 中央场景图（异世轮回录核心机制） ---------- */
+body.pc .pc-scene {
+  position: relative;
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0e0c16;
+}
+body.pc .pc-scene-img {
+  position: absolute; inset: 0;
+  background: url('../assets/img/bg/bg_main.png') center/cover no-repeat;
+  filter: saturate(1.05);
+}
+body.pc .pc-scene::after { /* 压暗，保证热点文字可读 */
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(14,12,22,.25), rgba(14,12,22,.72));
+}
+body.pc .pc-scene-hint {
+  position: absolute; left: 0; right: 0; top: 12px; text-align: center;
+  color: #e9e2f2; font-size: 14px; letter-spacing: 2px; z-index: 3;
+  text-shadow: 0 2px 6px #000;
+}
+/* 行动热点：地图不同位置散布的方框卡片（参考异世轮回录），悬停上浮+金边+柔光，不模糊不抖动 */
+body.pc .pc-scene-nodes { position: absolute; inset: 0; z-index: 4; }
+body.pc .pc-node {
+  position: absolute; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(20,16,30,.82);
+  border: 1px solid rgba(232,193,90,.5);
+  border-radius: 8px;
+  padding: 6px 11px;
+  color: #f3eede; font-size: 13px; white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.45);
+  transition: transform .12s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+body.pc .pc-node-ico { font-size: 15px; line-height: 1; filter: saturate(.9); }
+body.pc .pc-node-label { text-shadow: 0 1px 2px #000; }
+body.pc #screen-game .pc-node:hover {
+  transform: translate(-50%, -54%);
+  border-color: var(--gold);
+  background: rgba(232,193,90,.16);
+  box-shadow: 0 0 0 2px rgba(232,193,90,.28), 0 8px 16px rgba(0,0,0,.55);
+}
+body.pc #screen-game .pc-node:active { transform: translate(-50%, -50%) scale(.97); }
+
+/* ---------- 右侧面板：仅日志（属性已上移顶部） ---------- */
+body.pc .pc-side {
+  display: flex; flex-direction: column; gap: 14px; min-height: 0;
+}
+body.pc .pc-side #log {
+  flex: 1 1 auto; min-height: 0; overflow: auto; margin: 0;
+  background: linear-gradient(180deg, #1d1926, #181420);
+  border: 2px solid var(--line); box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+}
+
+/* ---------- 底部时间流逝栏 ---------- */
+body.pc #screen-game .footer.actions {
+  align-items: center; gap: 12px; padding: 10px 12px;
+  background: linear-gradient(180deg, #221c30, #1b1726);
+  border: 2px solid var(--line); box-shadow: 4px 4px 0 rgba(0,0,0,.45);
+  border-radius: 6px;
+}
+body.pc #screen-game .year-row {
+  display: flex; gap: 12px; margin: 0; width: 100%;
+}
+body.pc #screen-game .btn-break,
+body.pc #screen-game .btn-year { flex: 1; margin: 0; }
+
+/* ---------- 移动端底部栏在 PC 隐藏（已由顶部角色/仙缘/设置替代） ---------- */
+body.pc .bottom-bar { display: none !important; }
+
+/* ---------- 其余全屏页：加宽居中、可滚动 ---------- */
+body.pc .screen:not(#screen-game):not(#screen-title):not(#screen-enter) { max-width: 1160px; }
+body.pc .screen-body { overflow: auto; min-height: 0; }
+body.pc .char-body { overflow: auto; }
+body.pc .gear-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+body.pc .bag-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: start; }
+body.pc .tech-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-items: start; }
+
+/* ---------- 弹层 / 战斗 / 秘境：居中对话卡片 ---------- */
+body.pc .chapter-overlay, body.pc .modal { padding: 24px; align-items: center; }
+body.pc .chapter-inner, body.pc .modal-inner, body.pc .adv-inner {
+  width: 92%; max-width: 1080px; max-height: 92vh; overflow: auto;
+}
+body.pc .battle-btns { flex-wrap: wrap; }
+body.pc .adv-map { max-height: 58vh; overflow: auto; }
+
+/* ---------- 标题 / 进入页 ---------- */
+body.pc #screen-title, body.pc #screen-enter { max-width: 920px; justify-content: center; }
+body.pc .title-btns { max-width: 360px; margin: 0 auto; }
+body.pc .enter-wrap { width: 100%; max-width: 760px; margin: 0 auto; }

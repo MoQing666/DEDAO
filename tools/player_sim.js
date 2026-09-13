@@ -1,7 +1,7 @@
 /* ============================================================
    DEDAO · 玩家全量测试模拟器 (player_sim.js)
    加载真实 data.js 数据表 + 复刻 engine.js 核心公式，
-   建模「正常玩家(轮回阁~600点)」与「死忠玩家(六维满9/全天赋1396)」，
+   建模「正常玩家(轮回阁~600点)」与「死忠玩家(六维满9/全天赋1406)」，
    全量叠加：聚灵阵 / 五行阵 / 丹 / 器 / 秘境产出 / 游历机缘 / 练体练神 / 宗门 / 灵根 / 命格，
    输出各境界最终战力、修炼速度、秘境BOSS与死劫通关率。
    运行: node tools/player_sim.js
@@ -15,18 +15,25 @@ const dataText = fs.readFileSync(dataPath, 'utf8');
 const NAMES = ['STAGES','BIG_REALMS','BIG_IDX','ELIXIRS','ARTIFACTS','LINGGEN_POOL','TALENTS',
   'SECTS','EQUIPS','JULING_ARRAY','WUXING_ARRAY','WUXING_ORDER','TECHNIQUES',
   'DESTINIES','REINCARNATION','GRADE_STONE','DEATH_SCALES','DEATH_REALM_BASE','DEATH_IDX_REALM',
-  'ENEMY_REALM_BASE','JIE_DATA'];
+  'DEATH_EVENTS','ENEMY_REALM_BASE','JIE_DATA'];
 const loadFn = new Function(dataText + '\n; return {' + NAMES.map(n => n + ':' + n).join(',') + '};');
 const D = loadFn();
 const { BIG_REALMS, BIG_IDX, EQUIPS, ARTIFACTS, SECTS, JULING_ARRAY, WUXING_ARRAY, WUXING_ORDER,
         TECHNIQUES, REINCARNATION, DEATH_SCALES, DEATH_REALM_BASE, DEATH_IDX_REALM,
-        ENEMY_REALM_BASE, JIE_DATA } = D;
+        DEATH_EVENTS, ENEMY_REALM_BASE, JIE_DATA } = D;
 const GRADE_ORDER = D.GRADE_ORDER || ['黄','玄','地','天','仙'];
 
-console.log('✓ 已加载真实数据表：EQUIPS=' + Object.keys(EQUIPS.head).length + '头/' +
-  Object.keys(EQUIPS.body).length + '身/' + Object.keys(EQUIPS.leg).length + '腿/' +
-  Object.keys(EQUIPS.treasure).length + '法宝; ARTIFACTS=' + Object.keys(ARTIFACTS).length +
-  '; 轮回天赋=' + REINCARNATION.length + '项');
+/* 可选：确定性随机（设 SIM_SEED 环境变量即启用），让输出快照可复现。
+   例：SIM_SEED=42 node tools/player_sim.js */
+if (process.env.SIM_SEED) {
+  let _s = (parseInt(process.env.SIM_SEED, 10) || 1) >>> 0;
+  Math.random = function () { _s = (_s * 1664525 + 1013904223) >>> 0; return _s / 4294967296; };
+}
+
+console.log('✓ 已加载真实数据表：EQUIPS=' + Object.keys(EQUIPS.weapon).length + '武器/' +
+  Object.keys(EQUIPS.head).length + '头/' + Object.keys(EQUIPS.body).length + '身/' +
+  Object.keys(EQUIPS.accessory).length + '饰/' + Object.keys(EQUIPS.treasure).length + '宝物; ARTIFACTS=' +
+  Object.keys(ARTIFACTS).length + '; 轮回天赋=' + REINCARNATION.length + '项');
 
 /* ---------- 2. 复刻 engine.js 核心计算（与游戏实码一致） ---------- */
 function bigIdxOf(s) { return D.BIG_IDX(typeof s === 'string' ? s : s.realm); }
@@ -37,14 +44,61 @@ function getDestinyAttrMult(s, attr) {
   let m = 1; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.type === 'combat' && x.effect && x.effect[attr + 'Mul']) m *= (1 + x.effect[attr + 'Mul']); }); return m;
 }
 function getDestinyBonus(s, type) {
-  let b = 0; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.type === 'combat' && x.effect && x.effect[type] != null) b += x.effect[type]; }); return b;
+  // 与 engine.js 一致：不再限定 type==='combat'（tribBonus 挂在属性类金命上）
+  let b = 0; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.effect && typeof x.effect[type] === 'number') b += x.effect[type]; }); return b;
+}
+/* 旧命格 TALENTS.apply 汇总（与 engine.js talentApply 一致） */
+function talentApply(s, key) {
+  let v = 0;
+  (s.talents || []).forEach(tid => {
+    const t = D.TALENTS.filter(x => x.id === tid)[0];
+    if (t && t.apply && t.apply[key]) v += t.apply[key];
+  });
+  return v;
+}
+/* 命格「功法类型加成」（万剑归宗 techTypeBonus{xinfa}） */
+function getTechTypeBonus(s, cls) {
+  let v = 0;
+  (s.destinies || []).forEach(d => {
+    const x = D.DESTINIES[d];
+    const b = x && x.effect && x.effect.techTypeBonus;
+    if (b && b[cls]) v += b[cls];
+  });
+  return v;
+}
+// 装备槽已由 head/body/leg 演进为 weapon/head/body/accessory；
+// 属性由扁平字段改为 main{...} 容器 + 实例词条 aff[]（忠实复刻 engine.js 的 equipStats）。
+const EQUIP_SLOTS = ['weapon', 'head', 'body', 'accessory'];
+function equipInstOf(v) {
+  if (!v) return null;
+  if (typeof v === 'string') return { id: v, aff: [] };
+  if (typeof v === 'object' && v.id) return { id: v.id, aff: Array.isArray(v.aff) ? v.aff : [] };
+  return null;
 }
 function equipStats(s) {
-  const st = { hpMax: 0, atk: 0, wu: 0, ti: 0, cult: 0 };
-  ['head', 'body', 'leg'].forEach(slot => {
-    const id = s.equip && s.equip[slot]; if (!id || !EQUIPS[slot] || !EQUIPS[slot][id]) return;
-    const it = EQUIPS[slot][id];
+  const st = { hpMax: 0, atk: 0, def: 0, critPct: 0, atkSpd: 0, recover: 0, mpPct: 0, hpPct: 0, wu: 0, ti: 0, cult: 0 };
+  EQUIP_SLOTS.forEach(slot => {
+    const inst = equipInstOf(s.equip && s.equip[slot]); if (!inst) return;
+    const it = EQUIPS[slot] && EQUIPS[slot][inst.id]; if (!it) return;
+    if (it.main) {
+      st.atk += (it.main.atk || 0) + (it.main.atk2 || 0);   // 锤的 atk2 视作额外攻击
+      st.def += it.main.def || 0;
+      st.critPct += it.main.critPct || 0;
+      st.atkSpd += it.main.atkSpd || 0;
+      st.recover += it.main.recover || 0;
+      st.mpPct += it.main.mpPct || 0;
+      st.hpPct += it.main.hpPct || 0;
+    }
     st.hpMax += it.hpMax || 0; st.atk += it.atk || 0; st.wu += it.wu || 0; st.ti += it.ti || 0; st.cult += it.cult || 0;
+    inst.aff.forEach(a => {
+      if (a.key === 'atk') st.atk += a.val;
+      else if (a.key === 'def') st.def += a.val;
+      else if (a.key === 'critPct') st.critPct += a.val;
+      else if (a.key === 'atkSpd') st.atkSpd += a.val;
+      else if (a.key === 'recover') st.recover += a.val;
+      else if (a.key === 'mpPct') st.mpPct += a.val;
+      else if (a.key === 'hpPct') st.hpPct += a.val;
+    });
   });
   if (Array.isArray(s.equip.treasure)) s.equip.treasure.forEach(id => {
     const it = EQUIPS.treasure && EQUIPS.treasure[id]; if (!it) return;
@@ -54,10 +108,11 @@ function equipStats(s) {
 }
 function artifactStats(s) {
   const A = ARTIFACTS;
-  const st = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0, atk: 0, hpMax: 0, def: 0, critPct: 0, dodgePct: 0, defPct: 0, atkPct: 0, cult: 0, stealPct: 0, defToAtk: 0, tiHpBonus: 0, duantiEff: 0, duantiMax: 0, craftEff: 0, farmEff: 0, mineEff: 0, stoneYearPct: 0, cultTwice: false, modeBonus: { normal: 0, focus: 0, seclusion: 0 }, craftKind: {} };
-  (s.arts || []).forEach(id => {
+  const st = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0, atk: 0, hpMax: 0, def: 0, critPct: 0, dodgePct: 0, defPct: 0, atkPct: 0, atkSpd: 0, cult: 0, stealPct: 0, defToAtk: 0, tiHpBonus: 0, duantiEff: 0, duantiShenEff: 0, duantiMax: 0, craftEff: 0, farmEff: 0, mineEff: 0, stoneYearPct: 0, cultTwice: false, modeBonus: { normal: 0, focus: 0, seclusion: 0 }, craftKind: {} };
+  // 法宝现统一装备于宝物槽 s.equip.treasure（s.arts 库存不生效），忠实复刻 engine.js
+  ((s.equip && s.equip.treasure) || []).forEach(id => {
     const a = A[id]; if (!a || !a.effect) return; const e = a.effect;
-    ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct'].forEach(k => { if (e[k]) st[k] += e[k]; });
+    ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiShenEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct', 'atkSpd'].forEach(k => { if (e[k]) st[k] += e[k]; });
     if (e.modeBonus) { st.modeBonus.normal += e.modeBonus.normal || 0; st.modeBonus.focus += e.modeBonus.focus || 0; st.modeBonus.seclusion += e.modeBonus.seclusion || 0; }
     if (e.craftKind) { for (const k in e.craftKind) st.craftKind[k] = (st.craftKind[k] || 0) + e.craftKind[k]; }
     if (e.cultTwice) st.cultTwice = true;
@@ -65,7 +120,7 @@ function artifactStats(s) {
     if (a.stack && a.stack.stat) { st[a.stack.stat] += Math.min((s.killCount || 0) * (a.stack.per || 1), a.stack.cap || 0); }
     if (e.lowHpAtk) { const ratio = 1 - (s.hp || 0) / (s.hpMax || 1); st.atkPct += Math.min(ratio * e.lowHpAtk, e.lowCap || 0.40); }
     if (e.daoAtkPct) { st.atkPct += Math.min((s.dao || 0) * e.daoAtkPct, e.daoCap || 0.30); }
-    if (e.defToAtk) { const defVal = (s.flatDef || 0) + Math.round((s.earthPct || 0) * 100 + (s.jinylvDef || 0) * 100); st.atk += Math.round(defVal * e.defToAtk); }
+    // 棘鳞甲 defToAtk 移至 calcAtk 结算（依赖统一口径防御，需待 artDef 就绪）
   });
   return st;
 }
@@ -83,20 +138,30 @@ function applyWuxing(s, attr, base) {
   return base * mul;
 }
 function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k) + ((s.artAttr && s.artAttr[k]) || 0); }
+/* 当前「装备心法」本体 + 其附加效果（与 engine.js 同口径：只认已装备的那一本） */
+function xinfaCur(s) { return (s.techEquip && s.techEquip.xinfa && TECHNIQUES[s.techEquip.xinfa]) || null; }
+function getXinfaAtkMul(s) { const t = xinfaCur(s); return (t && t.atkMul) || 0; }
+function getXinfaSpellMul(s) { const t = xinfaCur(s); return (t && t.spellMul) || 0; }
+function getXinfaGuard(s) { const t = xinfaCur(s); return (t && t.guard) || 0; }
+function getXinfaHpMax(s) { const t = xinfaCur(s); return (t && t.hpMax) || 0; }
+function getXinfaReduceDmg(s) { const t = xinfaCur(s); return (t && t.reduceDmg) || 0; }
 function techMult(s) {
+  const bonus = 1 + getTechTypeBonus(s, 'xinfa');
   const x = s.techEquip && s.techEquip.xinfa && TECHNIQUES[s.techEquip.xinfa];
-  if (x && x.mult) return x.mult;
+  if (x && x.mult) return x.mult * bonus;
   if (!s.techs.length) return 1;
-  let m = 1; s.techs.forEach(t => { const y = TECHNIQUES[t]; if (y && y.mult > m) m = y.mult; }); return m;
+  let m = 1; s.techs.forEach(t => { const y = TECHNIQUES[t]; if (y && y.mult > m) m = y.mult; }); return m > 1 ? m * bonus : m;
 }
 function calcHpMax(s) {
-  const tiCoeff = 50 * (1 + (artifactStats(s).tiHpBonus || 0));
+  const tiCoeff = 50 * (1 + (artifactStats(s).tiHpBonus || 0)) * (talentApply(s, 'tiMul') || 1);
   let m = 80 + effAttr(s, 'ti') * tiCoeff + bigIdxOf(s) * 80;
   const eff = linggenTrait(s); if (eff && eff.hpMax) m += eff.hpMax;
   if (s.sect && SECTS[s.sect] && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
   m += s.hpMaxBonus || 0;
   m += equipStats(s).hpMax;
   m += artifactStats(s).hpMax;
+  m += getXinfaHpMax(s);   // 玄天门系心法固定气血（护山心经+50/天罡心法+100/玄武真经+150）
+  m = Math.round(m * (1 + (equipStats(s).hpPct || 0) / 100));   // 装备「气血上限 %」
   m = applyWuxing(s, 'hpMax', m);
   return Math.round(m);
 }
@@ -109,10 +174,12 @@ function calcAtk(s) {
   if (s.sect && SECTS[s.sect] && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
   let tAM = 0; s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.atkMul) tAM += t.apply.atkMul; }); if (tAM > 0) a *= (1 + tAM);
   a *= getDestinyAttrMult(s, 'atk');
+  a *= (1 + getXinfaAtkMul(s));   // 宗门心法攻击加成（青云剑诀+5% … 太虚剑典+20%）
   s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.allMul) a *= (1 + t.apply.allMul); });
   a += s.extraAtk || 0;
   a += equipStats(s).atk;
   const art = artifactStats(s); a += art.atk;
+  if (art.defToAtk) a += Math.round(getDefense(s) * art.defToAtk);   // 棘鳞甲：防御值×N 转攻击（统一口径）
   a = Math.round(a * (1 + art.atkPct));
   a = applyWuxing(s, 'atk', a);
   return Math.round(a);
@@ -120,6 +187,7 @@ function calcAtk(s) {
 function calcMpMax(s) {
   let m = 20 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
   const eff = linggenTrait(s); if (eff && eff.mpMax) m += eff.mpMax;
+  m = Math.round(m * (1 + (equipStats(s).mpPct || 0) / 100));   // 装备「灵力上限 %」
   m = applyWuxing(s, 'mpMax', m);
   return Math.round(m);
 }
@@ -143,8 +211,15 @@ function cultGain(s) {
   if ((s.elixirs && s.elixirs.juling || 0) > 0) { s.elixirs.juling--; if (s.elixirs.juling <= 0) delete s.elixirs.juling; g *= 1.2; }
   return Math.round(g);
 }
-function getCritRate(s) { return effAttr(s, 'shen') * 0.01 + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct; }
-function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
+function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100; }
+function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
+/* 防御：唯一权威口径（与 engine.js getDefense/getDefensePct/getDefenseDiv 逐字一致） */
+function getDefense(s) {
+  const base = Math.round(Math.round(effAttr(s, 'ti') * 0.5) * getDestinyAttrMult(s, 'def'));
+  return base + (equipStats(s).def || 0) + (s.flatDef || 0) + (s.artDef || 0);
+}
+function getDefensePct(s) { return Math.min(0.9, (s.earthPct || 0) + (s.artDefPct || 0)); }
+function getDefenseDiv(s) { return s.jinylvDef || 0; }
 function refresh(s) {
   const a = artifactStats(s);
   s.artAttr = { wu: a.wu, ti: a.ti, dun: a.dun, shen: a.shen, dao: a.dao, ling: a.ling };
@@ -223,13 +298,19 @@ function applyReinc(s, inv) {
 }
 // 正常玩家：六维停在5（死忠才叠到9），其余天赋拉满到~600点预算（旧版上限）
 const NORMAL_INV = { wu: 5, ti: 5, dun: 5, shen: 5, dao: 5, ling: 5, stone: 4, life20: 3, alchemy: 3, forge: 3, herbGrow: 3, extraField: 3, destinySlot: 1, extraDestiny: 1, cult: 5, shesheng: 3, lvling_bottle: 3, juling0: 3 };
-// 死忠玩家：全部天赋拉满（1396点，六维满9）
+// 死忠玩家：全部天赋拉满（1406点，六维满9）
 const HARDCORE_INV = {}; REINCARNATION.forEach(r => HARDCORE_INV[r.id] = r.max);
 
 /* ---------- 4. 装备/法宝/练体练神 选择器 ---------- */
 function pickEquip(slot, maxTier, n) {
   const items = [];
-  for (const id in EQUIPS[slot]) { const it = EQUIPS[slot][id]; if (it.tier > maxTier) continue; items.push({ id, score: it.tier * 1000 + ((it.atk || 0) + (it.hpMax || 0)) }); }
+  for (const id in EQUIPS[slot]) {
+    const it = EQUIPS[slot][id];
+    if (it.tier > maxTier) continue;
+    const mn = it.main || {};
+    const score = it.tier * 1000 + (mn.atk || 0) + (mn.atk2 || 0) + (mn.def || 0) + (it.atk || 0) + (it.hpMax || 0);
+    items.push({ id, score });
+  }
   items.sort((a, b) => b.score - a.score);
   return items.slice(0, n).map(x => x.id);
 }
@@ -241,7 +322,7 @@ function buildProfile(kind, realm) {
   const s = {
     realm, idx: bigIdxOf(realm), year: 0, wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0,
     hp: undefined, mp: undefined, stone: 0, lifeMax: 150, elixirs: {}, arts: [],
-    equip: { head: null, body: null, leg: null, treasure: [] }, techs: [], techEquip: {},
+    equip: { weapon: null, head: null, body: null, accessory: null, treasure: [] }, techs: [], techEquip: {},
     linggen: null, sect: null, talents: [], destinies: [], array: { juling: { level: 0 }, wuxing: {} },
     craft: { zhenfa: { lv: 1 } }, flags: {}, reinc: {}, hpMaxBonus: 0, killCount: 0
   };
@@ -271,9 +352,10 @@ function buildProfile(kind, realm) {
 
   // 装备品级随境界：炼气tier2 / 筑基3 / 金丹4 / 元婴5
   const mt = bi + 2;
+  s.equip.weapon = pickEquip('weapon', mt, 1)[0];
   s.equip.head = pickEquip('head', mt, 1)[0];
   s.equip.body = pickEquip('body', mt, 1)[0];
-  s.equip.leg = pickEquip('leg', mt, 1)[0];
+  s.equip.accessory = pickEquip('accessory', mt, 1)[0];
   s.equip.treasure = pickEquip('treasure', mt, kind === 'hardcore' ? Math.min(4, R) : 1);
 
   // 法宝数量随境界累积
@@ -281,7 +363,8 @@ function buildProfile(kind, realm) {
     ? ['tianlinggen', 'cuishen_tai', 'jiuzhuan_jindanlu', 'juling_art', 'jubao', 'youhun_pijian']
     : ['juling_art', 'jubao', 'juling_yaodai'];
   const nArt = kind === 'hardcore' ? Math.min(fullArt.length, R) : 1;
-  s.arts = pickArtifact(s, fullArt.slice(0, nArt));
+  // 法宝现统一装备于宝物槽（与宝物共用 s.equip.treasure），s.arts 库存不生效
+  s.equip.treasure = s.equip.treasure.concat(pickArtifact(s, fullArt.slice(0, nArt)));
 
   // 聚灵阵 + 五行阵 随境界提升
   if (kind === 'hardcore') { s.array.juling.level = Math.min(3, R); s.array.wuxing = { fire: true, metal: true, water: true, wood: true, earth: true }; s.craft.zhenfa.lv = Math.min(5, R); }
@@ -308,20 +391,29 @@ function combatSim(p, enemy, trials = 3000) {
   const spell = SPELL_BY_REALM[p.realm], dm = SPELL_DMG[spell], cost = SPELL_COST[spell];
   const crit = Math.min(0.9, getCritRate(p));
   const dodge = Math.min(0.8, getDodgeRate(p));
-  const defPct = (p.artDefPct || 0) + (p.earthPct || 0) + (p.jinylvDef || 0) + getDestinyBonus(p, 'defMul');
-  const flatDef = p.flatDef || 0;
+  const defPct = getDefensePct(p);
+  const defAbs = getDefense(p);
+  const defDiv = getDefenseDiv(p);
+  // 心法常驻减伤（玄天门 guard + 玄武真经 reduceDmg），与 engine.js enemyAtkRoll 同序：护盾 → 百分比 → 绝对 → 除算
+  const xinfaShield = Math.min(0.9, getXinfaGuard(p) + getXinfaReduceDmg(p));
+  const spellMul = 1 + getXinfaSpellMul(p);
   let wins = 0, takenSum = 0, roundsSum = 0;
   for (let t = 0; t < trials; t++) {
     let php = p.hp, ehp = enemy.hp, pmp = p.mp, round = 0, dead = false, taken = 0;
     while (ehp > 0 && php > 0 && round < 400) {
       round++;
       let dmg = p.atk;
-      if (pmp >= cost) { dmg = p.atk * dm; pmp -= cost; }
+      if (pmp >= cost) { dmg = p.atk * dm * spellMul; pmp -= cost; }
       if (Math.random() < crit) dmg *= 2;
       ehp -= dmg;
       if (ehp <= 0) break;
       if (Math.random() < dodge) continue; // 闪避
-      let dIn = Math.max(1, Math.round(enemy.atk * (1 - Math.min(0.85, defPct)) - flatDef));
+      // 防御减伤：护盾(心法) → 百分比 → 绝对 → 除算（与 engine.js enemyAtkRoll 同序同口径）
+      let dIn = enemy.atk;
+      if (xinfaShield > 0) dIn = Math.round(dIn * (1 - xinfaShield));
+      dIn = Math.round(dIn * (1 - defPct));
+      dIn = Math.max(1, dIn - defAbs);
+      if (defDiv > 0) dIn = Math.max(1, Math.round(dIn / (1 + defDiv)));
       php -= dIn; taken += dIn;
       if (php <= 0) { dead = true; break; }
     }
@@ -353,7 +445,9 @@ function advEnemy(p, tier, depth, boss, elite, jie) {
   return { hp: st.hp, atk: st.atk, hits };
 }
 // 死劫动态（deathEnemyDynamic 复刻 engine.js v4：固定境界基准 × 递增系数 × 叠劫，不再随玩家自身攻/血缩放）
-const DEATH_YEAR = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140];
+// 死劫年份直接取自 data.js 的 DEATH_EVENTS（v6 起为 5 劫：18/36/49/64/81），
+// 不再硬编码旧的 14 劫 × 10 年（旧表会让 idx≥5 越界，回落到默认木桩 → 通关率假 100%）。
+const DEATH_YEAR = (DEATH_EVENTS || []).map(e => e.year);
 function deathEnemyDynamic(p, idx, jieDiff) {
   const sc = (DEATH_SCALES && DEATH_SCALES[idx]) ? DEATH_SCALES[idx] : { atkMul: 1, hpMul: 1 };
   const base = (DEATH_REALM_BASE && DEATH_REALM_BASE[DEATH_IDX_REALM[idx]]) ? DEATH_REALM_BASE[DEATH_IDX_REALM[idx]] : { atk: 10, hp: 180 };
@@ -371,9 +465,9 @@ console.log('\n================= 玩家全量数值测试 =================\n');
 
 // 7.1 各境界最终战力
 ['normal', 'hardcore'].forEach(kind => {
-  const label = kind === 'normal' ? '正常玩家(轮回阁~600点)' : '死忠玩家(六维满9/全天赋1396)';
+  const label = kind === 'normal' ? '正常玩家(轮回阁~600点)' : '死忠玩家(六维满9/全天赋1406)';
   console.log('──── ' + label + ' ────');
-  console.log('境界 | 轮回阁花费 | 攻(atk) | 血(hp) | 灵力(mp) | 修炼/次 | 暴击% | 闪避% | 减伤%');
+  console.log('境界 | 轮回阁花费 | 攻(atk) | 血(hp) | 灵力(mp) | 修炼/次 | 暴击% | 闪避% | 防御');
   realms.forEach(r => {
     const s = buildProfile(kind, r);
     const cg = cultGain(s);
@@ -382,7 +476,7 @@ console.log('\n================= 玩家全量数值测试 =================\n');
       String(s.atk).padStart(6) + ' | ' + String(s.hpMax).padStart(6) + ' | ' + String(s.mpMax).padStart(6) + ' | ' +
       String(cg).padStart(6) + ' | ' + (getCritRate(s) * 100).toFixed(0).padStart(5) + ' | ' +
       (getDodgeRate(s) * 100).toFixed(0).padStart(5) + ' | ' +
-      (((s.artDefPct || 0) + (s.earthPct || 0) + (s.jinylvDef || 0)) * 100).toFixed(0).padStart(4));
+      String(getDefense(s)).padStart(4));
   });
   console.log('');
 });
@@ -405,7 +499,7 @@ console.log('玩家 | 境界 | jie0 d9BOSS | jie3 d9BOSS(1.5×) | jie0 d9精英 
 // 7.3 死劫动态通关率（按死劫年份对应境界，jie0/3/6）
 console.log('\n──── 死劫动态通关率（按触发年份对应境界，叠劫 jie0/3/6）────');
 console.log('死劫 | 年份 | 境界 | 死忠jie0 | 死忠jie3(1.5×) | 死忠jie6(2.4×) | 死忠jie9(4.0×) | 正常jie0 | 正常jie6(2.4×)');
-DEATH_YEAR.slice(0, 8).forEach((yr, i) => {
+DEATH_YEAR.forEach((yr, i) => {
   const r = realmByYear(yr);
   const hc = buildProfile('hardcore', r), nm = buildProfile('normal', r);
   const h0 = combatSim(hc, deathEnemyDynamic(hc, i, 1.0));
@@ -418,13 +512,14 @@ DEATH_YEAR.slice(0, 8).forEach((yr, i) => {
     pct(h0.win) + ' | ' + pct(h3.win) + ' | ' + pct(h6.win) + ' | ' + pct(h9.win) + ' | ' + pct(n0.win) + ' | ' + pct(n6.win));
 });
 
-console.log('\n说明: 战斗为单场BOSS下限压力测试，未含秘境途中治疗/丹药即时服用/法宝激活/连续多敌；减伤%含灵根土词条+五行阵土阵+金缕衣。');
+console.log('\n说明: 战斗为单场BOSS下限压力测试，未含秘境途中治疗/丹药即时服用/法宝激活/连续多敌；防御=统一口径（体魄×0.5×命格 + 装备/法宝/灵根防御），减伤流程为 心法guard/reduceDmg → 土阵%/法宝% → 绝对防御 → 金缕衣除算。');
 
 /* ---------- 8. 命格全样本蒙特卡洛测试（普通2命格 / 硬核3命格 / 硬核3劫后可能3仙命） ---------- */
 console.log('\n================= 命格全样本蒙特卡洛测试 =================\n');
 const MC_N = 400;          // 每类样本数
 const MC_TRIALS = 150;     // 每个样本的战斗模拟次数
-const DEATH_TEST_JD = 2.4; // 第9死劫统一在 jie6 叠劫压力下测，以公平暴露命格/养成价值（不再随玩家自身攻血缩放后，通关率由实际战力决定）
+const DEATH_TEST_JD = 2.4; // 末劫（第 5 死劫）统一在 jie6 叠劫压力下测，以公平暴露命格/养成价值（不再随玩家自身攻血缩放后，通关率由实际战力决定）
+const DEATH_LAST_IDX = Math.max(0, DEATH_YEAR.length - 1); // 末劫下标（v6 起 = 4，即第 5 死劫 · 元婴）
 function classifyDest(dests) {
   if (dests.length === 3 && dests.every(d => D.DESTINIES[d].grade === '金')) return '3仙命';
   return dests.length + '命格';
@@ -442,11 +537,11 @@ function classifyDest(dests) {
     b.atk += s.atk; b.hp += s.hpMax;
     const boss = advEnemy(s, 'tian', 9, true, false, jie);
     b.bossWin += combatSim(s, boss, MC_TRIALS).win;
-    const death = deathEnemyDynamic(s, 8, DEATH_TEST_JD);   // 第9死劫（统一 jie6 叠劫压力，公平比命格价值）
+    const death = deathEnemyDynamic(s, DEATH_LAST_IDX, DEATH_TEST_JD);   // 末劫（第5死劫 · 元婴，统一 jie6 叠劫压力，公平比命格价值）
     b.deathWin += combatSim(s, death, MC_TRIALS).win;
   }
   console.log('──── ' + label + '（样本 ' + MC_N + '，境界=' + r + '，测验 XIANMING_CHANCE=' + XIANMING_CHANCE + '）────');
-  console.log('命格档 | 占比 | 均值攻 | 均值血 | d9BOSS通关 | 第9死劫通关(@jie6压力)');
+  console.log('命格档 | 占比 | 均值攻 | 均值血 | d9BOSS通关 | 末劫通关(@jie6压力)');
   Object.keys(buckets).forEach(cls => {
     const b = buckets[cls];
     console.log(

@@ -139,5 +139,19 @@ module.exports = async function build() {
     t.ok(r3 && r3.id && r3.id.indexOf('xian_') === 0, '次年可再次探寻 NPC 缘法');
   });
 
+  S.case('探寻仙缘：无可寻访 NPC 时不扣点、不占次数', (t) => {
+    const s = freshState(3);
+    // 不标记任何 ml_0_4/ml_0_6/ml_1_0 —— 无已解锁的 travel NPC
+    const ap0 = s.actionsLeft;
+    const r = E.seekNpcXianyuan(s);
+    t.eq(typeof r, 'string', '应返回提示文案而非事件');
+    t.ok(r.indexOf('遍寻不见') < 0, '不应再弹「遍寻不见」死文案：' + r);
+    t.eq(s.npcTravelYearCount || 0, 0, '空池不应占用本年探寻次数');
+    t.eq(s.actionsLeft, ap0, '空池不应扣除行动点');
+    // 同年再点也不应累计次数（避免连点刷屏）
+    E.seekNpcXianyuan(s);
+    t.eq(s.npcTravelYearCount || 0, 0, '空池连点仍不占次数');
+  });
+
   return S;
 };

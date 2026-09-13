@@ -11,3 +11,13 @@ test/reports/
 
 # 仿真输出（自动产物）
 tools/player_sim_output.txt
+
+# 内部 AI 工作区（非游戏代码，不公开）
+.workbuddy/
+
+# Python 字节码
+__pycache__/
+*.pyc
+
+# 临时复现脚本（调试用，非项目代码）
+test/automated/_repro_*.js

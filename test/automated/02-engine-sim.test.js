@@ -31,7 +31,7 @@ module.exports = async function build() {
   S.case('Engine 与核心接口可用', (t) => {
     t.ok(!!E, 'Engine 未导出');
     const need = ['startLife', 'commitStart', 'cultivate', 'breakthrough', 'endYear',
-      'combatStart', 'combatAuto', 'saveState', 'loadState', 'applyOps', 'endLife',
+      'combatStart', 'simBattle', 'saveState', 'loadState', 'applyOps', 'endLife',
       'actionPoints', 'requireNeed', 'equipStats', 'useElixir'];
     const miss = need.filter(k => typeof E[k] !== 'function');
     if (miss.length) t.fail(`缺少接口: ${miss.join(', ')}`);
@@ -87,10 +87,10 @@ module.exports = async function build() {
     t.eq(s.artAttr.dao, 2, '灵狐佩未使 artAttr.dao=2');
     t.eq(E.effAttr(s, 'dao'), dao0 + 2, '灵狐佩未使等价道心 +2');
 
-    // 铜钱剑：攻击 +5 → s.atk
+    // 铜钱剑：攻击 +5% → s.atk（旧版 atk+5 已改为 atkPct:0.05）
     const atkB = s.atk;
     E.applyOps(s, { art: 'tongqian_jian' });
-    t.eq(s.atk, atkB + 5, '铜钱剑未使攻击 +5');
+    t.eq(s.atk, Math.round(atkB * 1.05), '铜钱剑未使攻击 +5%');
 
     // 聚灵珠：修炼 +5% → cultGain 提升
     const gMid = E.cultGain(s).gain;
@@ -112,7 +112,7 @@ module.exports = async function build() {
     E.applyOps(s, { art: 'shiting_yuehua' });
     t.eq(s.cultMax, 2, '时停月华未使 cultMax=2');
 
-    // 巨灵腰带：体魄气血 +25% → s.hpMax 提升
+    // 巨灵腰带：体魄气血 +50% → s.hpMax 提升
     const hpB = s.hpMax;
     E.applyOps(s, { art: 'juling_yaodai' });
     t.gt(s.hpMax, hpB, '巨灵腰带未提升气血上限');
@@ -323,8 +323,8 @@ module.exports = async function build() {
             if (res && typeof res === 'object') {
               if (res.ops) E2.applyOps(s, res.ops);
             }
-            // 触发战斗则自动打完（combatAuto 内部跑完整场）
-            if (s.battle) { const br = E2.combatAuto(s); if (br && br.done) s.battle = null; }
+            // 触发战斗则用 headless 解析器跑完（simBattle 仅供测试，不参与游戏内流程）
+            if (s.battle) { const br = E2.simBattle(s); if (br && br.done) s.battle = null; }
           } catch (e) {
             errors.push(`第${L}局 y${s.year} action: ${e.message}`);
             s.actionsLeft = 0;
@@ -378,7 +378,7 @@ module.exports = async function build() {
             else if (r < 0.75) E2.explore(s);
             else if (r < 0.9) E2.social(s);
             else { const need = E2.requireNeed(s); if (s.qi >= need) { E2.breakthrough(s); E2.normalBreakthrough(s); } else E2.cultivate(s); }
-            if (s.battle) { const br = E2.combatAuto(s); if (br && br.done) s.battle = null; }
+            if (s.battle) { const br = E2.simBattle(s); if (br && br.done) s.battle = null; }
           } catch (e) { s.actionsLeft = 0; }
         }
         try { E2.endYear(s); } catch (e) { break; }
@@ -411,7 +411,7 @@ module.exports = async function build() {
     t.eq(r1.left, 9, '首次锻体后剩余应为 9');
   });
 
-  S.case('doDuanti：行动点消耗（体魄1/遁速1/神识2）', (t) => {
+  S.case('doDuanti：行动点消耗（体魄1/遁速1）', (t) => {
     const s = E.startLife('锻体乙');
     E.commitStart(s, TALENTS[0].id);
     s.flags = { duanti: 1 };
@@ -421,10 +421,8 @@ module.exports = async function build() {
     t.eq(s.actionsLeft, a0 - 1, '淬体魄应耗 1 点');
     E.doDuanti(s, 'dun');
     t.eq(s.actionsLeft, a0 - 2, '炼遁速应耗 1 点');
-    E.doDuanti(s, 'shen');
-    t.eq(s.actionsLeft, a0 - 4, '凝神识应耗 2 点');
+    t.gte(s.ti || 0, 0.5, '体魄应 +0.5');
     t.gte(s.dun || 0, 0.5, '遁速应 +0.5');
-    t.gte(s.shen || 0, 0.5, '神识应 +0.5');
   });
 
   S.case('doDuanti：每大境界每种至多10次，行动点不足拒绝', (t) => {
@@ -497,21 +495,22 @@ module.exports = async function build() {
   S.case('出售装备：同名只卖一件，已穿戴的不受影响', (t) => {
     const s = E.startLife('出售甲');
     E.commitStart(s, TALENTS[0].id);
-    const eid = E.randomEquip(0, 1);
-    t.ok(!!eid && !!E.findEquip(eid), '应能生成合法装备');
-    s.inventory.push(eid, eid, eid); // 袋中三件同名
+    const eid = E.randomEquip(0, 1);   // 返回实例 {id, aff}
+    const eidStr = (eid && eid.id) ? eid.id : eid;
+    t.ok(!!eidStr && !!E.findEquip(eidStr), '应能生成合法装备');
+    s.inventory.push(eid, eid, eid); // 袋中三件同名（实例对象）
     if (!Array.isArray(s.equip.treasure)) s.equip.treasure = [];
-    s.equip.treasure.push(eid);      // 法宝位也穿戴了同 ID
+    s.equip.treasure.push(eidStr);      // 法宝位也穿戴了同 ID
     const stone0 = s.stone;
     const g = E.sellEquip(s, eid);
     t.eq(typeof g, 'number', '出售一件应返回灵石');
-    t.eq(s.inventory.filter(function (x) { return x === eid; }).length, 2, '应只剩两件同名');
-    t.eq(s.equip.treasure.indexOf(eid) >= 0, true, '已穿戴的法宝不应被卖掉');
+    t.eq(s.inventory.filter(function (x) { const e = (x && x.id) ? x : { id: x }; return e.id === eidStr; }).length, 2, '应只剩两件同名');
+    t.eq(s.equip.treasure.indexOf(eidStr) >= 0, true, '已穿戴的法宝不应被卖掉');
     t.eq(s.stone, stone0 + g, '灵石应增加半价');
     const r = E.sellEquipAll(s, eid);
     t.eq(r.count, 2, '全部出售应卖掉剩余两件');
-    t.eq(s.inventory.filter(function (x) { return x === eid; }).length, 0, '袋中同名应清空');
-    t.eq(s.equip.treasure.indexOf(eid) >= 0, true, '全部出售也不动已穿戴');
+    t.eq(s.inventory.filter(function (x) { const e = (x && x.id) ? x : { id: x }; return e.id === eidStr; }).length, 0, '袋中同名应清空');
+    t.eq(s.equip.treasure.indexOf(eidStr) >= 0, true, '全部出售也不动已穿戴');
   });
 
   S.case('宗门商人：单货币按类型（丹药/灵材=功业，功法/装备/法宝=灵石）', (t) => {
@@ -545,11 +544,78 @@ module.exports = async function build() {
     t.eq(s0 - s.stone, 100, '青锋剑应扣灵石 100');
     t.eq(s.gongye, g0, '青锋剑不应扣功业');
 
-    r = E.sectBuy(s, 'duangu_bian');                      // 锻骨鞭(art 地) 灵石 GRADE_STONE.地=1400
-    t.ok(r.ok, '锻骨鞭购买应成功: ' + r.msg);
-    t.ok((s.arts.indexOf('duangu_bian') >= 0) || (s.equip.treasure.indexOf('duangu_bian') >= 0), '锻骨鞭应已获得（库存或已装备）');
-    t.eq(s0 - s.stone, 100 + GRADE_STONE['地'], '锻骨鞭灵石应为 GRADE_STONE.地=1400（实扣含青锋剑100）');
+    r = E.sectBuy(s, 'duangu_bian');                      // 锻骨池(art 玄·stoneFix) 灵石 1800
+    t.ok(r.ok, '锻骨池购买应成功: ' + r.msg);
+    t.ok((s.arts.indexOf('duangu_bian') >= 0) || (s.equip.treasure.indexOf('duangu_bian') >= 0), '锻骨池应已获得（库存或已装备）');
+    t.eq(s0 - s.stone, 100 + 1800, '锻骨池灵石应为 stoneFix=1800（实扣含青锋剑100）');
     t.eq(s.gongye, g0, '法宝不应扣功业（单货币）');
+  });
+
+  S.case('法宝效率分离：淬神台(duantiShenEff) 提升宗门神识/灵力锤炼，锻骨池(duantiEff) 不影响', (t) => {
+    const s = E.startLife('淬神台分离');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];
+    s.actionsLeft = 20;
+    s.shen = 0; s.ling = 0;
+    s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
+    s.equip.treasure = []; s.arts = [];   // 清空法宝，确保淬神台进装备槽生效
+    // 基准（无淬神台）：神识 +1
+    E.sectTrain(s, 'shen');
+    const baseGain = s.shen;
+    t.eq(baseGain, 1, '无淬神台时神识锤炼应为 +1');
+    // 授予淬神台（自动装备到法宝槽，duantiShenEff=0.5 → 神识/灵力 +1.5）
+    E.applyOps(s, { art: 'cuishen_tai' });
+    t.ok(s.equip.treasure.indexOf('cuishen_tai') >= 0, '淬神台应已装备到法宝槽');
+    const shenBefore = s.shen, lingBefore = s.ling;
+    E.sectTrain(s, 'shen');
+    E.sectTrain(s, 'ling');
+    t.gt(s.shen - shenBefore, baseGain, '淬神台应提升神识锤炼收益（duantiShenEff）');
+    t.gt(s.ling - lingBefore, 1, '淬神台应提升灵力锤炼收益（duantiShenEff）');
+    // 反向确认：锻骨池(duantiEff 体魄+遁速) 不影响宗门神识/灵力
+    const shenB2 = s.shen;
+    E.applyOps(s, { art: 'duangu_bian' });
+    E.sectTrain(s, 'shen');
+    t.eq(s.shen - shenB2, 1.5, '锻骨池(duantiEff) 不应影响宗门神识锤炼（仍 +1.5 来自淬神台）');
+  });
+
+  S.case('攻速法宝踏风履：atkSpd 接通 getExtraAtkChance（与装备同单位·百分点）', (t) => {
+    const s = E.startLife('踏风履');
+    E.commitStart(s, TALENTS[0].id);
+    s.dun = 0; s.extraAtk = 0; s.equip.treasure = []; s.arts = [];
+    const base = E.getExtraAtkChance(s);
+    E.applyOps(s, { art: 'tafeng_lv' });   // 自动装备，effect.atkSpd=10（百分点）
+    t.ok(s.equip.treasure.indexOf('tafeng_lv') >= 0, '踏风履应已装备到法宝槽');
+    const withArt = E.getExtraAtkChance(s);
+    t.ok(Math.abs((withArt - base) - 0.10) < 1e-6, '踏风履应提供 +10% 额外攻击几率（atkSpd:10 / 100），实得 ' + ((withArt - base) * 100) + '%');
+  });
+
+  S.case('山河探索：独立事件池 & 5 个掉宝 BOSS 已迁移 & 踏风履掉落', (t) => {
+    const EV = G.get('EVENTS') || {};
+    const shanhe = EV.shanhe || [];
+    t.ok(shanhe.length >= 13, '山河探索池应含战斗+非战斗事件，实际 ' + shanhe.length + ' 件');
+    const ids = shanhe.map(e => e.id);
+    ['baigu_gumu', 'han_feng_tan', 'wangu_dong', 'leichi', 'huangshen_tan', 'shanhe_tafeng', 'shanhe_lingquan', 'shanhe_guguan',
+      'shanhe_gudong', 'shanhe_yize', 'shanhe_lingyao', 'shanhe_canbei', 'shanhe_shanmin'].forEach(id => {
+      t.ok(ids.indexOf(id) >= 0, '山河池应含事件 ' + id);
+    });
+    const ART = G.get('ARTIFACTS') || {};
+    ['youhun_pijian', 'xuanwu_guijia', 'dixue_ren', 'jilin_jia', 'panshi_kai', 'tafeng_lv'].forEach(a => {
+      t.ok(ART[a], '山河掉落法宝应存在于 ARTIFACTS: ' + a);
+    });
+    // 引擎可触发：高境界角色连续山河探索应返回 multi 事件选择
+    const s = E.startLife('山河探索');
+    E.commitStart(s, TALENTS[0].id);
+    s.idx = 14; s.actionsLeft = 20;
+    let got = 0;
+    for (let i = 0; i < 6; i++) {
+      const r = E.shanheExplore(s);
+      if (r && r.multi) got++; else break;
+    }
+    t.ok(got > 0, '山河探索应能返回 multi 事件选择（实际 ' + got + ' 次）');
+    // 每年一次：本年已用 1 次后，再次探索应返回上限提示（字符串），不再给事件
+    const capMsg = E.shanheExplore(s);
+    t.ok(typeof capMsg === 'string', '每年一次：本年已达上限后再次山河探索应返回提示而非事件（实际 ' + (capMsg && capMsg.multi ? '仍返回事件' : '提示') + '）');
   });
 
   S.case('宗门门禁：未过考验/杂役 商人无货、任务不可接、不可购', (t) => {
@@ -745,6 +811,432 @@ module.exports = async function build() {
     const s5 = fresh(0); E.markAdvClear(s5, 'huang'); s5.year = 1; s5.actionsLeft = 6;
     const r5 = E.startAdventure(s5, 'xuan', { ap: 2, items: [] });
     t.ok(r5 && r5.ok === true, '通关黄后炼气应能进入玄级秘境');
+  });
+
+  /* ---------- 进入页命格数量口径（抽取=3+大千命格；可选=1+我命由我+3劫加成） ---------- */
+  S.case('进入页命格数量：抽 3+大千命格 / 选 1+我命由我+3劫加成', (t) => {
+    const meta = E.loadMeta();
+    const snap = JSON.parse(JSON.stringify(meta.reinc || {}));
+    meta.reinc = meta.reinc || {};
+    meta.reinc.extra_destiny = 0;
+    meta.reinc.destiny_slot = 0;
+    E.saveMeta(meta);
+    let c = E.destinyCounts(0);
+    t.eq(c.pick, 3, '凡尘无天赋：应抽 3 个');
+    t.eq(c.slot, 1, '凡尘无天赋：应选 1 个（3选1）');
+    t.eq(E.destinyCounts(3).slot, 2, '3劫无天赋：3选2（劫数加成 +1）');
+    meta.reinc.destiny_slot = 1; E.saveMeta(meta);
+    t.eq(E.destinyCounts(0).slot, 2, '凡尘+我命由我：3选2');
+    t.eq(E.destinyCounts(3).slot, 3, '3劫+我命由我：3选3（极限）');
+    meta.reinc.extra_destiny = 1; E.saveMeta(meta);
+    c = E.destinyCounts(3);
+    t.eq(c.pick, 4, '大千命格1级：应抽 4 个');
+    t.eq(c.slot, 3, '大千命格1级+我命由我1级+3劫：4选3');
+    meta.reinc = snap; E.saveMeta(meta); // 还原，避免影响其它用例
+    t.note('抽取=3+extra_destiny；可选=1+destiny_slot+(jie>=3?1:0)');
+  });
+
+  /* ---------- 防御口径（面板/顶栏/战斗统一走 getDefense，必须含装备/法宝/灵根） ---------- */
+  S.case('防御口径：体魄(有效值)×0.5×命格倍率 + 装备 + 法宝 + 灵根', (t) => {
+    const s = E.startLife('防御校验');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.arts = [];
+    s.linggen = null;   // 排除灵根词条（土词条 def 会进 flatDef）
+    s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+    E.refreshStats(s);
+    const base = Math.round(Math.round(E.effAttr(s, 'ti') * 0.5) * E.getDestinyAttrMult(s, 'def'));
+    t.eq(E.getDefense(s), base, '裸装：防御 = round(体魄有效值×0.5×命格倍率)');
+    s.equip.body = { id: 'tie_jia', aff: [] };            // 铁甲 main.def = 18
+    E.refreshStats(s);
+    t.eq(E.getDefense(s), base + 18, '装备防御（铁甲 +18）必须计入面板防御');
+    s.equip.weapon = { id: 'xuantian_yin', aff: [] };     // 玄天印 main.def = 12
+    E.refreshStats(s);
+    t.eq(E.getDefense(s), base + 30, '多件装备防御应累加（铁甲18 + 玄天印12）');
+    s.equip.treasure = ['xuanwu_guijia'];                 // 玄武龟甲 effect.def = 20
+    E.refreshStats(s);
+    t.eq(E.getDefense(s), base + 30 + 20, '法宝防御（玄武龟甲 +20）必须计入');
+    s.flatDef = 7;                                        // 灵根土词条绝对防御
+    t.eq(E.getDefense(s), base + 30 + 20 + 7, '灵根土词条绝对防御必须计入');
+    t.eq(E.getDefensePct(s), Math.min(0.9, (s.earthPct || 0) + (s.artDefPct || 0)), '百分比减伤口径（土阵+法宝，封顶90%）');
+    t.eq(E.getDefenseDiv(s), s.jinylvDef || 0, '除算减伤口径（金缕衣）');
+    t.note('getDefense = round(round(effAttr(ti)×0.5)×命格def倍率) + 装备def + 法宝def + 灵根土def');
+  });
+
+  /* ---------- 战斗减伤必须直接用面板那份防御（防止再次分叉） ---------- */
+  S.case('战斗减伤口径 = 面板防御（getDefense 直接参与减伤）', (t) => {
+    const s = E.startLife('减伤校验');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.arts = [];
+    s.linggen = null;
+    s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+    s.array = { wuxing: {}, juling: { level: 0 } };       // 排除五行阵·土阵百分比
+    s.dun = 0; s.dodgePct = 0;                            // 排除闪避，保证每回合必中
+    s.ti = 41; s.equip.body = { id: 'tie_jia', aff: [] }; // 防御 = 21 + 18 = 39
+    E.refreshStats(s);
+    const defAbs = E.getDefense(s);
+    t.eq(defAbs, 39, '校验前置：防御 = round(41×0.5)+18 = 39');
+    const enemyAtk = defAbs + 37;
+    E.combatStart(s, { name: '木桩', atk: enemyAtk, hp: 100000 });
+    const expect = Math.max(1, Math.round(enemyAtk * (1 - E.getDefensePct(s))) - defAbs);
+    t.eq(expect, 37, '校验前置：预期受击伤害 = 敌atk - 面板防御 = 37');
+    let seen = null, hits = 0;
+    for (let i = 0; i < 8 && !s.battle.done; i++) {
+      s.hp = s.hpMax;
+      const before = s.battle.hpLost;
+      E.combatAct(s, 'atk');
+      const d = s.battle.hpLost - before;
+      if (d > 0) { hits++; if (seen === null) seen = d; else t.eq(d, seen, '每次受击伤害应一致'); }
+    }
+    t.gt(hits, 0, '应至少发生一次受击');
+    t.eq(seen, expect, '战斗实际受击伤害必须等于「面板防御」推出的减伤值');
+    t.ok(seen < enemyAtk - E.equipStats(s).def, '体魄×0.5 必须参与减伤（旧口径只剩装备防御时伤害更高）');
+    t.note('受击伤害 = max(1, 敌atk×(1-土阵%/法宝%)-getDefense())，除算减伤再除 (1+金缕衣)');
+  });
+
+  /* ---------- 反击率口径：遁速必须取有效值（与 getDodgeRate 同族） ---------- */
+  S.case('反击率口径：遁速取有效值（法宝/命格加成生效）', (t) => {
+    const s = E.startLife('反击口径');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.arts = [];
+    s.linggen = null;
+    s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+    s.dun = 10;
+    E.refreshStats(s);
+    t.ok(Math.abs(E.getCounterRate(s) - 0.10) < 1e-9, '反击率 = 遁速×1% = 10%');
+    s.equip.treasure = ['fengxing_yuyi'];   // 风行羽衣：遁速 +2
+    E.refreshStats(s);
+    t.eq(E.effAttr(s, 'dun'), 12, '校验前置：风行羽衣使有效遁速 = 12');
+    t.ok(Math.abs(E.getCounterRate(s) - 0.12) < 1e-9, '法宝/命格给的遁速必须计入反击率（旧写法用基础 s.dun 会漏）');
+    t.note('getCounterRate = effAttr(dun)×1% + 命格反击率，与 getDodgeRate/getExtraAtkChance 同族');
+  });
+
+  /* ---------- 渡劫成功率口径：灵根 tribPct 按比例（/100）计入 ---------- */
+  S.case('渡劫成功率口径：灵根 tribPct 按比例计入，不再被 clamp 掩盖', (t) => {
+    function tribTo(s, realmName) {
+      for (let i = 0; i < 40; i++) {
+        let inf = null;
+        try { s.idx = i; inf = E.breakInfo(s); } catch (e) { return null; }
+        if (!inf || !inf.st) return null;
+        if (inf.mode === 'trib' && inf.trib === realmName) return inf;
+      }
+      return null;
+    }
+    const s = E.startLife('渡劫口径');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.sect = null; s.elixirs = {};
+    s.linggen = { id: 'test_runze', name: '润泽', qiMul: 1, affinity: [], trait: { name: '润泽', effect: { tribPct: 8 } } };
+    E.refreshStats(s);
+    t.eq(s.tribPct, 0.08, '灵根 tribPct=8 应换算为比例 0.08（/100）');
+    const withTrait = tribTo(s, '金丹');
+    t.ok(!!withTrait, '应能定位「筑基→金丹」渡劫节点');
+    s.linggen = { id: 'test_plain', name: '凡根', qiMul: 1, affinity: [], trait: { name: '凡', effect: {} } };
+    E.refreshStats(s);
+    const plain = tribTo(s, '金丹');
+    t.ok(!!plain, '应能定位「筑基→金丹」渡劫节点（无灵根加成）');
+    const diff = withTrait.base - plain.base;
+    t.ok(Math.abs(diff - 0.08) < 1e-9, '润泽灵根应使渡劫成功率 +8%，实测 +' + Math.round(diff * 100) + '%');
+    t.ok(withTrait.base < 0.98, '未触及 0.98 上限（旧写法 +8.0 会被 clamp 掩盖成恒定满概率）');
+    t.note('breakInfo 的渡劫加成改走 s.tribPct（比例口径），与 recalcLinggenBonus 同源');
+  });
+
+  /* ---------- 渡劫成功率口径：道心每点 +1%、统一封顶 98% ---------- */
+  function tribFinder(E) {
+    return function (s, realmName, stepIdx) {
+      const keep = s.idx;
+      if (stepIdx != null) s.idx = stepIdx;
+      let inf = null;
+      try { inf = E.breakInfo(s); } catch (e) { inf = null; }
+      s.idx = keep;
+      if (!inf) return null;
+      if (realmName && inf.trib !== realmName) return null;
+      return inf;
+    };
+  }
+  S.case('渡劫成功率：道心每点 +1%（与灵根/命格同一份汇总）', (t) => {
+    const tribTo = tribFinder(E);
+    const s = E.startLife('道心渡劫');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.sect = null; s.elixirs = {};
+    s.linggen = { id: 'test_plain2', name: '凡根', qiMul: 1, affinity: [], trait: { name: '凡', effect: {} } };
+    s.arts = [];
+    s.idx = 5; // 筑基后期 → 金丹劫
+    s.dao = 10; E.refreshStats(s);
+    const lo = tribTo(s, '金丹');
+    s.dao = 30; E.refreshStats(s);
+    const hi = tribTo(s, '金丹');
+    t.ok(!!lo && !!hi, '应能定位「筑基→金丹」渡劫节点');
+    const diff = hi.base - lo.base;
+    t.ok(Math.abs(diff - 0.20) < 1e-9, '道心 +20 点应使渡劫成功率 +20%，实测 +' + Math.round(diff * 100) + '%');
+    t.eq(s.tribPct, 0, '前置校验：无灵根渡劫词条');
+    t.note('道心（effAttr 有效值，含法宝/命格加成）×1% 计入 tribBonus，面板与实算同源');
+  });
+
+  S.case('渡劫成功率封顶 98%：叠满加成也不超过 0.98', (t) => {
+    const tribTo = tribFinder(E);
+    const s = E.startLife('封顶');
+    E.commitStart(s, 'wuxing');
+    s.linggen = { id: 'test_runze2', name: '润泽', qiMul: 1, affinity: [], trait: { name: '润泽', effect: { tribPct: 8 } } };
+    s.talents = ['t_tianming'];          // 旧命格：渡劫 +25%
+    s.destinies = ['tianming2', 'tiandao']; // 新命格：tribBonus 各 +15%
+    s.sect = 'xuantian';                 // 师门：+5%
+    s.arts = [];
+    s.dao = 60;                          // 道心 +60%
+    s.idx = 5; s.elixirs = {}; E.refreshStats(s);
+    // 未封顶的原始加成（与 breakInfo 内部同一份口径）
+    const raw = 0.55 + s.tribPct + E.talentApply(s, 'trib') + E.getDestinyBonus(s, 'tribBonus')
+      + (s.sect === 'xuantian' ? 0.05 : 0) + E.effAttr(s, 'dao') * 0.01;
+    t.ok(raw > 1.0, '前置校验：加成总和 ' + raw.toFixed(2) + ' 确实超过 100%（证明 0.98 是封顶而非自然值）');
+    const jin = tribTo(s, '金丹');
+    t.eq(jin.base, 0.98, '金丹劫应封顶 0.98');
+    s.idx = 11; // 元婴后期 → 飞升
+    const fly = tribTo(s, '飞升');
+    t.eq(fly.base, 0.98, '飞升劫同样封顶 0.98（旧版飞升固定 0.45 且不吃加成）');
+    t.note('TRIB_CAP = 0.98 统一封顶，取代旧的金丹 0.90 / 元婴 0.85 分档上限');
+  });
+
+  S.case('元婴中期不再重复触发飞升（旧 bug：飞升劫境要打两遍）', (t) => {
+    const s = E.startLife('元婴进阶');
+    E.commitStart(s, 'wuxing');
+    s.talents = []; s.destinies = []; s.sect = null; s.elixirs = {}; s.arts = [];
+    E.refreshStats(s);
+    s.idx = 10; s.realm = '元婴'; s.qi = 1e9;
+    const mid = E.breakInfo(s);
+    t.eq(mid.mode, 'small', '元婴中期→后期应为常规小破境，不得触发飞升');
+    t.eq(mid.trib, null, '元婴中期的 trib 应为空');
+    s.idx = 11; s.qi = 1e9;
+    const late = E.breakInfo(s);
+    t.eq(late.mode, 'trib', '元婴后期（境界表最后一段）才触发飞升');
+    t.eq(late.trib, '飞升', '元婴后期 → 飞升天劫');
+    // 元婴中期走概率突破后应落在 idx=11，而不是直接成仙
+    s.idx = 10;
+    E.dujieWin(s);
+    t.eq(s.idx, 11, '元婴中期渡劫（小破境）后应停在元婴后期');
+    t.eq(s.endReason || null, null, '不应直接结档飞升');
+    E.dujieWin(s);
+    t.eq(s.idx, 15, '元婴后期渡劫后才飞升（idx=15）');
+    t.eq(s.endReason, '飞升', '飞升应写入 endReason');
+    t.note('breakInfo 旧有 st.realm===元婴 && st.sub===中期 分支与 !nxt 重复，导致飞升劫境跑两遍');
+  });
+
+  /* ---------- 劫境战败 = 直接身死道消（可重来的试错空间已关闭） ---------- */
+  S.case('渡劫失败 = 直接死亡结档（金丹/元婴/飞升一致，不再掷骰子保命）', (t) => {
+    [['金丹', 5, '筑基'], ['元婴', 8, '金丹'], ['飞升', 11, '元婴']].forEach(function (row) {
+      const trib = row[0];
+      const s = E.startLife('渡劫陨落·' + trib);
+      E.commitStart(s, 'wuxing');
+      E.refreshStats(s);
+      s.idx = row[1]; s.realm = row[2]; s.qi = 1e9;
+      s.dead = false; s.endReason = null;
+      s.trib = { target: trib, ren: true };
+      const res = E.dujieFail(s, trib);
+      t.eq(res.died, true, trib + '劫失败应直接判定陨落');
+      t.eq(s.dead, true, trib + '劫失败应结档（s.dead = true）');
+      t.eq(s.endReason, '天劫陨落', trib + '劫失败应写入「天劫陨落」');
+      t.eq(s.trib, null, trib + '劫失败应清空渡劫状态');
+    });
+    t.note('旧实现走 tribFail(..., false)：金丹 15% / 元婴 25% 陨落，其余只「道基受创、修为 -20%」→ 可无限试错');
+  });
+
+  /* ---------- 宗门任务 / 宗门大比 / 主线门禁（2026-09-13 新增） ---------- */
+
+  S.case('事件/主线的 effect.trib 真正计入渡劫率（旧实现写进死字段，静默失效）', (t) => {
+    const s = E.startLife('渡劫加成'); E.commitStart(s, 'wuxing');
+    s.idx = 5; s.realm = '筑基'; s.qi = 1e9; s.dead = false;
+    const before = E.breakInfo(s).base;
+    E.applyOps(s, { trib: 0.05 });
+    const after = E.breakInfo(s).base;
+    t.ok(Math.abs((after - before) - 0.05) < 1e-6, '渡劫 +5% 应让 breakInfo.base 提高 0.05（实差 ' + (after - before).toFixed(4) + '）');
+    E.applyOps(s, { trib: 0.10 });
+    const after2 = E.breakInfo(s).base;
+    t.ok(Math.abs((after2 - before) - 0.15) < 1e-6, '多次累积应叠加（实差 ' + (after2 - before).toFixed(4) + '）');
+    t.ok(!s.linggen || !s.linggen.body || !s.linggen.body.trib, '不应再写旧字段 linggen.body.trib');
+    t.note('旧实现写 s.linggen.body.trib，而 linggenTrait 只认 linggen.trait.effect → 所有「渡劫+N%」奖励静默无效');
+  });
+
+  S.case('宗门任务：每年至多 3 件（跨年重置）', (t) => {
+    const s = E.startLife('委托测试');
+    E.commitStart(s, 'wuxing');
+    s.sect = 'qingyunjian'; s.sectRank = '真传';
+    s.actionsLeft = 30; s.year = 5;
+    s.ti = 9; s.shen = 20; s.wu = 9; s.dao = 9;   // 满足 six 类委托的属性门槛
+    t.eq(E.commissionYearLeft(s), 3, '年初应剩 3 件');
+    for (let i = 0; i < 3; i++) {
+      const r = E.commissionComplete(s, 'caiyao');
+      t.eq(r.ok, true, '第 ' + (i + 1) + ' 件应可完成（' + r.msg + '）');
+    }
+    t.eq(E.commissionYearLeft(s), 0, '三件之后应剩 0');
+    const r4 = E.commissionComplete(s, 'caiyao');
+    t.eq(r4.ok, false, '第 4 件必须被拒（每年至多 3 件）');
+    t.ok(/已接满|至多/.test(r4.msg || ''), '拒绝提示应说明年度上限（实：' + r4.msg + '）');
+    s.year = 6;
+    t.eq(E.commissionYearLeft(s), 3, '跨年应重置为 3 件');
+    t.note('旧实现无任何次数限制 → 可无限刷委托奖励');
+  });
+
+  S.case('秘境探勘守敌对标地级秘境 BOSS（不再写死 40/300）', (t) => {
+    const s = E.startLife('探勘测试');
+    E.commitStart(s, 'wuxing');
+    s.sect = 'qingyunjian'; s.sectRank = '真传'; s.actionsLeft = 10; s.year = 5;
+    const c = E.commissionAvailable(s).filter(function (x) { return x.id === 'tancha'; })[0];
+    t.ok(!!c, '真传应可承接「秘境探勘」');
+    t.ok(!!c.enemyBoss, '「秘境探勘」应声明 enemyBoss（对标哪一阶秘境）');
+    t.eq(c.enemyBoss.adv, 'di', '应对标地级秘境');
+    E.startAdventure(s, 'di', { ap: 2, items: [] });
+    const expect = E.enemyGen(s, 'boss', c.enemyBoss.depth, 'di');
+    const foe = E.commissionEnemy(s, c);
+    t.eq(foe.atk, expect.atk, '守敌攻击必须与地级秘境 BOSS 同源（Engine.enemyGen）');
+    t.eq(foe.hp, expect.hp, '守敌血量必须与地级秘境 BOSS 同源');
+    t.gt(foe.atk, 500, '应远高于旧写死的 40（实 ' + foe.atk + '）');
+    t.gt(foe.hp, 2000, '应远高于旧写死的 300（实 ' + foe.hp + '）');
+    // 非 enemyBoss 委托仍沿用 data 写死值（低阶杂兵战）
+    const huwei = E.commissionAvailable(s).filter(function (x) { return x.id === 'huwei'; })[0];
+    if (huwei) {
+      const f2 = E.commissionEnemy(s, huwei);
+      t.eq(f2.atk, huwei.enemy.atk, '无 enemyBoss 的委托应沿用 data 数值');
+    }
+    t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）');
+  });
+
+  S.case('宗门大比：十年一届 · 首赛第 10 年 · 一条直线 5 层 · 对手随境界缩放', (t) => {
+    const DABI = G.get('SECT_DABI');
+    t.eq(DABI.intervalYears, 10, '宗门大比应十年一届（旧为 3 年）');
+    t.eq(DABI.firstYear, 10, '首届应在第 10 年');
+    t.eq(DABI.layers, 5, '应为 5 层连战');
+    t.ok(!DABI.foes, '不应再保留写死数值的 foes 表（改为按境界实时生成）');
+
+    const s = E.startLife('大比测试');
+    E.commitStart(s, 'wuxing');
+    s.sect = 'qingyunjian'; s.sectRank = '外门';
+
+    s.year = 3;
+    let st = E.dabiStatus(s);
+    t.eq(st.eligible, true, '正式弟子应有参赛资格');
+    t.eq(st.inYears, 7, '第 3 年应显示「距离下次大比还有 7 年」');
+    t.ok(st.msg.indexOf('7') >= 0, '倒计时文案应含剩余年数（实：' + st.msg + '）');
+    s.year = 10;
+    st = E.dabiStatus(s);
+    t.eq(st.canEnter, true, '第 10 年应开赛');
+    t.eq(st.inYears, 0, '开赛年剩余 0 年');
+
+    const s2 = E.startLife('大比·未入宗');
+    E.commitStart(s2, 'wuxing');
+    s2.year = 10;
+    t.eq(E.dabiStatus(s2).eligible, false, '未入宗不应可参赛');
+    t.eq(E.sectDabiStart(s2).ok, false, '未入宗开赛应被拒');
+
+    const start = E.sectDabiStart(s);
+    t.eq(start.ok, true, '第 10 年应能开赛');
+    t.eq(s.lastDabiYear, 10, '开赛应记录 lastDabiYear');
+    for (let i = 0; i < 5; i++) {
+      const lf = E.dabiFoe(s, i);
+      t.ok(lf.atk > 0 && lf.hp > 0, '第 ' + (i + 1) + ' 层对手应有正数值');
+      const r = E.sectDabiStep(s, true);
+      if (i < 4) t.eq(r.done, false, '第 ' + (i + 1) + ' 层胜利后应继续下一层');
+      else { t.eq(r.done, true, '第 5 层胜利应结束'); t.eq(r.full, true, '五层全胜应标记 full'); }
+    }
+    t.eq(s.hp, s.hpMax, '五层全胜应回满气血');
+    t.eq(s.mp, s.mpMax, '五层全胜应回满灵力');
+
+    // 对手强度：随层数递增 + 随玩家境界缩放（口径 Engine.dabiFoe）
+    const sa = E.startLife('大比A'); E.commitStart(sa, 'wuxing'); sa.idx = 0;
+    const sb = E.startLife('大比B'); E.commitStart(sb, 'wuxing'); sb.idx = 11;
+    t.gt(E.dabiFoe(sa, 4).atk, E.dabiFoe(sa, 0).atk, '同境界下第 5 层对手应强于第 1 层');
+    t.gt(E.dabiFoe(sb, 4).atk, E.dabiFoe(sa, 4).atk, '高境界同一层对手应更强（不再写死 atk 15~100）');
+
+    s.year = 10;
+    const st2 = E.dabiStatus(s);
+    t.eq(st2.canEnter, false, '本届已参加 → 本年内不可重复开赛');
+    t.eq(st2.inYears, 10, '本届已参加 → 倒计时应指向下一届（10 年后）');
+    t.note('炼气期第1/5层 攻 ' + E.dabiFoe(sa, 0).atk + '/' + E.dabiFoe(sa, 4).atk
+      + '；元婴期第5层 攻 ' + E.dabiFoe(sb, 4).atk);
+  });
+
+  S.case('主线门禁：仙门收徒（已入宗不播）｜初入宗门/百艺初窥（入宗次年才播）', (t) => {
+    const MAINLINE = G.get('MAINLINE');
+    const g0 = MAINLINE.filter(function (m) { return m.id === 'ml_2_0'; })[0];
+    const g1 = MAINLINE.filter(function (m) { return m.id === 'ml_2_1'; })[0];
+    const gg1 = MAINLINE.filter(function (m) { return m.id === 'ml_2_g1'; })[0];
+    t.eq(!!g0 && g0.noSect === true, true, 'ml_2_0「仙门收徒」应带 noSect（已入宗则不显示）');
+    t.eq(!!g1 && g1.afterSectYear === true, true, 'ml_2_1「初入宗门」应带 afterSectYear');
+    t.eq(!!gg1 && gg1.afterSectYear === true, true, 'ml_2_g1「百艺初窥」应带 afterSectYear');
+
+    const pendingId = function (s) { return s.pendingMainline ? s.pendingMainline.id : null; };
+    // 只保留待验证的目标主线可选（其余全部标记已播），避免被更早的主线抢先命中
+    const onlyTargets = function (s, targets) {
+      MAINLINE.forEach(function (m) { s.seen['ml_' + m.id] = 1; });
+      targets.forEach(function (id) { delete s.seen['ml_' + id]; });
+      s.pendingMainline = null;
+      s.seen['omen_meet'] = 1;
+    };
+
+    // ① 未入宗：应播「仙门收徒」
+    const a = E.startLife('门禁·散修'); E.commitStart(a, 'wuxing');
+    a.idx = 3; a.year = 12;
+    onlyTargets(a, ['ml_2_0']);
+    E.checkYearEvents(a);
+    t.eq(pendingId(a), 'ml_2_0', '未入宗时应播「仙门收徒」');
+
+    // ② 已入宗当年：不播仙门收徒、也不播初入宗门
+    const b = E.startLife('门禁·当年'); E.commitStart(b, 'wuxing');
+    b.idx = 3; b.year = 12;
+    b.sect = 'qingyunjian'; b.sectRank = '内门'; b.sectJoinYear = 12;
+    onlyTargets(b, ['ml_2_0', 'ml_2_1']);
+    E.checkYearEvents(b);
+    t.notEq(pendingId(b), 'ml_2_0', '已入宗不该再播「仙门收徒」');
+    t.notEq(pendingId(b), 'ml_2_1', '入宗当年不该播「初入宗门」（须次年）');
+    t.eq(pendingId(b), null, '入宗当年两条都不该播');
+
+    // ③ 入宗次年：播「初入宗门」
+    b.year = 13;
+    onlyTargets(b, ['ml_2_1']);
+    E.checkYearEvents(b);
+    t.eq(pendingId(b), 'ml_2_1', '入宗次年应播「初入宗门」');
+
+    // ④ 旧档无 sectJoinYear：不得因此永久卡住（兜底为不阻塞）
+    const c = E.startLife('门禁·旧档'); E.commitStart(c, 'wuxing');
+    c.idx = 3; c.year = 13;
+    c.sect = 'qingyunjian'; c.sectRank = '内门';
+    onlyTargets(c, ['ml_2_1']);
+    E.checkYearEvents(c);
+    t.eq(pendingId(c), 'ml_2_1', '旧档（无 sectJoinYear）不应被 afterSectYear 永久挂起');
+  });
+
+  /* ---------- 阵法被动心得速率（zhenfaPassiveExp，挂 endYear）----------
+     历史风险：这是「silent 数值」——改了阈值 / 聚灵阵加权后无任何守卫，
+     源码改动曾与 dist 分叉而测试全绿。此用例把「激活年/年」与「阈值」钉死。 */
+  S.case('阵法被动心得：激活年速率与 6 激活年阈值', (t) => {
+    const mk = function (jlLv, wuxingOn) {
+      const s = E.startLife('阵道'); E.commitStart(s, TALENTS[0].id);
+      s.hp = s.hpMax = 99999; s.age = 20; s.year = 1; s.stone = 999999;
+      s.craft = s.craft || {};
+      s.craft.zhenfa = { lv: 1, exp: 0 };
+      s.array = { juling: { level: jlLv, paid: false }, wuxing: wuxingOn ? { fire: true } : {} };
+      return s;
+    };
+    const accAfter = function (s, years) {
+      for (let i = 0; i < years; i++) E.endYear(s);
+      return s.craft.zhenfa.passiveAcc || 0;
+    };
+
+    // ① 无阵不白给
+    const none = mk(0, false);
+    t.eq(accAfter(none, 3), 0, '无聚灵阵也无五行阵时不应累积阵道心得');
+
+    // ② 聚灵阵按等级加权：Lv1=1 / Lv2=1.5→（整数累加）/ Lv3=2
+    t.eq(accAfter(mk(1, false), 1), 1, '聚灵阵 Lv1 每年应记 1 个激活年');
+    t.eq(accAfter(mk(3, false), 1), 2, '聚灵阵 Lv3 每年应记 2 个激活年');
+
+    // ③ 五行阵开启任一即 +1（key 为 fire/metal/water/wood/earth）
+    t.eq(accAfter(mk(0, true), 1), 1, '仅五行阵开启时每年应记 1 个激活年');
+    t.eq(accAfter(mk(3, true), 1), 3, '聚灵阵 Lv3 + 五行阵应为每年 3 个激活年');
+
+    // ④ 阈值：6 个激活年结算 1 点心得（Lv1 聚灵单阵 → 第 6 年升级；第 5 年不升）
+    const s5 = mk(1, false);
+    for (let i = 0; i < 5; i++) E.endYear(s5);
+    t.eq(s5.craft.zhenfa.lv, 1, 'Lv1 单阵 5 年（5 激活年）不应升级');
+    E.endYear(s5);
+    t.eq(s5.craft.zhenfa.lv, 2, 'Lv1 单阵第 6 年（6 激活年）应结算 1 点心得并升级');
+    t.note('速率口径：每 6 激活年 1 点心得；激活年/年 = 聚灵阵(Lv1=1/Lv2=1.5/Lv3=2) + 五行阵(任一=1)');
   });
 
   return S;

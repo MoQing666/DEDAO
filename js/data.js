@@ -33,61 +33,43 @@ const BIG_REALMS = ['炼气','筑基','金丹','元婴'];
 const BIG_IDX = function (realm) { return BIG_REALMS.indexOf(realm); };
 const TRIBULATIONS = ['金丹','元婴','飞升'];   // 大劫名单
 
-/* ---------------- 丹药 ---------------- */
+/* ---------------- 丹药 ----------------
+ * grade（阶位，黄玄地天）＝「玩家最需要它的时期」，用于秘境产出分层：
+ * 黄级秘境只会掉黄阶丹药，绝不出现元婴丹这类越阶货（见 engine.rollExploreLoot）。
+ * 落阶规则：筑基丹是炼气期冲刺用的，故归黄阶；结金丹归玄阶；元婴丹归地阶。
+ */
 const ELIXIRS = {
-  juling:   { name: '聚气丹',   desc: '修炼时自动服用，此次修炼收益 +20%。' },
-  zhuji:    { name: '筑基丹',   desc: '突破筑基时自动服用，成功率 +25%。' },
-jiejin:   { name: '结金丹', desc: '突破金丹渡劫时自动服用，成功率 +25%。' },
-  yuanying: { name: '元婴丹', desc: '突破元婴渡劫时自动服用，成功率 +25%。' },
-  zengshou: { name: '增寿丹',   desc: '服用后寿元 +50。' },
-  wudao:    { name: '悟道丹',   desc: '服用后道心通明，悟性 +1。' },
+  juling:   { name: '聚气丹',   grade: '黄', desc: '修炼时自动服用，此次修炼收益 +20%。' },
+  zhuji:    { name: '筑基丹',   grade: '黄', desc: '突破筑基时自动服用，成功率 +25%。' },
+  jiejin:   { name: '结金丹',   grade: '玄', desc: '突破金丹渡劫时自动服用，成功率 +25%。' },
+  yuanying: { name: '元婴丹',   grade: '地', desc: '突破元婴渡劫时自动服用，成功率 +25%。' },
+  zengshou: { name: '增寿丹',   grade: '黄', desc: '服用后寿元 +50。' },
+  wudao:    { name: '悟道丹',   grade: '黄', desc: '服用后道心通明，悟性 +1。' },
   /* 秘境可携带丹药：usableInAdv=true，可在秘境战斗/休整中服用 */
-  huichun:  { name: '回春丹', desc: '秘境中可服用，立即恢复 40% 气血。', usableInAdv: true, adv: { hpPct: 0.40 } },
-  ningling: { name: '凝灵丹', desc: '秘境中可服用，立即恢复 40% 灵力。', usableInAdv: true, adv: { mpPct: 0.40 } },
-  jiuzhuan: { name: '九转丹', desc: '秘境中可服用，气血与灵力各恢复 35%。', usableInAdv: true, adv: { hpPct: 0.35, mpPct: 0.35 } },
-  jiedu:    { name: '解毒丹', desc: '秘境中可服用，解除中毒等负面状态。', usableInAdv: true, adv: { cure: true } }
+  huichun:  { name: '回春丹', grade: '黄', desc: '秘境中可服用，立即恢复 40% 气血。', usableInAdv: true, adv: { hpPct: 0.40 } },
+  ningling: { name: '凝灵丹', grade: '黄', desc: '秘境中可服用，立即恢复 40% 灵力。', usableInAdv: true, adv: { mpPct: 0.40 } },
+  jiuzhuan: { name: '九转丹', grade: '玄', desc: '秘境中可服用，气血与灵力各恢复 35%。', usableInAdv: true, adv: { hpPct: 0.35, mpPct: 0.35 } },
+  jiedu:    { name: '解毒丹', grade: '黄', desc: '秘境中可服用，解除中毒等负面状态。', usableInAdv: true, adv: { cure: true } }
 };
 const BREAK_ELIXIR = { 筑基: 'zhuji', 金丹: 'jiejin', 元婴: 'yuanying' };
 
-/* ---------------- 灵物（秘境BOSS掉落，用于完美突破） ---------------- */
-const SPIRIT_ITEMS = {
-  shangpin_lingjing: {
-    name: '上品灵晶',
-    grade: '黄',
-    desc: '蕴含纯净灵气的晶石，突破筑基时使用可完美突破。',
-    effect: '气血上限 +100',
-    apply: { hpMax: 100 }
-  },
-  shangpin_yaodan: {
-    name: '上品妖丹',
-    grade: '玄',
-    desc: '千年妖兽凝聚的内丹，突破金丹时使用可完美突破。',
-    effect: '气血上限 +300',
-    apply: { hpMax: 300 }
-  },
-  dongxu_micui: {
-    name: '洞虚秘淬',
-    grade: '地',
-    desc: '洞天深处孕育的神秘液体，突破元婴时使用可完美突破。',
-    effect: '修炼30%几率双倍修为',
-    apply: { doubleCult: 0.3 }
-  },
-  mohex_suibian: {
-    name: '魔核碎片',
-    grade: '天',
-    desc: '魔祖核心碎裂的碎片，飞升时使用可完美突破。',
-    effect: '法术和攻击50%几率双倍伤害',
-    apply: { doubleDmg: 0.5 }
-  }
+/* ---------------- 灵物（2026-09-13 改制：本质即法宝） ----------------
+   旧版灵物是「储物袋之外」的独立道具（s.spiritItems），只能用于完美突破，
+   既不在法宝栏显示、也不参与战斗，玩家拿到手却找不到它。
+   现全部并入 ARTIFACTS（见下方 ARTIFACTS 的 4 件 `spirit: true` 条目）：
+     · 与其他法宝同吃「法宝囊 → 装备槽」体系，装备后生效；
+     · 效果改为被动（气血上限 / 双倍修为 / 双倍伤害），**完美突破机制已取消**；
+     · 唯一来源仍是秘境：BOSS 通关「秘藏二选一」的选项一（未持有时必出）+ 深探掉落。
+   SPIRIT_FOR_ADV：秘境阶位 → 该阶位秘藏的灵物法宝 id（天/仙共用魔核碎片）。 */
+const SPIRIT_FOR_ADV = {
+  huang: 'shangpin_lingjing',
+  xuan:  'shangpin_yaodan',
+  di:    'dongxu_micui',
+  tian:  'mohex_suibian',
+  xian:  'mohex_suibian'
 };
-
-// 灵物与境界对应
-const SPIRIT_FOR_REALM = {
-  筑基: 'shangpin_lingjing',
-  金丹: 'shangpin_yaodan',
-  元婴: 'dongxu_micui',
-  飞升: 'mohex_suibian'
-};
+/* 每层（阶位）秘境最多产出的法宝件数——含灵物，跨多次通关累计（存档持久、转世清空）。 */
+const ADV_ART_CAP = 3;
 
 // 丹药等级对应突破效果
 const ELIXIR_GRADE_HP = {
@@ -149,41 +131,69 @@ const TECHNIQUES = {
   xt_xinfa3: { name: '天罡心法', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'xuantian', guard: 0.15, hpMax: 100, desc: '天罡正气，万邪不侵。' },
   xt_xinfa4: { name: '玄武真经', cls: 'xinfa', grade: '天', mult: 2.30, sect: 'xuantian', guard: 0.20, hpMax: 150, reduceDmg: 0.05, desc: '玄武真身，不朽不灭。' },
 
-  /* ========== 法术：战斗招式 ========== */
+  /* ========== 法术：战斗招式 ==========
+     五行语义（全局唯一）：金=暴击 / 火=攻击 / 水=回灵 / 土=减伤 / 木=吸血·治愈
+     灵根亲和只放大「伤害」，不放大下列效果数值（用户拍板：仅伤害受亲和加成）。
+     新机制字段（本轮实装）：
+       stun      概率(0~1)  —— 土=眩晕 / 水=冻结，命中则目标下回合无法行动
+       dotBurn   灼烧层数   —— 每施法叠 玄1/地2/天3，每回合 1 层结算：扣当前生命 10%，-1 层；上限 2/4/8
+       dotPoison 中毒层数   —— 同灼烧，独立叠加互不干扰
+       disaster  伐灾层数   —— 自身叠层，每栈 3 回合；施法净化自身毒·灼；每 3 层抵消一次眩晕/冻结
+       buff 支持 xxxDur（critUpDur/atkUpDur/defUpDur）单独指定该效果持续回合，缺省取 duration
+  */
   // --- 黄级法术 ---
-  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, desc: '金气化刃，斩敌经脉。' },
-  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 12, debuff: { atkDown: 20, duration: 2 }, desc: '藤蔓缠绕，令敌行动迟缓。' },
-  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 14, desc: '水气凝聚，化弹击敌。' },
-  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 20, duration: 3 }, desc: '火球焚身，烈焰加护。' },
-  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 13, buff: { defUp: 20, duration: 2 }, desc: '巨石压顶，土气护体。' },
-  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, desc: '御火之术，焚尽万物。' },
-  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 13, desc: '凝霜化冰，寒气逼人。' },
-  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 13, desc: '雷音震耳，破敌心神。' },
-  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, desc: '剑气纵横，斩敌百步。' },
+  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, buff: { critUp: 8, duration: 2 }, desc: '金气化刃，暴击起手，斩敌经脉。' },
+  // 剑气诀：青云剑宗一系，无属性（不享金系亲和、不参与五行生克）
+  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '无', sect: 'qingyunjian', dmg: 2.0,  cost: 15, buff: { critUp: 8, duration: 2 }, desc: '剑气纵横，暴击起手，斩敌百步。' },
+  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 13, buff: { critUp: 8, duration: 2 }, desc: '雷音震耳，暴击起手，破敌心神。' },
+  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 12, duration: 3 }, desc: '火球焚身，烈焰加护。' },
+  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 12, duration: 3 }, desc: '御火之术，焚尽万物。' },
+  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 14, mpRestore: 0.10, desc: '水气凝聚，化弹击敌，灵泉回涌。' },
+  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 13, mpRestore: 0.10, desc: '凝霜化冰，寒气逼人，灵泉回涌。' },
+  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 13, buff: { defUp: 12, duration: 2 }, desc: '巨石压顶，土气护体。' },
+  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 12, lifesteal: 0.30, desc: '藤蔓缠绕，吸敌生机以为己用。' },
   // --- 玄级法术（攻击） ---
-  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 25, desc: '金光化剑，锐不可当。' },
-  muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.30, desc: '木灵之力，治愈创伤。' },
-  hanbing:   { name: '寒冰刺',   cls: 'shufa', grade: '玄', element: '水', dmg: 2.5,  cost: 28, freeze: 1, desc: '寒冰刺骨，冻彻心扉。' },
-  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0,  cost: 22, buff: { atkUp: 20, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
-  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.5,  cost: 26, desc: '巨岩轰击，势大力沉。' },
+  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 25, buff: { critUp: 12, duration: 2 }, desc: '金光化剑，锐不可当，暴击骤增。' },
+  muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.15, desc: '木灵之力，治愈创伤。' },
+  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0,  cost: 22, buff: { atkUp: 18, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
+  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.5,  cost: 26, buff: { defUp: 18, duration: 2 }, desc: '巨岩轰击，土气附身，势大力沉。' },
   // --- 玄级法术（抵御/恢复） ---
-  jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 18, buff: { defUp: 30, duration: 3 }, desc: '金光护体，刀枪不入。' },
-  shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 0,   cost: 18, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势。' },
-  shuilingshu: { name: '水灵术', cls: 'shufa', grade: '玄', element: '水', dmg: 0,   cost: 20, heal: 0.25, desc: '水灵之力，治愈创伤。' },
-  huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 18, buff: { defUp: 25, duration: 2 }, desc: '烈焰护盾，焚尽攻击。' },
+  jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 18, buff: { defUp: 30, defUpDur: 3, critUp: 12, critUpDur: 2 }, desc: '金光护体，刀枪不入，锐气暗生。' },
+  shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 2.0,  cost: 18, lifesteal: 0.40, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势，反哺己身。' },
+  shuilingshu: { name: '水灵术', cls: 'shufa', grade: '玄', element: '水', dmg: 0,   cost: 20, heal: 0.125, mpRestore: 0.15, desc: '水灵之力，治愈创伤，灵泉回涌。' },
+  huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 18, buff: { defUp: 25, defUpDur: 2, atkUp: 18, atkUpDur: 3 }, desc: '烈焰护盾，焚尽攻击，攻势不减。' },
   yanjia:     { name: '岩甲术',   cls: 'shufa', grade: '玄', element: '土', dmg: 0,   cost: 20, buff: { defUp: 40, duration: 3 }, desc: '岩石护甲，固若金汤。' },
   // --- 地级法术 ---
-  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '金', dmg: 4.0,  cost: 45, desc: '万剑齐鸣，天地失色。' },
-  shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 40, heal: 0.50, desc: '生机盎然，枯木回春。' },
-  xuanbing:   { name: '玄冰阵',   cls: 'shufa', grade: '地', element: '水', dmg: 3.0,  cost: 42, freeze: 2, desc: '玄冰大阵，冻彻天地。' },
-  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 4.0,  cost: 45, desc: '天火降世，焚尽万物。' },
-  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.0,  cost: 38, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方。' },
+  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '无', sect: 'qingyunjian', dmg: 4.0,  cost: 45, buff: { critUp: 18, duration: 3 }, desc: '万剑齐鸣，天地失色，暴击大增。' },
+  shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 40, heal: 0.25, desc: '生机盎然，枯木回春。' },
+  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 4.0,  cost: 45, buff: { atkUp: 25, duration: 3 }, desc: '天火降世，焚尽万物，攻势滔天。' },
+  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.0,  cost: 38, buff: { defUp: 25, duration: 3 }, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方，土气护体。' },
   // --- 天级法术 ---
-  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '金', dmg: 4.5,  cost: 70, desc: '金光破天，一击必杀。' },
-  wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 65, heal: 0.80, desc: '万木回春，枯木逢生。' },
-  bingfeng:   { name: '冰封千里', cls: 'shufa', grade: '天', element: '水', dmg: 3.5,  cost: 75, freeze: 3, desc: '冰封千里，万物凝固。' },
-  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 4.5,  cost: 70, desc: '焚天灭地，烈焰滔天。' },
+  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '无', sect: 'qingyunjian', dmg: 4.5,  cost: 70, buff: { critUp: 25, duration: 3 }, desc: '剑光破天，一击必杀，暴击极致。' },
+  wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 65, heal: 0.40, desc: '万木回春，枯木逢生。' },
+  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 4.5,  cost: 70, buff: { atkUp: 35, duration: 3 }, desc: '焚天灭地，烈焰滔天，攻伐极致。' },
   dadi:       { name: '大地守护', cls: 'shufa', grade: '天', element: '土', dmg: 0,    cost: 60, buff: { defUp: 50, duration: 3 }, desc: '大地守护，万邪不侵。' },
+  /* --- 五行新机制法术（五机制 × 三阶 = 15）--- */
+  // 土 · 眩晕（stun：概率命中 → 敌方下回合无法行动）
+  lie_di:    { name: '裂地诀',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.0, cost: 22, stun: 0.20, desc: '裂地震颤，敌身形一滞（20% 眩晕）。' },
+  han_shan:  { name: '撼山印',   cls: 'shufa', grade: '地', element: '土', dmg: 3.0, cost: 40, stun: 0.40, desc: '山印镇压，敌神魂震荡（40% 眩晕）。' },
+  zhen_yue:  { name: '镇岳神雷', cls: 'shufa', grade: '天', element: '土', dmg: 3.5, cost: 65, stun: 0.80, desc: '岳镇雷落，敌动弹不得（80% 眩晕）。' },
+  // 水 · 冻结（复用 stun 字段，机制同眩晕，仅文案为冻结）
+  shuang_han:{ name: '霜寒禁锢', cls: 'shufa', grade: '玄', element: '水', dmg: 2.0, cost: 22, stun: 0.20, desc: '霜寒凝体，敌身形被封（20% 冻结）。' },
+  han_yuan:  { name: '寒渊冰狱', cls: 'shufa', grade: '地', element: '水', dmg: 3.0, cost: 40, stun: 0.40, desc: '寒渊冰封，敌困于牢（40% 冻结）。' },
+  wan_zai:   { name: '万载玄冰', cls: 'shufa', grade: '天', element: '水', dmg: 3.5, cost: 65, stun: 0.80, desc: '万载玄冰，天地俱寂（80% 冻结）。' },
+  // 火 · 灼烧（dotBurn：每回合 1 层结算，扣当前生命 10%，-1 层；每施法叠 玄1/地2/天3，上限 2/4/8）
+  lie_huo:   { name: '烈火焚',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0, cost: 22, dotBurn: 1, desc: '烈火焚身，灼烧缠敌（叠 1 层，上限 2）。' },
+  fen_hun:   { name: '焚魂业火', cls: 'shufa', grade: '地', element: '火', dmg: 3.0, cost: 40, dotBurn: 2, desc: '业火焚魂，灼烧难熄（叠 2 层，上限 4）。' },
+  jiu_you:   { name: '九幽红莲', cls: 'shufa', grade: '天', element: '火', dmg: 3.5, cost: 65, dotBurn: 3, desc: '红莲业火，灼烧九幽（叠 3 层，上限 8）。' },
+  // 金 · 伐灾（disaster：自身叠层，每栈 3 回合；施法净化自身毒·灼；每 3 层抵消一次眩晕/冻结）
+  po_e:      { name: '破厄诀',   cls: 'shufa', grade: '玄', element: '金', dmg: 2.0, cost: 18, disaster: 1, desc: '破厄荡邪，净化己身（叠 1 层，上限 2）。' },
+  dang_xie:  { name: '荡邪金光', cls: 'shufa', grade: '地', element: '金', dmg: 4.0, cost: 38, disaster: 2, desc: '金光荡邪，诸厄不侵（叠 2 层，上限 4）。' },
+  fa_zai:    { name: '伐灾神咒', cls: 'shufa', grade: '天', element: '金', dmg: 4.5, cost: 60, disaster: 3, desc: '神咒伐灾，万劫不磨（叠 3 层，上限 8）。' },
+  // 木 · 中毒（dotPoison：同灼烧；与灼烧独立叠加、互不干扰）
+  fu_du:     { name: '腐毒刺',   cls: 'shufa', grade: '玄', element: '木', dmg: 2.0, cost: 22, dotPoison: 1, desc: '腐毒入体，侵蚀生机（叠 1 层，上限 2）。' },
+  bai_du:    { name: '百毒噬心', cls: 'shufa', grade: '地', element: '木', dmg: 3.0, cost: 40, dotPoison: 2, desc: '百毒噬心，无药可医（叠 2 层，上限 4）。' },
+  wan_du:    { name: '万毒归宗', cls: 'shufa', grade: '天', element: '木', dmg: 3.5, cost: 65, dotPoison: 3, desc: '万毒归宗，见血封喉（叠 3 层，上限 8）。' },
 
   /* ========== 遁术：逃跑与防御 ========== */
   // --- 通用遁术 ---
@@ -216,11 +226,13 @@ const GRADE_COLOR = { 黄: '#c9a86a', 玄: '#6ab8c9', 地: '#a06ac9', 天: '#e05
    lowHpAtk 血越低攻越高(按血量比例)；daoAtkPct 每点道心攻击加成(daoCap封顶)；tiHpBonus 体魄→气血系数加成
    scale{res,per,perPoint,stat,cap} 资源缩放；stack{on,stat,per,cap} 累计；craftEff/craftKind 百艺；
    farmEff/mineEff 产量；stoneYearPct 年度灵石；duantiEff/duantiMax 锻体；cultTwice 每年2次
+   doubleCult 修炼双倍几率 / doubleDmg 出手伤害双倍几率（灵物专属）；atkSpd 攻速(百分点)
+   spirit: true = 灵物类法宝（秘境秘藏专属，不进随机法宝池）
 --------------------------------------------------------------------------- */
 const ARTIFACTS = {
   /* —— 剧情道具转法宝（3） —— */
   linghu_pei:      { name: '灵狐配饰', type: '辅', grade: '地', desc: '白狐衔来的一枚温润玉佩，触手生温，似有狐鸣低回。', effect: { dao: 2 } },
-  tongqian_jian:   { name: '铜钱剑',   type: '攻', grade: '地', desc: '一枚古朴铜钱，于掌中分化重组，化作玄黑小剑。', effect: { atk: 5 } },
+  tongqian_jian:   { name: '铜钱剑',   type: '攻', grade: '地', desc: '一枚古朴铜钱，于掌中分化重组，化作玄黑小剑。', effect: { atkPct: 0.05 } },
   dashen_bian:     { name: '打神鞭',   type: '攻', grade: '地', desc: '缠满雷纹的长鞭，曾斩过三山妖王，与血脉隐隐共鸣。', effect: { shen: 1 } },
   /* —— A 六维类（8） —— */
   taixu_zhu:       { name: '太虚灵珠', type: '辅', grade: '仙', desc: '魔渊之战中不肯散去的一点光，凝作混沌之珠。', effect: { wu: 1, ti: 1, dun: 1, shen: 1, dao: 1, ling: 1 } },
@@ -246,14 +258,14 @@ const ARTIFACTS = {
   daolv_tongxin_pei: { name: '道侣同心佩', type: '辅', grade: '地', desc: '林婉儿所赠半环玉佩：「我不在时，它替我陪你修炼。」', effect: { cult: 0.10 } },
   changsheng_yusui: { name: '长生玉髓', type: '辅', grade: '仙', desc: '西王母桃核所化温润玉髓：「贪心的人，倒比聪明的人走得远。」', effect: { cult: 0.05 } },
   /* —— D 不同程度修炼类（3） —— */
-  jingshi_yupai:   { name: '静室玉牌', type: '辅', grade: '玄', desc: '宗门所发：「闭关时挂上它，杂念会少些。」刻着「静心」二字。', effect: { modeBonus: { seclusion: 0.10 } } },
+  jingshi_yupai:   { name: '静室玉牌', type: '辅', grade: '玄', desc: '闭关修炼 +10%。宗门所发：「闭关时挂上它，杂念会少些。」刻着「静心」二字。', effect: { modeBonus: { seclusion: 0.10 } } },
   wuchen_putuan:   { name: '无尘蒲团', type: '辅', grade: '地', desc: '古刹老僧所推之蒲团：「坐的是一个空，去空一空。」', effect: { modeBonus: { seclusion: 0.20 } } },
   xinru_zhishui:   { name: '心如止水', type: '辅', grade: '地', desc: '雷雨之夜所悟静功，心越静进境越快。', effect: { modeBonus: { normal: 0.10 } } },
   /* —— G 锻体淬神类 → 宗门功业商店（4） —— */
-  duangu_bian:     { name: '锻骨鞭',   type: '守', grade: '地', desc: '体修一脉旧物，专抽自己不抽敌人，每落一鞭筋骨便硬一分。', effect: { duantiEff: 0.50 } },
-  cuishen_tai:     { name: '淬神台',   type: '辅', grade: '天', desc: '以神入台可淬神魂，老辈曾坐崩三座。', effect: { duantiEff: 0.50 } },
-  jiuzhuan_jindanlu: { name: '九转金丹炉', type: '辅', grade: '仙', desc: '火脉里捞出的丹炉，不炼丹专炼人身，多开五道锻体之门。', effect: { duantiMax: 5 } },
-  juling_yaodai:   { name: '巨灵腰带', type: '守', grade: '地', desc: '体修旧物，戴上后吃下的每口饭都多长成一分肉。', effect: { tiHpBonus: 0.25 } },
+  duangu_bian:     { name: '锻骨池',   type: '辅', grade: '玄', desc: '体修一脉旧物，池中淬炼筋骨，每浸一时便硬一分。', effect: { duantiEff: 0.50 } },
+  cuishen_tai:     { name: '淬神台',   type: '辅', grade: '地', desc: '以神入台可淬神魂，老辈曾坐崩三座。', effect: { duantiShenEff: 0.50 } },
+  jiuzhuan_jindanlu: { name: '九转金丹炉', type: '辅', grade: '天', desc: '火脉里捞出的丹炉，不炼丹专炼人身，多开五道锻体之门。', effect: { duantiMax: 5 } },
+  juling_yaodai:   { name: '巨灵腰带', type: '守', grade: '玄', desc: '体修旧物，戴上后吃下的每口饭都多长成一分肉。', effect: { tiHpBonus: 0.50 } },
   /* —— E 百艺经验类 + F 时间/资源缩放类 → 游历商人（9） —— */
   shennong_chu:    { name: '神农锄',   type: '辅', grade: '玄', desc: '万年药园刨出的锈锄，撒把草籽都能长出灵药。', effect: { farmEff: 0.30 } },
   xunkuang_luopan: { name: '寻矿罗盘', type: '辅', grade: '玄', desc: '认矿不认人的罗盘，滴血便指地脉最肥处。', effect: { mineEff: 0.30 } },
@@ -263,7 +275,17 @@ const ARTIFACTS = {
   baiyi_tianshu:   { name: '百艺天书', type: '辅', grade: '天', desc: '吞了太多别的纸的薄书，灵田丹器诸艺皆清几分。', effect: { craftEff: 0.20 } },
   shiting_yuehua:  { name: '时停月华', type: '辅', grade: '仙', desc: '灯里没有火只有霜，给你时间也拿走你的时间。', effect: { cultTwice: true } },
   jinjing_bi:      { name: '金精匕',   type: '攻', grade: '天', desc: '五金之精炼的短匕，只认灵石不认修为。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'atk', cap: 1.0 } } },
-  jinjing_jia:     { name: '金精甲',   type: '守', grade: '天', desc: '金线织就的软甲，底气也要拿灵石换。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'defPct', cap: 1.0 } } }
+  jinjing_jia:     { name: '金精甲',   type: '守', grade: '天', desc: '金线织就的软甲，底气也要拿灵石换。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'defPct', cap: 1.0 } } },
+  /* —— H 攻速类 → 山河探索 / 秘境掉落（1） —— */
+  tafeng_lv:       { name: '踏风履',   type: '辅', grade: '地', desc: '山河古径拾得的一双轻履，踏之如御风，出手便快三分。', effect: { atkSpd: 10 } },
+  /* —— I 灵物类法宝（4）—— 秘境专属：BOSS「秘藏二选一」的选项一 + 深探掉落。
+     旧版灵物是独立道具（只能完美突破、不显示在法宝栏），现本质改为法宝：
+     与其他法宝同吃「法宝囊 → 装备槽」体系，装备后被动生效（完美突破机制已取消）。
+     `spirit: true` 让引擎把它们从「随机法宝池」中排除——只能从秘境秘藏获得。 —— */
+  shangpin_lingjing: { name: '上品灵晶', type: '灵', grade: '黄', spirit: true, desc: '【灵物】秘藏灵物·蕴含纯净灵气的晶石，贴身而温，气血自壮。', effect: { hpMax: 100 } },
+  shangpin_yaodan:   { name: '上品妖丹', type: '灵', grade: '玄', spirit: true, desc: '【灵物】秘藏灵物·千年妖兽凝聚的内丹，妖力未散，生机沛然。', effect: { hpMax: 300 } },
+  dongxu_micui:      { name: '洞虚秘淬', type: '灵', grade: '地', spirit: true, desc: '【灵物】秘藏灵物·洞天深处孕育的神秘液体，含而未发，静中生灵。', effect: { doubleCult: 0.3 } },
+  mohex_suibian:     { name: '魔核碎片', type: '灵', grade: '天', spirit: true, desc: '【灵物】秘藏灵物·魔祖核心碎裂的碎片，杀机犹在，出手见血。', effect: { doubleDmg: 0.5 } }
 };
 
 /* ---------------- 秘境BOSS 法宝掉落分层 ----------------
@@ -293,19 +315,39 @@ const MATERIALS = {
 };
 
 /* ---------------- 炼器丹方（配方） ---------------- */
+/* 装备配方（炼器）：slot+sub 结构。每个品阶给「剑/冠冕/道袍/玉佩」各 1 个固定配方，
+   其余子类（刀/锤/印/头盔/盔甲/戒指/项链）主要靠秘境掉落。
+   grade 决定品阶与材料档；needRealm 为境界门槛；needLv 为炼器等级门槛。
+   产出品质(tier)由炼器等级驱动（见 forgeTier），可向上波动 1 级。 */
 const FORMULAS = [
-  // 黄级配方（炼气）
-  { id: 'qingfeng', out: 'qingfeng', type: '装备', cost: { iron_huang: 15 }, needRealm: 0, grade: '黄', years: 2 },
+  // —— 装备配方（炼器，slot+sub 结构） ——
+  // 黄级（炼气，needRealm 0）
+  { id: 'forge_jian_huang',  slot: 'weapon', sub: '剑',   grade: '黄', needRealm: 0, needLv: 1, cost: { iron_huang: 15 }, type: '装备', years: 2 },
+  { id: 'forge_guan_huang',  slot: 'head',   sub: '冠冕', grade: '黄', needRealm: 0, needLv: 1, cost: { iron_huang: 12 }, type: '装备', years: 2 },
+  { id: 'forge_daopao_huang',slot: 'body',   sub: '道袍', grade: '黄', needRealm: 0, needLv: 1, cost: { iron_huang: 12 }, type: '装备', years: 2 },
+  { id: 'forge_yupei_huang', slot: 'accessory', sub: '玉佩', grade: '黄', needRealm: 0, needLv: 1, cost: { iron_huang: 10 }, type: '装备', years: 2 },
+  // 玄级（筑基，needRealm 1）
+  { id: 'forge_jian_xuan',   slot: 'weapon', sub: '剑',   grade: '玄', needRealm: 1, needLv: 2, cost: { iron_xuan: 25 }, type: '装备', years: 4 },
+  { id: 'forge_guan_xuan',   slot: 'head',   sub: '冠冕', grade: '玄', needRealm: 1, needLv: 3, cost: { iron_xuan: 20 }, type: '装备', years: 4 },
+  { id: 'forge_daopao_xuan', slot: 'body',   sub: '道袍', grade: '玄', needRealm: 1, needLv: 2, cost: { iron_xuan: 20 }, type: '装备', years: 4 },
+  { id: 'forge_yupei_xuan',  slot: 'accessory', sub: '玉佩', grade: '玄', needRealm: 1, needLv: 2, cost: { iron_xuan: 18 }, type: '装备', years: 4 },
+  // 地级（金丹，needRealm 2）
+  { id: 'forge_jian_di',     slot: 'weapon', sub: '剑',   grade: '地', needRealm: 2, needLv: 3, cost: { iron_di: 35 }, type: '装备', years: 6 },
+  { id: 'forge_guan_di',     slot: 'head',   sub: '冠冕', grade: '地', needRealm: 2, needLv: 4, cost: { iron_di: 30 }, type: '装备', years: 6 },
+  { id: 'forge_daopao_di',   slot: 'body',   sub: '道袍', grade: '地', needRealm: 2, needLv: 3, cost: { iron_di: 30 }, type: '装备', years: 6 },
+  { id: 'forge_yupei_di',    slot: 'accessory', sub: '玉佩', grade: '地', needRealm: 2, needLv: 3, cost: { iron_di: 26 }, type: '装备', years: 6 },
+  // 天级（元婴，needRealm 3）
+  { id: 'forge_jian_tian',   slot: 'weapon', sub: '剑',   grade: '天', needRealm: 3, needLv: 4, cost: { iron_tian: 50 }, type: '装备', years: 10 },
+  { id: 'forge_guan_tian',   slot: 'head',   sub: '冠冕', grade: '天', needRealm: 3, needLv: 5, cost: { iron_tian: 45 }, type: '装备', years: 10 },
+  { id: 'forge_daopao_tian', slot: 'body',   sub: '道袍', grade: '天', needRealm: 3, needLv: 4, cost: { iron_tian: 45 }, type: '装备', years: 10 },
+  { id: 'forge_yupei_tian',  slot: 'accessory', sub: '玉佩', grade: '天', needRealm: 3, needLv: 4, cost: { iron_tian: 40 }, type: '装备', years: 10 },
+
+  // —— 丹方（炼丹，保持不变） ——
   { id: 'juling_pill', out: 'juling', type: '丹',  cost: { herb_huang: 5 },  needRealm: 0, grade: '黄', years: 1 },
-  // 玄级配方（筑基）
-  { id: 'xuantie',  out: 'xuantie',  type: '装备', cost: { iron_xuan: 25 }, needRealm: 1, grade: '玄', years: 4 },
   { id: 'zhuji_pill', out: 'zhuji',  type: '丹',  cost: { herb_xuan: 10 }, needRealm: 1, grade: '玄', years: 3 },
   { id: 'zengshou_pill', out: 'zengshou', type: '丹', cost: { herb_xuan: 15 }, needRealm: 1, grade: '玄', years: 4 },
-  // 地级配方（金丹）
   { id: 'jiejin_pill', out: 'jiejin', type: '丹',  cost: { herb_di: 20 }, needRealm: 2, grade: '地', years: 5 },
   { id: 'yuanying_pill', out: 'yuanying', type: '丹', cost: { herb_di: 30 }, needRealm: 2, grade: '地', years: 7 },
-  // 天级配方（元婴）
-  { id: 'jinylv',   out: 'jinylv',   type: '装备', cost: { iron_tian: 50 }, needRealm: 3, grade: '天', years: 10 },
   { id: 'wudao_pill', out: 'wudao',  type: '丹',  cost: { herb_tian: 40 }, needRealm: 3, grade: '天', years: 8 }
 ];
 
@@ -703,7 +745,7 @@ const MAINLINE = [
     ],
     effect: { dao: 0.5, flags: { beggar_cold_done: 1 } } },
 
-  { id: 'ml_guren_visit', idx: 2, title: '故人来访', chapter: true,
+  { id: 'ml_guren_visit', idx: 2, fixYear: 10, title: '故人来访', chapter: true,
     req: { flags: { beggar_kind: 1 } },
     lines: [
       '一位故人叩响你的洞府。',
@@ -733,7 +775,7 @@ const MAINLINE = [
       '这一夜，城隍庙前那道佝偻的身影竟又出现了。老乞丐盘腿坐在墙根，冲你招了招手。',
       '"小娃娃，修为见长，可身子骨还是软趴趴的。"他哑声一笑，"老头子早年学过两手锻体的门道，今日兴致好，传你一招半式。"',
       '他屈指在你肩井、命门连点数下，一股暖流顺着经脉炸开，皮肉筋骨竟隐隐作响。',
-      '"记着——淬体魄以固其基，炼遁速以轻其身，凝神识以明其念。每一大境界，每种淬炼至多十次，过则需破境再进。"',
+      '"记着——淬体魄以固其基，炼遁速以轻其身。每一大境界，每种淬炼至多十次，过则需破境再进。"',
       '言罢他嘿嘿一笑，缩回墙角打起瞌睡，再不言语。（习得《锻体诀》，从此可锻体）'
     ],
     effect: { flags: { duanti: 1 }, hpMax: 20 } },
@@ -806,7 +848,8 @@ const MAINLINE = [
     ] },
 
   // 第三章：宗门风云（筑基前期 idx 3，第10-15年）
-  { id: 'ml_2_0', idx: 2, title: '仙门收徒', chapter: true,
+  // 检测点：**已正式入宗（sectPassed）则不再播【仙门收徒】**——都已入门，不必再劝应考。
+  { id: 'ml_2_0', idx: 2, title: '仙门收徒', chapter: true, noSect: true,
     lines: [
       '你修行多年，灵气渐凝，已近炼气之巅，离筑基不过一步之遥。',
       '这一日山道上人流如织——竟是青云剑宗、丹霞谷、玄天门三座仙门同开收徒大典，各立碑石，广纳有缘。',
@@ -817,7 +860,8 @@ const MAINLINE = [
       { t: '赴仙门应考', effect: {}, lines: ['你整了整衣冠，朝仙门行去。执事弟子迎上前：「可是来应考的？随我来。」（于底部栏【宗门】择一仙门，过入宗考验。）'] },
       { t: '再游历几年（婉拒）', effect: { stone: 50 }, lines: ['你稽首告退。仙门碑石高耸，你却想再多走几年人间——反正规矩在那，随时可考。'] }
     ] },
-  { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true, needSect: true,
+  // 与 ml_2_0 共用同一检测点：needSect（须已入宗）+ afterSectYear（**入宗后的下一年**才播）
+  { id: 'ml_2_1', idx: 3, title: '初入宗门', chapter: true, needSect: true, afterSectYear: true,
     lines: [
       '你随青袍修士御剑飞行，脚下山河如棋盘。',
       '云海之上，一座浮空仙山赫然入目——那便是青云剑宗。',
@@ -826,7 +870,7 @@ const MAINLINE = [
     effect: { hpMax: 30, atk: 5, art: 'jingshi_yupai' } },
 
   // 新手指引：百艺入门（宗门剧情，筑基前期 idx 3）
-  { id: 'ml_2_g1', idx: 3, title: '百艺初窥', chapter: true, needSect: true,
+  { id: 'ml_2_g1', idx: 3, title: '百艺初窥', chapter: true, needSect: true, afterSectYear: true,
     lines: [
       '安顿下来的次日，一位执事长老领你去了半山腰的百艺坊。',
       '坊内丹香与铁火气交织：鼎炉边弟子守着灵草熬炼丹药；铸炉前锤声阵阵，灵铁百炼成器；坊后一畦畦灵田四时流转，矿洞里灵脉幽幽发光。',
@@ -845,14 +889,15 @@ const MAINLINE = [
       '你伸手取下一柄青锋剑，剑身嗡鸣，似在认主。'
     ],
     effect: { atk: 10 } },
+  // 由「直接派一场打」改为**引导玩家点开【宗门任务】的机制教学**（玩家要求）
   { id: 'ml_2_3', idx: 3, title: '宗门任务', chapter: true, needSect: true,
     lines: [
-      '长老派你下山执行任务：剿灭山下妖兽。',
-      '你带领几位师弟，前往妖兽巢穴。'
+      '修行之外，宗门亦有俗务。这一日执事堂传你过去。',
+      '「宗门上下——斩妖、采药、护商、炼丹，皆录于【宗门任务】名录。」执事递来一册薄薄的令牒。',
+      '「凭地位承接，一年至多三件；办得妥当，灵石与功业皆有赏。」',
+      '他指了指墙上刚挂上的一条新令：「先去接一件，试试手罢。」'
     ],
-    fight: { name: '妖兽首领', atk: 80, hp: 400, loot: { stone: 120 } },
-    resultWin: '你斩杀妖兽首领，师弟们欢呼雀跃。',
-    resultLose: '妖兽凶猛，你受伤退走——但任务失败了。' },
+    effect: { stone: 120 } },
 
   // 第四章：金丹之路（筑基中后期 idx 4-5，第16-25年）
   { id: 'ml_3_0', idx: 4, title: '秘境探索', chapter: true, needSect: true,
@@ -1032,83 +1077,344 @@ const MAINLINE = [
     resultLose: '魔气贯穿胸膛，你缓缓闭目——终究，差了一步。' }
 ];
 
-/* ---------------- 死劫事件（血量×150%） ---------------- */
+/* ---------------- 死劫 · 五劫主线（噩兆玉符串联） ----------------
+ * 设计要点（v3）：
+ *   - 全生涯仅有 5 个死劫：第 18 / 36 / 49 / 64 / 81 年（玩家 33 / 51 / 64 / 79 / 96 岁）；
+ *   - 每个死劫都是一座「专属劫境」：独立地图（列数 / 节点池 / 环境文案）+ 一位有名字的「劫主」；
+ *   - 劫主带 称号 / 立绘 / 登场白 / 台词 / 战斗机制，不再是「通用试炼换皮」；
+ *   - 五劫由【噩兆玉符】主线串联：识海黑字逐年递减，每渡一劫玉符多一道裂纹；
+ *   - 五劫尽渡后玉符显「飞升天劫 · 无期」；当难度系数 s.jie >= 6（六劫轮回及以上）时玉符彻底裂开，
+ *     显出「轮回之外……」——解锁隐藏线【魔祖仙帝】。
+ * ---------------------------------------------------------------- */
 const DEATH_EVENTS = [
-  { year: 10, title: '妖兽袭击', chapter: true,
-    lines: ['一头妖兽突然出现在村庄外……'],
-    fight: { name: '妖兽头领', atk: 60, hp: 600 } },
-  { year: 20, title: '劫修围杀', chapter: true,
-    lines: ['一群劫修从四面八方围来……'],
-    fight: { name: '劫修头领', atk: 120, hp: 1200 } },
-  { year: 30, title: '毒瘴侵袭', chapter: true,
-    lines: ['一片毒瘴笼罩了你修炼的山谷……'],
-    fight: { name: '毒瘴蛊王', atk: 200, hp: 1800 } },
-  { year: 40, title: '妖兽潮', chapter: true,
-    lines: ['北境妖兽忽然暴动，潮水般涌向人族城池……'],
-    fight: { name: '妖兽王', atk: 300, hp: 2700 } },
-  { year: 50, title: '魔修刺客', chapter: true,
-    lines: ['一位魔修刺客潜入你的修炼之地……'],
-    fight: { name: '魔修杀手', atk: 400, hp: 3600 } },
-  { year: 60, title: '魔修入侵', chapter: true,
-    lines: ['魔修大军忽然出现在九州边境……'],
-    fight: { name: '魔修将领', atk: 500, hp: 4500 } },
-  { year: 70, title: '心魔入侵', chapter: true,
-    lines: ['你修炼至关键时刻，心魔忽然入侵……'],
-    fight: { name: '心魔化身', atk: 600, hp: 5400 } },
-  { year: 80, title: '天劫降临', chapter: true,
-    lines: ['你修炼至瓶颈，天劫忽然降临……'],
-    fight: { name: '天劫化身', atk: 700, hp: 6300 } },
-  { year: 90, title: '古魔苏醒', chapter: true,
-    lines: ['远古魔将从沉睡中苏醒……'],
-    fight: { name: '远古魔将', atk: 800, hp: 7500 } },
-  { year: 100, title: '魔渊决战', chapter: true,
-    lines: ['这是最后的机会……'],
-    fight: { name: '魔祖化身', atk: 1000, hp: 9000 } },
-  { year: 110, title: '天道考验', chapter: true,
-    lines: ['天道化身出现在你面前……'],
-    fight: { name: '天道化身', atk: 1200, hp: 10500 } },
-  { year: 120, title: '仙界试炼', chapter: true,
-    lines: ['仙界守卫出现在你面前……'],
-    fight: { name: '仙界守卫', atk: 1400, hp: 12000 } },
-  { year: 130, title: '飞升之劫', chapter: true,
-    lines: ['飞升天劫降临……'],
-    fight: { name: '飞升天劫', atk: 1600, hp: 15000 } },
-  { year: 140, title: '终极之战', chapter: true,
-    lines: ['隐藏死劫出现……'],
-    fight: { name: '魔祖仙帝', atk: 2000, hp: 22500 } }
+  {
+    year: 18, id: 'jie1', title: '第一劫 · 血月狼谷', chapter: true,
+    lines: [
+      '第十八个年头，你在青丘山外的官道上歇脚。',
+      '今夜的月亮是红的。风里没有虫鸣，只有爪子踩碎落叶的声音。',
+      '狼群从三个方向围上来。最中间那头比牛还大，赤红的眼珠死死盯着你——你认得它。',
+      '三年前你路过此地，从它嘴边抢走过一只兔子。它记到了今天。'
+    ],
+    fight: { name: '狼王 · 赤瞳' },
+    trial: {
+      name: '血月狼谷', cols: 5, types: ['combat', 'elite', 'hazard', 'rest'],
+      settings: [
+        '血月悬在山口，谷中每一块石头上都留着干涸的爪痕。',
+        '狼嚎从谷底一层层荡上来，回声在峭壁间撞得粉碎。',
+        '枯树上挂着半截猎户的褡裢，布片上还沾着暗褐色的血。',
+        '越往里走，兽腥味越重。地上的脚印，一个个都朝着同一个方向。'
+      ]
+    },
+    boss: {
+      key: 'langwang', name: '狼王 · 赤瞳', title: '青丘山主', portrait: 'boss_jie1',
+      intro: '谷口的风忽然停了。一头赤瞳巨狼从白骨堆上站起，比你见过的任何一匹战马都要高。',
+      line: '血月之下，一头巨狼自白骨堆上立起，赤瞳里映着你三年前的模样。',
+      taunt: [
+        '「三年前那口气，我记到今天。」',
+        '「你长高了，味道没变。」',
+        '「进了这谷，就别想着再走出去。」'
+      ],
+      mechanic: 'enrage'
+    },
+    resultWin: '狼王的头颅沉甸甸地挂在你腰间。你走出山谷时，天已经亮了——你第一次意识到，修行路上真正想要你命的东西，是记仇的。',
+    resultLose: '你倒在血月之下，最后一刻看见的是一张长满獠牙的嘴。',
+    omenCrack: '玉符左上角崩了一小块，缺口像被什么利齿咬过。'
+  },
+  {
+    year: 36, id: 'jie2', title: '第二劫 · 黑风寨', chapter: true,
+    lines: [
+      '第三十六年，你为寻一味灵药，绕道穿过黑风岭。',
+      '岭上有一座寨子。寨门是拿人骨搭的，檐下挂着九盏风干的人头灯。',
+      '你本不想管闲事。可他们绑了山脚下整个村子的人，要拿活人祭刀。',
+      '更重要的是——识海里那行黑字，今早变成了「还剩一年」。'
+    ],
+    fight: { name: '黑风寨主 · 屠九' },
+    trial: {
+      name: '黑风寨', cols: 6, types: ['combat', 'elite', 'altar', 'rest'],
+      settings: [
+        '寨墙是用夯土和人骨混着垒起来的，风一过，嗡嗡作响。',
+        '酒气、血腥气和马粪味搅在一起，熏得人睁不开眼。',
+        '校场上立着九根木桩，桩上钉着九个还没断气的人。',
+        '聚义厅的门半掩着，里头有人在大碗喝酒，有人在磨刀。'
+      ]
+    },
+    boss: {
+      key: 'tujiu', name: '黑风寨主 · 屠九', title: '黑风岭之主', portrait: 'boss_jie2',
+      intro: '聚义厅的门被人一脚踹开。一个袒着胸膛、左脸一道刀疤的巨汉拎着酒坛走出来，把坛子磕碎在台阶上。',
+      line: '一个袒胸虬髯的巨汉拎着半坛酒走出来，刀疤从眉骨一直划到嘴角。',
+      taunt: [
+        '「规矩？这方圆三百里，老子的刀就是规矩。」',
+        '「听说你也是修仙的？那正好，老子最爱上等的药引子。」',
+        '「九个了。凑你一个，正好十个。」'
+      ],
+      mechanic: 'lifesteal'
+    },
+    resultWin: '你砍下屠九的头，挂在寨门上。被掳的村民跪了一地，你没受这一跪——你只是蹲下来，看了看玉符上那道新裂纹。',
+    resultLose: '刀砍进后心的时候，你听见有人在笑。寨子里的人头灯，又多了一盏。',
+    omenCrack: '玉符正面裂开一道斜纹，纹路里渗出一线极淡的血色。'
+  },
+  {
+    year: 49, id: 'jie3', title: '第三劫 · 沧溟水府', chapter: true,
+    lines: [
+      '第四十九年，你为取一株沉在水底的玄阴莲，潜入沧溟深渊。',
+      '水面下三百丈，有一座不属于人间的府邸。朱漆大门，铜环兽首，匾上四个字：「沧溟水府」。',
+      '门是开的。里头很干净，干净得像天天有人打扫——可这地方，三百年没人来过。',
+      '识海里的黑字，昨夜变成了「还剩一年」。'
+    ],
+    fight: { name: '沧溟蛟 · 苍溟' },
+    trial: {
+      name: '沧溟水府', cols: 6, types: ['combat', 'elite', 'hazard', 'altar', 'rest'],
+      settings: [
+        '水府长廊两侧的鲛人灯还亮着，火苗在水里安静地烧。',
+        '珊瑚长成了栏杆的模样，一碰就碎成满地红屑。',
+        '巨大的蚌壳半开着，里头躺着一颗拳头大的珠子，珠子上有牙印。',
+        '越往深处，水压越沉。你的护体灵光开始发出不堪重负的嗡鸣。'
+      ]
+    },
+    boss: {
+      key: 'cangming', name: '沧溟蛟 · 苍溟', title: '深渊旧主', portrait: 'boss_xuan', // 占位：原 boss_jie3 已作废
+      intro: '正殿的藻井下盘着一条东西。它睁开眼的时候，你才明白那不是屋梁——那是一条盘了三百年的蛟。',
+      line: '藻井之上盘着一条黑鳞巨蛟，独角如剑，双目如两盏幽绿的灯笼。',
+      taunt: [
+        '「三百年了，终于又有人敢走进这扇门。」',
+        '「上一个是金丹圆满。他现在在我肚子里。」',
+        '「你的骨头，比他脆。」'
+      ],
+      mechanic: 'summon'
+    },
+    resultWin: '蛟尸沉入深渊时，整座水府开始崩塌。你攥着玄阴莲撞出水面，回头看了一眼——那四个字，从此再不属于人间。',
+    resultLose: '水府的门在你身后合上了。三百年后，也许还有人会推开它。',
+    omenCrack: '玉符背面浮起一片细密的水纹状裂纹，摸上去竟是湿的。'
+  },
+  {
+    year: 64, id: 'jie4', title: '第四劫 · 无面杀局', chapter: true,
+    lines: [
+      '第六十四年，你在自己闭关的洞府里醒来。',
+      '洞府还是那个洞府，蒲团还是那个蒲团。唯一不对的是——墙上多了一张纸。',
+      '纸上只有四个字，是用你的笔迹写的：「还剩一年」。',
+      '你猛地回头。身后空无一人。可你闻到了一股很淡的、不属于任何活物的气息。'
+    ],
+    fight: { name: '无面' },
+    trial: {
+      name: '无面杀局', cols: 7, types: ['combat', 'elite', 'hazard', 'altar', 'rest'],
+      settings: [
+        '雾里立着许多和你一模一样的人影，你一动，它们也动。',
+        '脚下是没有尽头的青石板，每走一步，身后就少一块。',
+        '雾中传来你自己的声音，说的却是你从没说过的话。',
+        '你分不清哪一条路是出去的路——因为每一条路的尽头，都站着一个人。'
+      ]
+    },
+    boss: {
+      key: 'wumian', name: '无面', title: '无名之影', portrait: 'boss_di', // 占位：原 boss_jie4 已作废
+      intro: '雾散了一点。对面站着一个人，穿着和你一样的衣服，身材和你一样高——只是脸的位置，是一片空白。',
+      line: '雾中走出一道人影：一样的衣，一样的身量，脸的位置却是一片空白。',
+      taunt: [
+        '「别问我是谁。收了你的命，我也不知道你是谁。」',
+        '（它没有嘴，可你听见了声音——那声音是你自己的。）',
+        '「你躲了六十四年。躲得很好。」'
+      ],
+      mechanic: 'multicast'
+    },
+    resultWin: '无面倒下的时候，那张空白的脸终于有了表情——它笑了。你不知道它笑什么，但你活下来了。',
+    resultLose: '你的脸，最后变成了和它一样的空白。',
+    omenCrack: '玉符从中裂成两半，却又没有断开，中间连着一缕若有若无的黑丝。'
+  },
+  {
+    year: 81, id: 'jie5', title: '第五劫 · 魔渊裂隙', chapter: true,
+    lines: [
+      '第八十一年，九州北境的天裂开了。',
+      '不是比喻。天真的裂了一道口子，从里面渗出来的不是光，是黑。',
+      '所有活着的元婴都感觉到了：那道裂隙里，有一双眼睛在看着整片九州。',
+      '你识海里的黑字，今早只剩下四个字——「就是今年」。'
+    ],
+    fight: { name: '魔祖化身 · 渊' },
+    trial: {
+      name: '魔渊裂隙', cols: 7, types: ['combat', 'elite', 'hazard', 'altar', 'rest'],
+      settings: [
+        '裂隙下方是一片没有星辰的黑色天穹，魔气像潮水一样往上涌。',
+        '断崖上插满了锈死的古剑，每一柄都曾属于一位陨落的元婴。',
+        '魔气凝成的脸在半空中浮沉，对着你无声地张合。',
+        '你踩着的不是地面，是一具巨大生物的背脊——它还没死。'
+      ]
+    },
+    boss: {
+      key: 'yuan', name: '魔祖化身 · 渊', title: '魔渊之影', portrait: 'boss_tian', // 占位：原 boss_jie5 已作废
+      intro: '魔气在裂隙中央凝成一具人形。它没有五官，可你就是知道它在看你——而且，它似乎对你很熟悉。',
+      line: '魔气在裂隙中央凝成一具无面人形。它没有五官，你却清清楚楚地感到：它在看着你。',
+      taunt: [
+        '「你来早了。或者说——你来得正好。」',
+        '「前几个，都死在了这里。你比他们多走了一步。」',
+        '「你身上那块玉符……是誰给你的？」'
+      ],
+      mechanic: 'lifesteal'
+    },
+    resultWin: '魔气散尽，裂隙缓缓合拢。你站在原地，很久没有动——因为你刚刚听见的那句话，不像是敌人该说的。',
+    resultLose: '九州北境的那道口子，合上了。这一次，是它赢了。',
+    omenCrack: '玉符上的黑字淡去了，浮出一行新的字。'
+  }
 ];
 
-/* ---------------- 敌人固定基线模型（v4：所有敌人共用，不再随玩家自身攻/血缩放） ----------------
-   设计原则（修复"敌人随玩家自身攻/血缩放 → 命格/装备加成被抵消、越强越弱"问题）：
-   - 敌人属性 = ENEMY_REALM_BASE[tier] 参考攻/血 × 递增系数(atkMul/hpMul) × JIE_DATA[jie].diff(叠劫)；
-   - 玩家自身 atk/hp 不参与敌人缩放，故命格/装备/天赋带来的数值优势可真实转化为通过率；
-   - 秘境 / 入宗考验 / 死劫 / 心魔 / 天劫 全部复用同一套 enemyStats(tier, atkMul, hpMul, jieDiff, opts)；
-   - 真实威胁来自 JIE_DATA[jie].diff 叠劫（jie0→1.0 … jie9→4.0），需靠命格/法宝/转世堆叠扛过。
-   模拟验证见 tools/player_sim.js。
------------------------------------------------------------------------------------------------- */
-// 重平衡（v5.2，2026-09）：仅动死劫专属缩放，不动 JIE_DATA.diff（秘境/渡劫共用）。
-// 旧表在 jie9 下呈双峰：死劫2-5/8 恒为 100%（无脑），但死劫1=19%、死劫11-14=62-65%（断崖崩坏）。
-// 经 player_sim 蒙特卡洛校准（目标 硬核@jie9≈80%）：先重塑为均匀带（v5），再整体 ×1.15 加压（v5.2）压到目标：
-//   - jie9（JIE_DATA[9].diff=4.0）实测：硬核3命格≈77%、3仙命≈89%、blended≈80%；
-//   - jie0（diff=1.0）仍 普通99.7% / 硬核100%（不破坏早期，准备充分的玩家可过）；
-//   - 普通2命格 后期（jie6+）归零卡住（预期内，需命格/法宝/转世堆叠）。
-// enemies 仅死劫使用本表；若需调难度，整体缩放本表 atkMul/hpMul 即可。
+/* ---------------- 隐藏线 · 轮回之外（魔祖仙帝） ----------------
+ * 解锁条件：难度系数 s.jie >= 6（六劫轮回）——劫数靠逐轮解锁，玩家至少通关 6 次才可能站在 6 劫之上。
+ * 触发时机：五劫（18/36/49/64/81 年）尽渡之后的下一年年初。
+ * 结局：胜 → 【打破轮回】（轮回点 ×1.5）；败 → 身死道消。
+ * ---------------------------------------------------------------- */
+const HIDDEN_BOSS = {
+  id: 'hidden', year: 0, title: '轮回之外 · 魔祖仙帝', chapter: true,
+  lines: [
+    '玉符彻底碎了。碎片落在掌心，每一片上都刻着同一个字：輪。',
+    '你把碎片拼起来，拼出来的却不是玉符，而是一扇门。',
+    '门后没有天，没有地，没有九州。只有一个坐在白骨王座上的东西，正在等你。',
+    '它抬起头：「第六次了。你总算走到了这一步。」'
+  ],
+  fight: { name: '魔祖仙帝 · 帝渊' },
+  trial: {
+    name: '轮回之外', cols: 8, types: ['combat', 'elite', 'hazard', 'altar', 'rest'],
+    settings: [
+      '这里没有上下之分。你踩着的，是上一世的自己的背脊。',
+      '无数面镜子悬在虚空里，每一面里都有一个正在死去的你。',
+      '钟声每隔一段时间响一次。每响一次，你就记起一些从没经历过的事。',
+      '王座就在前面。它一直都在前面，无论你走了多久。'
+    ]
+  },
+  boss: {
+    key: 'dixian', name: '魔祖仙帝 · 帝渊', title: '轮回之外 · 唯一之敌', portrait: 'boss_xian', // 占位：原 boss_dixian 已作废
+    intro: '白骨王座上的人站了起来。他穿着帝王的冕服，戴着十二旒的冕冠——冠下的那张脸，和你有七分相似。',
+    line: '白骨王座上的人缓缓起身：冕服十二旒，冠下那张脸——和你有七分相似。',
+    taunt: [
+      '「每一次轮回，都是我在放你出去。你以为你逃了六次？」',
+      '「飞升？那扇门后头，坐着的还是我。」',
+      '「这一次，我不放了。」'
+    ],
+    mechanic: 'multicast'
+  },
+  scale: { realm: 3, atkMul: 1.95, hpMul: 6.60 },
+  resultWin: '冕冠落地。你看着那张和自己相似的脸慢慢碎成灰，忽然明白了一件事——轮回不是牢笼，坐在这里的才是。',
+  resultLose: '王座下多了一具骨头。钟又响了一次，下一世开始了。'
+};
+
+/* ---------------- 噩兆玉符（串联五劫主线） ----------------
+ * 第 3 年坊市：一个笑眯眯的算命老道硬塞给你一块玉符，
+ * 从此玉符盘踞神台识海，浮出一行散着黑气的字：「死劫还剩 XX 年」。
+ * 文案为玩家指定版本（第一幕 meet.lines / 第二幕 meet.after.lines，{omen} 为识海黑字占位）。
+ * ---------------------------------------------------------------- */
+const OMEN_TALISMAN = {
+  id: 'omen_talisman',
+  name: '噩兆玉符',
+  portrait: 'npc_laodao',
+  meetYear: 3,                 // 第 3 年（18 岁）坊市相遇
+  meet: {
+    title: '坊市 · 算命的老道',
+    subtitle: '他不肯答，只说天机不可泄露',
+    lines: [
+      '你在坊市游历时，遇到一个笑眯眯的算命老道。',
+      '他以紫微斗数、六壬正法为你算了一番，星轨在他指尖细细流转。',
+      '你几番追问，他却不答，只道：「天机不可泄露。」',
+      '下一瞬，一块冰凉的东西几乎是被他硬塞进你手中——是一块玉符。',
+      '你凝神一探，被一股神念入侵，顿时头晕眼花。'
+    ],
+    // 第二幕：清醒之后（{omen} = 识海黑字，按玩家寿元与触发时间实时生成）
+    after: {
+      title: '噩兆玉符',
+      subtitle: '一行散着黑气的字',
+      lines: [
+        '恢复清醒时，老道和那摊位早已无影无踪。',
+        '天色也从正午到了夜半。',
+        '再一感念，那玉符早已进入你的神台识海，盘踞不动了。',
+        '只看得一行散着黑气的字——',
+        '「{omen}」',
+        '你眉头紧皱，却也无可奈何。',
+        '这似是魔气，又对你修行毫无影响，宗门也丝毫没有检测出。',
+        '你对这行字半信半疑，却也因此更加坚定了变强的道心。'
+      ]
+    }
+  },
+  // 识海黑字模板（{n} = 距下一劫剩余年数）
+  tick: '死劫还剩 {n} 年',
+  tickNear: '死劫还剩 {n} 年（近了）',
+  tickNow: '就是今年',
+  // 五劫尽渡后
+  afterAll: '飞升天劫 · 无期',
+  // s.jie >= 6 且五劫尽渡后：玉符裂开
+  hiddenOpen: '轮回之外……',
+  desc: [
+    '一块成色极差的青玉，边角带着缺口，摸上去常年冰凉。',
+    '它已盘踞在你的神台识海，抹不掉，也甩不脱。',
+    '玉面之下浮着一行黑气凝成的字，字迹逐年变淡，却从不会消失。',
+    '你试过用灵力抹它，试过用雷法劈它，试过把它按进土里三年——',
+    '它总会重回识海深处，上面写着新的数字。'
+  ]
+};
+
+/* ---------------- 渡劫 · 劫境（按突破档位映射） ----------------
+ * 练气 → 筑基：无劫（仅破尘障）
+ * 筑基 → 金丹：心魔劫境
+ * 金丹 → 元婴：心魔劫境 + 天劫劫境
+ * 元婴 → 飞升：心魔劫境 + 仙界守卫 + 飞升天劫
+ * 每一段都是一张短劫境地图（险地 / 静室 / 祭坛），尽头是一位「劫身」。
+ * ---------------------------------------------------------------- */
+const TRIB_TRIALS = {
+  '金丹': {
+    title: '金丹劫', cols: 3, types: ['hazard', 'rest', 'altar'],
+    openLines: ['劫云自九天垂落，你的道心开始发烫。金丹之劫，先问己心。'],
+    stages: ['xinmo']
+  },
+  '元婴': {
+    title: '元婴劫', cols: 3, types: ['hazard', 'rest', 'altar'],
+    openLines: ['元婴将成，天地震动。心魔与天劫，一道都躲不过。'],
+    stages: ['xinmo', 'tianjie']
+  },
+  '飞升': {
+    title: '飞升劫', cols: 4, types: ['hazard', 'rest', 'altar'],
+    openLines: [
+      '元婴圆满，天门将开。',
+      '飞升之劫有三：一问己心，二问仙门，三问天道。',
+      '过了这三关，世上再无你的名字。'
+    ],
+    stages: ['xinmo', 'guard', 'feisheng']
+  }
+};
+// 渡劫「劫身」角色卡（复用既有数值基线，仅补充姓名 / 立绘 / 台词）
+const TRIB_BOSSES = {
+  xinmo: {
+    key: 'xinmo', name: '心魔 · 执念化形', title: '人劫 · 第一重', portrait: 'me',
+    line: '心魔借你记忆成形，招招都指向你心底最深的破绽。它不认得痛——它就是你的影子。',
+    taunt: ['「你以为这些年，你真的放下了？」', '「我不用赢你。只要你信我说的。」'],
+    mechanic: null, xinmo: true
+  },
+  tianjie: {
+    key: 'tianjie', name: '天劫化身 · 九天应元之形', title: '天劫 · 劫雷凝形', portrait: 'boss_tian',
+    line: '劫云滚滚而下，天雷凝作一具人形，掌中握着整片翻涌的雷霆。它无声地看着你——这一关，没有退路。',
+    taunt: ['（它没有说话。雷声就是它的话。）'],
+    mechanic: null, dujie: true, noFlee: true
+  },
+  guard: {
+    key: 'guard', name: '仙界守卫 · 白玉京执戟郎', title: '仙门之守', portrait: 'boss_xian',
+    line: '天门之下，一名银甲执戟的守卫横戟而立。他不是来杀你的——他是来验你的。',
+    taunt: ['「飞升者众，成仙者寡。出示你的道。」', '「过得了我这一戟，天门自会为你开。」'],
+    mechanic: 'thorns'
+  },
+  feisheng: {
+    key: 'feisheng', name: '飞升天劫 · 天门之影', title: '天道 · 最后一问', portrait: 'boss_xian',
+    line: '天门洞开，门后没有仙宫，只有一片沉默的、注视着你的黑影。',
+    taunt: ['「最后一问：你为何要成仙？」', '（答不上来的人，都留在了门里。）'],
+    mechanic: 'multicast', dujie: true, noFlee: true, final: true
+  }
+};
+
+/* ---------------- 死劫数值（5 劫专用，固定境界基线 × 递增系数 × 叠劫难度） ----------------
+   重划（v6，2026-09）：死劫由 14 个精简为 5 个，年份 18/36/49/64/81，
+   境界锚点依次为 炼气 / 筑基 / 筑基 / 金丹 / 元婴。
+   曲线按「劫劫递增、每劫都是一道坎」重塑（旧表在 5 劫制下会出现断崖）。 */
 const DEATH_SCALES = [
-  { atkMul: 0.605, hpMul: 1.727 },
-  { atkMul: 1.391, hpMul: 3.928 },
-  { atkMul: 1.393, hpMul: 4.103 },
-  { atkMul: 1.705, hpMul: 5.197 },
-  { atkMul: 1.705, hpMul: 5.337 },
-  { atkMul: 1.182, hpMul: 3.782 },
-  { atkMul: 1.182, hpMul: 3.852 },
-  { atkMul: 1.762, hpMul: 5.830 },
-  { atkMul: 1.705, hpMul: 5.724 },
-  { atkMul: 1.690, hpMul: 5.739 },
-  { atkMul: 1.682, hpMul: 5.770 },
-  { atkMul: 1.684, hpMul: 5.822 },
-  { atkMul: 1.686, hpMul: 5.879 },
-  { atkMul: 1.684, hpMul: 5.912 }
+  { atkMul: 0.62, hpMul: 1.80 },   // 劫一（18 年 · 炼气）
+  { atkMul: 1.05, hpMul: 3.20 },   // 劫二（36 年 · 筑基）
+  { atkMul: 1.35, hpMul: 4.10 },   // 劫三（49 年 · 筑基）
+  { atkMul: 1.45, hpMul: 4.40 },   // 劫四（64 年 · 金丹）
+  { atkMul: 1.55, hpMul: 5.10 }    // 劫五（81 年 · 元婴）
 ];
+// 5 个死劫依次锚定的境界档
+const DEATH_IDX_REALM = [0, 1, 1, 2, 3];
 
 // 通用敌人固定境界基准（= 该境界「正常发育玩家」的参考攻/血，见 tools/player_sim.js 第7节实测）
 // 秘境 / 入宗考验 / 死劫 / 心魔 / 天劫 全部共用这一套基线，不再随玩家自身攻/血缩放。
@@ -1120,11 +1426,9 @@ const ENEMY_REALM_BASE = [
 ];
 // 死劫复用同一基线（向后兼容旧字段名）
 const DEATH_REALM_BASE = ENEMY_REALM_BASE;
-// 14 个死劫依次锚定的境界档（与触发年份同步递增：year10-30 炼气 / 40-50 筑基 / 60-80 金丹 / 90-140 元婴）
-const DEATH_IDX_REALM = [0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 3];
 
 /* ---------------- 普通事件库 ---------------- */
-const EVENTS = { jiyuan: [], shejiao: [], mijing: [], year: [] };
+const EVENTS = { jiyuan: [], shejiao: [], mijing: [], shanhe: [], year: [] };
 
 // 统一仙缘池：仅 jiyuan/shejiao（游历机缘）+ NPCS 缘法事件并入；mijing(秘境)/year(年度) 不在此列
 const XIANYUAN = [];
@@ -1153,11 +1457,12 @@ E('jiyuan', {
           '雷光将落的刹那，你看懂了雨水的轨迹、风的呼啸、山间草木的一呼一吸。',
     '天地之间，自有大道。'
   ],
-  effect: { qiMul: function () { return 1; }, qi: function (s) { return Math.round(requireNeed(s) * 0.25); }, art: 'xinru_zhishui' },
+  effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.25); }, art: 'xinru_zhishui' },
   result: '你心头豁然开朗，修为大涨，隐隐触到了这一层的瓶颈。'
 });
 E('jiyuan', {
-  id: 'lingquan', title: '山涧灵泉', chapter: false, weight: 6, min: 0, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'lingquan', title: '山涧灵泉', chapter: false, weight: 6, min: 0, max: 14, repeat: true,
   lines: ['你在山涧深处寻到一汪冒着白气的灵泉，泉眼处竟长着一株通体翠绿的草药。'],
   effect: { herb: 2, stone: 20 },
   result: '你采下灵草，又装了两葫芦泉水。'
@@ -1190,13 +1495,15 @@ E('jiyuan', {
   result: '你接剑只觉通体一轻——好剑，真正的好剑！（获得装备：青锋剑）'
 });
 E('jiyuan', {
-  id: 'tianjiang_yuntie', title: '天降陨铁', chapter: false, weight: 5, min: 1, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'tianjiang_yuntie', title: '天降陨铁', chapter: false, weight: 5, min: 1, max: 14, repeat: true,
   lines: ['一道火光自天边坠落，砸在你身前十丈的山坳里，烟尘散尽，竟是一块碗口大的陨铁。'],
-  effect: { iron: 10 },
+  effect: { iron: 5 },
   result: '你收好陨铁，暗自欣喜——这可是炼器的好东西。'
 });
 E('jiyuan', {
-  id: 'xianhe_songyao', title: '仙鹤衔药', chapter: false, weight: 4, min: 4, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'xianhe_songyao', title: '仙鹤衔药', chapter: false, weight: 4, min: 4, max: 14, repeat: true,
   lines: ['一只白鹤掠过你头顶，丢下一株通体泛着金芒的灵芝，长鸣一声消失在云间。'],
   effect: { herb: 5 },
   result: '你收下灵芝与鹤羽。那白鹤，来处不明。'
@@ -1304,7 +1611,8 @@ E('shejiao', {
   ]
 });
 E('shejiao', {
-  id: 'qiaoyu_sansan', title: '巧遇散修', chapter: false, weight: 5, min: 0, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'qiaoyu_sansan', title: '巧遇散修', chapter: false, weight: 5, min: 0, max: 14, repeat: true,
   lines: ['渡口遇到一个落草的散修，听他讲了一路各派趣闻，倒也有趣。'],
   effect: { stone: 15 },
   result: '临别时他赠你一袋灵石，权当酒钱。'
@@ -1367,7 +1675,8 @@ E('shejiao', {
   ]
 });
 E('shejiao', {
-  id: 'women_zhi', title: '市井烟火', chapter: false, weight: 5, min: 0, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'women_zhi', title: '市井烟火', chapter: false, weight: 5, min: 0, max: 14, repeat: true,
   lines: ['你混在凡人堆里赶了趟大集，听戏、看杂耍、吃碗阳春面。俗得很，也热得很。'],
   effect: { hp: 25 },
   result: '烟火气回了血。'
@@ -1647,7 +1956,7 @@ E('mijing', {
     { t: '以灵石布阵试探', effect: { stone: -20, herb: 2 }, lines: ['你布下简易困阵，引开妖物后从容采药而去。'] }
   ]
 });
-E('mijing', {
+E('shanhe', {
   id: 'baigu_gumu', title: '白骨古墓', chapter: true, weight: 6, min: 3, max: 5, needRealm: '筑基',
   lines: [
     '荒山裂开一道地缝，露出半截青石墓门。墓碑上刻着：入者自误。',
@@ -1667,7 +1976,7 @@ E('mijing', {
     { t: '焚香三拜，取香案之物', effect: { herb: 3, stone: 60 }, lines: ['你以香火礼敬墓主，只取走案上的供奉之物。身后棺中传来一声若有若无的叹息，似在相送。'] }
   ]
 });
-E('mijing', {
+E('shanhe', {
   id: 'han_feng_tan', title: '玄冰寒潭', chapter: true, weight: 6, min: 6, max: 8, needRealm: '金丹',
   lines: [
     '北境寒潭，水面终年结着薄冰，传说潭心沉着一块万年冰髓。',
@@ -1749,7 +2058,7 @@ E('mijing', {
       lines: ['香火袅袅沉入水底。你只取了船头供奉的三枚古钱便退——身后传来一声幽幽叹息，似在道谢。'] }
   ]
 });
-E('mijing', {
+E('shanhe', {
   id: 'wangu_dong', title: '万骨洞', chapter: true, weight: 6, min: 3, max: 5, needRealm: '筑基',
   lines: [
     '白骨堆成的洞口，风穿过骨缝，发出呜咽般的声响。',
@@ -1855,7 +2164,7 @@ E('mijing', {
       lines: ['你留下一行字便走。三日后梦见那位阵道大师朝你颔首——悟道，有时也在不取。（悟性+1）'] }
   ]
 });
-E('mijing', {
+E('shanhe', {
   id: 'leichi', title: '九天雷池', chapter: true, weight: 6, min: 10, max: 11, needRealm: '元婴',
   lines: [
     '雷云终年不散的山坳里，一方紫色雷池翻涌着电弧。',
@@ -1881,7 +2190,7 @@ E('mijing', {
       lines: ['你以引雷诀引来一道细雷，于雷光中观想阴阳生灭。仿佛有什么在心头破壳。（悟性+2）'] }
   ]
 });
-E('mijing', {
+E('shanhe', {
   id: 'huangshen_tan', title: '荒神祭坛', chapter: true, weight: 6, min: 12, max: 14, needRealm: '元婴',
   lines: [
     '沙漠深处，一座巨石堆成的祭坛孤零零立着，仿佛已经等了万年。',
@@ -1903,6 +2212,98 @@ E('mijing', {
       resultLose: '神像掌风扫来，你倒飞十丈，埋在沙里半晌才爬起来。（气血大损）' },
     { t: '以空敬之：不取一物，只静坐一夜', effect: { wu: 2, qi: function (s) { return Math.round(requireNeed(s) * 0.3); } },
       lines: ['你在祭坛下静坐一夜，听风沙诵经。天明时起身——心头空明一片，如拭净的明镜。（悟性+2，修为+）'] }
+  ]
+});
+/* ===== 山河探索（游历子选项）：触发各类有战斗选项的事件，也提供非战斗机缘 ===== */
+E('shanhe', {
+  id: 'shanhe_tafeng', title: '踏风古径', chapter: true, weight: 5, min: 4, max: 10, needRealm: '金丹',
+  lines: [
+    '一条被风磨得发亮的小径蜿蜒入山，尽头似有轻履踏叶之声。',
+    '你循声而去，却见一头通体透明的风灵兽盘踞阶前，周身罡风凛冽，阶下静静躺着一双轻履。'
+  ],
+  choices: [
+    { t: '踏风而上，夺履而走', fight: { name: '风灵兽', atk: 75, hp: 360, loot: { art: 'tafeng_lv' } },
+      resultWin: '风灵兽散作漫天清风，那双踏风履静静落在阶前——你穿上它，身形竟轻快了三分。（获得法宝·踏风履）', resultLose: '罡风将你掀下古径，你狼狈滚落，只捡回半条命。（气血大损）' },
+    { t: '不夺其履，静观风势', effect: { dun: 1 }, lines: ['你不与风灵兽相争，只盘膝观风。一夜过后，对「遁速」的领悟深了一层。（遁速+1）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_lingquan', title: '灵泉淬体', weight: 5, min: 1, max: 14,
+  lines: [
+    '山腹之中忽见一汪灵泉，水汽氤氲，泉眼咕嘟冒泡。',
+    '泉底似沉着些许灵石与残破玉简，水面倒映着你风尘仆仆的脸。'
+  ],
+  choices: [
+    { t: '汲泉淬体', effect: { hp: 120, qi: function (s) { return Math.round(requireNeed(s) * 0.1); } },
+      lines: ['你掬泉沐浴，浑身毛孔舒张，气血与修为皆有所进。（气血+120，修为+）'] },
+    { t: '打捞泉底', effect: { stone: 200 }, lines: ['你潜入泉底摸得一把灵石。（灵石+200）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_guguan', title: '古观访道', weight: 4, min: 1, max: 14,
+  lines: [
+    '半山腰一座荒废道观，匾额字迹斑驳，唯「道」字依稀可辨。',
+    '观中蒲团尚温，似有人刚刚离去，檐角铜铃在无风中轻响。'
+  ],
+  choices: [
+    { t: '静坐悟道', effect: { wu: 1 }, lines: ['你在观中枯坐半日，忽有所悟。（悟性+1）'] },
+    { t: '搜检观中', effect: { herb: 8, stone: 80 }, lines: ['你翻检殿角，得几株陈年灵草与散落灵石。（灵草+8，灵石+80）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_gudong', title: '古洞奇珍', weight: 4, min: 1, max: 14,
+  lines: [
+    '山壁裂开一道斜洞，洞口藤蔓垂落，隐隐有宝光透出。',
+    '你拨开藤蔓入内，洞腹竟是前人草草封起的藏宝窟。'
+  ],
+  choices: [
+    { t: '搜刮洞中遗物', effect: { stone: 260, herb: 6 }, lines: ['你翻出数枚灵石与几株干制灵草，尽数收入选囊。（灵石+260，灵草+6）'] },
+    { t: '研读壁上古文', effect: { dao: 1 }, lines: ['洞壁刻满早已失传的吐纳古诀，你默记于心，道心豁然开朗。（道心+1）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_yize', title: '散修遗泽', weight: 4, min: 2, max: 14,
+  lines: [
+    '林深处一座塌陷的草庐，檐下悬着半截褪色剑穗——一位散修在此坐化。',
+    '庐中尚存未冷的茶与摊开的手札，墨迹里全是毕生修行体悟。'
+  ],
+  choices: [
+    { t: '取灵石遗物', effect: { stone: 220 }, lines: ['你取走草庐中散落的灵石，合掌向逝者一礼。（灵石+220）'] },
+    { t: '读其修行手札', effect: { ling: 0.5 }, lines: ['你静坐半日读完手札，散修一生心得化作你灵力一丝渐长。（灵力+0.5）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_lingyao', title: '灵药幽谷', weight: 4, min: 1, max: 14,
+  lines: [
+    '幽谷雾气缭绕，石缝间簇生着成片的灵草，谷底一汪乳白灵泉汩汩。',
+    '药香沁脾，吸一口便觉周身经脉舒展。'
+  ],
+  choices: [
+    { t: '采集灵草', effect: { herb: 16 }, lines: ['你小心翼翼采下满篓灵草，香气盈袖。（灵草+16）'] },
+    { t: '饮灵乳淬身', effect: { hp: 100, qi: function (s) { return Math.round(requireNeed(s) * 0.12); } },
+      lines: ['你掬起灵乳一饮而尽，气血充盈、修为亦有所进。（气血+100，修为+）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_canbei', title: '残碑参悟', weight: 4, min: 3, max: 14,
+  lines: [
+    '断崖边立着半截残碑，碑文被风雨剥蚀大半，唯几道笔势仍透着凌厉道韵。',
+    '你伸手抚过碑面，指尖竟微微发烫。'
+  ],
+  choices: [
+    { t: '拓碑悟道', effect: { dao: 1 }, lines: ['你以灵力拓下残碑道韵，闭目参详，道心愈坚。（道心+1）'] },
+    { t: '以血祭碑问道', effect: { hpMax: -100, shen: 1 }, lines: ['你咬破指尖以血润碑，神识竟叩开一丝玄机——代价是气血上限折损。（神识+1，气血上限-100）'] }
+  ]
+});
+E('shanhe', {
+  id: 'shanhe_shanmin', title: '山民相助', weight: 3, min: 1, max: 14,
+  lines: [
+    '山道旁茅棚里住着一户采药山民，见你仙风道骨，忙奉上清茶。',
+    '老者絮絮讲起这一带的山精野怪与古洞传说。'
+  ],
+  choices: [
+    { t: '讨山中机宜', effect: { stone: 120 }, lines: ['你向老者讨教山中秘闻，山民感念，回赠一囊灵石。（灵石+120）'] },
+    { t: '听老者讲古', effect: { dao: 1 }, lines: ['你听老者讲尽山中掌故，诸多野闻竟暗合修行道理，道心为之开阔。（道心+1）'] }
   ]
 });
 E('mijing', {
@@ -2484,25 +2885,83 @@ const SECT_SOCIAL = {
   ]
 };
 
-/* ---------------- 成就 ---------------- */
+/* ---------------- 成就（66 条，按系统分类） ---------------- */
 const ACHIEVEMENTS = {
-  /* ===== 保留（进度 / 人生，非战斗） ===== */
-  shou_zhuji:   { name: '破境·筑基',  desc: '第一次突破筑基。',            pts: 2 },
-  shou_jiejin:  { name: '金丹大道',    desc: '第一次结成金丹。',            pts: 3 },
-  shou_yuanying:{ name: '元婴出窍',    desc: '第一次凝出元婴。',            pts: 4 },
-  feisheng:     { name: '羽化登仙',    desc: '渡劫飞升，得道而去。',        pts: 10 },
-  daolu:        { name: '道侣同心',    desc: '此生结下道侣。',              pts: 2 },
-  shou_zhong:   { name: '寿终正寝',    desc: '安然走完一世凡尘。',          pts: 1 },
-  binjie_3:     { name: '三次渡劫',    desc: '一生渡劫三次而不陨。',        pts: 3 },
-  ai_renzi:     { name: '双甲子',      desc: '活过二百岁。',                pts: 2 },
-  /* ===== 新增（去战斗向：探索 / 结局 / 人生多样性） ===== */
-  chu_tan:      { name: '初探秘境',    desc: '首次探索度满并通关一处秘境。', pts: 1 },
-  shou_cang:    { name: '秘境收藏家',  desc: '当世通关全部四种常规秘境。',  pts: 6 },
-  yi_shi:       { name: '遗世寻仙',    desc: '通关遗世仙踪秘境。',          pts: 4 },
-  wudao:        { name: '悟道',        desc: '以道侣同心之境，终至飞升悟道。', pts: 5 },
-  bai_jia:      { name: '百家之长',    desc: '同时修习三类不同功法技艺。',  pts: 3 },
-  chang_sheng:  { name: '长生久视',    desc: '寿元逾三百。',                pts: 3 },
-  san_xiu:      { name: '散修成道',    desc: '无宗门而修至金丹以上。',      pts: 4 }
+  /* ===== 修行 ===== */
+  shou_zhuji:  { cat:'修行', name:'破境·筑基', desc:'第一次突破筑基。', pts:2 },
+  shou_jiejin: { cat:'修行', name:'金丹大道',  desc:'第一次结成金丹。', pts:3 },
+  shou_yuanying:{cat:'修行', name:'元婴出窍',  desc:'第一次凝出元婴。', pts:4 },
+  feisheng:    { cat:'修行', name:'羽化登仙',  desc:'渡劫飞升，得道而去。', pts:10 },
+  sanjie:      { cat:'修行', name:'三劫不陨',  desc:'一生渡劫三次而不陨。', pts:3 },
+  wudao:       { cat:'修行', name:'悟道飞升',  desc:'以道侣同心之境，终至飞升悟道。', pts:5 },
+  /* ===== 秘境 ===== */
+  chu_tan:     { cat:'秘境', name:'初探秘境',  desc:'首次探索度满并通关一处秘境。', pts:1 },
+  feizhai:     { cat:'秘境', name:'匪寨清剿',  desc:'通关黄级·匪徒营寨。', pts:2 },
+  daheishan:   { cat:'秘境', name:'大黑山行',  desc:'通关玄级·大黑山。', pts:3 },
+  dongtian:    { cat:'秘境', name:'洞天探幽',  desc:'通关地级·洞天福地。', pts:4 },
+  moya:        { cat:'秘境', name:'魔渊踏破',  desc:'通关天级·魔道祖地。', pts:5 },
+  shou_cang:   { cat:'秘境', name:'秘境收藏家',desc:'当世通关全部四种常规秘境。', pts:6 },
+  yi_shi:      { cat:'秘境', name:'遗世寻仙',  desc:'通关仙级·遗世仙踪。', pts:4 },
+  quanjing:    { cat:'秘境', name:'全境收藏家',desc:'通关全部五种秘境。', pts:10 },
+  /* ===== 战斗 ===== */
+  shousha:     { cat:'战斗', name:'首杀',      desc:'首次击破一位秘境之主。', pts:1 },
+  wujie:       { cat:'战斗', name:'五阶尽斩',  desc:'击破全部五位秘境之主。', pts:8 },
+  jizhi:       { cat:'战斗', name:'机制克星',  desc:'分别应对五种 BOSS 机制并通关。', pts:6 },
+  ruoqiang:    { cat:'战斗', name:'以弱胜强',  desc:'低于秘境之主一阶以上时将其击破。', pts:4 },
+  wushang:     { cat:'战斗', name:'无伤探秘',  desc:'任一秘境全程无伤通关。', pts:3 },
+  busi:        { cat:'战斗', name:'不死传说',  desc:'累计无伤通关秘境十次。', pts:8 },
+  pingjie:     { cat:'战斗', name:'平生死劫',  desc:'五度死劫而不陨。', pts:6 },
+  /* ===== 收集 ===== */
+  ming_chu:    { cat:'收集', name:'命格初醒',  desc:'曾获得第一个命格。', pts:1 },
+  shiming:     { cat:'收集', name:'十命加身',  desc:'曾拥有过十个命格。', pts:2 },
+  sanshiming:  { cat:'收集', name:'三十命格',  desc:'曾拥有过三十个命格。', pts:5 },
+  jinse:       { cat:'收集', name:'金色传说',  desc:'获得任意金色（仙命）命格。', pts:5 },
+  mingbo:      { cat:'收集', name:'命格博览',  desc:'集齐全部四十七个命格。', pts:15 },
+  chu_fabao:   { cat:'收集', name:'初得法宝',  desc:'拥有第一件法宝。', pts:1 },
+  fabao_cang:  { cat:'收集', name:'法宝收藏',  desc:'拥有十五件法宝。', pts:3 },
+  fabao_da:    { cat:'收集', name:'法宝大成',  desc:'拥有全部四十四件法宝。', pts:10 },
+  xianqi:      { cat:'收集', name:'仙器临世',  desc:'拥有任一件仙阶法宝。', pts:3 },
+  xianqi_man:  { cat:'收集', name:'仙器满堂',  desc:'拥有全部四件仙阶法宝。', pts:6 },
+  chu_dao:     { cat:'收集', name:'初习道法',  desc:'习得第一部功法（心法/术法/遁术）。', pts:1 },
+  bai_jia:     { cat:'收集', name:'百家之长',  desc:'同时修习三类不同功法技艺。', pts:3 },
+  daofa_3k:    { cat:'收集', name:'道法三千',  desc:'习得十五部功法。', pts:5 },
+  wanfa:       { cat:'收集', name:'万法皆通',  desc:'习得三十部功法。', pts:8 },
+  sanxiu_dao:  { cat:'收集', name:'三修大成',  desc:'心法·术法·遁术三类各有所成（共习六部以上）。', pts:4 },
+  /* ===== 成长 ===== */
+  lianti_chu:  { cat:'成长', name:'炼体初成',  desc:'体魄/遁速/神识任一完成淬炼。', pts:2 },
+  sanxi_xiu:   { cat:'成长', name:'三系同修',  desc:'体魄/遁速/神识均完成淬炼。', pts:3 },
+  lianti_yuan: { cat:'成长', name:'锻体圆满',  desc:'三系均达单境上限（每系十次）。', pts:5 },
+  chukan_baiyi:{ cat:'成长', name:'初窥百艺',  desc:'首次将任一（丹/器/阵）百艺炼至二阶。', pts:1 },
+  danqi:       { cat:'成长', name:'丹器双绝',  desc:'将炼丹与炼器均修至二阶。', pts:3 },
+  baiyi_tong:  { cat:'成长', name:'百艺通玄',  desc:'任一百艺达到高阶（等级≥5）。', pts:3 },
+  lingtian:    { cat:'成长', name:'矿脉深掘',  desc:'将矿脉深掘至五重（深度≥5）。', pts:3 },
+  /* ===== 仙缘 ===== */
+  shanhe:      { cat:'仙缘', name:'山河遍历',  desc:'触发五十次游历事件。', pts:3 },
+  bianli:      { cat:'仙缘', name:'遍历奇遇',  desc:'触发全部名山大川与市井机缘。', pts:8 },
+  chu_yuan:    { cat:'仙缘', name:'初遇仙缘',  desc:'结识第一位有缘人。', pts:1 },
+  zhongsheng:  { cat:'仙缘', name:'众生相识',  desc:'结识全部四位有缘人。', pts:2 },
+  qingshen:    { cat:'仙缘', name:'情深义重',  desc:'任一位有缘人好感达满级。', pts:3 },
+  yuanding:    { cat:'仙缘', name:'缘定三生',  desc:'四位有缘人好感皆达满级。', pts:8 },
+  daolu:       { cat:'仙缘', name:'道侣同心',  desc:'此生结下道侣。', pts:2 },
+  /* ===== 轮回 ===== */
+  churu:       { cat:'轮回', name:'初入轮回',  desc:'首次轮回（飞升或陨落转世）。', pts:1 },
+  jingshi3:    { cat:'轮回', name:'历经三世',  desc:'累计轮回三世。', pts:3 },
+  wangu:       { cat:'轮回', name:'万古长存',  desc:'累计轮回十世。', pts:6 },
+  jishan:      { cat:'轮回', name:'积善余庆',  desc:'累计获得一百轮回点。', pts:2 },
+  fujia:       { cat:'轮回', name:'富甲轮回',  desc:'累计获得五百轮回点。', pts:5 },
+  tianfu:      { cat:'轮回', name:'天赋觉醒',  desc:'解锁全部局外天赋。', pts:10 },
+  /* ===== 人生 ===== */
+  shou_zhong:  { cat:'人生', name:'寿终正寝',  desc:'安然走完一世凡尘。', pts:1 },
+  ai_renzi:    { cat:'人生', name:'双甲子',    desc:'活过二百岁。', pts:2 },
+  chang_sheng: { cat:'人生', name:'长生久视',  desc:'寿元逾三百。', pts:3 },
+  san_xiu:     { cat:'人生', name:'散修成道',  desc:'无宗门而修至金丹以上。', pts:4 },
+  dacheng:     { cat:'人生', name:'大乘之路',  desc:'单世筑基·金丹·元婴·飞升皆圆满。', pts:12 },
+  /* ===== 隐藏 ===== */
+  xianren:     { cat:'隐藏', name:'？？？（仙人遗影）', desc:'遗世仙踪拾得《开天篇》残页。', pts:5, hidden:true },
+  heimao:      { cat:'隐藏', name:'？？？（黑猫之秘）', desc:'黑猫好感满级且触发其全部缘法。', pts:5, hidden:true },
+  wanmei:      { cat:'隐藏', name:'？？？（秘藏尽收）', desc:'单轮回归内集齐四件灵物（上品灵晶/上品妖丹/洞虚秘淬/魔核碎片）。', pts:6, hidden:true },
+  lianti_zhen: { cat:'隐藏', name:'？？？（炼体真解）', desc:'得老乞丐传艺后，锻体三系皆满。', pts:4, hidden:true },
+  tiandao:     { cat:'隐藏', name:'？？？（天道眷顾）', desc:'集齐其余全部成就。', pts:20, hidden:true }
 };
 
 /* ---------------- 轮回天赋（局外成长） ---------------- */
@@ -2526,7 +2985,7 @@ const REINCARNATION = [
   { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
   { id: 'extra_field',   name: '随身灵田', desc: '初始灵田 +1块',                cost: 3, max: 3,  apply: { extraField: 1 } },
   { id: 'destiny_slot',  name: '我命由我', desc: '初始命格栏 +1格',                cost: 12, max: 1,  apply: { destinySlot: 1 } },
-  { id: 'extra_destiny', name: '大千命格', desc: '初始可抽取命格 +1',              cost: 5, max: 4,  apply: { extraDestiny: 1 } },
+  { id: 'extra_destiny', name: '大千命格', desc: '初始可抽取命格 +1',              cost: 3, max: 4,  apply: { extraDestiny: 1 } },
   { id: 'destiny_lock', name: '天命锁定', desc: '可锁定1个命格后重新抽取',        cost: 12, max: 1,  apply: { destinyLock: 1 } }
 ];
 
@@ -2607,40 +3066,112 @@ const EQUIP_TIERS = {
   2: { name: '良品', color: '#5ac8fa' },
   3: { name: '上品', color: '#c06ae0' },
   4: { name: '极品', color: '#e8c15a' },
-  5: { name: '仙品', color: '#ff9d3c' }
+  5: { name: '仙品', color: '#ff4d4f' }
 };
 const EQUIP_SLOTS = {
   weapon:    { name: '武器' },
-  head:      { name: '头饰' },
+  head:      { name: '头部' },
   body:      { name: '躯干' },
-  leg:       { name: '腿部' },
-  accessory: { name: '饰品' },
+  accessory: { name: '饰物' },
   treasure:  { name: '法宝' }
 };
 
 /* ---------------- 装备库 ---------------- */
+/* 附加词条区间（主属性固定值 + 附加词条区间随机） */
+// 词条属性键：atk 攻击 / def 防御 / critPct 暴击% / atkSpd 攻速% / recover 回复% / hpPct 血量上限% / mpPct 灵力上限%
+// 每件装备生成实例时按 tier 滚动 N 条词条，每条取值在 [min, max] 内随机。
+const AFFIX_POOLS = {
+  attack:  { label: '攻击', key: 'atk',   min: 3, max: 40, step: 1 },
+  defense: { label: '防御', key: 'def',   min: 2, max: 25, step: 1 },
+  crit:    { label: '暴击', key: 'critPct', min: 1, max: 12, step: 1, pct: true },
+  atkSpd:  { label: '攻速', key: 'atkSpd', min: 1, max: 10, step: 1, pct: true },
+  recover: { label: '回复', key: 'recover', min: 1, max: 10, step: 1, pct: true },
+  hpPct:   { label: '血量上限', key: 'hpPct', min: 4, max: 30, step: 1, pct: true },
+  mpPct:   { label: '灵力上限', key: 'mpPct', min: 4, max: 30, step: 1, pct: true }
+};
+// 各槽位可附加的词条池（武器/头部/躯干/饰物各自限定）
+const AFFIX_BY_SLOT = {
+  weapon:    ['attack', 'defense', 'crit', 'atkSpd'],
+  head:      ['attack', 'defense', 'mpPct'],
+  body:      ['attack', 'defense', 'recover'],
+  accessory: ['attack', 'crit', 'atkSpd', 'mpPct']
+};
+
 const EQUIPS = {
+  // —— 武器：剑(攻+攻速) / 刀(攻+暴击) / 锤(攻+攻击) / 印(攻+防御)，全部主攻击 ——
+  weapon: {
+    // 剑
+    qingfeng_jian:   { name: '青锋剑',   sub: '剑', tier: 1, main: { atk: 20, atkSpd: 4 },  price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
+    hanxing_jian:    { name: '寒星剑',   sub: '剑', tier: 2, main: { atk: 34, atkSpd: 6 },  price: 320,  desc: '剑身淬着一点寒星，出鞘如霜。' },
+    liuyun_jian:     { name: '流云剑',   sub: '剑', tier: 3, main: { atk: 52, atkSpd: 8 },  price: 900,  desc: '剑走流云，飘忽难测。' },
+    zhanxian_jian:   { name: '斩仙剑',   sub: '剑', tier: 4, main: { atk: 74, atkSpd: 10 }, price: 2600, desc: '曾斩仙人，剑身犹带一丝不灭剑意。' },
+    taixu_jian:      { name: '太虚神剑', sub: '剑', tier: 5, main: { atk: 100, atkSpd: 13 }, price: 7800, desc: '太虚之中蕴一柄神剑，万法归一剑。' },
+    // 刀
+    zhanma_dao:      { name: '斩马刀',   sub: '刀', tier: 1, main: { atk: 20, critPct: 4 },  price: 100,  desc: '刀沉力猛，一劈两断。' },
+    jinyan_dao:      { name: '金雁刀',   sub: '刀', tier: 2, main: { atk: 34, critPct: 6 },  price: 320,  desc: '刀光如金雁掠空，快而烈。' },
+    badao:           { name: '霸刀',     sub: '刀', tier: 3, main: { atk: 52, critPct: 8 },  price: 900,  desc: '一往无前，霸道无双。' },
+    huangquan_dao:   { name: '黄泉刀',   sub: '刀', tier: 4, main: { atk: 74, critPct: 10 }, price: 2600, desc: '刀上凝着黄泉之气，见血方回。' },
+    xuanyuan_dao:    { name: '轩辕刀',   sub: '刀', tier: 5, main: { atk: 100, critPct: 13 }, price: 7800, desc: '上古轩辕遗刀，刀意贯九霄。' },
+    // 锤
+    langya_chui:     { name: '狼牙锤',   sub: '锤', tier: 1, main: { atk: 26, atk2: 8 },   price: 120,  desc: '锤头满布狼牙，势大力沉。' },
+    zhenshan_chui:   { name: '镇山锤',   sub: '锤', tier: 2, main: { atk: 44, atk2: 12 },  price: 380,  desc: '一锤可镇山河。' },
+    poshan_chui:     { name: '破山锤',   sub: '锤', tier: 3, main: { atk: 66, atk2: 16 },  price: 1050, desc: '锤落处山崩地裂。' },
+    fantian_chui:    { name: '翻天锤',   sub: '锤', tier: 4, main: { atk: 92, atk2: 22 },  price: 3000, desc: '翻天覆地，一锤定乾坤。' },
+    kaishan_chui:    { name: '开天锤',   sub: '锤', tier: 5, main: { atk: 125, atk2: 30 }, price: 8800, desc: '盘古开天所用，锤起天地分。' },
+    // 印
+    xuantian_yin:    { name: '玄天印',   sub: '印', tier: 1, main: { atk: 16, def: 12 },  price: 110,  desc: '玄天镇印，攻守兼备。' },
+    zhenshan_yin:    { name: '镇山印',   sub: '印', tier: 2, main: { atk: 28, def: 20 },  price: 350,  desc: '印镇山岳，守如山。' },
+    jiuxiao_yin:     { name: '九霄印',   sub: '印', tier: 3, main: { atk: 44, def: 30 },  price: 950,  desc: '九霄之印，镇压诸邪。' },
+    fantian_yin:     { name: '翻天印',   sub: '印', tier: 4, main: { atk: 62, def: 42 },  price: 2800, desc: '翻天印出，万法皆伏。' },
+    wuji_yin:        { name: '无极印',   sub: '印', tier: 5, main: { atk: 85, def: 56 },  price: 8200, desc: '无极之印，一印证道。' }
+  },
+  // —— 头部：头盔(防+灵量) / 冠冕(防+灵量)，主防御 ——
   head: {
-    ling_toujin:     { name: '云纹包头巾', tier: 1, hpMax: 20,  price: 40,   desc: '粗棉织就，胜在清爽。' },
-    wenyao_guan:     { name: '文瑶玉冠',   tier: 2, hpMax: 35,  atk: 6,      price: 160,  desc: '玉质温润，灵光内蕴。' },
-    xuantie_kuijia:  { name: '玄铁战盔',   tier: 3, hpMax: 90,  atk: 10, ti: 1, price: 600, desc: '铁血千锤，镇守灵台。' },
-    tianbao_guan:    { name: '天宝紫金冠', tier: 4, hpMax: 140, atk: 18, wu: 1, price: 2200, desc: '紫金流彩，天地垂青。' },
-    taiyi_huxian:    { name: '太一太上冠', tier: 5, hpMax: 100, wu: 1, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
+    tietou_kui:      { name: '铁头盔',   sub: '头盔', tier: 1, main: { def: 14, mpPct: 20 }, price: 90,  desc: '铁打头盔，护住灵台。' },
+    xuantie_kui:     { name: '玄铁盔',   sub: '头盔', tier: 2, main: { def: 24, mpPct: 26 }, price: 300, desc: '玄铁千锤，镇守灵台。' },
+    jingang_kui:     { name: '金刚盔',   sub: '头盔', tier: 3, main: { def: 38, mpPct: 34 }, price: 800, desc: '金刚不坏，万法难侵。' },
+    zhenmo_kui:      { name: '镇魔盔',   sub: '头盔', tier: 4, main: { def: 56, mpPct: 44 }, price: 2400, desc: '镇魔之盔，邪祟辟易。' },
+    tianwei_kui:     { name: '天威盔',   sub: '头盔', tier: 5, main: { def: 78, mpPct: 56 }, price: 7200, desc: '天威赫赫，冠绝三界。' },
+    // 冠冕
+    sumu_guan:       { name: '素木冠',   sub: '冠冕', tier: 1, main: { def: 6,  mpPct: 14 }, price: 60,  desc: '素木削成，简朴清雅。' },
+    wenyao_guan:     { name: '文瑶玉冠', sub: '冠冕', tier: 2, main: { def: 10, mpPct: 20 }, price: 160, desc: '玉质温润，灵光内蕴。' },
+    tianbao_guan:    { name: '天宝紫金冠', sub: '冠冕', tier: 3, main: { def: 16, mpPct: 26 }, price: 600, desc: '紫金流彩，天地垂青。' },
+    tianji_guan:     { name: '天机冠',   sub: '冠冕', tier: 4, main: { def: 24, mpPct: 34 }, price: 2200, desc: '冠上流转天机，洞察先机。' },
+    taiyi_guan:      { name: '太一太上冠', sub: '冠冕', tier: 5, main: { def: 34, mpPct: 44 }, price: 6800, desc: '太一之气氤氲，冠上云霞流转。' }
   },
+  // —— 躯干：道袍(回复+血量上限%) / 盔甲(防御+血量上限%) ——
   body: {
-    cubu_daopao:     { name: '粗布道袍',   tier: 1, hpMax: 18,  price: 45,   desc: '山门弟子人手一件。' },
-    linwen_ruanjia:  { name: '鳞纹软甲',   tier: 2, hpMax: 55,  atk: 5,      price: 180,  desc: '蛟鳞串成，贴身轻盈。' },
-    xuanjing_zhongjia:{ name: '玄精重甲',  tier: 3, hpMax: 110, atk: 12,     price: 650,  desc: '玄精所铸，重逾千钧。' },
-    jinluo_baoyi:    { name: '金络宝衣',   tier: 4, hpMax: 180, atk: 15, wu: 1, price: 2400, desc: '金丝络络，百邪不侵。' },
-    xinghe_fayi:     { name: '星河法衣',   tier: 5, hpMax: 250, ti: 2, price: 7200, desc: '衣上星辰自晦明，映照周天。' },
-    canjia:          { name: '蚕丝甲',     tier: 2, hpMax: 60,  atk: 8,  price: 80,  desc: '白素以千年蚕丝织成，柔软如水，坚韧如铁。' }
+    cubu_daopao:     { name: '粗布道袍', sub: '道袍', tier: 1, main: { recover: 6, hpPct: 20 },  price: 45,  desc: '山门弟子人手一件。' },
+    qingyun_daopao:  { name: '青云道袍', sub: '道袍', tier: 2, main: { recover: 8, hpPct: 26 },  price: 180, desc: '青云织就，道韵随身。' },
+    lingxu_daopao:   { name: '灵虚道袍', sub: '道袍', tier: 3, main: { recover: 10, hpPct: 34 }, price: 650, desc: '灵虚之气流转，护体宁神。' },
+    zixiao_daopao:   { name: '紫霄道袍', sub: '道袍', tier: 4, main: { recover: 12, hpPct: 44 }, price: 2400, desc: '紫霄仙气织就，道法自然。' },
+    taiji_daopao:    { name: '太极道袍', sub: '道袍', tier: 5, main: { recover: 15, hpPct: 56 }, price: 7200, desc: '阴阳相抱，太极归一。' },
+    // 盔甲
+    tie_jia:         { name: '铁甲',     sub: '盔甲', tier: 1, main: { def: 18, hpPct: 20 },  price: 50,  desc: '铁片缀成，厚重可靠。' },
+    linwen_ruanjia:  { name: '鳞纹软甲', sub: '盔甲', tier: 2, main: { def: 30, hpPct: 26 },  price: 180, desc: '蛟鳞串成，贴身轻盈。' },
+    xuanjing_zhongjia:{ name: '玄精重甲', sub: '盔甲', tier: 3, main: { def: 46, hpPct: 34 },  price: 650, desc: '玄精所铸，重逾千钧。' },
+    jinluo_baoyi:    { name: '金络宝衣', sub: '盔甲', tier: 4, main: { def: 66, hpPct: 44 },  price: 2400, desc: '金丝络络，百邪不侵。' },
+    xinghe_fayi:     { name: '星河法衣', sub: '盔甲', tier: 5, main: { def: 90, hpPct: 56 },  price: 7200, desc: '衣上星辰自晦明，映照周天。' }
   },
-  leg: {
-    qingma_caoxie:   { name: '青麻草鞋',   tier: 1, hpMax: 8,   price: 30,   desc: '山野寻常物，走得稳当。' },
-    yunwen_buxue:    { name: '云纹步靴',   tier: 2, hpMax: 25,  atk: 6, wu: 1, price: 170, desc: '靴底绣云，步履生风。' },
-    fenglei_zhuiyue: { name: '风雷追月靴', tier: 3, hpMax: 50,  atk: 14,     price: 620,  desc: '雷霆加身，追风逐月。' },
-    tianxing_xue:    { name: '天行靴',     tier: 4, hpMax: 70,  atk: 20, wu: 1, price: 2300, desc: '天行健，君子自强不息。' },
-    lingyun_xianlv:  { name: '凌云仙履',   tier: 5, hpMax: 100, dun: 2, price: 6600, desc: '履下生云，步步登仙。' }
+  // —— 饰物：玉佩(灵量) / 戒指(暴击) / 项链(攻速) ——
+  accessory: {
+    han_yupei:       { name: '寒玉佩',   sub: '玉佩', tier: 1, main: { mpPct: 20 },        price: 80,  desc: '温润寒玉，凝神养灵。' },
+    ling_yupei:      { name: '灵玉佩',   sub: '玉佩', tier: 2, main: { mpPct: 26 },        price: 260, desc: '灵玉养神，灵台清明。' },
+    zhen_yupei:      { name: '镇魂玉佩', sub: '玉佩', tier: 3, main: { mpPct: 34 },        price: 700, desc: '镇魂宁神，灵潮涌动。' },
+    taiji_yupei:     { name: '太极玉佩', sub: '玉佩', tier: 4, main: { mpPct: 44 },        price: 2100, desc: '太极双鱼，灵气生生不息。' },
+    tianji_yupei:    { name: '天机玉佩', sub: '玉佩', tier: 5, main: { mpPct: 56 },        price: 6400, desc: '天机流转，灵海无边。' },
+    // 戒指
+    tong_jiezhi:     { name: '铜戒指',   sub: '戒指', tier: 1, main: { critPct: 5 },       price: 80,  desc: '寻常铜环，暗藏锋芒。' },
+    yin_jiezhi:      { name: '银戒指',   sub: '戒指', tier: 2, main: { critPct: 7 },       price: 260, desc: '银光流转，锋锐内蕴。' },
+    jin_jiezhi:      { name: '金戒指',   sub: '戒指', tier: 3, main: { critPct: 9 },       price: 700, desc: '金环淬锋，锐不可当。' },
+    xingchen_jiezhi: { name: '星辰戒指', sub: '戒指', tier: 4, main: { critPct: 11 },      price: 2100, desc: '星辰之力凝于环上。' },
+    tianming_jiezhi: { name: '天命戒指', sub: '戒指', tier: 5, main: { critPct: 14 },      price: 6400, desc: '天命所归，一击致命。' },
+    // 项链
+    tong_xianglian:  { name: '铜项链',   sub: '项链', tier: 1, main: { atkSpd: 5 },       price: 80,  desc: '朴素铜链，轻灵随身。' },
+    yin_xianglian:   { name: '银项链',   sub: '项链', tier: 2, main: { atkSpd: 7 },       price: 260, desc: '银链轻垂，身轻如燕。' },
+    jin_xianglian:   { name: '金项链',   sub: '项链', tier: 3, main: { atkSpd: 9 },       price: 700, desc: '金链流光，动若脱兔。' },
+    xinghe_xianglian:{ name: '星河项链', sub: '项链', tier: 4, main: { atkSpd: 11 },      price: 2100, desc: '星河璀璨，速度超群。' },
+    taiyi_xianglian: { name: '太一项链', sub: '项链', tier: 5, main: { atkSpd: 14 },      price: 6400, desc: '太一仙链，疾如雷霆。' }
   },
   treasure: {
     // 基础宝物（多为剧情获取，不可炼制）
@@ -2701,6 +3232,8 @@ const ADVENTURE_CONFIG = {
     realmReq: 0,
     desc: '炼气期秘境，匪徒盘踞之地。',
     monsters: MONSTER_POOL.huang,
+    // 敌人立绘分层：按遭遇类型（combat 小怪 / elite 精英）指定，缺省回落 'foe'
+    foeArt: { combat: 'foe_bandit' },
     boss: Object.assign({}, MONSTER_POOL.boss[0], { mechanic: 'thorns' }),
     drops: { herb: 'herb_huang', iron: 'iron_huang' }
   },
@@ -2710,6 +3243,7 @@ const ADVENTURE_CONFIG = {
     realmReq: 1,
     desc: '筑基期秘境，妖兽横行之地。',
     monsters: MONSTER_POOL.xuan,
+    foeArt: { elite: 'foe_wolf' },
     boss: Object.assign({}, MONSTER_POOL.boss[1], { mechanic: 'enrage' }),
     drops: { herb: 'herb_xuan', iron: 'iron_xuan' }
   },
@@ -2830,7 +3364,10 @@ const ADV_NODES = {
   shop:     { name: '荒野坊市', icon: '◇', desc: '荒僻之地竟有一间亮着灯的小铺。' },
   event:    { name: '雾中奇遇', icon: '☯', desc: '迷雾深处，似乎传来一声苍老的咳嗽。' },
   rest:     { name: '静室歇脚', icon: '☾', desc: '一处僻静地界，可打坐调息，回复气血或灵力。' },
-  explore:  { name: '秘地探查', icon: '⚘', desc: '灵气氤氲的秘地，深处似有造化流转——深入须耗心力。' }
+  explore:  { name: '秘地探查', icon: '⚘', desc: '灵气氤氲的秘地，深处似有造化流转——深入须耗心力。' },
+  // 劫境专属节点（死劫劫境 / 渡劫劫境）
+  hazard:   { name: '险地凶机', icon: '✦', desc: '前路有险——或伤身，或砺心，端看你如何取舍。' },
+  altar:    { name: '古老祭坛', icon: '卍', desc: '一座不知年月的祭坛，献上些什么，也许能换回些什么。' }
 };
 
 /* ---------------- 秘境地图生成（横版 DAG，参考杀戮尖塔路径 + 异世轮回录） ----------------
@@ -2841,7 +3378,7 @@ const ADV_NODES = {
 function genAdvMap(grade, opts) {
   opts = opts || {};
   const TYPES = opts.types || null;   // 限定节点类型（试炼：['combat','elite','rest']）
-  const NORMAL_COLS = opts.cols || 9; // col 0..N-1 普通节点，col N 为 Boss
+  const NORMAL_COLS = opts.cols || 50; // col 0..N-1 普通节点，col N 为 Boss
   const STEP_COST = 5;              // 每走一步消耗秘境体力
   function pickType(col) {
     if (TYPES) {
@@ -2869,57 +3406,79 @@ function genAdvMap(grade, opts) {
     const weighted = ['combat', 'combat', 'combat', 'combat', 'elite', 'treasure', 'herb', 'iron', 'shop', 'event'];
     return weighted[Math.floor(Math.random() * weighted.length)];
   }
+  // 【每层固定 3 个节点】——横排三等分（25% / 50% / 75%），行行对齐，不再忽多忽少。
+  // 另设虚拟「入口」节点（col = -1）作为唯一出发点，指向第 1 层全部 3 个节点，
+  // 使「第一行」同样是 3 个真选项，不会退化成独木桥。
+  const PER = 3;
   const cols = [];
   for (let c = 0; c < NORMAL_COLS; c++) {
-    const n = (c === 0) ? 2 : (2 + (Math.random() < 0.5 ? 0 : 1));
     const arr = [];
-    for (let i = 0; i < n; i++) arr.push({ id: 'c' + c + '_' + i, col: c, type: pickType(c), next: [], visited: false });
+    for (let i = 0; i < PER; i++) arr.push({ id: 'c' + c + '_' + i, col: c, idx: i, type: pickType(c), next: [], visited: false });
     cols.push(arr);
   }
-  // 保证至少 1 个静室（回血）——仅在允许 rest 时强制
+  // 静室（回血）保底：层数越多铺得越密（约每 10 层一处），仅在允许 rest 时强制。
+  const wantRest = Math.max(1, Math.round(NORMAL_COLS / 10));
   let restCount = 0;
   cols.forEach(function (col) { col.forEach(function (n) { if (n.type === 'rest') restCount++; }); });
-  if (restCount < 1 && (!TYPES || TYPES.indexOf('rest') >= 0)) {
+  if (restCount < wantRest && (!TYPES || TYPES.indexOf('rest') >= 0)) {
     const cand = [];
     for (let c = 1; c <= NORMAL_COLS - 2; c++) cols[c].forEach(function (n) { cand.push(n); });
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp; }
-    cand.forEach(function (n) {
-      if (restCount < 1) { n.type = 'rest'; restCount++; }
-    });
+    const stride = Math.max(1, Math.floor(cand.length / wantRest));
+    for (let k = 0; k < wantRest && k * stride < cand.length; k++) {
+      const n = cand[k * stride];
+      if (n.type !== 'rest') { n.type = 'rest'; restCount++; }
+    }
   }
   const boss = { id: 'boss', col: NORMAL_COLS, type: 'final', next: [], visited: false };
-  // 连边：每一列节点连向下一列 1~2 个相邻节点
+  const entry = { id: 'entry', col: -1, type: 'entry', next: [], visited: false };
+  entry.next = cols[0].map(function (n) { return n.id; });
+  // 连边（杀戮尖塔式 + 异世轮回录的择路体验）：
+  //   · 每个节点先连一条「同索引直线边」到下一层，这是主干。
+  //   · 每层按风格掷骰：直 / 左斜 / 右斜。
+  //     - 直：本层所有节点只有直线（至少占 1/3 层数）。
+  //     - 左斜：节点 i（i>0）额外连到 i-1，即源列比目标列靠右一位。
+  //     - 右斜：节点 i（i<2）额外连到 i+1，即源列比目标列靠左一位。
+  //   · 同层内所有斜边方向一致，因此层内连线永不交叉。
+  //   · 因为主边永远是同索引直线，下一层每个节点必有来自上一层的入边，无孤儿。
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+  }
+  // 至少约 3/5 的层走直线（≥1/3 约束更易满足），其余 ~2/5 掷骰左右斜（单边、不交叉）。
+  // 用户要求再次削减斜线约 40%：原斜列约 (N - N/3) ≈ 34 → 现约 round(N*0.4) ≈ 20。
+  const straightCount = Math.round(NORMAL_COLS * 0.6);
+  const layerTypes = ['left', 'right'];
+  const styles = [];
+  const straightPool = [];
+  for (let c = 0; c < NORMAL_COLS; c++) straightPool.push(c);
+  shuffle(straightPool);
+  for (let i = 0; i < straightPool.length; i++) {
+    styles[straightPool[i]] = (i < straightCount) ? 'straight' : layerTypes[i % 2];
+  }
+  // 入口：直接指向第 1 层 3 个节点，保证第一行就是 3 个真选项
+  entry.next = cols[0].map(function (n) { return n.id; });
   for (let c = 0; c < NORMAL_COLS; c++) {
     const cur = cols[c];
     const nxt = (c + 1 < NORMAL_COLS) ? cols[c + 1] : [boss];
+    const style = styles[c];
     cur.forEach(function (node, idx) {
-      const center = Math.min(nxt.length - 1, Math.floor(idx * nxt.length / cur.length));
-      const seen = {};
-      seen[center] = 1; node.next.push(nxt[center].id);
-      if (Math.random() < 0.6) {
-        const alt = center + (Math.random() < 0.5 ? 1 : -1);
-        if (alt >= 0 && alt < nxt.length && !seen[alt]) { seen[alt] = 1; node.next.push(nxt[alt].id); }
-      }
-    });
-  }
-  // 修复孤儿：保证下一列每个节点都有入边
-  for (let c = 1; c <= NORMAL_COLS; c++) {
-    const cur = (c < NORMAL_COLS) ? cols[c] : [boss];
-    const prev = cols[c - 1];
-    cur.forEach(function (node) {
-      const hasIn = prev.some(function (p) { return p.next.indexOf(node.id) >= 0; });
-      if (!hasIn) {
-        let best = 0, bestD = 1e9;
-        prev.forEach(function (p, i) { const d = Math.abs(i - cur.indexOf(node)); if (d < bestD) { bestD = d; best = i; } });
-        prev[best].next.push(node.id);
-      }
+      // 主边：同索引直线；末层下一列若是 Boss（仅 1 个节点），则三列皆垂直汇于 Boss。
+      node.next.push(nxt[Math.min(idx, nxt.length - 1)].id);
+      if (style === 'straight' || nxt.length < 3) return;
+      // 次边：统一方向，只连相邻列（不会交叉）
+      const targetIdx = (style === 'right') ? idx + 1 : idx - 1;
+      if (targetIdx >= 0 && targetIdx < nxt.length) node.next.push(nxt[targetIdx].id);
     });
   }
   const byId = {};
   cols.forEach(function (col) { col.forEach(function (n) { byId[n.id] = n; }); });
   byId[boss.id] = boss;
-  const startId = cols[0][Math.floor(Math.random() * cols[0].length)].id;
-  return { cols: cols, boss: boss, byId: byId, startId: startId, normalCols: NORMAL_COLS, stepCost: STEP_COST };
+  byId[entry.id] = entry;
+  const startId = entry.id; // 出发点为虚拟入口，第 1 层 3 个节点皆为真选项
+  return { cols: cols, boss: boss, entry: entry, byId: byId, startId: startId, normalCols: NORMAL_COLS, stepCost: STEP_COST };
 }
 
 /* ---------------- 坊市商品 ---------------- */
@@ -3062,13 +3621,14 @@ const SECT_LECTURE = {
 
 /* ---------------- 开荒初始化（§3.5） ---------------- */
 const INIT_POINTS = 10;                 // 基础开荒点数
-// 轮回阁天赋：每级为开荒池永久 +bonus 点；升级消耗轮回点（周目内积累）
+// 【开荒】天赋：每级为开荒池永久 +bonus 点；升级消耗轮回点（周目内积累）
+// 升级价格：初始 6 点，公差 6（6 / 12 / 18 / 24）。
 const REINC_TALENT = [
   { lv: 1, bonus: 4,  cost: 0 },
-  { lv: 2, bonus: 8,  cost: 10 },
-  { lv: 3, bonus: 12, cost: 20 },
-  { lv: 4, bonus: 16, cost: 40 },
-  { lv: 5, bonus: 20, cost: 80 }
+  { lv: 2, bonus: 8,  cost: 6 },
+  { lv: 3, bonus: 12, cost: 12 },
+  { lv: 4, bonus: 16, cost: 18 },
+  { lv: 5, bonus: 20, cost: 24 }
 ];
 function reincTalentBonus(lv) {
   lv = lv || 1;
@@ -3086,9 +3646,7 @@ const CRAFT_POINTS = { 0: 0, 1: 1, 2: 2, 3: 6 };
 const CRAFT_KINDS = [
   { id: 'liandan', name: '炼丹' },
   { id: 'lianqi',  name: '炼器' },
-  { id: 'zhenfa',  name: '阵法' },
-  { id: 'lingtian', name: '灵田' },
-  { id: 'lingkuang', name: '灵矿' }
+  { id: 'zhenfa',  name: '阵法' }
 ];
 const CRAFT_TIERS = [
   { lv: 1, name: '入门',   comm: '基础' },
@@ -3109,11 +3667,11 @@ const JULING_ARRAY = [
 
 /* ---------------- 五行阵（§5.2，战斗光环） ---------------- */
 const WUXING_ARRAY = {
-  fire:  { name: '火阵', attr: 'atk',    pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  metal: { name: '金阵', attr: 'critPct', pctByLv: [0, 0.05, 0.08, 0.12, 0.16, 0.20] },
-  water: { name: '水阵', attr: 'mpMax',  pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  wood:  { name: '木阵', attr: 'hpMax',  pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  earth: { name: '土阵', attr: 'def',    pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] }
+  fire:  { name: '火阵', attr: 'atk',    cn: '攻击',     pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  metal: { name: '金阵', attr: 'critPct', cn: '暴击',     pctByLv: [0, 0.05, 0.08, 0.12, 0.16, 0.20] },
+  water: { name: '水阵', attr: 'mpMax',  cn: '法力上限', pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  wood:  { name: '木阵', attr: 'hpMax',  cn: '气血上限', pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
+  earth: { name: '土阵', attr: 'def',    cn: '防御',     pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] }
 };
 const WUXING_ORDER = ['fire', 'metal', 'water', 'wood', 'earth'];
 
@@ -3140,20 +3698,28 @@ const COMMISSIONS = [
   { id: 'lindan1', name: '炼制供奉·丹', realm: '筑基', type: 'craft', craft: 'liandan', minLv: 2, ap: 1, stone: [100, 200], gongye: [8, 15] },
   { id: 'lianqi1', name: '修缮法器·器', realm: '金丹', type: 'craft', craft: 'lianqi',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },
   { id: 'zhenfa1', name: '布阵值守·阵', realm: '金丹', type: 'craft', craft: 'zhenfa',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },
-  { id: 'tancha',  name: '秘境探勘',   realm: '金丹', type: 'fightsix', enemy: { name: '妖兽', atk: 40, hp: 300, loot: { stone: [300, 600] } }, check: { shen: 10 }, ap: 2, stone: [500, 800], gongye: [20, 30] },
+  // 秘境探勘：守敌对标「地级秘境 BOSS」——enemyBoss 交给 Engine.commissionEnemy 实时生成
+  //   （= ENEMY_REALM_BASE[2] × depthFactor(第10层 0.61) × bossMul(2.2) ≈ 攻 656 / 血 3112，随叠劫难度同步）。
+  //   旧版写死 atk 40 / hp 300（连炼气杂兵都不如），金丹期玩家一击即溃 → 玩家反馈「秘境探勘敌人太弱」。
+  //   下方 enemy 里的 atk/hp 仅作兜底展示值，实战一律走 commissionEnemy()。
+  { id: 'tancha',  name: '秘境探勘',   realm: '金丹', type: 'fightsix',
+    enemy: { name: '秘境妖兽', line: '秘境幽深，一头踞守多年的妖兽缓缓睁开竖瞳。', atk: 656, hp: 3112, loot: { stone: [300, 600] } },
+    enemyBoss: { adv: 'di', tag: 'boss', depth: 10 },
+    check: { shen: 10 }, ap: 2, stone: [500, 800], gongye: [20, 30] },
   { id: 'zhenmo',  name: '镇魔差遣',   realm: '元婴', type: 'fight', enemy: { name: '魔修', atk: 90, hp: 800, loot: { stone: [1500, 3000] } }, ap: 3, stone: [2000, 5000], gongye: [30, 50] }
 ];
 
-/* ---------------- 宗门大比（§6.6 连战 gauntlet） ---------------- */
+/* ---------------- 宗门大比（§6.6 秘境化连战 · 一条直线 5 场） ---------------- */
+// 每 10 年一届（第 10/20/30… 年，firstYear=10），外门及以上可参与；5 层连战**排成一条直线**依次闯过。
+// 对手强度：以玩家**当前大境界**的常规敌人基线 ENEMY_REALM_BASE[bigIdx] 为基准 × 逐层递增系数，
+//   不再写死固定攻血（旧版 atk 15~100 在筑基之后毫无威胁）。
+//   ⚠ 数值口径由 Engine.dabiFoe(s, i) 单一产出，UI 与结算都调它，不要各自拼。
 const SECT_DABI = {
-  intervalYears: 3,
-  foes: [
-    { name: '外门散修', atk: 15,  hp: 120 },
-    { name: '内门弟子', atk: 30,  hp: 240 },
-    { name: '真传精锐', atk: 50,  hp: 420 },
-    { name: '宗门护法', atk: 75,  hp: 650 },
-    { name: '首席弟子', atk: 100, hp: 900 }
-  ],
+  intervalYears: 10,
+  firstYear: 10,
+  layers: 5,
+  layerMul: [0.45, 0.65, 0.85, 1.05, 1.30],
+  names: ['外门散修', '内门弟子', '真传精锐', '宗门护法', '首席弟子'],
   reward: {
     1: { gongye: 30,  stone: 30 },
     2: { gongye: 80,  stone: 100 },
@@ -3183,7 +3749,7 @@ const SECT_GOODS = [
   /* ========== 内门 ========== */
   { ref: 'chunyang',  kind: 'tech',  grade: '玄', coin: 'stone',  rankMin: '内门' },
   { ref: 'tiangang',  kind: 'tech',  grade: '玄', coin: 'stone',  rankMin: '内门' },
-  { ref: 'juling_yaodai', kind: 'art', grade: '地', coin: 'stone', rankMin: '内门' }, // 灵石 GRADE_STONE.地=1400（不翻倍）
+  { ref: 'juling_yaodai', kind: 'art', grade: '玄', coin: 'stone', stoneFix: 1000, rankMin: '内门' }, // 灵石 1000（不翻倍·stoneFix 锁价）
   { ref: 'zhuji',     kind: 'elixir', gongye: 40, coin: 'gongye', rankMin: '内门', qty: 1 },
   { ref: 'herb_xuan', kind: 'mat',   gongye: 20,  coin: 'gongye', rankMin: '内门', qty: 10 },
   { ref: 'iron_xuan', kind: 'mat',   gongye: 20,  coin: 'gongye', rankMin: '内门', qty: 10 },
@@ -3194,7 +3760,7 @@ const SECT_GOODS = [
   { ref: 'gengjin',   kind: 'tech',  grade: '地', coin: 'stone',  rankMin: '真传' },
   { ref: 'yingdun',   kind: 'dun',   grade: '玄', coin: 'stone',  rankMin: '真传' },
   { ref: 'suodi',     kind: 'dun',   grade: '天', coin: 'stone',  rankMin: '真传' },
-  { ref: 'duangu_bian', kind: 'art', grade: '地', coin: 'stone', rankMin: '真传' }, // 灵石 1400（不翻倍）
+  { ref: 'duangu_bian', kind: 'art', grade: '玄', coin: 'stone', stoneFix: 1800, rankMin: '真传' }, // 灵石 1800（不翻倍·stoneFix 锁价）
   { ref: 'jiejin',    kind: 'elixir', gongye: 120, coin: 'gongye', rankMin: '真传', qty: 1 },
   { ref: 'herb_di',   kind: 'mat',   gongye: 80,  coin: 'gongye', rankMin: '真传', qty: 10 },
   { ref: 'iron_di',   kind: 'mat',   gongye: 80,  coin: 'gongye', rankMin: '真传', qty: 10 },
@@ -3202,14 +3768,14 @@ const SECT_GOODS = [
   /* ========== 核心 ========== */
   { ref: 'qilin',     kind: 'tech',  grade: '天', coin: 'stone',  rankMin: '核心' },
   { ref: 'baihu',     kind: 'tech',  grade: '天', coin: 'stone',  rankMin: '核心' },
-  { ref: 'cuishen_tai', kind: 'art', grade: '天', coin: 'stone', rankMin: '核心' }, // 灵石 4000（不翻倍）
+  { ref: 'cuishen_tai', kind: 'art', grade: '地', coin: 'stone', stoneFix: 2000, rankMin: '核心' }, // 灵石 2000（不翻倍·stoneFix 锁价）
   { ref: 'yuanying',  kind: 'elixir', gongye: 250, coin: 'gongye', rankMin: '核心', qty: 1 },
   { ref: 'herb_tian', kind: 'mat',   gongye: 150, coin: 'gongye', rankMin: '核心', qty: 10 },
   { ref: 'iron_tian', kind: 'mat',   gongye: 150, coin: 'gongye', rankMin: '核心', qty: 10 },
 
   /* ========== 首席 ========== */
   { ref: 'wudao',     kind: 'elixir', gongye: 400, coin: 'gongye', rankMin: '首席', qty: 1 },
-  { ref: 'jiuzhuan_jindanlu', kind: 'art', grade: '仙', coin: 'stone', rankMin: '首席' } // 灵石 8000（不翻倍）
+  { ref: 'jiuzhuan_jindanlu', kind: 'art', grade: '天', coin: 'stone', stoneFix: 6000, rankMin: '首席' } // 灵石 6000（不翻倍·stoneFix 锁价）
 ];
 
 /* ---------------- 游历流动商贩 · 法宝池（仅灵石，每次随机 3 件入货） ---------------- */
@@ -3250,7 +3816,8 @@ E('shejiao', {
   result: '（悟性+0.3，修为+10）'
 });
 E('shejiao', {
-  id: 'yeling_caiyao', title: '野岭采药', chapter: false, weight: 4, min: 0, max: 14,
+  // repeat：日常小事（纯资源小收益，可反复触发）——2026-09-13 用户定稿的 6 件之一
+  id: 'yeling_caiyao', title: '野岭采药', chapter: false, weight: 4, min: 0, max: 14, repeat: true,
   lines: ['城外野岭，你循着药香拨开草丛，竟寻得几株年份尚可的灵草。'],
   effect: { herb: 5 },
   result: '（灵草+5）'
@@ -3369,3 +3936,67 @@ Object.keys(NPCS).forEach(function (k) {
     if (n.surface === 'mainline') MAINLINE.push(n.event);
   }
 });
+/* ---------------- BOSS / 强敌 五行属性与法术适配（2026-09-13 实装） ----------------
+ * BOSS_ELEMENT：17 个正式 BOSS（秘境 6 / 渡劫 4 / 死劫 5 / 入宗 1 / 隐藏 1），按 name 索引。
+ * EVENT_FOE_ELEMENT：28 个剧情/事件强敌，按 name 索引；spells 为空表示只标元素、不施法。
+ * 字段：element 主元素（'无' = 不参与生克，且受全系减伤 ×0.90）
+ *       spells  [{ id: 法术id, w: 权重 }]，只能使用「能作用在玩家身上」的法术
+ *       spellChance 每回合选择「施法」而非普攻的概率（黄0.15 → 帝渊0.60）
+ *       mirrorElement true = 元素取玩家主灵根（仅镜像属性，不复制玩家法术）
+ * 生克：克 ×1.2 / 同属 ×0.9 / 被克 ×0.8 / 无属性法术恒 ×1.0；BOSS 无属性时再乘 ×0.90。
+ * ------------------------------------------------------------------------------- */
+const BOSS_ELEMENT = {
+  // —— 秘境 BOSS（6）——
+  '匪首':         { element: '金', spellChance: 0.15, spells: [{ id: 'jinren', w: 3 }, { id: 'leiyin', w: 2 }, { id: 'luoshi', w: 2 }] },
+  '黑山老妖':     { element: '木', spellChance: 0.25, spells: [{ id: 'tengman', w: 3 }, { id: 'fu_du', w: 2 }, { id: 'shengji', w: 2 }] },
+  '洞天之主':     { element: '土', spellChance: 0.35, spells: [{ id: 'luoyan', w: 3 }, { id: 'han_shan', w: 2 }, { id: 'yanjia', w: 2 }, { id: 'shanyue', w: 1 }] },
+  '魔祖化身':     { element: '无', spellChance: 0.45, spells: [{ id: 'fen_hun', w: 3 }, { id: 'jiu_you', w: 2 }, { id: 'wan_du', w: 2 }, { id: 'fantian', w: 2 }] },
+  '仙人残念':     { element: '金', spellChance: 0.45, spells: [{ id: 'jinguang', w: 3 }, { id: 'jinguanghu', w: 2 }, { id: 'wan_zai', w: 2 }, { id: 'leiyin', w: 2 }] },
+  '试炼之主':     { element: '无', mirrorElement: true, spellChance: 0.15, spells: [{ id: 'jinren', w: 2 }, { id: 'huoqiu', w: 2 }, { id: 'luoshi', w: 2 }, { id: 'shuidan', w: 2 }] },
+  // —— 入宗考验（1，教学关不施法）——
+  '演武教头':     { element: '无', spellChance: 0, spells: [] },
+  // —— 渡劫劫身（4）——
+  '心魔 · 执念化形':       { element: '无', mirrorElement: true, spellChance: 0.30, spells: [{ id: 'tengman', w: 2 }, { id: 'lieyan', w: 2 }, { id: 'shuang_han', w: 2 }, { id: 'lie_di', w: 2 }] },
+  '天劫化身 · 九天应元之形': { element: '金', spellChance: 0.40, spells: [{ id: 'leiyin', w: 3 }, { id: 'jinguang', w: 2 }, { id: 'wanjian', w: 1 }] },
+  '仙界守卫 · 白玉京执戟郎': { element: '金', spellChance: 0.35, spells: [{ id: 'jinguanghu', w: 3 }, { id: 'jinguang', w: 3 }] },
+  '飞升天劫 · 天门之影':     { element: '无', spellChance: 0.50, spells: [{ id: 'wan_zai', w: 2 }, { id: 'jiu_you', w: 2 }, { id: 'wan_du', w: 2 }, { id: 'zhen_yue', w: 2 }] },
+  // —— 死劫 BOSS（5）——
+  '狼王 · 赤瞳':     { element: '木', spellChance: 0.20, spells: [{ id: 'tengman', w: 3 }, { id: 'fu_du', w: 2 }, { id: 'huoqiu', w: 2 }] },
+  '黑风寨主 · 屠九': { element: '土', spellChance: 0.25, spells: [{ id: 'luoshi', w: 3 }, { id: 'lie_di', w: 2 }, { id: 'yanjia', w: 2 }] },
+  '沧溟蛟 · 苍溟':   { element: '水', spellChance: 0.30, spells: [{ id: 'shuidan', w: 3 }, { id: 'shuang_han', w: 3 }, { id: 'han_yuan', w: 2 }] },
+  '无面':            { element: '无', spellChance: 0.40, spells: [{ id: 'wan_du', w: 2 }, { id: 'wan_zai', w: 2 }, { id: 'jiu_you', w: 2 }, { id: 'zhen_yue', w: 1 }] },
+  '魔祖化身 · 渊':   { element: '无', spellChance: 0.45, spells: [{ id: 'fantian', w: 3 }, { id: 'jiu_you', w: 3 }, { id: 'wan_du', w: 2 }] },
+  // —— 隐藏 BOSS（1）——
+  '魔祖仙帝 · 帝渊': { element: '无', spellChance: 0.60, spells: [{ id: 'jiu_you', w: 2 }, { id: 'wan_zai', w: 2 }, { id: 'wan_du', w: 2 }, { id: 'zhen_yue', w: 2 }, { id: 'potian', w: 2 }, { id: 'fantian', w: 2 }, { id: 'wanmu', w: 1 }] }  // 注：伐灾（disaster）为玩家专属免控，BOSS 不使用
+};
+
+const EVENT_FOE_ELEMENT = {
+  '妖兽':       { element: '木', spellChance: 0,    spells: [] },
+  '妖兽首领':   { element: '木', spellChance: 0.15, spells: [{ id: 'tengman', w: 1 }] },
+  '秘境守护者': { element: '土', spellChance: 0.25, spells: [{ id: 'luoyan', w: 2 }, { id: 'lie_di', w: 1 }] },
+  '首席弟子':   { element: '无', spellChance: 0.25, spells: [{ id: 'jianqi', w: 1 }] },
+  '魔修先锋':   { element: '无', spellChance: 0.20, spells: [{ id: 'lieyan', w: 2 }, { id: 'fen_hun', w: 1 }] },
+  '仙宫守护者': { element: '金', spellChance: 0.30, spells: [{ id: 'jinguang', w: 2 }, { id: 'jinguanghu', w: 1 }] },
+  '井底灵蛟':   { element: '水', spellChance: 0.15, spells: [{ id: 'shuidan', w: 1 }] },
+  '古刹怨灵':   { element: '无', spellChance: 0,    spells: [] },
+  '青纹狼':     { element: '木', spellChance: 0,    spells: [] },
+  '守墓尸傀':   { element: '土', spellChance: 0,    spells: [] },
+  '冰蛟':       { element: '水', spellChance: 0.20, spells: [{ id: 'hanshuang', w: 2 }, { id: 'shuang_han', w: 1 }] },
+  '火脉元灵':   { element: '火', spellChance: 0.25, spells: [{ id: 'huoqiu', w: 2 }, { id: 'lieyan', w: 1 }] },
+  '守园老龟':   { element: '土', spellChance: 0.25, spells: [{ id: 'yanjia', w: 2 }, { id: 'shuidan', w: 1 }] },
+  '竹林竹妖':   { element: '木', spellChance: 0,    spells: [] },
+  '溺亡水鬼':   { element: '水', spellChance: 0,    spells: [] },
+  '守灯尸修':   { element: '火', spellChance: 0,    spells: [] },
+  '守府阵灵':   { element: '土', spellChance: 0,    spells: [] },
+  '天机傀儡':   { element: '金', spellChance: 0.20, spells: [{ id: 'jinren', w: 2 }, { id: 'jinguang', w: 1 }] },
+  '石门机关':   { element: '土', spellChance: 0.15, spells: [{ id: 'luoshi', w: 1 }] },
+  '雷池元灵':   { element: '金', spellChance: 0.25, spells: [{ id: 'leiyin', w: 2 }, { id: 'jinguang', w: 1 }] },
+  '雷池之灵':   { element: '金', spellChance: 0.20, spells: [{ id: 'leiyin', w: 2 }, { id: 'jinren', w: 1 }] },
+  '荒神残念':   { element: '土', spellChance: 0.30, spells: [{ id: 'luoyan', w: 2 }, { id: 'han_shan', w: 1 }] },
+  '虚空兽潮':   { element: '无', spellChance: 0.30, spells: [{ id: 'jinren', w: 1 }, { id: 'huoqiu', w: 1 }, { id: 'shuidan', w: 1 }, { id: 'luoshi', w: 1 }, { id: 'tengman', w: 1 }] },
+  '吞星巨蟒':   { element: '木', spellChance: 0.30, spells: [{ id: 'fu_du', w: 2 }, { id: 'jinguang', w: 1 }] },
+  '蚕马妖':     { element: '木', spellChance: 0,    spells: [] },
+  '画皮妖':     { element: '木', spellChance: 0.20, spells: [{ id: 'tengman', w: 2 }, { id: 'fu_du', w: 1 }] },
+  '受伤毕方':   { element: '火', spellChance: 0.15, spells: [{ id: 'huoqiu', w: 1 }] },
+  '心魔化身':   { element: '无', spellChance: 0,    spells: [] }
+};

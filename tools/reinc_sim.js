@@ -13,7 +13,7 @@ const REINC = [
   { id:'forge',name:'器魂',   cost:3, max:3 }, { id:'life20',name:'延寿',   cost:2, max:3 },
   { id:'shesheng',name:'舍生',cost:5, max:3 }, { id:'lvling_bottle',name:'小绿瓶',cost:3,max:3 },
   { id:'extra_field',name:'随身灵田',cost:3, max:3 }, { id:'destiny_slot',name:'我命由我',cost:12,max:1 },
-  { id:'extra_destiny',name:'大千命格',cost:5, max:4 }, { id:'destiny_lock',name:'天命锁定',cost:12,max:1 }
+  { id:'extra_destiny',name:'大千命格',cost:3, max:4 }, { id:'destiny_lock',name:'天命锁定',cost:12,max:1 }
 ];
 const SIX = ['wu','ti','dun','shen','dao','ling'];
 function talentMaxCost(r){ let s=0; for(let n=1;n<=r.max;n++) s += r.cost*n; return s; }

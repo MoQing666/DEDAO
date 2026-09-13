@@ -635,6 +635,9 @@ button:disabled { opacity: .4; cursor: default; }
   -webkit-overflow-scrolling: touch;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  /* 行高按内容收缩：否则手机端 grid 行高会把卡片压扁，
+     星级/点数行被挤到卡片边框外（2026-09-14 用户实测） */
+  grid-auto-rows: max-content;
   gap: 5px;
   margin: 0 0 8px;
   align-content: start;

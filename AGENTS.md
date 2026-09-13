@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~12-*.test.js` | 自动套件（194 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~12-*.test.js` | 自动套件（222 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 引擎公式的**手工镜像**，改公式必须同步它 |
@@ -79,20 +79,20 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 # 发布包构建：产物在 dist/DEDAO_release/
 ```
 **缓存失效（改 UI/数据后必做）**：
-- `sw.js` 顶部 `const CACHE = 'dedao-v137';` 自增（**当前值**）。
-- `index.html` / `index_pc.html` 内 `css/style.css?v=100`、`js/*.js?v=100` 自增（**当前值**）；PC 专属 `css/style_pc.css` / `js/ui_pc.js` 走独立序列（当前 `?v=10`，改了才动）。强刷 Ctrl+Shift+R 才生效。
+- `sw.js` 顶部 `const CACHE = 'dedao-v147';（示例，以文件实际值为准）` 自增（**当前值**）。
+- `index.html` / `index_pc.html` 内 `css/style.css?v=109`、`js/*.js?v=109` 自增（**当前值**）；PC 专属 `css/style_pc.css` / `js/ui_pc.js` 走独立序列（当前 `?v=10`，改了才动）。强刷 Ctrl+Shift+R 才生效。
 - 完整交付流程（bump → 同步两份 dist → 回归复跑）见项目技能 `.workbuddy/skills/dedao-change-delivery/SKILL.md`。
 
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~12，当前 220/220 全过
+node test/automated/run.js     # 依次跑 01~12，当前 222/222 全过
 ```
 | 文件 | 例数 | 覆盖 |
 |---|---:|---|
-| `01-static-data.test.js` | 20 | 静态数据一致性 & 引用完整性（含宗门商品单货币结构、法宝文案「++」守卫、六维面板文案守卫、**事件 effect 键 ⊆ applyOps 白名单**守卫） |
+| `01-static-data.test.js` | 21 | 静态数据一致性 & 引用完整性（含宗门商品单货币结构、法宝文案「++」守卫、六维面板文案守卫、**事件 effect 键 ⊆ applyOps 白名单**守卫、**手机端滚动适配在位性**守卫） |
 | `02-engine-sim.test.js` | 51 | 引擎单元 & 长时模拟（宗门商人单货币、入宗考验门禁、杂役筑基、百艺播种/挖矿、秘境双通道解锁、法宝效率分离、踏风履攻速、山河探索池/每年上限、**宗门任务年上限**、**大比十年一届/五层/境界缩放**、**主线门禁 noSect/afterSectYear**、**effect.trib 真正计入渡劫率**、**阵法被动心得速率与阈值**） |
-| `03-ui.test.js` | 30 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**） |
+| `03-ui.test.js` | 31 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**） |
 | `04-adventure.test.js` | 36 | 秘境重构（50 层×每层 3 节点 / 保底 2 出边 / 无交叉线 / 隐藏滚动条 / 地图视口固定 4 行 / 体力 110·150 / 探索度达标任意深度直达 Boss / 死路兜底 / 产出分层 / 坊市购丹 / 折寿强搜 / 初入秘境灵力回满 / 残魂考验=精英战 / 灵石掉落量级 / 装备掉落不越阶 / **秘境装备掉落率三调** / 仙魔浩劫 BGM 指向 / **秘藏二选一全规则** / 灵物不进随机法宝池 / **秘境「剩余法宝 N」口径与选项数**） |
 | `05-xianyuan.test.js` | 10 | 仙缘 NPC 缘法（解锁门槛 / 好感分级 / 冷却 / 上限 / 机缘本世一次性 / 池空不扣行动点 / **日常小事白名单**） |
 | `06-travel.test.js` | 3 | 游历 3 选 1（三桩际遇 / 每年上限 / 年末归零） |

@@ -6,7 +6,8 @@
  *   A. 装备池 EQUIPS：字段完整性 / 品质覆盖矩阵 / 子类 tier 连续性 / 数值梯度 / 重名
  *   B. 炼器可达性：每条配方的 slot+sub 在其品阶 tier 区间内是否都有模板（rollForge 不得返回 null）
  *   C. 掉落可达性：每个秘境阶位的 tier 区间内，每个槽位是否都有候选（randomEquip 不得返回 null）
- *   D. 法宝池 ARTIFACTS：字段完整性 / effect 生效键 / 孤儿（无任何发放途径）/ 重名
+ *   D. 法宝池 ARTIFACTS：字段完整性 / effect 生效键 / 孤儿（无任何发放途径，
+ *      豁免「灵物」与「grade 落在秘境 band 内可被随机掉落」两类）/ 重名 / 秘境 band 档位覆盖
  *   E. 交叉引用：商店 / 剧情 / 掉落 中引用的 id 是否悬空
  *   F. 剧情装备实装：loot.equip / effect.equip 引用的装备是否真实存在（蚕丝甲 bug 的守卫）
  */
@@ -37,6 +38,10 @@ const SECT_GOODS = g.get('SECT_GOODS') || [];
 const ART_SHOP_ITEMS = g.get('ART_SHOP_ITEMS') || [];
 const GRADE_TIER_RANGE = { '黄': [1, 2], '玄': [2, 3], '地': [3, 4], '天': [4, 5] };
 const REALM_TIER_RANGE = [[1, 2], [2, 3], [3, 4], [4, 5]];  // 炼气/筑基/金丹/元婴
+// 秘境 BOSS 可掉落的品阶全集（advBossBonus 的随机池按 BOSS_TREASURE_BAND 取 grade）
+const BOSS_TREASURE_BAND = g.get('BOSS_TREASURE_BAND') || {};
+const BAND_GRADES = new Set();
+Object.keys(BOSS_TREASURE_BAND).forEach(k => (BOSS_TREASURE_BAND[k] || []).forEach(gr => BAND_GRADES.add(gr)));
 
 const TIER_NAME = (t) => (EQUIP_TIERS[t] && EQUIP_TIERS[t].name) || ('tier' + t);
 const SLOT_NAME = (s) => (EQUIP_SLOTS[s] && EQUIP_SLOTS[s].name) || s;
@@ -183,8 +188,15 @@ artIds.forEach(id => {
   // 孤儿：全代码中不存在任何「带引号」的字面引用 → 玩家永远拿不到
   //   ⚠️ 注意：对象定义处是不带引号的键（如 `dashen_bian: { ... }`），不会被计入，
   //      因此 refs 计的是**除定义外**的字面引用次数，0 次即孤儿。
+  //   ⚠️ 豁免一：灵物（spirit:true）由 spiritArtOf 按阶位发放，无字面引用也正常。
+  //   ⚠️ 豁免二（2026-09-14）：**非灵物法宝只要 grade 落在任一 BOSS_TREASURE_BAND 区间内，
+  //      就能被 advBossBonus 的随机池抽中**（秘境 BOSS「秘藏二选一」，每层最多 3 件）。
+  //      这类法宝本就不需要字面引用——古檀平安牌/镇魂墨玉/金刚降魔印即属此类。
+  //      因此孤儿判定只对「既无字面引用、grade 又不在任何秘境 band 内」的成立。
   const refs = (ALL_SRC.match(new RegExp(`['"]${id}['"]`, 'g')) || []).length;
-  if (refs === 0) err(`法宝 ${id}（${a.name}）是孤儿：全代码无任何字面引用，无发放途径`);
+  if (refs === 0 && !a.spirit && !BAND_GRADES.has(a.grade)) {
+    err(`法宝 ${id}（${a.name}·${a.grade}级）是孤儿：无字面引用，且 grade 不在任何 BOSS_TREASURE_BAND 内（秘境也掉不出）`);
+  }
 });
 Object.keys(artByName).forEach(n => {
   if (artByName[n].length > 1) err(`法宝重名「${n}」: ${artByName[n].join(' / ')}`);
@@ -192,6 +204,17 @@ Object.keys(artByName).forEach(n => {
 console.log(`  法宝 ${artIds.length} 件，品阶分布: ` +
   Object.keys(byGrade).map(k => `${k}×${byGrade[k]}`).join('  '));
 note(`法宝池 ${artIds.length} 件`);
+
+// 秘境档位覆盖：每个 BOSS_TREASURE_BAND 档位是否至少有一件「非灵物」候选
+//   没有候选时 rollArt 会静默回退到另一档，玩家在对应概率档永远抽不到该品阶。
+Object.keys(BOSS_TREASURE_BAND).forEach(k => {
+  (BOSS_TREASURE_BAND[k] || []).forEach(gr => {
+    const n = artIds.filter(id => !ARTIFACTS[id].spirit && ARTIFACTS[id].grade === gr).length;
+    if (n === 0) warn(`秘境 ${k} 的 band 档「${gr}」无普通法宝候选，rollArt 会回退到另一档`);
+  });
+});
+console.log('  秘境 band 覆盖: ' + Object.keys(BOSS_TREASURE_BAND)
+  .map(k => `${k}[${BOSS_TREASURE_BAND[k].join('/')}]`).join('  '));
 
 // EQUIPS.treasure 也应能被拿到（它走法宝囊体系）
 const treasureIds = Object.keys(EQUIPS.treasure || {});

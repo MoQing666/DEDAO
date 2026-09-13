@@ -278,6 +278,13 @@ const ARTIFACTS = {
   jinjing_jia:     { name: '金精甲',   type: '守', grade: '天', desc: '金线织就的软甲，底气也要拿灵石换。', effect: { scale: { res: 'stone', per: 100, perPoint: 0.01, stat: 'defPct', cap: 1.0 } } },
   /* —— H 攻速类 → 山河探索 / 秘境掉落（1） —— */
   tafeng_lv:       { name: '踏风履',   type: '辅', grade: '地', desc: '山河古径拾得的一双轻履，踏之如御风，出手便快三分。', effect: { atkSpd: 10 } },
+  /* —— J 护身类（3）→ 秘境 BOSS 随机掉落 ——
+     原挂 EQUIPS.treasure（该槽秘境永不触及，等于定义了却拿不到），
+     2026-09-14 迁至此处：由 advBossBonus 按 grade 落入对应阶位秘境随机池
+     （每层最多 3 件普通法宝；黄→黄级秘境、玄→黄/玄级、地→玄/地级）。 —— */
+  gutang_pinganpai:  { name: '古檀平安牌', type: '守', grade: '黄', desc: '老檀木所刻，讨个吉利。', effect: { hpMax: 15 } },
+  zhenhun_moyu:      { name: '镇魂墨玉',   type: '守', grade: '玄', desc: '墨玉一枚，静心凝神。',   effect: { hpMax: 40, atk: 16 } },
+  jingang_xiangmoyin:{ name: '金刚降魔印', type: '攻', grade: '地', desc: '万佛铸印，降魔护身。',   effect: { hpMax: 90, atk: 26, wu: 1 } },
   /* —— I 灵物类法宝（4）—— 秘境专属：BOSS「秘藏二选一」的选项一 + 深探掉落。
      旧版灵物是独立道具（只能完美突破、不显示在法宝栏），现本质改为法宝：
      与其他法宝同吃「法宝囊 → 装备槽」体系，装备后被动生效（完美突破机制已取消）。
@@ -290,7 +297,8 @@ const ARTIFACTS = {
 
 /* ---------------- 秘境BOSS 法宝掉落分层 ----------------
    秘境阶位(advKey) → 可掉落法宝 grade 区间（取区间内「上位80% / 下位20%」随机，排除已拥有）。
-   注：ARTIFACTS 无「黄」阶法宝，故 huang 区间(黄~玄)实际落在玄阶。 */
+   注：古檀平安牌（2026-09-14 迁入 ARTIFACTS）是目前**唯一**的黄阶普通法宝，
+   故 huang 区间(黄~玄)下位 20% 档会稳定落到它身上；其余 80% 仍落在玄阶。 */
 const BOSS_TREASURE_BAND = {
   huang: ['黄', '玄'],
   xuan:  ['玄', '地'],
@@ -3175,11 +3183,10 @@ const EQUIPS = {
     taiyi_xianglian: { name: '太一项链', sub: '项链', tier: 5, main: { atkSpd: 14 },      price: 6400, desc: '太一仙链，疾如雷霆。' }
   },
   treasure: {
-    // 基础宝物（多为剧情获取，不可炼制）
-    gutang_pinganpai:{ name: '古檀平安牌', tier: 1, hpMax: 15,  price: 50,   desc: '老檀木所刻，讨个吉利。' },
-    zhenhun_moyu:    { name: '镇魂墨玉',   tier: 3, hpMax: 40,  atk: 16,     price: 680,  desc: '墨玉一枚，静心凝神。' },
-    jingang_xiangmoyin:{ name: '金刚降魔印', tier: 4, hpMax: 90, atk: 26, wu: 1, price: 2500, desc: '万佛铸印，降魔护身。' },
-    taiji_baguapei:  { name: '太极八卦佩', tier: 5, wu: 2, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
+    // ⚠ 本槽只保留「装备型宝物」（有明确剧情/商店发放口的固定装备）。
+    //   凡是想让秘境 BOSS 随机掉出的，一律挂 ARTIFACTS —— advBossBonus 的随机池
+    //   只遍历 ARTIFACTS，本槽的条目秘境永远轮不到（古檀平安牌/镇魂墨玉/金刚降魔印
+    //   三件曾挂在这里，导致定义了却拿不到，2026-09-14 已迁至 ARTIFACTS）。
     // 可炼制装备
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
     jinylv:          { name: '金缕衣',     tier: 4, stoneDef: true, price: 1000, desc: '天蚕金丝所织，万法不侵。每持有100灵石，防御+1%，上限300%（减伤至1/4）。' }

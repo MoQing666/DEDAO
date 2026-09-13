@@ -122,11 +122,22 @@ node tools/pool-audit.js --md      # 额外输出 test/reports/pool-audit-YYYY-M
 | E 交叉引用 | `SECT_GOODS` / `ART_SHOP_ITEMS` 引用的 id 是否悬空 |
 | F 剧情实装 | 所有 `equip:'id'` / `art:'id'` 引用的装备法宝是否真实存在（**蚕丝甲 bug 的守卫**：文案承诺发放但 `EQUIPS` 无此 id → 玩家点了什么也拿不到） |
 
-> ⚠️ 孤儿判定口径：对象定义处是**不带引号的键**（`dashen_bian: {...}`），脚本统计的是**带引号的字面引用**次数，故 `refs === 0` 才是孤儿。勿改成 `<= 1`，否则 44 件法宝会全被误报。
+> ⚠️ 孤儿判定口径：对象定义处是**不带引号的键**（`dashen_bian: {...}`），脚本统计的是**带引号的字面引用**次数，故 `refs === 0` 才是孤儿。勿改成 `<= 1`，否则几十件法宝会全被误报。
 >
+> ⚠️ 孤儿**豁免两类**：① 灵物（`spirit:true`，由 `spiritArtOf` 按阶位发放）；② **非灵物且 `grade` 落在任一 `BOSS_TREASURE_BAND` 区间内**——这类法宝能被 `advBossBonus` 的随机池抽中（秘境 BOSS「秘藏二选一」），本就不需要字面引用。判孤儿必须同时满足「无字面引用 **且** grade 不在任何 band 内」。
+
+> #### ⚠️ 法宝 vs 装备型宝物：两条完全不同的投放管道（2026-09-14 血泪）
+> | | `ARTIFACTS`（法宝） | `EQUIPS.treasure`（装备型宝物） |
+> |---|---|---|
+> | 秘境能掉吗 | **能**。`advBossBonus` / `rollArt` 只遍历 `ARTIFACTS`，按 `grade` 匹配 `BOSS_TREASURE_BAND`，**每层（阶位）最多 3 件普通法宝**（灵物豁免上限） | **永远不能**。`randomEquip()` 只滚 weapon/head/body/**accessory** 四槽 |
+> | 属性字段 | `effect{}`，支持 30+ 键（含 `hpMax`/`atk`/`wu`/`def`/`critPct`…），走 `artifactStats()` | 只认 **5 个平铺键**：`hpMax`/`atk`/`wu`/`ti`/`cult`，走 `equipStats()` |
+> | 常见投放 | 秘境随机掉落、剧情 `art:'id'`、商店 `kind:'art'` | 剧情/商店以 `equip:'id'` 发放固定装备 |
+>
+> **想让一件东西被秘境掉出来，就必须挂 `ARTIFACTS`。** 古檀平安牌/镇魂墨玉/金刚降魔印曾挂在 `EQUIPS.treasure`，定义了却永远拿不到——v151 已迁入 `ARTIFACTS`（J 组·护身类）。
+
 > 已修（v150）：`EQUIPS.treasure.qingfeng` 法宝版青锋剑**已删除**，只保留 `EQUIPS.weapon.qingfeng_jian`；宗门商店 `SECT_GOODS` 与剧情 `jianseng_zengjian` 的引用已同步改成 `qingfeng_jian`，现走武器槽（`s.inventory` / `s.equip.weapon`）。
 >
-> 已知遗留（非阻断）：`gutang_pinganpai / zhenhun_moyu / jingang_xiangmoyin / taiji_baguapei` 四件基础宝物目前无字面引用（定义了但玩家拿不到）。
+> 已修（v151）：`taiji_baguapei`（太极八卦佩）**按需求删除**；古檀平安牌/镇魂墨玉/金刚降魔印由 `EQUIPS.treasure` 迁入 `ARTIFACTS`，成为秘境 BOSS 随机掉落（黄/玄/地）。`EQUIPS.treasure` 现只剩 `xuantie`（玄铁甲）与 `jinylv`（金缕衣）两件有明确发放口的装备型宝物。
 
 ## 五、六维 & 战斗公式
 ### 核心属性

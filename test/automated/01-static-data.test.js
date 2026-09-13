@@ -265,16 +265,35 @@ module.exports = async function build() {
     if (fa.length) t.fail(`存在可炼制法宝配方: ${fa.map(x => x.id).join(', ')} — 法宝应仅由剧情获取`);
   });
 
-  S.case('法宝系统：44 件完整 & 全链路挂载 & 数值单位校验', (t) => {
+  S.case('法宝系统：47 件完整 & 全链路挂载 & 数值单位校验', (t) => {
     const ART = get('ARTIFACTS') || {};
     const ids = Object.keys(ART);
-    // 44 = 剧情26 + 商店13 + 山河1 + 灵物4（2026-09-13 灵物由独立道具改制成法宝）
-    t.eq(ids.length, 44, `法宝应为 44 件（剧情26+商店13+山河1+灵物4），实际 ${ids.length}`);
+    // 47 = 剧情26 + 商店13 + 山河1 + 灵物4 + 秘境掉落护身类3
+    //   （2026-09-13 灵物由独立道具改制成法宝；2026-09-14 古檀平安牌/镇魂墨玉/金刚降魔印
+    //     由 EQUIPS.treasure 迁入 —— 该槽不进秘境随机池，挂在那里玩家永远拿不到）
+    t.eq(ids.length, 47, `法宝应为 47 件（剧情26+商店13+山河1+灵物4+秘境3），实际 ${ids.length}`);
     // 灵物类法宝：4 件，必须带 spirit:true（否则会被随机法宝池抽走）
     const spiritArts = ids.filter(id => ART[id].spirit);
     t.eq(spiritArts.length, 4, `灵物类法宝应为 4 件，实际 ${spiritArts.length}`);
     if (spiritArts.some(id => ART[id].type !== '灵')) t.fail('灵物类法宝 type 应为「灵」');
     t.eq(spiritArts.filter(id => ['黄','玄','地','天'].includes(ART[id].grade)).length, 4, '灵物阶位应为 黄/玄/地/天 各一件');
+
+    // 秘境掉落护身三宝（2026-09-14 由 EQUIPS.treasure 迁入）：
+    //   必须非灵物 + grade 落在某个 BOSS_TREASURE_BAND 内，否则 advBossBonus 永远抽不到
+    const BAND = get('BOSS_TREASURE_BAND') || {};
+    const bandGrades = new Set();
+    Object.keys(BAND).forEach(k => (BAND[k] || []).forEach(gr => bandGrades.add(gr)));
+    const advDrop = ['gutang_pinganpai', 'zhenhun_moyu', 'jingang_xiangmoyin'];
+    advDrop.forEach(id => {
+      if (!ART[id]) { t.fail(`秘境掉落法宝 ${id} 缺失`); return; }
+      if (ART[id].spirit) t.fail(`${id} 不应是灵物（灵物被排除出随机法宝池）`);
+      if (!bandGrades.has(ART[id].grade)) t.fail(`${id}（${ART[id].grade}级）不在任何 BOSS_TREASURE_BAND 内，秘境掉不出`);
+    });
+    // 四件都不该再留在 EQUIPS.treasure：该槽不进秘境随机池，挂在那儿等于拿不到
+    const EQ = get('EQUIPS') || {};
+    const left = advDrop.concat(['taiji_baguapei']).filter(id => EQ.treasure && EQ.treasure[id]);
+    if (left.length) t.fail(`EQUIPS.treasure 仍残留: ${left.join(', ')}（应迁至 ARTIFACTS 或删除）`);
+    t.note(`秘境掉落护身三宝: ${advDrop.map(id => ART[id] && ART[id].name + '(' + ART[id].grade + ')').join(' / ')}`);
 
     const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiShenEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale','atkSpd','doubleCult','doubleDmg'];
     const pctFields = ['critPct','dodgePct','defPct','atkPct','cult','stealPct','daoAtkPct','craftEff','tiHpBonus','duantiEff','duantiShenEff','farmEff','mineEff','stoneYearPct','doubleCult','doubleDmg'];

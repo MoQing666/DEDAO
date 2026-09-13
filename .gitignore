@@ -21,3 +21,7 @@ __pycache__/
 
 # 临时复现脚本（调试用，非项目代码）
 test/automated/_repro_*.js
+
+# 临时探测脚本（调试用，非项目代码）
+_probe*
+_gen_probe*

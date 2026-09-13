@@ -3264,24 +3264,31 @@ const Engine = (function () {
         stock.push({ id: 'advd_' + k, name: ELIXIRS[k].name, price: advElixirPrice[k] || 55, advItem: { id: k, n: 1 } });
       });
     }
-    // 游历流动商贩：从法宝池中随机抽取 3 件（已持有则跳过，不足则全列）
+    // 游历流动商贩：从法宝池中随机抽取 3 件（非已拥有优先，已拥有仅在余量不足时上架并标记 owned）。
+    // 判定必须用 ownsArt（背包 s.arts + 装备位 s.equip.treasure）——灵物改制后已拥有法宝多在装备位，
+    // 旧写法只查 s.arts 会漏判，导致已拥有法宝仍以【购买】上架、可重复买。
     if (typeof ART_SHOP_ITEMS !== 'undefined' && ART_SHOP_ITEMS && ART_SHOP_ITEMS.length) {
       const bi = bigIdxOf(s);
       const cand = ART_SHOP_ITEMS.filter(function (it) {
-        if (s.arts.indexOf(it.id) >= 0) return false;
         if ((it.minDepth || 0) > (s.adv && s.adv.depth || 1)) return false;
         if ((it.minBig || 0) > bi) return false;
         return true;
       });
-      // Fisher–Yates 随机抽 3 件
-      for (let i = cand.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const tmp = cand[i]; cand[i] = cand[j]; cand[j] = tmp;
-      }
-      cand.slice(0, 3).forEach(function (it) {
+      const fresh = cand.filter(function (it) { return !ownsArt(s, it.id); });
+      const have = cand.filter(function (it) { return ownsArt(s, it.id); });
+      // Fisher–Yates 随机抽 3 件：先洗未拥有的，不足 3 件再用已拥有的补位（补位的标 owned）
+      const shuffle = function (arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        return arr;
+      };
+      shuffle(fresh); shuffle(have);
+      fresh.concat(have).slice(0, 3).forEach(function (it) {
         const a = ARTIFACTS[it.id];
         if (!a) return;
-        stock.push({ id: 'ART:' + it.id, name: '法宝·' + a.name, price: it.price, art: it.id });
+        stock.push({ id: 'ART:' + it.id, name: '法宝·' + a.name, price: it.price, art: it.id, owned: ownsArt(s, it.id) });
       });
     }
     return stock;
@@ -3289,6 +3296,7 @@ const Engine = (function () {
   function biOfSafe(s) { return bigIdxOf(s); }
   function buyStock(s, si) {
     if (si.sold) return { ok: false, msg: '此物已被买走。' };
+    if (si.art && ownsArt(s, si.art)) return { ok: false, msg: '此法宝已在囊中，无须重金再购。' };
     if (s.stone < si.price) return { ok: false, msg: '灵石不足。' };
     if (si.advItem && (!s.adv || s.adv.status !== 'running')) return { ok: false, msg: '不在秘境之中，无法随身携带。' };
     s.stone -= si.price;

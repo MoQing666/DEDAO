@@ -1705,6 +1705,7 @@
       rows.forEach(function (x) {
         const btn = x.btn;
         if (x.si.sold) { btn.disabled = true; btn.textContent = '已售'; return; }
+        if (x.si.owned) { btn.disabled = true; btn.textContent = '已拥有'; return; }
         btn.disabled = S.stone < x.si.price;
         btn.textContent = S.stone >= x.si.price ? '购买' : '灵石不足';
       });
@@ -1720,8 +1721,8 @@
       const info = document.createElement('div');
       info.innerHTML = '<b>' + esc(si.name) + '</b><br><span class="dim">' + si.price + ' 灵石</span>';
       const btn = document.createElement('button');
-      btn.textContent = S.stone >= si.price ? '购买' : '灵石不足';
-      btn.disabled = S.stone < si.price;
+      btn.textContent = si.owned ? '已拥有' : (S.stone >= si.price ? '购买' : '灵石不足');
+      btn.disabled = si.owned || S.stone < si.price;
       btn.onclick = function () {
         if (si.sold) return;
         const r = Engine.buyStock(S, si);
@@ -7420,9 +7421,11 @@
     let h = '<h3>流动商贩</h3><div class="ct-grid">';
     stock.forEach(function (it, i) {
       const price = it.price;
+      const owned = !!it.owned;
+      const btnTxt = owned ? '已拥有' : (S.stone < price ? '灵石不足' : '购买');
       h += '<div class="ct-card"><div class="ct-card-h"><b>' + it.name + '</b></div>'
         + '<div class="ct-desc">' + (it.desc || '灵材') + '　售价 ' + price + ' 灵石</div>'
-        + '<button class="btn-small buy-stock" data-i="' + i + '"' + (S.stone < price ? ' disabled' : '') + '>' + (S.stone < price ? '灵石不足' : '购买') + '</button></div>';
+        + '<button class="btn-small buy-stock" data-i="' + i + '"' + ((owned || S.stone < price) ? ' disabled' : '') + '>' + btnTxt + '</button></div>';
     });
     h += '</div>';
     const box = openPanel(h);

@@ -1410,3 +1410,74 @@ button:disabled { opacity: .4; cursor: default; }
   display: none;
   background: transparent;
 }
+
+/* ============================================================
+   手机端滑动适配修复（2026-09-13）
+   症状：部分页面内容超屏后被 .screen{overflow:hidden} 裁掉，滑动无效。
+   根因：这些屏没有滚动容器，或滚动容器的父级是块级 .panel（无高度约束），
+         导致 overflow-y:auto 永远撑开而不是滚动。
+   ============================================================ */
+
+/* ① 百艺页 / 锻体页：结构为 .panel(块级) > #crafts-body/#duanti-body > 内滚层。
+   让中间 .panel 成为高度受约束的 flex 容器，并让 #crafts-body/#duanti-body 自身可滚。 */
+#screen-crafts > .panel:not(.gear-head),
+#screen-duanti > .panel:not(.gear-head) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+#screen-crafts #crafts-body,
+#screen-duanti #duanti-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ② 装备页：.gear-slots 固定，储物袋装备区自身滚动 */
+#screen-gear .gear-slots { flex: none; }
+#screen-gear #gear-inv-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin-bottom: 0;
+}
+
+/* ③ 轮回塔：.rb-list 自身滚动（原为无约束 grid，塔层多时被裁） */
+.rb-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ④ 天命抉择（开荒设定页）：整块内容可滚 */
+#screen-enter .enter-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ⑤ 弹窗底部贴边层：vh 在移动端动态工具栏下会越界/底部够不到，补 dvh */
+.modal-inner {
+  max-height: 80vh;
+  max-height: 80dvh;
+  overscroll-behavior: contain;
+}
+.attr-panel   { max-height: 70vh; max-height: 70dvh; }
+.ach-body     { max-height: 58vh; max-height: 58dvh; overscroll-behavior: contain; }
+.codex-body   { max-height: 56vh; max-height: 56dvh; overscroll-behavior: contain; }
+
+/* ⑥ 主要内滚区防滚动穿透（滑到底/顶后手势不再传给底层页面） */
+.screen-body, .chapter-body, .char-body, #log {
+  overscroll-behavior: contain;
+}

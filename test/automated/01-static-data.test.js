@@ -415,17 +415,17 @@ module.exports = async function build() {
   // === 回归 2026-09-13：手机端「所有页面全量可滑动」适配（用户反馈进入页裁切、开始不了新游戏） ===
   S.case('手机端滚动适配：关键屏幕必须有可用滚动容器', (t) => {
     const css = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
-    // 每条规则：容器选择器 → 必须出现的规则头（防滚动适配被误删后内容被 .screen overflow:hidden 裁掉）
+    // 每条规则：容器名 → 检测函数（防滚动适配被误删后内容被 .screen overflow:hidden 裁掉）
     const need = [
-      ['天命抉择页', '#screen-enter .enter-wrap'],
-      ['百艺/锻体内滚层', '#screen-crafts #crafts-body'],
-      ['装备页储物区', '#gear-inv-wrap'],
-      ['轮回塔列表', '.rb-list'],
-      ['子页面通用 screen-body', '.screen-body { flex: 1; min-height: 0; overflow-y: auto;'],
-      ['角色页', '#screen-char {\n  overflow-y: auto;'],
-      ['结算页', '#screen-settlement { justify-content: flex-start; overflow-y: auto;'],
+      ['天命抉择页', (c) => c.includes('#screen-enter .enter-wrap') && /#screen-enter \.enter-wrap \{[^}]*overflow-y:\s*auto/.test(c)],
+      ['百艺/锻体内滚层', (c) => /#screen-crafts #crafts-body[, {][^}]*overflow-y:\s*auto/.test(c) || (c.includes('#screen-crafts #crafts-body') && /#screen-duanti #duanti-body \{[^}]*overflow-y:\s*auto/.test(c))],
+      ['装备页储物区', (c) => /#gear-inv-wrap \{[^}]*overflow-y:\s*auto/.test(c)],
+      ['轮回塔列表', (c) => /\.rb-list \{[^}]*overflow-y:\s*auto/.test(c)],
+      ['子页面通用 screen-body', (c) => /\.screen-body \{ flex: 1; min-height: 0; overflow-y: auto;/.test(c)],
+      ['角色页', (c) => /#screen-char \{[^}]*overflow-y:\s*auto/.test(c)],
+      ['结算页', (c) => /#screen-settlement \{[^}]*overflow-y:\s*auto/.test(c)],
     ];
-    const miss = need.filter(([, sig]) => css.indexOf(sig) < 0).map(([n]) => n);
+    const miss = need.filter(([, fn]) => !fn(css)).map(([n]) => n);
     if (miss.length) t.fail('以下屏幕的滚动适配规则缺失（内容超屏会被裁切）：' + miss.join('、'));
     t.note('滚动适配规则 7/7 在位');
   });

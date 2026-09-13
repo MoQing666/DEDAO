@@ -435,7 +435,7 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **行动栏**（主页中上部）：修炼 / 秘境 / 宗门 / 锻体 / 游历 / 百艺(未解锁置灰) / 突破 / 下一年。
 - **底部栏**：角色 / 储物袋 / 仙缘 / 设置（z-index 50）。
 - **Modal** z-index 250；**战斗层** z-index 9999（`!important`）。
-- **屏幕**：`overflow:hidden`，底部留 70px 给底部栏。
+- **屏幕**：`overflow:hidden`，底部留 70px 给底部栏。**滚动适配**：内容可能超屏的页面必须有受约束滚动容器（`min-height:0` + `overflow-y:auto`），规则集中在 style.css 末尾「手机端滑动适配修复」段，守卫见 `01` 套件。
 - **角色页** `screen-char` 全屏，Tab：属性 / 装备 / 法宝 / 功法。
 - **百艺页** `screen-crafts`：炼丹 / 炼器 / 灵田 / 灵矿（+ 五艺研习 / 五行阵）。
 - 字体统一规则：弹窗标题 `#modal-body h3` 15px/600/金；描述类 13px/400；名称类 15px/600（详见 `style.css` 的 `ct-*`/`tn-*` 系列）。
@@ -690,3 +690,10 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - 新增回归用例：`03`「进入页劫数自由选择：新账号可选 0–9 劫，所选劫数生效到本世」（全新账号连点 + 到 9 劫 → 按钮禁用态 → 以 9 劫开局 → 存档 `jie===9`）。
     - 同批提交：外部新增的「存档版本清理」功能（`SAVE_VERSION` + `cleanupLegacySaves` + 旧档清理 toast，见 §三 档案）一并入库。
     - 缓存 **v108/dedao-v146**。测试 **221/221**（两份 dist 同步且回归一致）。
+41. **手机端「所有页面全量可滑动」适配（2026-09-13 深夜，用户反馈进入页被裁、开始不了新游戏）**：
+    - **症状**：`.screen{overflow:hidden}` + 部分屏没有滚动容器 → 内容超屏即被裁切，进入页「开始这一世」按钮在手机上够不到。
+    - **修复（css/style.css 末尾滚动适配段）**：① 百艺/锻体页：中间块级 `.panel` 改受约束 flex 容器，`#crafts-body`/`#duanti-body` 自身内滚；② 装备页：`#gear-inv-wrap` 内滚；③ 轮回塔：`.rb-list` 内滚；④ **天命抉择页：`#screen-enter .enter-wrap` 整块可滚**（本条即用户反馈的主修点）；⑤ 弹窗/成就/图鉴限高层补 `dvh` 回退 + `overscroll-behavior:contain`；⑥ `.screen-body`/`.chapter-body`/`.char-body`/`#log` 防滚动穿透。
+    - **无头 Edge 手机视口（390×844）实测**：`.enter-wrap` scrollHeight 910 / clientHeight 669，scrollTop 可滚至 241，`canScroll:true` —— 开始按钮可达。
+    - **静态守卫**：`01` 新增「手机端滚动适配：关键屏幕必须有可用滚动容器」（7 处滚动规则在位性检查，防误删回归）。
+    - 同批入库并行改动：**游历流动商贩防重复购买**（`ownsArt` 含装备位判定，已拥有法宝标 `owned` 禁购）。
+    - 缓存 **v109/dedao-v147**。测试 **222/222**（两份 dist 同步且回归一致）。

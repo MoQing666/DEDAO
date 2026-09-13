@@ -308,6 +308,20 @@ module.exports = async function build() {
     if (missing.length) t.fail(`剧情法宝未挂载发放: ${missing.join(', ')}`);
     t.note('26 件剧情法宝全部挂载 ✓（含新增事件 yl_dashen）');
 
+    // 剧情装备挂载：所有事件 / 战斗掉落里的 loot.equip / effect.equip 必须真实存在
+    const EQUIPS = get('EQUIPS') || {};
+    function findEquipId(id) {
+      for (const slot in EQUIPS) if (EQUIPS[slot][id]) return true;
+      return false;
+    }
+    const equipRefs = new Set();
+    const equipMatches = dataJs.matchAll(/equip:\\s*['"]([a-z_]+)['"]/g);
+    for (const m of equipMatches) equipRefs.add(m[1]);
+    const slotNames = new Set(['head','body','leg','treasure']);
+    const badEquip = [...equipRefs].filter(id => !slotNames.has(id) && !findEquipId(id));
+    if (badEquip.length) t.fail(`剧情/掉落引用了不存在的装备 id: ${badEquip.join(', ')}`);
+    t.note(`剧情/掉落装备引用 ${equipRefs.size} 个，全部存在 ✓`);
+
     // 门槛选项：清净明心剑/无尘蒲团/周天星盘 的 req 门槛存在
     t.ok(/id:\s*'jd_shanzhong_yinshi'[\s\S]*?req:\s*\{\s*dao:\s*10/.test(dataJs), '清净明心剑缺少 dao:10 门槛');
     t.ok(/id:\s*'jd_gusha_zhongsheng'[\s\S]*?req:\s*\{\s*wu:\s*10/.test(dataJs), '无尘蒲团缺少 wu:10 门槛');

@@ -1063,5 +1063,48 @@ module.exports = async function build() {
     if (real.length) t.fail('百艺页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  S.case('轮回塔：加减按钮真实可点（+/− 生效·点数变动·可返还）', async (t) => {
+    const meta = { points: 999, lives: 1, reinc: {}, achievements: {}, flown: false, maxJie: 0 };
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: JSON.stringify(meta) } });
+    click(win, 't-rebirth');
+    await new Promise(r => setTimeout(r, 200));
+    const list = doc.getElementById('rb-list');
+    if (!list) { t.fail('轮回塔列表 #rb-list 缺失'); return; }
+    const cards = () => [...list.querySelectorAll('.rb-card')];
+    t.ok(cards().length >= 19, '轮回塔应渲染 19 张卡（开荒 + 18 天赋），实际 ' + cards().length);
+
+    // 结构：每张卡恰有 2 个步进按钮，且位于天赋名所在行（.rb-head）—— 手机端不再单占一行
+    const noBtns = cards().filter(c => c.querySelectorAll('.rb-step').length !== 2);
+    if (noBtns.length) t.fail('有卡片缺少 +/- 步进按钮：' + noBtns.length + ' 张');
+    const headBad = cards().filter(c => !c.querySelector('.rb-head .rb-step'));
+    if (headBad.length) t.fail('步进按钮未置于天赋名右侧（.rb-head 内找不到 .rb-step）');
+
+    const starCount = (el) => (el.querySelector('.lvl').textContent.match(/★/g) || []).length;
+    const pts = () => parseInt(doc.getElementById('rb-points').textContent, 10);
+    const card = () => cards()[1];                       // 第 2 张 = 第一个普通天赋「慧根」
+    const name = card().querySelector('h4').textContent;
+    const p0 = pts(), s0 = starCount(card());
+
+    // 事件必须真的绑在按钮上（历史 bug：innerHTML += 重建 DOM 会让 onclick 静默丢失）
+    const add0 = card().querySelectorAll('.rb-step')[1];
+    if (add0.disabled) { t.fail('轮回点 999 时「+」不应禁用'); return; }
+    if (typeof add0.onclick !== 'function') { t.fail('「+」按钮未绑定 onclick（DOM 重建导致事件丢失）'); return; }
+    add0.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 160));
+    t.eq(starCount(card()), s0 + 1, name + ' 点「+」后星级应 +1');
+    t.ok(pts() < p0, '点「+」后轮回点应减少（' + p0 + ' → ' + pts() + '）');
+
+    // 「−」应返还并回到原星级
+    const sub = card().querySelectorAll('.rb-step')[0];
+    if (sub.disabled) { t.fail('已加 1 级后「−」不应禁用'); return; }
+    sub.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 160));
+    t.eq(starCount(card()), s0, '点「−」后应回到原星级');
+    t.eq(pts(), p0, '点「−」后轮回点应全额返还（应为 ' + p0 + '）');
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('轮回塔交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

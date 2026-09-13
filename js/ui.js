@@ -5894,8 +5894,9 @@
       const stars = [];
       for (let i = 1; i <= maxLv; i++) stars.push('<span class="lvl' + (i <= lv ? ' on' : '') + '">' + (i <= lv ? '★' : '☆') + '</span>');
       const btnAdd = document.createElement('button');
-      btnAdd.textContent = full ? '已满' : '增加';
-      btnAdd.className = full ? 'maxed' : '';
+      btnAdd.textContent = full ? '—' : '+';
+      btnAdd.title = full ? '已满' : '增加（' + nextCost + '点）';
+      btnAdd.className = 'rb-step' + (full ? ' maxed' : '');
       btnAdd.disabled = full || M.points < nextCost;
       btnAdd.onclick = function () {
         if (full || M.points < nextCost) return;
@@ -5905,8 +5906,9 @@
       };
       const btnSub = document.createElement('button');
       const canSub = lv > 1;
-      btnSub.textContent = canSub ? '减少' : '无';
-      btnSub.className = 'maxed';
+      btnSub.textContent = canSub ? '−' : '—';
+      btnSub.title = canSub ? '减少（返还' + ((REINC_TALENT.filter(function (x) { return x.lv === lv; })[0] || {}).cost || 0) + '点）' : '不可减少';
+      btnSub.className = 'rb-step' + (canSub ? '' : ' maxed');
       btnSub.disabled = !canSub;
       btnSub.onclick = function () {
         if (!canSub) return;
@@ -5915,14 +5917,25 @@
         M.points += refund; M.reincTalent = cur - 1; Engine.saveMeta(M);
         renderRebirth();
       };
-      card.innerHTML = '<h4>开荒</h4>' +
-        '<div class="desc">开荒池永久 +' + reincTalentBonus(lv) + ' 点（当前开荒池 ' + (INIT_POINTS + reincTalentBonus(lv)) + ' 点）</div>' +
-        '<div class="lvl">' + stars.join('') + ' <span class="cost">' + (full ? '满级' : nextCost + '点') + '</span></div>';
-      const btnRow = document.createElement('div');
-      btnRow.className = 'rb-btn-row';
-      btnRow.appendChild(btnSub);
-      btnRow.appendChild(btnAdd);
-      card.appendChild(btnRow);
+      const head = document.createElement('div');
+      head.className = 'rb-head';
+      const h4 = document.createElement('h4');
+      h4.textContent = '开荒';
+      head.appendChild(h4);
+      const btns = document.createElement('div');
+      btns.className = 'rb-head-btns';
+      btns.appendChild(btnSub);
+      btns.appendChild(btnAdd);
+      head.appendChild(btns);
+      card.appendChild(head);
+      const desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = '开荒池永久 +' + reincTalentBonus(lv) + ' 点（当前开荒池 ' + (INIT_POINTS + reincTalentBonus(lv)) + ' 点）';
+      card.appendChild(desc);
+      const lvlRow = document.createElement('div');
+      lvlRow.className = 'lvl';
+      lvlRow.innerHTML = stars.join('') + ' <span class="cost">' + (full ? '满级' : nextCost + '点') + '</span>';
+      card.appendChild(lvlRow);
       wrap.appendChild(card);
     })();
 
@@ -5940,8 +5953,9 @@
       
       // 增加按钮
       const btnAdd = document.createElement('button');
-      btnAdd.textContent = full ? '已满' : '增加';
-      btnAdd.className = full ? 'maxed' : '';
+      btnAdd.textContent = full ? '—' : '+';
+      btnAdd.title = full ? '已满' : '增加（' + currentCost + '点）';
+      btnAdd.className = 'rb-step' + (full ? ' maxed' : '');
       btnAdd.disabled = full || M.points < currentCost;
       btnAdd.onclick = function () {
         if (full || M.points < currentCost) return;
@@ -5950,11 +5964,12 @@
         Engine.saveMeta(M);
         renderRebirth();
       };
-      
+
       // 减少按钮
       const btnSub = document.createElement('button');
-      btnSub.textContent = isEmpty ? '无' : '减少';
-      btnSub.className = 'maxed';
+      btnSub.textContent = isEmpty ? '—' : '−';
+      btnSub.title = isEmpty ? '不可减少' : '减少（返还' + (r.cost * bought) + '点）';
+      btnSub.className = 'rb-step' + (isEmpty ? ' maxed' : '');
       btnSub.disabled = isEmpty;
       btnSub.onclick = function () {
         if (isEmpty) return;
@@ -5964,17 +5979,27 @@
         Engine.saveMeta(M);
         renderRebirth();
       };
-      
-      card.innerHTML = '<h4>' + r.name + '</h4>' +
-        '<div class="desc">' + r.desc + '</div>' +
-        '<div class="lvl">' + stars.join('') + ' <span class="cost">' + (full ? '满级' : currentCost + '点') + '</span></div>';
-      
-      const btnRow = document.createElement('div');
-      btnRow.className = 'rb-btn-row';
-      btnRow.appendChild(btnSub);
-      btnRow.appendChild(btnAdd);
-      card.appendChild(btnRow);
-      
+
+      const head = document.createElement('div');
+      head.className = 'rb-head';
+      const h4 = document.createElement('h4');
+      h4.textContent = r.name;
+      head.appendChild(h4);
+      const btns = document.createElement('div');
+      btns.className = 'rb-head-btns';
+      btns.appendChild(btnSub);
+      btns.appendChild(btnAdd);
+      head.appendChild(btns);
+      card.appendChild(head);
+      const desc = document.createElement('div');
+      desc.className = 'desc';
+      desc.textContent = r.desc;
+      card.appendChild(desc);
+      const lvlRow = document.createElement('div');
+      lvlRow.className = 'lvl';
+      lvlRow.innerHTML = stars.join('') + ' <span class="cost">' + (full ? '满级' : currentCost + '点') + '</span>';
+      card.appendChild(lvlRow);
+
       wrap.appendChild(card);
     });
   }

@@ -538,9 +538,12 @@ module.exports = async function build() {
 
     // 灵石类：功法/装备/法宝只扣灵石，不扣功业
     s0 = s.stone; g0 = s.gongye;
-    r = E.sectBuy(s, 'qingfeng');                         // 青锋剑(宝物/equip.treasure) stoneFix=100
+    r = E.sectBuy(s, 'qingfeng_jian');                    // 青锋剑(武器/equip.weapon) stoneFix=100
     t.ok(r.ok, '青锋剑购买应成功: ' + r.msg);
-    t.ok(s.arts.indexOf('qingfeng') >= 0 || s.equip.treasure.indexOf('qingfeng') >= 0, '青锋剑作为宝物应入法宝囊(s.arts)或已装备');
+    const _idOf = (x) => (x && typeof x === 'object' ? x.id : x);
+    t.ok(s.inventory.some(function (x) { return _idOf(x) === 'qingfeng_jian'; }) ||
+         _idOf(s.equip.weapon) === 'qingfeng_jian',
+         '青锋剑作为武器应入储物袋(s.inventory)或已穿戴(weapon)');
     t.eq(s0 - s.stone, 100, '青锋剑应扣灵石 100');
     t.eq(s.gongye, g0, '青锋剑不应扣功业');
 

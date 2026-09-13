@@ -86,13 +86,13 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~12，当前 222/222 全过
+node test/automated/run.js     # 依次跑 01~12，当前 223/223 全过
 ```
 | 文件 | 例数 | 覆盖 |
 |---|---:|---|
 | `01-static-data.test.js` | 21 | 静态数据一致性 & 引用完整性（含宗门商品单货币结构、法宝文案「++」守卫、六维面板文案守卫、**事件 effect 键 ⊆ applyOps 白名单**守卫、**手机端滚动适配在位性**守卫） |
 | `02-engine-sim.test.js` | 51 | 引擎单元 & 长时模拟（宗门商人单货币、入宗考验门禁、杂役筑基、百艺播种/挖矿、秘境双通道解锁、法宝效率分离、踏风履攻速、山河探索池/每年上限、**宗门任务年上限**、**大比十年一届/五层/境界缩放**、**主线门禁 noSect/afterSectYear**、**effect.trib 真正计入渡劫率**、**阵法被动心得速率与阈值**） |
-| `03-ui.test.js` | 31 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**） |
+| `03-ui.test.js` | 32 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**、**轮回塔 +/- 步进按钮真实可点且可返还**） |
 | `04-adventure.test.js` | 36 | 秘境重构（50 层×每层 3 节点 / 保底 2 出边 / 无交叉线 / 隐藏滚动条 / 地图视口固定 4 行 / 体力 110·150 / 探索度达标任意深度直达 Boss / 死路兜底 / 产出分层 / 坊市购丹 / 折寿强搜 / 初入秘境灵力回满 / 残魂考验=精英战 / 灵石掉落量级 / 装备掉落不越阶 / **秘境装备掉落率三调** / 仙魔浩劫 BGM 指向 / **秘藏二选一全规则** / 灵物不进随机法宝池 / **秘境「剩余法宝 N」口径与选项数**） |
 | `05-xianyuan.test.js` | 10 | 仙缘 NPC 缘法（解锁门槛 / 好感分级 / 冷却 / 上限 / 机缘本世一次性 / 池空不扣行动点 / **日常小事白名单**） |
 | `06-travel.test.js` | 3 | 游历 3 选 1（三桩际遇 / 每年上限 / 年末归零） |
@@ -106,6 +106,27 @@ node test/automated/run.js     # 依次跑 01~12，当前 222/222 全过
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
 - 测试路径硬编码 `D:/opencode/DEDAO/js/`；用 `_harness.js` 暴露 `ROOT`。测 dist 副本须传 `DEDAO_ROOT='D:/opencode/DEDAO/dist/DEDAO_release'`（**Windows 风格绝对路径**，写 `/d/...` 会拼成 `D:\d\...` 全部 ENOENT）。
+
+### 4.1 检测池命令（装备池 / 法宝池体检）
+```bash
+node tools/pool-audit.js           # 控制台输出，有错误则 exit 1
+node tools/pool-audit.js --md      # 额外输出 test/reports/pool-audit-YYYY-MM-DD.md
+```
+改了 `EQUIPS` / `ARTIFACTS` / `FORMULAS` / 商店表 / 剧情掉落 **后必跑**。检测项：
+| 段 | 内容 |
+|---|---|
+| A 装备池 | 字段完整性（name/tier/sub/main/price/desc）、品质分布、**子类 tier 连续性 1–5**、同子类数值梯度倒挂、**全局重名** |
+| B 炼器可达 | 每条 `FORMULAS` 装备配方的 `slot+sub` 在其品阶 tier 区间内是否都有模板（缺失 → `rollForge` 返回 null，炼器空转） |
+| C 掉落可达 | 每个秘境阶位的 tier 区间内 4 个槽位是否都有候选（缺失 → `randomEquip` 返回 null） |
+| D 法宝池 | 品阶分布、effect 是否含生效键、**孤儿检测（无任何字面引用 = 玩家永远拿不到）**、重名 |
+| E 交叉引用 | `SECT_GOODS` / `ART_SHOP_ITEMS` 引用的 id 是否悬空 |
+| F 剧情实装 | 所有 `equip:'id'` / `art:'id'` 引用的装备法宝是否真实存在（**蚕丝甲 bug 的守卫**：文案承诺发放但 `EQUIPS` 无此 id → 玩家点了什么也拿不到） |
+
+> ⚠️ 孤儿判定口径：对象定义处是**不带引号的键**（`dashen_bian: {...}`），脚本统计的是**带引号的字面引用**次数，故 `refs === 0` 才是孤儿。勿改成 `<= 1`，否则 44 件法宝会全被误报。
+>
+> 已修（v150）：`EQUIPS.treasure.qingfeng` 法宝版青锋剑**已删除**，只保留 `EQUIPS.weapon.qingfeng_jian`；宗门商店 `SECT_GOODS` 与剧情 `jianseng_zengjian` 的引用已同步改成 `qingfeng_jian`，现走武器槽（`s.inventory` / `s.equip.weapon`）。
+>
+> 已知遗留（非阻断）：`gutang_pinganpai / zhenhun_moyu / jingang_xiangmoyin / taiji_baguapei` 四件基础宝物目前无字面引用（定义了但玩家拿不到）。
 
 ## 五、六维 & 战斗公式
 ### 核心属性

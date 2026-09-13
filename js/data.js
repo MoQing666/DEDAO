@@ -1491,7 +1491,7 @@ E('jiyuan', {
     '他话不多，只在分别时看了你一眼："你的剑，握得太紧了。"',
     '说着解下背后那柄青鞘长剑，抛给你。'
   ],
-  effect: { equip: 'qingfeng' },
+  effect: { equip: 'qingfeng_jian' },
   result: '你接剑只觉通体一轻——好剑，真正的好剑！（获得装备：青锋剑）'
 });
 E('jiyuan', {
@@ -3149,6 +3149,7 @@ const EQUIPS = {
     // 盔甲
     tie_jia:         { name: '铁甲',     sub: '盔甲', tier: 1, main: { def: 18, hpPct: 20 },  price: 50,  desc: '铁片缀成，厚重可靠。' },
     linwen_ruanjia:  { name: '鳞纹软甲', sub: '盔甲', tier: 2, main: { def: 30, hpPct: 26 },  price: 180, desc: '蛟鳞串成，贴身轻盈。' },
+    canjia:          { name: '蚕丝甲',   sub: '盔甲', tier: 2, main: { def: 28, hpPct: 24 },  price: 180, desc: '天蚕金丝所织，柔软贴身，刀枪难入。' },
     xuanjing_zhongjia:{ name: '玄精重甲', sub: '盔甲', tier: 3, main: { def: 46, hpPct: 34 },  price: 650, desc: '玄精所铸，重逾千钧。' },
     jinluo_baoyi:    { name: '金络宝衣', sub: '盔甲', tier: 4, main: { def: 66, hpPct: 44 },  price: 2400, desc: '金丝络络，百邪不侵。' },
     xinghe_fayi:     { name: '星河法衣', sub: '盔甲', tier: 5, main: { def: 90, hpPct: 56 },  price: 7200, desc: '衣上星辰自晦明，映照周天。' }
@@ -3180,7 +3181,6 @@ const EQUIPS = {
     jingang_xiangmoyin:{ name: '金刚降魔印', tier: 4, hpMax: 90, atk: 26, wu: 1, price: 2500, desc: '万佛铸印，降魔护身。' },
     taiji_baguapei:  { name: '太极八卦佩', tier: 5, wu: 2, price: 7600, desc: '阴阳相抱，八卦周流，万法不侵。' },
     // 可炼制装备
-    qingfeng:        { name: '青锋剑',     tier: 1, atk: 20,    price: 100,  desc: '寒光三尺，取人首级于百步之外。' },
     xuantie:         { name: '玄铁甲',     tier: 2, hpMax: 150, price: 300,  desc: '玄铁千锻，渡劫之时护住肉身。' },
     jinylv:          { name: '金缕衣',     tier: 4, stoneDef: true, price: 1000, desc: '天蚕金丝所织，万法不侵。每持有100灵石，防御+1%，上限300%（减伤至1/4）。' }
   }
@@ -3744,7 +3744,7 @@ const SECT_GOODS = [
   { ref: 'juling',    kind: 'elixir', gongye: 10, coin: 'gongye', rankMin: '外门', qty: 1 },
   { ref: 'herb_huang', kind: 'mat',   gongye: 5,  coin: 'gongye', rankMin: '外门', qty: 10 },
   { ref: 'iron_huang', kind: 'mat',   gongye: 5,  coin: 'gongye', rankMin: '外门', qty: 10 },
-  { ref: 'qingfeng',  kind: 'equip', grade: '黄', coin: 'stone',  rankMin: '外门', stoneFix: 100 },
+  { ref: 'qingfeng_jian', kind: 'equip', grade: '黄', coin: 'stone', rankMin: '外门', stoneFix: 100 },
 
   /* ========== 内门 ========== */
   { ref: 'chunyang',  kind: 'tech',  grade: '玄', coin: 'stone',  rankMin: '内门' },

@@ -429,6 +429,7 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 ## 十六、命格 / 轮回
 - 命格加成：`getDestinyAttrBonus`（平加）、`getDestinyAttrMult`（乘区 atkMul/defMul）、`getDestinyBonus`（暴击/闪避/吸血/反伤等）。
 - 轮回阁：`REINCARNATION` 提供转世加成（修为/舍生等）。
+- **进入页劫数自由选择（2026-09-13 用户定稿）**：`showEnterPage` 的 `maxJie` 恒为 **9**——新账号开局即可选 0–9 劫，不再受「历史最高劫数」（`meta.maxJie`，仍在结算页作成就展示）封顶。所选劫数写入 `S.jie`，JIE_DATA 难度倍率、命格金池（3劫+）、隐藏线阈值（6劫+）、3 劫命格栏 +1 等全部按**所选**劫数生效——选高劫 = 主动提升难度。结算页「应劫轮回（X劫）」写入 `meta.nextJie` 后，进入页默认落在该劫（此前 `enterState.jie` 恒 0，预设实际被丢弃——属顺带修复）。
 
 ## 十七、UI 结构
 - **行动栏**（主页中上部）：修炼 / 秘境 / 宗门 / 锻体 / 游历 / 百艺(未解锁置灰) / 突破 / 下一年。
@@ -682,3 +683,10 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - 顺带清理死键：`EVENTS.jiyuan[1]` 删掉 `qiMul: function(){return 1;}`（声明但无人消费）。
     - **补 PC 版缺屏 bug（PC 冒烟实测发现）**：`index_pc.html` 缺 `screen-achievements` / `screen-codex` 两屏 → `ui.js` boot 绑定 `$('ach-back').onclick` 直接抛 `TypeError: Cannot set properties of null`（**首个 DOMContentLoaded 监听即炸，PC 版开局链路带伤运行**），且 PC 角落「成就/图鉴」按钮点了白屏。修法：两屏结构照手机版补进 `index_pc.html` + `ui.js` 对 `ach-back`/`codex-back` 绑定加判空（与 `btn-sect`/`adv-info` 同风格）。jsdom 全流程冒烟 8/8：开局→主界面→成就页开/关→图鉴页开/关→零 JS 错误。⚠ **PC 入口此前无任何自动化覆盖**，本轮起 boot 绑定一律判空。
     - 新增/改写回归用例 9 例（`01`×1 白名单守卫、`02`×5 年上限/守敌同源/大比/主线门禁/trib、`03`×2 宗门菜单/阵法板块、`04`×1 掉率重平衡）。缓存 **v106/dedao-v143**。测试 **220/220**（两份 dist 同步且回归一致；02 套件含 1 个随机长模拟动态用例，总数会 ±1 波动）。
+40. **进入页劫数自由选择：新账号开局可选 0–9 劫（2026-09-13 深夜，用户要求实装）**：
+    - **改动点仅一处口径**：`showEnterPage` 中 `const maxJie = m.maxJie || 0` → **`const maxJie = 9`**。旧逻辑下新账号 `meta.maxJie=0`，进入页「+」按钮被禁死只能 0 劫开局；现在 0–9 劫自由选择，`meta.maxJie` 保留在结算页作「历史最高」成就展示。
+    - **顺带修一处既有不一致**：结算页「应劫轮回（X劫）」写 `meta.nextJie`，但进入页 `enterState.jie` 恒 0，预设实际被丢弃；现进入页默认落在 `min(9, meta.nextJie||0)`（玩家仍可自由改）。
+    - **难度语义不变**：所选劫数写入 `S.jie`，JIE_DATA 难度倍率（9劫 4.0x）、命格金池（3劫+）、命格栏 +1、锁定槽 +1（6劫+）、隐藏线魔祖仙帝（6劫+）全部按所选劫数生效——选高劫 = 主动提升难度。
+    - 新增回归用例：`03`「进入页劫数自由选择：新账号可选 0–9 劫，所选劫数生效到本世」（全新账号连点 + 到 9 劫 → 按钮禁用态 → 以 9 劫开局 → 存档 `jie===9`）。
+    - 同批提交：外部新增的「存档版本清理」功能（`SAVE_VERSION` + `cleanupLegacySaves` + 旧档清理 toast，见 §三 档案）一并入库。
+    - 缓存 **v108/dedao-v146**。测试 **221/221**（两份 dist 同步且回归一致）。

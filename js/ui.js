@@ -2857,8 +2857,12 @@
 
   function showEnterPage() {
     const m = Engine.loadMeta();
-    const maxJie = m.maxJie || 0;
-    enterState.jie = 0;
+    // 劫数自由选择（2026-09-13 用户定稿）：开局即可选 0–9 劫，不再受「历史最高劫数」封顶。
+    // maxJie（历史最高）仍保留在结算页作为成就展示；JIE_DATA 难度、命格金池、隐藏线（6劫+）等
+    // 均按玩家所选劫数生效，选高劫=主动提升难度。
+    const maxJie = 9;
+    // 「应劫轮回（X劫）」预设：结算页应劫写入 meta.nextJie 后，进入页默认落在该劫（仍可自由改）。
+    enterState.jie = Math.min(maxJie, m.nextJie || 0);
     enterState.selected = [];
     enterState.locked = [];
     enterState.lockedSlots = 0;
@@ -6033,6 +6037,9 @@
   /* ---------------- 开机 ---------------- */
   function boot() {
     M = Engine.loadMeta();
+    // —— 旧版存档清理：新版本开机时清掉旧结构存档，强制以新版本重开 ——
+    const clearedSaves = Engine.cleanupLegacySaves();
+    if (clearedSaves > 0) showCleanupToast(clearedSaves);
     if (!M._bonus20) { M.points = (M.points || 0) + 100; M._bonus20 = true; Engine.saveMeta(M); }
     
     // 初始化音频配置
@@ -6183,6 +6190,15 @@
     toast.innerHTML = '<span>发现新版本</span><button onclick="location.reload()">点击更新</button>';
     document.body.appendChild(toast);
     setTimeout(function () { toast.classList.add('show'); }, 100);
+  }
+  function showCleanupToast(n) {
+    var toast = document.createElement('div');
+    toast.className = 'update-toast';
+    toast.innerHTML = '<span>检测到 ' + n + ' 份旧版本存档，已清理并以新版本开始（轮回点 / 成就保留）</span>' +
+      '<button onclick="this.parentNode.remove()">知道了</button>';
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.classList.add('show'); }, 100);
+    setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 8000);
   }
 
   /* ---------------- 角色页 ---------------- */

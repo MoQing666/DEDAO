@@ -988,6 +988,40 @@ module.exports = async function build() {
     if (real.length) t.fail('宗门页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  // === 回归 2026-09-13：新账号开局可自由选择 0–9 劫（不再受「历史最高」封顶） ===
+  S.case('进入页劫数自由选择：新账号可选 0–9 劫，所选劫数生效到本世', async (t) => {
+    const a = await boot(); // 全新账号（meta.maxJie = 0）
+    const { win, doc } = a;
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'screen-enter'), true, '新账号应进入「天命抉择」页');
+    const plus = doc.getElementById('enter-jie-plus');
+    const minus = doc.getElementById('enter-jie-minus');
+    t.ok(plus && !plus.disabled, '初始 0 劫时「+」应可用（旧版新账号被 maxJie=0 封死）');
+    for (let i = 0; i < 9; i++) {
+      plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 25));
+    }
+    const jieName = doc.getElementById('enter-jie-name');
+    t.ok(/9劫/.test(jieName ? jieName.textContent : ''), '应可连点到 9 劫（实：' + (jieName && jieName.textContent) + '）');
+    t.ok(plus.disabled, '到 9 劫后「+」应禁用');
+    t.ok(minus && !minus.disabled, '9 劫时「-」应可用');
+    // 以 9 劫开局 → 本世 jie=9（难度倍率/命格金池/隐藏线阈值均按所选劫数）
+    const input = doc.getElementById('enter-name-input');
+    input.value = '九劫君'; input.dispatchEvent(new win.Event('input', { bubbles: true }));
+    const pool = doc.getElementById('enter-destiny-pool');
+    if (pool && pool.children.length) {
+      pool.children[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    }
+    await new Promise(r => setTimeout(r, 60));
+    click(win, 'enter-start');
+    await new Promise(r => setTimeout(r, 250));
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(!!(raw && raw.jie === 9), '所选 9 劫应写入本世存档（实：' + (raw && raw.jie) + '）');
+    const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('劫数选择交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   // === 回归 2026-09-13：百艺「阵法」板块（研习改名 + 内容归位 + 不再重复追加） ===
   S.case('百艺「阵法」板块：只做阵法研习；炼丹/炼器各自带研习入口', async (t) => {
     const a = await boot();

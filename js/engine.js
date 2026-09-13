@@ -7,6 +7,11 @@ const Engine = (function () {
   const LS_META = 'dedao_meta';
   const LS_SLOTS = ['dedao_slot0', 'dedao_slot1', 'dedao_slot2'];
 
+  /* 存档版本号：每次破坏性改动 +1。
+     旧档（无 __saveVersion 字段，或 < 当前值）在开机时由 cleanupLegacySaves 清理，
+     强制以新版本重开，避免老结构存档被误读导致崩溃 / 异常。 */
+  const SAVE_VERSION = 1;
+
   /* ---------------- 档案 ---------------- */
   function defaultMeta() {
     return { points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0 };
@@ -101,6 +106,7 @@ const Engine = (function () {
     return null;
   }
   function saveState(s, slot) {
+    if (s && typeof s === 'object') s.__saveVersion = SAVE_VERSION;  // 盖上当前存档版本戳
     try { localStorage.setItem(slotKey(slot), JSON.stringify(s)); } catch (e) {}
     if (slot != null) { try { localStorage.setItem(LS_SAVE, JSON.stringify(s)); } catch (e) {} }
   }
@@ -109,6 +115,43 @@ const Engine = (function () {
   }
   function slotExists(slot) {
     try { return !!localStorage.getItem(slotKey(slot)); } catch (e) { return false; }
+  }
+  function isLegacySave(s) {
+    // 无版本戳（V40 等极老存档）或版本低于当前 → 视为需清理的旧版存档
+    return !s || s.__saveVersion === undefined || s.__saveVersion < SAVE_VERSION;
+  }
+  function clearCloudVersionMarkers() {
+    // 清掉云存档乐观锁的本地 version 标记，避免旧档清掉后残留 version 触发 409 / 锁冲突
+    try {
+      const toDel = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('dedao_save_version_') === 0) toDel.push(k);
+      }
+      toDel.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    } catch (e) {}
+  }
+  function clearAllSaves() {
+    // 清掉全部本地存档位（自动存档 + 3 个槽位），以及云存档乐观锁的本地 version 标记。
+    // 注意：保留 LS_META（轮回点 / 成就等账号级进度），仅清“一局游戏”的存档。
+    try { localStorage.removeItem(LS_SAVE); } catch (e) {}
+    LS_SLOTS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    clearCloudVersionMarkers();
+  }
+  function cleanupLegacySaves() {
+    // 开机时调用：扫描所有存档位，凡是旧版（无版本戳 / 版本过低）一律删除。
+    // 返回被清理的存档数量，供 UI 层提示。
+    let n = 0;
+    [LS_SAVE].concat(LS_SLOTS).forEach(function (k) {
+      try {
+        const raw = localStorage.getItem(k);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (isLegacySave(s)) { localStorage.removeItem(k); n++; }
+      } catch (e) {}
+    });
+    if (n > 0) clearCloudVersionMarkers();  // 旧档已清，连带清云存档 version 标记
+    return n;
   }
   /* 存档是否“真实且可读取”：灵根 + 名字 + 至少一项命格/天赋 + 境界与阶段一致 */
   function isUsableSave(S) {
@@ -5222,6 +5265,7 @@ const Engine = (function () {
     return {
     slotExists: slotExists, slotInfo: slotInfo, isUsableSave: isUsableSave,
     loadMeta: loadMeta, saveMeta: saveMeta, loadState: loadState, saveState: saveState, clearState: clearState,
+    cleanupLegacySaves: cleanupLegacySaves, clearAllSaves: clearAllSaves, isLegacySave: isLegacySave, SAVE_VERSION: SAVE_VERSION,
     ensureTechEquip: ensureTechEquip, equippedShufa: equippedShufa, techMult: techMult,
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,
     startLife: startLife, commitStart: commitStart, destinyCounts: destinyCounts,

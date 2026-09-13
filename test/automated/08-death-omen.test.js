@@ -1,4 +1,4 @@
-/* DEDAO 自动化测试 —— 08 五劫主线 / 噩兆玉符 / 渡劫劫境 / 隐藏线
+/* DEDAO 自动化测试 —— 08 五劫主线 / 灾劫玉符 / 渡劫劫境 / 隐藏线
  * 覆盖：五劫年表与劫主角色卡、劫主立绘可解析性与占位回落、玉符逐年倒计时与裂纹累加、
  *       五劫尽渡、隐藏线解锁（仅需难度系数 ≥ 6）、渡劫劫境按突破档位映射、
  *       劫身角色卡、三类劫境（死劫/渡劫/隐藏）地图可启动。
@@ -85,9 +85,9 @@ module.exports = async function build() {
     t.note('自绘 ' + BESPOKE.join('/') + '；占位 ' + [...new Set(keys.filter(k => BESPOKE.indexOf(k) < 0))].join('/'));
   });
 
-  S.case('噩兆玉符：第 3 年坊市相遇，两幕线性剧情', (t) => {
+  S.case('灾劫玉符：第 3 年坊市相遇，两幕线性剧情', (t) => {
     const om = OMEN_TALISMAN;
-    t.eq(om.name, '噩兆玉符');
+    t.eq(om.name, '灾劫玉符');
     t.eq(om.meetYear, 3, '相遇年份应为第 3 年');
     t.ok(!!om.portrait, '玉符剧情缺老道立绘');
     t.gte(om.meet.lines.length, 4, '第一幕（坊市相遇）剧情过短');

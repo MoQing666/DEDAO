@@ -142,58 +142,58 @@ const TECHNIQUES = {
        buff 支持 xxxDur（critUpDur/atkUpDur/defUpDur）单独指定该效果持续回合，缺省取 duration
   */
   // --- 黄级法术 ---
-  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 15, buff: { critUp: 8, duration: 2 }, desc: '金气化刃，暴击起手，斩敌经脉。' },
+  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 40, buff: { critUp: 8, duration: 2 }, desc: '金气化刃，暴击起手，斩敌经脉。' },
   // 剑气诀：青云剑宗一系，无属性（不享金系亲和、不参与五行生克）
-  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '无', sect: 'qingyunjian', dmg: 2.0,  cost: 15, buff: { critUp: 8, duration: 2 }, desc: '剑气纵横，暴击起手，斩敌百步。' },
-  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 13, buff: { critUp: 8, duration: 2 }, desc: '雷音震耳，暴击起手，破敌心神。' },
-  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 12, duration: 3 }, desc: '火球焚身，烈焰加护。' },
-  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 13, buff: { atkUp: 12, duration: 3 }, desc: '御火之术，焚尽万物。' },
-  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 14, mpRestore: 0.10, desc: '水气凝聚，化弹击敌，灵泉回涌。' },
-  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 13, mpRestore: 0.10, desc: '凝霜化冰，寒气逼人，灵泉回涌。' },
-  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 13, buff: { defUp: 12, duration: 2 }, desc: '巨石压顶，土气护体。' },
-  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 12, lifesteal: 0.30, desc: '藤蔓缠绕，吸敌生机以为己用。' },
+  jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '无', sect: 'qingyunjian', dmg: 2.0,  cost: 40, buff: { critUp: 8, duration: 2 }, desc: '剑气纵横，暴击起手，斩敌百步。' },
+  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 35, buff: { critUp: 8, duration: 2 }, desc: '雷音震耳，暴击起手，破敌心神。' },
+  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, desc: '火球焚身，烈焰加护。' },
+  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, desc: '御火之术，焚尽万物。' },
+  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 35, mpRestore: 0.10, desc: '水气凝聚，化弹击敌，灵泉回涌。' },
+  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 35, mpRestore: 0.10, desc: '凝霜化冰，寒气逼人，灵泉回涌。' },
+  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 35, buff: { defUp: 12, duration: 2 }, desc: '巨石压顶，土气护体。' },
+  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 30, lifesteal: 0.30, desc: '藤蔓缠绕，吸敌生机以为己用。' },
   // --- 玄级法术（攻击） ---
-  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 25, buff: { critUp: 12, duration: 2 }, desc: '金光化剑，锐不可当，暴击骤增。' },
-  muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 20, heal: 0.15, desc: '木灵之力，治愈创伤。' },
-  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0,  cost: 22, buff: { atkUp: 18, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
-  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.5,  cost: 26, buff: { defUp: 18, duration: 2 }, desc: '巨岩轰击，土气附身，势大力沉。' },
+  jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 65, buff: { critUp: 12, duration: 2 }, desc: '金光化剑，锐不可当，暴击骤增。' },
+  muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 50, heal: 0.15, desc: '木灵之力，治愈创伤。' },
+  lieyan:    { name: '烈焰斩',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0,  cost: 55, buff: { atkUp: 18, duration: 3 }, desc: '烈焰缠身，攻伐加护。' },
+  luoyan:    { name: '落岩术',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.5,  cost: 65, buff: { defUp: 18, duration: 2 }, desc: '巨岩轰击，土气附身，势大力沉。' },
   // --- 玄级法术（抵御/恢复） ---
-  jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 18, buff: { defUp: 30, defUpDur: 3, critUp: 12, critUpDur: 2 }, desc: '金光护体，刀枪不入，锐气暗生。' },
-  shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 2.0,  cost: 18, lifesteal: 0.40, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势，反哺己身。' },
-  shuilingshu: { name: '水灵术', cls: 'shufa', grade: '玄', element: '水', dmg: 0,   cost: 20, heal: 0.125, mpRestore: 0.15, desc: '水灵之力，治愈创伤，灵泉回涌。' },
-  huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 18, buff: { defUp: 25, defUpDur: 2, atkUp: 18, atkUpDur: 3 }, desc: '烈焰护盾，焚尽攻击，攻势不减。' },
-  yanjia:     { name: '岩甲术',   cls: 'shufa', grade: '玄', element: '土', dmg: 0,   cost: 20, buff: { defUp: 40, duration: 3 }, desc: '岩石护甲，固若金汤。' },
+  jinguanghu: { name: '金光护体', cls: 'shufa', grade: '玄', element: '金', dmg: 0,   cost: 45, buff: { defUp: 30, defUpDur: 3, critUp: 12, critUpDur: 2 }, desc: '金光护体，刀枪不入，锐气暗生。' },
+  shengji:    { name: '生机缠绕', cls: 'shufa', grade: '玄', element: '木', dmg: 2.0,  cost: 45, lifesteal: 0.40, debuff: { atkDown: 25, duration: 2 }, desc: '生机缠绕，削弱敌势，反哺己身。' },
+  shuilingshu: { name: '水灵术', cls: 'shufa', grade: '玄', element: '水', dmg: 0,   cost: 50, heal: 0.125, mpRestore: 0.15, desc: '水灵之力，治愈创伤，灵泉回涌。' },
+  huodun:     { name: '火盾术',   cls: 'shufa', grade: '玄', element: '火', dmg: 0,   cost: 45, buff: { defUp: 25, defUpDur: 2, atkUp: 18, atkUpDur: 3 }, desc: '烈焰护盾，焚尽攻击，攻势不减。' },
+  yanjia:     { name: '岩甲术',   cls: 'shufa', grade: '玄', element: '土', dmg: 0,   cost: 50, buff: { defUp: 40, duration: 3 }, desc: '岩石护甲，固若金汤。' },
   // --- 地级法术 ---
-  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '无', sect: 'qingyunjian', dmg: 4.0,  cost: 45, buff: { critUp: 18, duration: 3 }, desc: '万剑齐鸣，天地失色，暴击大增。' },
-  shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 40, heal: 0.25, desc: '生机盎然，枯木回春。' },
-  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 4.0,  cost: 45, buff: { atkUp: 25, duration: 3 }, desc: '天火降世，焚尽万物，攻势滔天。' },
-  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.0,  cost: 38, buff: { defUp: 25, duration: 3 }, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方，土气护体。' },
+  wanjian:    { name: '万剑归宗', cls: 'shufa', grade: '地', element: '无', sect: 'qingyunjian', dmg: 4.0,  cost: 115, buff: { critUp: 18, duration: 3 }, desc: '万剑齐鸣，天地失色，暴击大增。' },
+  shengjiayang: { name: '生机盎然', cls: 'shufa', grade: '地', element: '木', dmg: 0,  cost: 100, heal: 0.25, desc: '生机盎然，枯木回春。' },
+  tianhuo:    { name: '天火焚城', cls: 'shufa', grade: '地', element: '火', dmg: 4.0,  cost: 115, buff: { atkUp: 25, duration: 3 }, desc: '天火降世，焚尽万物，攻势滔天。' },
+  shanyue:    { name: '山岳镇压', cls: 'shufa', grade: '地', element: '土', dmg: 3.0,  cost: 95, buff: { defUp: 25, duration: 3 }, debuff: { atkDown: 30, duration: 3 }, desc: '山岳压顶，镇压四方，土气护体。' },
   // --- 天级法术 ---
-  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '无', sect: 'qingyunjian', dmg: 4.5,  cost: 70, buff: { critUp: 25, duration: 3 }, desc: '剑光破天，一击必杀，暴击极致。' },
-  wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 65, heal: 0.40, desc: '万木回春，枯木逢生。' },
-  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 4.5,  cost: 70, buff: { atkUp: 35, duration: 3 }, desc: '焚天灭地，烈焰滔天，攻伐极致。' },
-  dadi:       { name: '大地守护', cls: 'shufa', grade: '天', element: '土', dmg: 0,    cost: 60, buff: { defUp: 50, duration: 3 }, desc: '大地守护，万邪不侵。' },
+  potian:     { name: '破天一击', cls: 'shufa', grade: '天', element: '无', sect: 'qingyunjian', dmg: 4.5,  cost: 175, buff: { critUp: 25, duration: 3 }, desc: '剑光破天，一击必杀，暴击极致。' },
+  wanmu:      { name: '万木回春', cls: 'shufa', grade: '天', element: '木', dmg: 0,    cost: 165, heal: 0.40, desc: '万木回春，枯木逢生。' },
+  fantian:    { name: '焚天灭地', cls: 'shufa', grade: '天', element: '火', dmg: 4.5,  cost: 175, buff: { atkUp: 35, duration: 3 }, desc: '焚天灭地，烈焰滔天，攻伐极致。' },
+  dadi:       { name: '大地守护', cls: 'shufa', grade: '天', element: '土', dmg: 0,    cost: 150, buff: { defUp: 50, duration: 3 }, desc: '大地守护，万邪不侵。' },
   /* --- 五行新机制法术（五机制 × 三阶 = 15）--- */
   // 土 · 眩晕（stun：概率命中 → 敌方下回合无法行动）
-  lie_di:    { name: '裂地诀',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.0, cost: 22, stun: 0.20, desc: '裂地震颤，敌身形一滞（20% 眩晕）。' },
-  han_shan:  { name: '撼山印',   cls: 'shufa', grade: '地', element: '土', dmg: 3.0, cost: 40, stun: 0.40, desc: '山印镇压，敌神魂震荡（40% 眩晕）。' },
-  zhen_yue:  { name: '镇岳神雷', cls: 'shufa', grade: '天', element: '土', dmg: 3.5, cost: 65, stun: 0.80, desc: '岳镇雷落，敌动弹不得（80% 眩晕）。' },
+  lie_di:    { name: '裂地诀',   cls: 'shufa', grade: '玄', element: '土', dmg: 2.0, cost: 55, stun: 0.20, desc: '裂地震颤，敌身形一滞（20% 眩晕）。' },
+  han_shan:  { name: '撼山印',   cls: 'shufa', grade: '地', element: '土', dmg: 3.0, cost: 100, stun: 0.40, desc: '山印镇压，敌神魂震荡（40% 眩晕）。' },
+  zhen_yue:  { name: '镇岳神雷', cls: 'shufa', grade: '天', element: '土', dmg: 3.5, cost: 165, stun: 0.80, desc: '岳镇雷落，敌动弹不得（80% 眩晕）。' },
   // 水 · 冻结（复用 stun 字段，机制同眩晕，仅文案为冻结）
-  shuang_han:{ name: '霜寒禁锢', cls: 'shufa', grade: '玄', element: '水', dmg: 2.0, cost: 22, stun: 0.20, desc: '霜寒凝体，敌身形被封（20% 冻结）。' },
-  han_yuan:  { name: '寒渊冰狱', cls: 'shufa', grade: '地', element: '水', dmg: 3.0, cost: 40, stun: 0.40, desc: '寒渊冰封，敌困于牢（40% 冻结）。' },
-  wan_zai:   { name: '万载玄冰', cls: 'shufa', grade: '天', element: '水', dmg: 3.5, cost: 65, stun: 0.80, desc: '万载玄冰，天地俱寂（80% 冻结）。' },
+  shuang_han:{ name: '霜寒禁锢', cls: 'shufa', grade: '玄', element: '水', dmg: 2.0, cost: 55, stun: 0.20, desc: '霜寒凝体，敌身形被封（20% 冻结）。' },
+  han_yuan:  { name: '寒渊冰狱', cls: 'shufa', grade: '地', element: '水', dmg: 3.0, cost: 100, stun: 0.40, desc: '寒渊冰封，敌困于牢（40% 冻结）。' },
+  wan_zai:   { name: '万载玄冰', cls: 'shufa', grade: '天', element: '水', dmg: 3.5, cost: 165, stun: 0.80, desc: '万载玄冰，天地俱寂（80% 冻结）。' },
   // 火 · 灼烧（dotBurn：每回合 1 层结算，扣当前生命 10%，-1 层；每施法叠 玄1/地2/天3，上限 2/4/8）
-  lie_huo:   { name: '烈火焚',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0, cost: 22, dotBurn: 1, desc: '烈火焚身，灼烧缠敌（叠 1 层，上限 2）。' },
-  fen_hun:   { name: '焚魂业火', cls: 'shufa', grade: '地', element: '火', dmg: 3.0, cost: 40, dotBurn: 2, desc: '业火焚魂，灼烧难熄（叠 2 层，上限 4）。' },
-  jiu_you:   { name: '九幽红莲', cls: 'shufa', grade: '天', element: '火', dmg: 3.5, cost: 65, dotBurn: 3, desc: '红莲业火，灼烧九幽（叠 3 层，上限 8）。' },
+  lie_huo:   { name: '烈火焚',   cls: 'shufa', grade: '玄', element: '火', dmg: 2.0, cost: 55, dotBurn: 1, desc: '烈火焚身，灼烧缠敌（叠 1 层，上限 2）。' },
+  fen_hun:   { name: '焚魂业火', cls: 'shufa', grade: '地', element: '火', dmg: 3.0, cost: 100, dotBurn: 2, desc: '业火焚魂，灼烧难熄（叠 2 层，上限 4）。' },
+  jiu_you:   { name: '九幽红莲', cls: 'shufa', grade: '天', element: '火', dmg: 3.5, cost: 165, dotBurn: 3, desc: '红莲业火，灼烧九幽（叠 3 层，上限 8）。' },
   // 金 · 伐灾（disaster：自身叠层，每栈 3 回合；施法净化自身毒·灼；每 3 层抵消一次眩晕/冻结）
-  po_e:      { name: '破厄诀',   cls: 'shufa', grade: '玄', element: '金', dmg: 2.0, cost: 18, disaster: 1, desc: '破厄荡邪，净化己身（叠 1 层，上限 2）。' },
-  dang_xie:  { name: '荡邪金光', cls: 'shufa', grade: '地', element: '金', dmg: 4.0, cost: 38, disaster: 2, desc: '金光荡邪，诸厄不侵（叠 2 层，上限 4）。' },
-  fa_zai:    { name: '伐灾神咒', cls: 'shufa', grade: '天', element: '金', dmg: 4.5, cost: 60, disaster: 3, desc: '神咒伐灾，万劫不磨（叠 3 层，上限 8）。' },
+  po_e:      { name: '破厄诀',   cls: 'shufa', grade: '玄', element: '金', dmg: 2.0, cost: 45, disaster: 1, desc: '破厄荡邪，净化己身（叠 1 层，上限 2）。' },
+  dang_xie:  { name: '荡邪金光', cls: 'shufa', grade: '地', element: '金', dmg: 4.0, cost: 95, disaster: 2, desc: '金光荡邪，诸厄不侵（叠 2 层，上限 4）。' },
+  fa_zai:    { name: '伐灾神咒', cls: 'shufa', grade: '天', element: '金', dmg: 4.5, cost: 150, disaster: 3, desc: '神咒伐灾，万劫不磨（叠 3 层，上限 8）。' },
   // 木 · 中毒（dotPoison：同灼烧；与灼烧独立叠加、互不干扰）
-  fu_du:     { name: '腐毒刺',   cls: 'shufa', grade: '玄', element: '木', dmg: 2.0, cost: 22, dotPoison: 1, desc: '腐毒入体，侵蚀生机（叠 1 层，上限 2）。' },
-  bai_du:    { name: '百毒噬心', cls: 'shufa', grade: '地', element: '木', dmg: 3.0, cost: 40, dotPoison: 2, desc: '百毒噬心，无药可医（叠 2 层，上限 4）。' },
-  wan_du:    { name: '万毒归宗', cls: 'shufa', grade: '天', element: '木', dmg: 3.5, cost: 65, dotPoison: 3, desc: '万毒归宗，见血封喉（叠 3 层，上限 8）。' },
+  fu_du:     { name: '腐毒刺',   cls: 'shufa', grade: '玄', element: '木', dmg: 2.0, cost: 55, dotPoison: 1, desc: '腐毒入体，侵蚀生机（叠 1 层，上限 2）。' },
+  bai_du:    { name: '百毒噬心', cls: 'shufa', grade: '地', element: '木', dmg: 3.0, cost: 100, dotPoison: 2, desc: '百毒噬心，无药可医（叠 2 层，上限 4）。' },
+  wan_du:    { name: '万毒归宗', cls: 'shufa', grade: '天', element: '木', dmg: 3.5, cost: 165, dotPoison: 3, desc: '万毒归宗，见血封喉（叠 3 层，上限 8）。' },
 
   /* ========== 遁术：逃跑与防御 ========== */
   // --- 通用遁术 ---
@@ -408,16 +408,16 @@ const LINGGEN_POOL = [
     affinity: ['土'], affinityBonus: 15,
     trait: { name: '厚土', effect: { def: 5 }, quirk: 'tu' },
     desc: '厚重如山，肉身强横；受暴击伤害减免。' },
-  // —— 天灵根（传说）qiMul=1.15，无战斗词条，仅+1悟性 ——
+  // —— 天灵根（传说）qiMul=1.15，无特质词条，仅 +1 悟性 ——
   { id: 'tian', name: '天灵根', tier: '传说', qiMul: 1.15, w: 3, wuBonus: 1, lingBonus: 0,
     affinity: ['金', '木', '水', '火', '土', '雷', '风', '冰'], affinityBonus: 15,
     trait: null, quirk: 'tian',
     desc: '万中无一的道体！修炼极速，全系亲和，悟性超群。无瓶颈、可兼修多系。' },
-  // —— 混沌灵体（变异）qiMul=1.20，无战斗词条，+1悟性+1灵力 ——
+  // —— 混沌灵体（变异）qiMul=1.20，无特质词条，+1 悟性 +1 灵力 ——
   { id: 'hundun', name: '混沌灵体', tier: '变异', qiMul: 1.20, w: 1, wuBonus: 1, lingBonus: 1,
     affinity: ['金', '木', '水', '火', '土', '雷', '风', '冰'], affinityBonus: 10,
     trait: null, quirk: 'hundun',
-    desc: '鸿蒙未判之气加身，万法归宗！可同时修多系功法，每系亲和略弱于专精（无战斗属性）。' },
+    desc: '鸿蒙未判之气加身，万法归宗！可同时修多系功法，每系亲和略弱于专精。' },
   // —— 伪灵根（杂）体验档 ——
   { id: 'wei', name: '伪灵根', tier: '杂', qiMul: 1.01, w: 46,
     affinity: [], affinityBonus: 0,
@@ -1085,12 +1085,12 @@ const MAINLINE = [
     resultLose: '魔气贯穿胸膛，你缓缓闭目——终究，差了一步。' }
 ];
 
-/* ---------------- 死劫 · 五劫主线（噩兆玉符串联） ----------------
+/* ---------------- 死劫 · 五劫主线（灾劫玉符串联） ----------------
  * 设计要点（v3）：
  *   - 全生涯仅有 5 个死劫：第 18 / 36 / 49 / 64 / 81 年（玩家 33 / 51 / 64 / 79 / 96 岁）；
  *   - 每个死劫都是一座「专属劫境」：独立地图（列数 / 节点池 / 环境文案）+ 一位有名字的「劫主」；
  *   - 劫主带 称号 / 立绘 / 登场白 / 台词 / 战斗机制，不再是「通用试炼换皮」；
- *   - 五劫由【噩兆玉符】主线串联：识海黑字逐年递减，每渡一劫玉符多一道裂纹；
+ *   - 五劫由【灾劫玉符】主线串联：识海黑字逐年递减，每渡一劫玉符多一道裂纹；
  *   - 五劫尽渡后玉符显「飞升天劫 · 无期」；当难度系数 s.jie >= 6（六劫轮回及以上）时玉符彻底裂开，
  *     显出「轮回之外……」——解锁隐藏线【魔祖仙帝】。
  * ---------------------------------------------------------------- */
@@ -1301,14 +1301,14 @@ const HIDDEN_BOSS = {
   resultLose: '王座下多了一具骨头。钟又响了一次，下一世开始了。'
 };
 
-/* ---------------- 噩兆玉符（串联五劫主线） ----------------
+/* ---------------- 灾劫玉符（串联五劫主线） ----------------
  * 第 3 年坊市：一个笑眯眯的算命老道硬塞给你一块玉符，
  * 从此玉符盘踞神台识海，浮出一行散着黑气的字：「死劫还剩 XX 年」。
  * 文案为玩家指定版本（第一幕 meet.lines / 第二幕 meet.after.lines，{omen} 为识海黑字占位）。
  * ---------------------------------------------------------------- */
 const OMEN_TALISMAN = {
   id: 'omen_talisman',
-  name: '噩兆玉符',
+  name: '灾劫玉符',
   portrait: 'npc_laodao',
   meetYear: 3,                 // 第 3 年（18 岁）坊市相遇
   meet: {
@@ -1323,7 +1323,7 @@ const OMEN_TALISMAN = {
     ],
     // 第二幕：清醒之后（{omen} = 识海黑字，按玩家寿元与触发时间实时生成）
     after: {
-      title: '噩兆玉符',
+      title: '灾劫玉符',
       subtitle: '一行散着黑气的字',
       lines: [
         '恢复清醒时，老道和那摊位早已无影无踪。',
@@ -2993,7 +2993,8 @@ const REINCARNATION = [
   { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
   { id: 'extra_field',   name: '随身灵田', desc: '初始灵田 +1块',                cost: 3, max: 3,  apply: { extraField: 1 } },
   { id: 'destiny_slot',  name: '我命由我', desc: '初始命格栏 +1格',                cost: 12, max: 1,  apply: { destinySlot: 1 } },
-  { id: 'extra_destiny', name: '大千命格', desc: '初始可抽取命格 +1',              cost: 3, max: 4,  apply: { extraDestiny: 1 } },
+  /* 大千命格（extra_destiny，抽取数+1）已于 2026-09-14 下线删除：
+     抽取数固定为 3。旧档已购买的点数由 Engine.loadMeta 一次性全额退还。 */
   { id: 'destiny_lock', name: '天命锁定', desc: '可锁定1个命格后重新抽取',        cost: 12, max: 1,  apply: { destinyLock: 1 } }
 ];
 
@@ -3859,8 +3860,18 @@ const NPCS = {
       idx: 0, req: { flags: { beggar_met: 1 } },
       lines: ['老乞丐忽然抬眼："小友，老夫观你筋骨，倒是块炼体的好材料。"', '他枯手在你肩头一按，一股暖流窜遍四肢百骸。'],
       choices: [
-        { t: '恭敬请教炼体之法', effect: { ti: 1, atk: 3 }, lines: ['老丐咧嘴一笑，口授吐纳导引之术。你依法而行，只觉体魄渐凝。（体魄+1，攻击+3）'] },
-        { t: '赠以干粮，结个善缘', effect: { stone: -10, wu: 0.5 }, lines: ['你将干粮奉上，老丐也不推辞。临去前他低声指点："炼体先炼脊，莫急于求成。"（悟性+0.5）'] }
+        // 炼体主线：两个选项都「必然学会炼体之法」（习得《锻体诀》→ flags.duanti），
+        // 差别只在属性加成（2026-09-14 用户定稿）
+        { t: '恭敬请教炼体之法', effect: { ti: 1, atk: 3, flags: { duanti: 1 } },
+          lines: [
+            '老丐咧嘴一笑，口授吐纳导引之术，又起身替你正了三处桩架。',
+            '"筋骨是炉，气血是薪——今日起，你算是入了炼体的门。"（习得《锻体诀》，体魄+1，攻击+3）'
+          ] },
+        { t: '赠以干粮，结个善缘', effect: { stone: -10, wu: 0.5, flags: { duanti: 1 } },
+          lines: [
+            '你将干粮奉上，老丐也不推辞，几口便吃了个干净。',
+            '他抹抹嘴，忽然抬手在你脊背上连点三下："炼体先炼脊，莫急于求成。这几句口诀，权当谢你那口热食。"（习得《锻体诀》，悟性+0.5）'
+          ] }
       ] } },
   lin: {
     id: 'lin', name: '林婉儿', portrait: 'npc_lin',

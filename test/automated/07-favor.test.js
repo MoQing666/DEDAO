@@ -108,6 +108,30 @@ module.exports = async function build() {
     t.ok(E.evEligible(s, ev), 'beggar_met 后老乞丐缘法应可触发');
   });
 
+  // 炼体主线（2026-09-14 用户定稿）：两个选项都「必然学会炼体之法」（习得《锻体诀》），
+  // 差别只在属性加成——不允许出现「选了某项就学不到炼体」的分支。
+  S.case('老丐传艺：两个选项都必然习得《锻体诀》（差别只在属性加成）', (t) => {
+    const ev = MAINLINE.find((ml) => ml.id === 'xian_laoqigai');
+    t.ok(!!ev, '老丐传艺应在 MAINLINE 中');
+    if (!ev) return;
+    t.eq((ev.choices || []).length, 2, '老丐传艺应为两选项');
+    (ev.choices || []).forEach((c, i) => {
+      const eff = c.effect || {};
+      t.eq(eff.flags && eff.flags.duanti, 1, '选项' + (i + 1) + '「' + c.t + '」应习得《锻体诀》（flags.duanti）');
+    });
+    const a = (ev.choices[0] || {}).effect || {};
+    const b = (ev.choices[1] || {}).effect || {};
+    t.ok(JSON.stringify([a.ti, a.atk, a.wu]) !== JSON.stringify([b.ti, b.atk, b.wu]), '两选项的属性加成应有差异');
+    // 端到端：两个选项各自 applyOps 后，锻体都应处于「已解锁」
+    (ev.choices || []).forEach((c, i) => {
+      const s = freshState(0);
+      delete s.flags.duanti;
+      t.ok(!E.duantiInfo(s).unlocked, '未选之前应未解锁锻体');
+      E.applyOps(s, c.effect);
+      t.ok(E.duantiInfo(s).unlocked, '选选项' + (i + 1) + '「' + c.t + '」后应解锁锻体（duantiInfo.unlocked）');
+    });
+  });
+
   S.case('林婉儿可由游历 3 选 1 触发（解锁后）', (t) => {
     let seenUnlocked = 0, seenLocked = 0;
     for (let i = 0; i < 600; i++) {

@@ -81,7 +81,7 @@
       corner.innerHTML =
         '<button class="pc-corner-btn" id="pc-xianyuan" title="仙缘·众生相">仙缘</button>' +
         '<button class="pc-corner-btn" id="pc-ach" title="成就·轮回印记">成就</button>' +
-        '<button class="pc-corner-btn" id="pc-omen" title="噩兆玉符·死劫倒计时">玉符</button>' +
+        '<button class="pc-corner-btn" id="pc-omen" title="灾劫玉符·死劫倒计时">玉符</button>' +
         '<button class="pc-corner-btn" id="pc-codex" title="图鉴·万象录">图鉴</button>' +
         '<button class="pc-corner-btn" id="pc-set" title="设置">设置</button>';
       hud.appendChild(corner);

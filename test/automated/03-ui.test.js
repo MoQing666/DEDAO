@@ -368,6 +368,32 @@ module.exports = async function build() {
     if (real.length) t.fail('锻体页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  // === 回归：法宝页未持有时必须展示「空的法宝槽」（曾用一句提示顶掉整个面板，且文案误指「装备」页） ===
+  S.case('法宝页：未持有时渲染空的法宝槽，文案不再指向「装备」页', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '法宝空槽');
+    t.ok(click(win, 'btn-char-bottom'), 'btn-char-bottom 不存在');
+    await new Promise(r => setTimeout(r, 180));
+    t.eq(visible(doc, 'screen-char'), true, '应进入角色页');
+    const tab = doc.querySelector('.char-tab[data-tab="treasure"]');
+    t.ok(!!tab, '法宝分页按钮不存在');
+    if (!tab) return;
+    tab.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 80));
+    const box = doc.getElementById('char-treasure-slots');
+    t.ok(!!box, 'char-treasure-slots 容器不存在');
+    if (!box) return;
+    const text = box.textContent || '';
+    t.ok(/法宝栏\s*0\s*\/\s*\d+\s*已用/.test(text), '应显示「法宝栏 0 / N 已用」（实际：' + text.slice(0, 60) + '）');
+    const slots = [...box.querySelectorAll('.treasure-slot')];
+    const empty = slots.filter(c => /空栏位/.test(c.textContent));
+    t.gte(empty.length, 3, '炼气期至少应渲染 3 个「空栏位」（实际 ' + empty.length + '）');
+    t.ok(!/「装备」页/.test(text), '法宝页不应再出现「法宝需于『装备』页穿戴」这类错误引导');
+    t.ok(/尚未获得/.test(text), '应有一句「尚未获得法宝」的说明');
+    const real2 = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real2.length) t.fail('法宝页渲染报错: ' + real2.slice(0, 3).join(' ;; '));
+  });
+
   // === 回归：秘境入口不再卡死（章节层 z-index 修复 + 背景切换） ===
   S.case('秘境入口：章节层正常显示且背景切换到秘境图', async (t) => {
     const { win, doc, errors } = await boot();
@@ -1014,7 +1040,18 @@ module.exports = async function build() {
       pool.children[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
     }
     await new Promise(r => setTimeout(r, 60));
+    // 命格未选满（9劫 3选2，此处只选了 1 个）：首次点「开始」只提醒，不真正开局
     click(win, 'enter-start');
+    await new Promise(r => setTimeout(r, 120));
+    const hintEl = doc.getElementById('enter-name-hint');
+    t.ok(/还有\s*1\s*个命格可选/.test(hintEl ? hintEl.textContent : ''),
+      '命格未选满时应给出提醒（实：' + (hintEl && hintEl.textContent) + '）');
+    const titleEl = doc.getElementById('enter-destiny-title');
+    t.ok(/已选\s*1\/2/.test(titleEl ? titleEl.textContent : ''),
+      '天命标题应实时显示已选/可选（实：' + (titleEl && titleEl.textContent) + '）');
+    let rawMid = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(!(rawMid && rawMid.jie === 9), '首次点击只提醒，不应写入本世存档');
+    click(win, 'enter-start');   // 再点一次：确认开始
     await new Promise(r => setTimeout(r, 250));
     const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
     t.ok(!!(raw && raw.jie === 9), '所选 9 劫应写入本世存档（实：' + (raw && raw.jie) + '）');

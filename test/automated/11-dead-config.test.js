@@ -309,7 +309,7 @@ module.exports = async function build() {
     s.techEquip = { xinfa: null, shufa: ['muyuling'], dunshu: null };
     E.refreshStats(s);
     dummyFight(s, 0, 1000000);                  // 敌方攻击 0，排除反击掉血干扰
-    s.mp = s.mpMax;
+    s.mp = 300;                                 // 灵力充足：木灵治愈新版耗蓝 50，确保可施展
     s.hp = 1;                                   // 压到极低，确保回复不被「满血上限」封顶
     const hpMax = s.hpMax;
     E.combatAct(s, 'spell', 'muyuling');
@@ -327,7 +327,7 @@ module.exports = async function build() {
     s.techEquip = { xinfa: null, shufa: ['yanjia'], dunshu: null };
     E.refreshStats(s);
     dummyFight(s, enemyAtk, 1000000);
-    s.mp = s.mpMax;
+    s.mp = 300;                                 // 灵力充足：岩甲术新版耗蓝 50
     E.combatAct(s, 'spell', 'yanjia');
     // 施法当回合的敌方回击即应吃到护盾：200×0.6 = 120 - 18 = 102
     t.eq(s.battle.hpLost, Math.round(enemyAtk * 0.6) - defAbs, '岩甲术 -40% 应在施法当回合即生效');
@@ -340,7 +340,7 @@ module.exports = async function build() {
     s.techEquip = { xinfa: null, shufa: ['tengman'], dunshu: null };
     E.refreshStats(s);
     dummyFight(s, 0, 1e9);                  // 敌攻 0（反击仅 1 点），气血极高避免被击杀
-    s.mp = s.mpMax;
+    s.mp = 300;                             // 灵力充足：藤蔓术新版耗蓝 30
     s.hp = Math.max(20, s.hpMax - 50);        // 留出回血空间，且足够扛住敌方反击（1 点）
     const hpBefore = s.hp;
     const enemyBefore = s.battle.hp;
@@ -358,7 +358,7 @@ module.exports = async function build() {
     s.techEquip = { xinfa: null, shufa: ['jinren'], dunshu: null };
     E.refreshStats(s);
     dummyFight(s, 0, 1e9);
-    s.mp = s.mpMax;
+    s.mp = 300;                             // 灵力充足：金刃术新版耗蓝 40
     E.combatAct(s, 'spell', 'jinren');
     t.eq(s.battle.fxCritUp.amt, 8, '金刃术应挂 fxCritUp.amt=8');
     t.eq(s.battle.fxCritUp.turns, 1, '金刃术 fxCritUp 持续 2 回合：本回合生效、回合末 tick 递减为 1（仍覆盖下一回合）');
@@ -373,9 +373,9 @@ module.exports = async function build() {
     E.refreshStats(s);
     const mpMax = s.mpMax;
     dummyFight(s, 0, 1e9);
-    s.mp = 19;                              // ≥ 消耗 14，且留出远大于 10% 上限的回灵空间（不被封顶）
+    s.mp = 50;                              // ≥ 消耗 35（水弹术新版耗蓝），且留出回灵空间（不被封顶）
     E.combatAct(s, 'spell', 'shuidan');
-    t.eq(s.mp, 19 - 14 + Math.round(mpMax * 0.10), '水弹术：先扣 14 灵力，再回灵力上限 10%');
+    t.eq(s.mp, 50 - 35 + Math.round(mpMax * 0.10), '水弹术：先扣 35 灵力，再回灵力上限 10%');
     t.eq(s.battle.fxCritUp.amt, 0, '水弹术不带 critUp');
   });
 

@@ -137,6 +137,7 @@
     const ap = Engine.actionPoints(S);
 
     $('h-name').textContent = S.name;
+    if ($('h-avatar')) $('h-avatar').textContent = (S.name || '修').slice(0, 1);
     $('h-realm').textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
     $('h-realm').style.color = st.color;
     $('h-realm').style.borderColor = st.color;
@@ -181,13 +182,13 @@
     $('qi-val').textContent = S.qi + ' / ' + need;
     bar('bar-qi', qiPct, '#4ec9a0');
 
-    // 六维属性
-    $('st-wu').textContent = S.wu || 0;
-    $('st-ti').textContent = S.ti || 0;
-    $('st-dun').textContent = S.dun || 0;
-    $('st-shen').textContent = S.shen || 0;
-    $('st-dao').textContent = S.dao || 0;
-    $('st-ling').textContent = S.ling || 0;
+    // 六维属性（含基础+命格+法宝+装备，与角色面板口径一致）
+    $('st-wu').textContent = Engine.effAttr(S, 'wu') + (Engine.equipStats(S).wu || 0);
+    $('st-ti').textContent = Engine.effAttr(S, 'ti') + (Engine.equipStats(S).ti || 0);
+    $('st-dun').textContent = Engine.effAttr(S, 'dun') + (Engine.equipStats(S).dun || 0);
+    $('st-shen').textContent = Engine.effAttr(S, 'shen') + (Engine.equipStats(S).shen || 0);
+    $('st-dao').textContent = Engine.effAttr(S, 'dao') + (Engine.equipStats(S).dao || 0);
+    $('st-ling').textContent = Engine.effAttr(S, 'ling') + (Engine.equipStats(S).ling || 0);
     // 战斗属性
     $('st-atk').textContent = S.atk || 0;
     // 防御/暴击/闪避：全部走引擎统一口径，与属性面板、战斗结算一致
@@ -525,6 +526,7 @@
         $('b-spell').disabled = !list.length;
         $('b-spell').textContent = '法术' + (bb.spellName ? '·' + bb.spellName + (list.length > 1 ? '（' + list.length + '）' : '') : '(无)');
         $('b-flee').textContent = bb.noFlee ? '本战斗不可逃跑' : '逃跑（' + Math.round(bb.flee * 100) + '% · 遁速' + (S.dunSpeed || 1) + '）';
+      if (bb.noFlee) { $('b-flee').disabled = true; $('b-flee').style.opacity = '0.5'; }
       }
       function renderBuffs(elId, buffs) {
         const el = $(elId); if (!el) return;
@@ -1249,7 +1251,7 @@
           showChapter('劫后余生', wl.concat(br.gains || [])).then(function () {
             logSection('【' + (dev.title || '死劫') + '】');
             log('你从死劫中挣出一条生路。', 'good');
-            if (oline) log('【噩兆玉符】' + oline, 'omen');
+            if (oline) log('【灾劫玉符】' + oline, 'omen');
             afterAction();
           });
         }
@@ -1986,7 +1988,7 @@
     if (!(S.flags && S.flags.duanti)) {
       showChapter('锻体 · 未解之法', [
         '你尚未习得《锻体诀》，无从锻体。',
-        '传闻练气后期，若于城隍庙前遇着那位老乞丐，或可得传一身锻体门道。'
+        '传闻城隍庙前那位蜷在墙角的老乞丐，便是一身炼体门道的传人——先去结识他，自有传承。'
       ], { subtitle: '未解之法', choices: [{ t: '且修前行，静待机缘' }] });
       return;
     }
@@ -2348,7 +2350,7 @@
     const r = Engine.endYear(S);
     if (r === 'end') { endLifeFlow(); return; }
     if (r === 'fate') { fateFlow(); return; }
-    // 年初检查：噩兆玉符 / 隐藏线 / 死劫 / 主线剧情
+    // 年初检查：灾劫玉符 / 隐藏线 / 死劫 / 主线剧情
     const yr = Engine.checkYearEvents(S);
     if (yr === 'omen') { omenMeetFlow(); return; }
     if (yr === 'hidden_boss') { hiddenBossFlow(); return; }
@@ -2382,10 +2384,10 @@
     log('爆竹声中，旧岁翻篇。你长身而起，新一年的风已经吹进门来。');
     log('（一岁一枯荣：气血与灵力已随新岁尽数复原）', 'good');
     log('（进度已自动存档 · 第 ' + S.year + ' 年）', 'dim');
-    // 噩兆玉符：每年识海浮现的黑字（死劫倒计时）
+    // 灾劫玉符：每年识海浮现的黑字（死劫倒计时）
     if (S.omen && S.omen.got && typeof Engine.omenText === 'function') {
       const ot = Engine.omenText(S);
-      if (ot) log('【噩兆玉符】识海深处，那行黑字又浮了上来——「' + ot + '」', 'omen');
+      if (ot) log('【灾劫玉符】识海深处，那行黑字又浮了上来——「' + ot + '」', 'omen');
     }
     // 遗世仙踪每10年出现一次
     if (Engine.isXianAdventureAvailable(S)) {
@@ -2458,7 +2460,7 @@
     }
   }
 
-  /* ---------------- 噩兆玉符（五劫主线） ---------------- */
+  /* ---------------- 灾劫玉符（五劫主线） ---------------- */
   // 第 3 年：坊市 · 笑眯眯的算命老道硬塞玉符（玩家指定文案，两幕线性）
   function omenMeetFlow() {
     delete S.pendingOmen;
@@ -2470,8 +2472,8 @@
       const aft = om.meet.after || {};
       // {omen} 占位替换为按玩家寿元与触发时间实时算出的识海黑字
       const lines = (aft.lines || []).map(function (t) { return t.replace('{omen}', txt); });
-      return showChapter(aft.title || '噩兆玉符', lines, { subtitle: '第 ' + S.year + ' 年 · ' + S.age + ' 岁' }).then(function () {
-        logSection('【噩兆玉符】');
+      return showChapter(aft.title || '灾劫玉符', lines, { subtitle: '第 ' + S.year + ' 年 · ' + S.age + ' 岁' }).then(function () {
+        logSection('【灾劫玉符】');
         log('坊市游历，一个笑眯眯的算命老道硬塞给你一块玉符，只说「天机不可泄露」。', 'omen');
         log('玉符盘踞神台识海，浮出一行散着黑气的字：「' + txt + '」', 'omen');
         afterAction();
@@ -2482,7 +2484,7 @@
   function openOmen() {
     if (!S) return;
     if (!S.omen || !S.omen.got) {
-      showChapter('噩兆玉符', [
+      showChapter('灾劫玉符', [
         '你探了探神台识海——空空如也。',
         '你还没见过那块玉，也没遇见过那个老道。',
         '（据说有人在第 3 年的坊市里，被一个笑眯眯的算命老道拦住了。）'
@@ -2507,7 +2509,7 @@
       lines.push('五劫已尽。玉上的字换了，可你一点也不觉得轻松。');
       if ((S.jie || 0) >= 6) lines.push('更糟的是：玉符正在从里面裂开，裂缝里透出来的不是光。');
     }
-    showChapter('噩兆玉符', lines, { subtitle: '第 ' + S.year + ' 年 · ' + S.age + ' 岁' });
+    showChapter('灾劫玉符', lines, { subtitle: '第 ' + S.year + ' 年 · ' + S.age + ' 岁' });
   }
   /* ---------------- 隐藏线 · 轮回之外（魔祖仙帝 / s.jie >= 6） ---------------- */
   function hiddenBossFlow() {
@@ -2735,8 +2737,7 @@
   function destinySelect() {
     return new Promise(function (resolve) {
       const slotCount = S.destinySlots || 1;
-      const extraDestiny = S.extraDestiny || 0;
-      const pickCount = 3 + extraDestiny;
+      const pickCount = 3;   // 固定 3（原「大千命格」天赋已删除）
       const allKeys = Object.keys(DESTINIES);
       const gradeWeights = { '白': 50, '绿': 30, '蓝': 15, '紫': 4, '金': 1 };
       function rollPool() {
@@ -2853,7 +2854,8 @@
     locked: [],
     lockedSlots: 0,
     pickCount: 3,
-    slotCount: 1
+    slotCount: 1,
+    destinyWarned: false   // 命格未选满的提醒是否已弹过（换劫/重抽/改选都重置）
   };
 
   function showEnterPage() {
@@ -2931,7 +2933,7 @@
     $('enter-jie-reward').textContent = '轮回点 +' + rpGain;
 
     // 计算抽取/选择数量（唯一口径 = Engine.destinyCounts，与《进入页面重做方案》§1.2 一致）
-    // 抽取 = 3 + 大千命格（不受劫数影响）；可选 = 1 + 我命由我 + 劫数加成（3劫+ 额外 +1）
+    // 抽取固定 3（原「大千命格」已删除）；可选 = 1 + 我命由我 + 劫数加成（3劫+ 额外 +1）
     const meta = Engine.loadMeta();
     const reinc = meta.reinc || {};
     const counts = Engine.destinyCounts(jie);
@@ -3093,6 +3095,10 @@
     // 未选择任何命格时禁用“开始这一世”，避免出现无命格的虚假存档
     const startBtn = $('enter-start');
     if (startBtn) startBtn.disabled = (enterState.selected || []).length === 0;
+    // 选择有变化 → 重置「命格未选满」提醒（含按钮文案与提示语）
+    enterState.destinyWarned = false;
+    if (startBtn) startBtn.textContent = '开始这一世';
+    updateDestinyTitle();
   }
 
   function rerollXianming(maxJie) {
@@ -3140,7 +3146,12 @@
   }
 
   function updateDestinyTitle() {
-    const title = '天命抉择 ' + enterState.pickCount + '选' + enterState.slotCount + '（可上下滑动）';
+    const sel = (enterState.selected && enterState.selected.length) || 0;
+    const left = Math.max(0, enterState.slotCount - sel);
+    // 未选满时给出常驻提醒（玩家可选命格数 > 已选命格数）
+    const title = '天命抉择 ' + enterState.pickCount + '选' + enterState.slotCount + '（可上下滑动）'
+      + '　已选 ' + sel + '/' + enterState.slotCount
+      + (left > 0 ? '　·　还可再选 ' + left + ' 个' : '　·　已选满');
     $('enter-destiny-title').textContent = title;
   }
 
@@ -3157,6 +3168,22 @@
     if (badWord) {
       $('enter-name-hint').textContent = '包含敏感词「' + badWord + '」，请更换';
       $('enter-name-hint').style.color = '#e74c3c';
+      return;
+    }
+    // 命格未选满：首次点「开始」只提醒，再点一次才真的踏入仙途（避免漏选后开局）
+    // 口径与标题一致：可再选数 = slotCount - 已选数
+    const selCount = (enterState.selected && enterState.selected.length) || 0;
+    const left = Math.max(0, enterState.slotCount - selCount);
+    if (left > 0 && !enterState.destinyWarned) {
+      enterState.destinyWarned = true;
+      const hint = $('enter-name-hint');
+      if (hint) {
+        hint.textContent = '还有 ' + left + ' 个命格可选（已选 ' + selCount + '/' + enterState.slotCount
+          + '）。确认不再选，就再点一次「开始这一世」。';
+        hint.style.color = '#e8c15a';
+      }
+      const startBtn = $('enter-start');
+      if (startBtn) startBtn.textContent = '仍要开始（还剩 ' + left + ' 个未选）';
       return;
     }
     S = Engine.startLife(name);
@@ -5684,8 +5711,13 @@
     Engine.ensureTechEquip(S);
     closeAllOverlays();
     showScreen('game');
+    // 读档后清空上一世日志，按当前存档实情重写开场
+    $('log').innerHTML = '';
+    logYear = null;
+    const stLoaded = STAGES[S.idx];
     logSection('第 ' + S.year + ' 年 · ' + S.age + ' 岁');
     log('你自旧日的一缕光阴中苏醒，行囊未动，前路未断。');
+    log('（当前：' + S.name + ' · ' + (stLoaded ? (stLoaded.sym + ' ' + stLoaded.realm + ' ' + stLoaded.sub) : '') + (S.sect ? ' · ' + S.sect : '') + '）', 'dim');
     refresh();
     if (S.adv && S.adv.status === 'running') {
       log('（秘境中的冒险随这一世一同定格，你平安撤回。）', 'dim');
@@ -5796,17 +5828,17 @@
       p.style.cssText = 'margin-bottom:14px;line-height:1.5;white-space:pre-wrap;';
       p.textContent = msg;
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;';
-      const no = document.createElement('button');
-      no.className = 'btn-main ghost';
-      no.textContent = opts.cancel || '取消';
-      no.onclick = function () { ov.style.display = 'none'; resolve(false); };
+      row.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
       const yes = document.createElement('button');
       yes.className = 'btn-main';
       yes.textContent = opts.ok || '确定';
       if (opts.okDanger) yes.style.cssText = 'color:#fff;background:#b23a2e;border-color:#b23a2e;';
       yes.onclick = function () { ov.style.display = 'none'; resolve(true); };
-      row.appendChild(no); row.appendChild(yes);
+      const no = document.createElement('button');
+      no.className = 'btn-main ghost';
+      no.textContent = opts.cancel || '取消';
+      no.onclick = function () { ov.style.display = 'none'; resolve(false); };
+      row.appendChild(yes); row.appendChild(no); // 确认置于取消之上
       card.appendChild(p); card.appendChild(row);
       ov.style.display = 'flex';
     });
@@ -6627,15 +6659,18 @@
     const maxT = Engine.maxTreasure(S);
     const equipped = Array.isArray(S.equip.treasure) ? S.equip.treasure : [];
     const inv = (S.arts || []).filter(function (id) { return equipped.indexOf(id) < 0; });
-    if (!equipped.length && !inv.length) {
-      slotsBox.innerHTML = '<p class="dim">未持有法宝。法宝需于「装备」页穿戴后生效（当前装备槽 ' + maxT + ' 个）。</p>';
-      return;
-    }
-    // 栏位标题
+    // 栏位标题：无法宝时照常渲染，让玩家看到「空的法宝槽」（不再用一句提示顶掉整个面板）
     const title = document.createElement('p');
     title.className = 'treasure-sec-title';
     title.textContent = '法宝栏 ' + equipped.length + ' / ' + maxT + ' 已用';
     slotsBox.appendChild(title);
+    // 无法宝：给一行说明即可，口径为「法宝在本页装佩」（勿再指向别的页面）
+    if (!equipped.length && !inv.length) {
+      const tip = document.createElement('p');
+      tip.className = 'dim';
+      tip.textContent = '你尚未获得任何法宝 —— 法宝在本页（法宝栏）装佩后即生效。';
+      slotsBox.appendChild(tip);
+    }
     // ① 已装备（生效中）
     if (equipped.length) {
       const head = document.createElement('p');
@@ -6649,8 +6684,9 @@
     }
     // ② 空栏位 + 未解锁栏位（🔒 + 解锁条件）
     const emptySlots = Math.max(0, maxT - equipped.length);
+    const emptySub = inv.length ? '可在下方「储物袋法宝」中装备' : '尚未获得法宝';
     for (let i = 0; i < emptySlots; i++) {
-      slotsBox.appendChild(treasureEmptySlot('空栏位', '可在下方「储物袋法宝」中装备', false));
+      slotsBox.appendChild(treasureEmptySlot('空栏位', emptySub, false));
     }
     const lockedHints = treasureSlotUnlockText(S);
     if (lockedHints.length) {
@@ -6940,11 +6976,13 @@
       body.innerHTML = h;
       const canOk = createSel.linggenId && createSel.bgId && remain >= 0;
       const footer = $('create-footer');
-      footer.innerHTML = '<button class="btn-main wide" id="ct-next"' + (canOk ? '' : ' disabled') + '>预览命数 · 下一页</button>';
+      footer.innerHTML = '<button class="btn-small" id="ct-back-enter">← 返回命格</button>'
+        + '<button class="btn-main wide" id="ct-next"' + (canOk ? '' : ' disabled') + '>预览命数 · 下一页</button>';
       body.querySelectorAll('[data-lg]').forEach(function (c) { c.onclick = function () { createSel.linggenId = c.getAttribute('data-lg'); renderCreatePage(); }; });
       body.querySelectorAll('[data-bg]').forEach(function (c) { c.onclick = function () { createSel.bgId = c.getAttribute('data-bg'); renderCreatePage(); }; });
       body.querySelectorAll('.ct-lv').forEach(function (b) { b.onclick = function () { createSel.craft[b.getAttribute('data-ck')] = +b.getAttribute('data-cl'); renderCreatePage(); }; });
       $('ct-next').onclick = function () { createStep = 2; renderCreatePage(); };
+      $('ct-back-enter').onclick = function () { showEnterPage(); };
     } else {
       h += '<h3 class="ct-sec">命数总览</h3><div class="ct-preview" id="ct-preview"></div>';
       body.innerHTML = h;
@@ -7229,7 +7267,7 @@
         // 守敌数值与实战同一口径（Engine.commissionEnemy），不在 UI 里另算
         if (c.enemy) { const foe = Engine.commissionEnemy(S, c); req += '｜守敌 攻 ' + foe.atk + ' 血 ' + foe.hp; }
         const rw = '灵石 ' + c.stone[0] + '~' + c.stone[1] + (c.gongye ? ('　功业 ' + c.gongye[0] + '~' + c.gongye[1]) : '');
-        h += '<div class="ct-card"><div class="ct-card-h"><b>' + c.name + '</b><span class="ct-tier">' + c.ap + ' 点</span></div>'
+        h += '<div class="ct-card"><div class="ct-card-h"><b>' + c.name + '</b><span class="ct-tier">免行动点</span></div>'
           + '<div class="ct-sub">' + req + '</div><div class="ct-desc">奖励：' + rw + '</div>'
           + '<button class="btn-small comm-do" data-c="' + c.id + '"' + (can ? '' : ' disabled') + '>' + (can ? '接取' : (okBase ? '本年已满' : '未达')) + '</button></div>';
       });
@@ -7243,10 +7281,17 @@
         if (!c) return;
         if (Engine.commissionYearLeft(S) <= 0) { log('本年宗门任务已接满（每年至多 3 件），来年再来。', 'bad'); return; }
         if (c.enemy) {
-          // 含守敌的委托：先手动战斗，胜则结算奖励。
+          // 含守敌的委托：先手动战斗，胜则结算奖励；败则消耗次数但不扣寿元、不耗行动点、不结算奖励。
           const foe = Engine.commissionEnemy(S, c);
-          openBattle({ name: foe.name, line: foe.line || '', atk: foe.atk, hp: foe.hp, loot: {}, portrait: foe.portrait }, { title: '宗门任务 · ' + c.name }).then(function (r) {
-            if (r.lost) { log('临阵不敌，委托未能完成。', 'bad'); refresh(); return; }
+          openBattle({ name: foe.name, line: foe.line || '', atk: foe.atk, hp: foe.hp, loot: {}, portrait: foe.portrait, noFlee: true }, { title: '宗门任务 · ' + c.name }).then(function (r) {
+            if (r.lost) {
+              // 战斗任务失败：消耗本年次数，但不扣寿元、不消耗行动点、不结算奖励
+              const prevN = (S.commYear && S.commYear.y === S.year) ? (S.commYear.n || 0) : 0;
+              S.commYear = { y: S.year, n: prevN + 1 };
+              Engine.saveState(S);
+              log('临阵不敌，委托未能完成，但已记入本年宗门任务（剩余 ' + Engine.commissionYearLeft(S) + ' 件）。', 'bad');
+              refresh(); sectDoCommission(); return;
+            }
             finishCommission(id);
           });
         } else {

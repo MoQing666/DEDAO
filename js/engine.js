@@ -19,7 +19,17 @@ const Engine = (function () {
   function loadMeta() {
     try {
       const m = JSON.parse(localStorage.getItem(LS_META));
-      if (m && m.reinc) return m;
+      if (m && m.reinc) {
+        // 迁移：天赋「大千命格」(extra_destiny) 已于 2026-09-14 删除，
+        // 已购买的等级按原价（3 点/级）全额退还轮回点，并清除该字段，避免残留继续生效。
+        if (m.reinc.extra_destiny) {
+          const lv = m.reinc.extra_destiny || 0;
+          m.points = (m.points || 0) + lv * 3;
+          delete m.reinc.extra_destiny;
+          saveMeta(m);
+        }
+        return m;
+      }
     } catch (e) {}
     return defaultMeta();
   }
@@ -437,7 +447,7 @@ const Engine = (function () {
     let m = 80 + effAttr(s, 'ti') * tiCoeff + bigIdxOf(s) * 80;
     const eff = linggenTrait(s);
     if (eff && eff.hpMax) m += eff.hpMax;
-    if (s.sect && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
+    if (s.sect && sectPassed(s) && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
     m += s.hpMaxBonus || 0;
     m += equipStats(s).hpMax;
     m += artifactStats(s).hpMax;
@@ -456,7 +466,7 @@ const Engine = (function () {
     if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
     const eff = linggenTrait(s);
     if (eff && eff.atk) a += eff.atk;
-    if (s.sect && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
+    if (s.sect && sectPassed(s) && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
     // 心法攻击加成（青云剑宗 / 丹霞谷宗门心法：青云剑诀 +5% … 太虚剑典 +20%）
     a *= (1 + getXinfaAtkMul(s));
     // 命格攻击加成
@@ -528,7 +538,7 @@ const Engine = (function () {
     });
 
     g *= 1 + equipStats(s).cult;
-    if (s.sect && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
+    if (s.sect && sectPassed(s) && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
     g *= 1 + artifactStats(s).cult;
     let note = '';
     if ((s.elixirs.juling || 0) > 0) {
@@ -802,7 +812,7 @@ const Engine = (function () {
     s.reinc.herbGrowReduce = meta.reinc.lvling_bottle || 0;
     s.reinc.extraField = meta.reinc.extra_field || 0;
     s.reinc.destinySlot = meta.reinc.destiny_slot || 0;
-    s.reinc.extraDestiny = meta.reinc.extra_destiny || 0;
+    // s.reinc.extraDestiny（大千命格）已随天赋删除；loadMeta 会把旧档字段清掉
     s.reinc.treasureSlot = meta.reinc.xianling || 0;     // 先天灵宝：每级 +1 法宝槽，最高 3 级
     const list = REINCARNATION;
     list.forEach(function (r) {
@@ -824,8 +834,7 @@ const Engine = (function () {
     if (!s.destinies) s.destinies = [];
     if (s.destinySlots === undefined || s.destinySlots === null) s.destinySlots = 1;
     s.destinySlots += (s.reinc.destinySlot || 0);
-    if (s.extraDestiny === undefined || s.extraDestiny === null) s.extraDestiny = 0;
-    s.extraDestiny += (s.reinc.extraDestiny || 0);
+    // s.extraDestiny 已随「大千命格」天赋一并删除；旧档残留字段不再参与结算
     // 初始化灵田（基础1块 + 随身灵田天赋）
     var fieldCount = 1 + (s.reinc.extraField || 0);
     while (s.field.length < fieldCount) {
@@ -844,7 +853,7 @@ const Engine = (function () {
       ti: 1,
       dun: 1, shen: 1, dao: 1,       ling: 1,
       mp: 1, mpMax: 10,
-      destinies: [], destinySlots: 1, extraDestiny: 0,
+      destinies: [], destinySlots: 1,
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
@@ -917,17 +926,15 @@ const Engine = (function () {
   }
 
   /* 进入页命格数量（唯一口径，见《进入页面重做方案》§1.2 / §2.3）：
-     抽取数 = 3 + 大千命格(extra_destiny) 等级，与劫数无关；
+     抽取数 = 3（固定；原「大千命格 extra_destiny」天赋已于 2026-09-14 删除）；
      可选数 = 1 + 我命由我(destiny_slot) 等级 + 劫数加成（3 劫及以上 +1）。
-     例：凡尘无天赋 3选1；3劫无天赋 3选2；3劫+我命由我 3选3（极限）；
-         大千命格1级+我命由我1级+3劫 4选3。 */
+     例：凡尘无天赋 3选1；3劫无天赋 3选2；3劫+我命由我 3选3（极限）。 */
   function destinyCounts(jie) {
     const meta = loadMeta();
     const reinc = meta.reinc || {};
-    const extra = reinc.extra_destiny || 0;
     const slotTalent = reinc.destiny_slot || 0;
     const jieBonus = ((jie || 0) >= 3) ? 1 : 0;
-    const pick = 3 + extra;
+    const pick = 3;
     const slot = Math.min(1 + slotTalent + jieBonus, pick); // 栏位不会超过抽到的数量
     return { pick: pick, slot: slot };
   }
@@ -1805,12 +1812,15 @@ const Engine = (function () {
       out.push('『' + b.name + '』轰然倒下。');
       return out;
     }
-    const critRate = Math.min(1, getCritRate(s) + (b.fxCritUp.amt / 100));
-    if (Math.random() < critRate) {
-      // 暴击伤害：基础 200%，致命一击（critDmgBoost 1.0）提升至 300%
+    // 暴击率无上限：整数=必定暴击次数，小数部分=额外暴击概率（如 200% → 每击必双倍暴击）
+    const critVal = getCritRate(s) + (b.fxCritUp.amt / 100);
+    let critCount = Math.floor(critVal);
+    if (Math.random() < (critVal - critCount)) critCount++;
+    if (critCount > 0) {
+      // 暴击伤害：基础 200%，致命一击（critDmgBoost 1.0）提升至 300%；每多一次暴击再叠乘
       const critMul = 2 + talentApply(s, 'critDmgBoost');
-      dmg = Math.round(dmg * critMul);
-      out.push('暴击！伤害翻倍！');
+      for (let ci = 0; ci < critCount; ci++) dmg = Math.round(dmg * critMul);
+      out.push(critCount > 1 ? ('暴击连击 ' + critCount + ' 次，伤害狂飙！') : '暴击！伤害翻倍！');
       fx.push({ side: 'enemy', kind: 'crit', amount: dmg });
     } else {
       fx.push({ side: 'enemy', kind: 'dmg', amount: dmg });
@@ -2238,7 +2248,7 @@ const Engine = (function () {
     const foeArt = (advConfig.foeArt && advConfig.foeArt[elite ? 'elite' : 'combat']) || null;
     const portrait = (boss || tag === 'final') ? ('boss_' + advKey) : (foeArt || 'foe');
     const mechanic = (boss || tag === 'final') ? (advConfig.boss.mechanic || null) : null;
-    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait, mechanic: mechanic };
+    return { name: bname, line: bline, atk: atk, hp: hp, loot: loot, bi: bi, dunSpeed: bi + 1, portrait: portrait, mechanic: mechanic, noFlee: (boss || tag === 'final') };
   }
   /* 死劫敌人生成（v4 重做：固定境界基准 × 递增系数 × 叠劫难度，不再随玩家自身攻/血缩放）
      敌人属性 = ENEMY_REALM_BASE[DEATH_IDX_REALM[idx]] × DEATH_SCALES[idx] × JIE_DATA[s.jie].diff
@@ -2362,6 +2372,7 @@ const Engine = (function () {
    * kind: 'sect'（入宗考验，boss 按境界缩放） | 'death'（死劫，boss 按死劫缩放） */
   function startTrial(s, kind, opts) {
     opts = opts || {};
+    if (kind === 'sect') { s.hp = s.hpMax; s.mp = s.mpMax; } // 入宗试炼前回满血蓝
     // 劫境主题：死劫 / 渡劫 / 隐藏线 各自提供 地图列数、节点池、环境文案
     let theme = null, title = opts.title || '';
     if (kind === 'death') {
@@ -2440,7 +2451,7 @@ const Engine = (function () {
     // 入宗考验：玩家约练气后期（攻60~130/血500~900），锚定炼气基线(0)。
     // 系数 0.5/0.8 → 攻86/血880：有挑战但可过（弱练气约5成、中强练气稳过）。
     const st = enemyStats(0, 0.5, 0.8, jd);
-    return { name: '演武教头', line: '演武场上，一名须发皆白的老教头横矛而立：「入我门墙，先过老夫这关！」', atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, portrait: 'foe', mechanic: null };
+    return { name: '演武教头', line: '演武场上，一名须发皆白的老教头横矛而立：「入我门墙，先过老夫这关！」', atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, portrait: 'foe', mechanic: null, noFlee: true };
   }
   function trialBossDeath(s, idx) {
     const ev = DEATH_EVENTS[idx] || {};
@@ -2455,7 +2466,7 @@ const Engine = (function () {
       name: name, title: b.title || '', portrait: b.portrait || 'boss',
       line: (b.intro ? (b.intro + '\n' + (b.line || '')) : (b.line || '生死一线，大劫当前，一道恐怖的身影自虚空中浮现。')),
       taunt: taunt, mechanic: b.mechanic || null,
-      atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, jieIdx: idx
+      atk: st.atk, hp: st.hp, loot: {}, bi: 0, dunSpeed: 1, jieIdx: idx, noFlee: true
     };
   }
   // 隐藏线 BOSS：魔祖仙帝（解锁：难度系数 s.jie >= 6）
@@ -2469,7 +2480,7 @@ const Engine = (function () {
       name: b.name || '魔祖仙帝', title: b.title || '', portrait: b.portrait || 'boss_xian',
       line: (b.intro ? (b.intro + '\n' + (b.line || '')) : (b.line || '轮回之外，唯一之敌。')),
       taunt: taunt, mechanic: b.mechanic || 'multicast',
-      atk: st.atk, hp: st.hp, loot: {}, bi: 3, dunSpeed: 2, hidden: true
+      atk: st.atk, hp: st.hp, loot: {}, bi: 3, dunSpeed: 2, hidden: true, noFlee: true
     };
   }
   // 渡劫「劫身」角色卡（心魔 / 天劫 / 仙界守卫 / 飞升天劫）
@@ -3253,7 +3264,7 @@ const Engine = (function () {
     }
     // 秘境坊市：增售可在秘境中即时回复气血/灵力的丹药
     if (s.adv && s.adv.status === 'running') {
-      stock.push({ id: 'adv_heal', name: '伤药（气血 +40%）', price: 40, adv: { hpPct: 0.40 } });
+      stock.push({ id: 'adv_heal', name: '回春丹（随身·气血 +40%）', price: 40, advItem: { id: 'huichun', n: 1 } });
       stock.push({ id: 'adv_mp', name: '灵泉（灵力 +40%）', price: 40, adv: { mpPct: 0.40 } });
       // 战斗丹药：买下即入「随身」，战斗与歇脚时都能服（替代已删除的出发前携带机制）
       const advElixirKeys = ['huichun', 'ningling', 'jiuzhuan', 'jiedu'].filter(function (k) { return ELIXIRS[k]; });
@@ -4394,7 +4405,7 @@ const Engine = (function () {
     saveState(s);
     return fenglu ? 'ok|' + fenglu.join('、') : 'ok';
   }
-  /* ---------------- 噩兆玉符（五劫主线串联） ----------------
+  /* ---------------- 灾劫玉符（五劫主线串联） ----------------
    * 第 3 年坊市相遇（瞎眼算命老道硬塞玉符）→ 每年识海浮现黑字「死劫还剩 X 年」
    * → 每渡一劫玉符多一道裂纹 → 五劫尽渡显「飞升天劫 · 无期」
    * → 难度系数 s.jie >= 6 时玉符裂开，显「轮回之外……」，解锁隐藏线（魔祖仙帝）。
@@ -4463,7 +4474,7 @@ const Engine = (function () {
     return true;
   }
   function checkYearEvents(s) {
-    // 噩兆玉符：第 3 年坊市相遇（一次性，优先于其他年初事件）
+    // 灾劫玉符：第 3 年坊市相遇（一次性，优先于其他年初事件）
     if (OMEN_TALISMAN && s.year >= (OMEN_TALISMAN.meetYear || 3) && !s.seen['omen_meet']) {
       s.pendingOmen = true;
       saveState(s);
@@ -4867,6 +4878,7 @@ const Engine = (function () {
     s.actionsLeft = actionPoints(s);
     refreshStats(s);
     s.hp = s.hpMax;
+    s.mp = s.mpMax; // 开局灵力满值
     saveState(s);
     return s;
   }
@@ -5112,13 +5124,12 @@ const Engine = (function () {
     if (!c) return { ok: false, msg: '委托不存在。' };
     if (!commissionCanAccept(s, c)) return { ok: false, msg: '不满足承接条件（境界或百艺等级不足）。' };
     if (commissionYearLeft(s) <= 0) return { ok: false, msg: '本年宗门任务已接满（每年至多 ' + COMM_YEAR_MAX + ' 件），来年再来。' };
-    if (!canAction(s, c.ap)) return { ok: false, msg: '行动点不足。' };
     if (c.check) {
       for (const k in c.check) if ((s[k] || 0) < c.check[k]) return { ok: false, msg: '属性不足：' + k + ' 需 ≥ ' + c.check[k] + '。' };
     }
     // 注：含敌人的委托，其战斗由 UI 通过手动战斗（openBattle）先行触发，
     //    胜利后再调用本函数结算奖励；此处不再自动开打（自动战斗功能已移除）。
-    spend(s, c.ap);
+    //    宗门任务全部设计为不消耗行动点（2026-09-13 调整）。
     // 接取计数（结算成功才计，跨年重置）
     const prevN = (s.commYear && s.commYear.y === s.year) ? (s.commYear.n || 0) : 0;
     s.commYear = { y: s.year, n: prevN + 1 };
@@ -5337,7 +5348,7 @@ const Engine = (function () {
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, achDefs: achDefs,
     checkAchievements: checkAchievements, checkAchievementsLive: checkAchievementsLive,
     codexState: codexState, syncTreasureSeen: syncTreasureSeen,
-    // —— 五劫主线 / 噩兆玉符 / 隐藏线 ——
+    // —— 五劫主线 / 灾劫玉符 / 隐藏线 ——
     nextDeathEvent: nextDeathEvent, omenYearsLeft: omenYearsLeft, omenText: omenText,
     grantOmen: grantOmen, omenOnDeathPassed: omenOnDeathPassed,
     omenHiddenReady: omenHiddenReady, openOmenHidden: openOmenHidden,

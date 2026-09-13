@@ -816,12 +816,12 @@ module.exports = async function build() {
     t.ok(r5 && r5.ok === true, '通关黄后炼气应能进入玄级秘境');
   });
 
-  /* ---------- 进入页命格数量口径（抽取=3+大千命格；可选=1+我命由我+3劫加成） ---------- */
-  S.case('进入页命格数量：抽 3+大千命格 / 选 1+我命由我+3劫加成', (t) => {
+  /* ---------- 进入页命格数量口径（抽取固定3；可选=1+我命由我+3劫加成） ---------- */
+  S.case('进入页命格数量：抽 3 固定 / 选 1+我命由我+3劫加成', (t) => {
     const meta = E.loadMeta();
     const snap = JSON.parse(JSON.stringify(meta.reinc || {}));
     meta.reinc = meta.reinc || {};
-    meta.reinc.extra_destiny = 0;
+    delete meta.reinc.extra_destiny;
     meta.reinc.destiny_slot = 0;
     E.saveMeta(meta);
     let c = E.destinyCounts(0);
@@ -831,12 +831,50 @@ module.exports = async function build() {
     meta.reinc.destiny_slot = 1; E.saveMeta(meta);
     t.eq(E.destinyCounts(0).slot, 2, '凡尘+我命由我：3选2');
     t.eq(E.destinyCounts(3).slot, 3, '3劫+我命由我：3选3（极限）');
-    meta.reinc.extra_destiny = 1; E.saveMeta(meta);
+    // 「大千命格」已删除：即使旧档残留该字段，抽取数也必须是 3（loadMeta 会退款清零）
+    meta.reinc.extra_destiny = 2; E.saveMeta(meta);
     c = E.destinyCounts(3);
-    t.eq(c.pick, 4, '大千命格1级：应抽 4 个');
-    t.eq(c.slot, 3, '大千命格1级+我命由我1级+3劫：4选3');
+    t.eq(c.pick, 3, '大千命格已删除：抽取数恒为 3（旧档残留也不生效）');
+    t.eq(c.slot, 3, '我命由我1级+3劫：3选3');
+    // 轮回阁天赋表里不得再有大千命格
+    const REINC = E.get && E.get('REINCARNATION');
+    if (REINC && REINC.some(r => r.id === 'extra_destiny')) t.fail('REINCARNATION 仍残留大千命格天赋');
     meta.reinc = snap; E.saveMeta(meta); // 还原，避免影响其它用例
-    t.note('抽取=3+extra_destiny；可选=1+destiny_slot+(jie>=3?1:0)');
+    t.note('抽取=3（固定）；可选=1+destiny_slot+(jie>=3?1:0)');
+  });
+
+  /* ---------- 宗门福利门禁：未正式入宗不得享受宗门属性加成 ---------- */
+  S.case('宗门加成门禁：择宗未考 / 杂役 不吃加成，正式入宗才吃', (t) => {
+    const s = E.startLife('宗门门禁');
+    E.commitStart(s, null);
+    s.talents = []; s.destinies = []; s.arts = []; s.linggen = null;
+    s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+    s.sect = null; s.sectRank = null;
+    E.refreshStats(s);
+    const baseHp = s.hpMax, baseAtk = s.atk;
+
+    // ① 择宗但尚未应考（sectRank = null）：不应有任何宗门加成
+    s.sect = 'xuantian'; s.sectRank = null;      // 玄天门: cultMul 0.10 + hpMax 100
+    E.refreshStats(s);
+    t.eq(s.hpMax, baseHp, '择宗未应考：不应享宗门气血加成（玄天门 +100）');
+    const cult0 = (E.cultGain(s) && E.cultGain(s).gain) || E.cultGain(s);
+    // ② 应考失败为杂役：同样不应享加成
+    s.sectRank = '杂役';
+    E.refreshStats(s);
+    t.eq(s.hpMax, baseHp, '杂役：不应享宗门气血加成');
+    // ③ 正式入宗：加成必须生效
+    s.sectRank = '外门';
+    E.refreshStats(s);
+    t.eq(s.hpMax, baseHp + 100, '正式入宗：玄天门气血 +100 必须生效');
+    const cult1 = (E.cultGain(s) && E.cultGain(s).gain) || E.cultGain(s);
+    t.ok(cult1 > cult0, `正式入宗：修炼收益应高于未入宗（${cult0} → ${cult1}）`);
+    // ④ 攻击型宗门同理（青云剑宗 atkMul 0.10）
+    s.sect = 'qingyunjian'; s.sectRank = null;
+    E.refreshStats(s);
+    t.eq(s.atk, baseAtk, '择宗未应考：不应享宗门攻击加成（青云剑宗 +10%）');
+    s.sectRank = '外门';
+    E.refreshStats(s);
+    t.ok(s.atk > baseAtk, `正式入宗：攻击应高于未入宗（${baseAtk} → ${s.atk}）`);
   });
 
   /* ---------- 防御口径（面板/顶栏/战斗统一走 getDefense，必须含装备/法宝/灵根） ---------- */

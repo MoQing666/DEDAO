@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<title>DEDAO 主页面预览（三仙命 · 成就/图鉴置于设置附近）</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  /* 预览外壳：模拟手机视口，深色背景 */
+  html, body { margin: 0; background: #0c0a12; }
+  .phone {
+    width: 390px; margin: 0 auto; background: #12101a;
+    box-shadow: 0 0 0 1px #2a2540, 0 20px 60px rgba(0,0,0,.6);
+    min-height: 760px;
+  }
+  /* 预览强制显示主界面，并套用移动端宽度 */
+  .screen { display: block !important; max-width: 390px; height: auto; min-height: 760px;
+    background: linear-gradient(160deg, #1a1730 0%, #161226 55%, #0f0d18 100%) !important; }
+  .screen[data-bg]::before { background: rgba(10,8,18,.35); }
+  .preview-cap { color:#6a6480; font:12px/1.6 monospace; text-align:center; padding:8px; }
+  /* 让截图聚焦主界面，隐藏底部栏遮挡 */
+  .bottom-bar { position: static; transform: none; left: auto; margin-top: 10px; max-width: 390px; }
+  .bar-fill { transition: none; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="preview-cap">DEDAO 主界面预览 · 三仙命（3 金阶命格）· 成就/图鉴已置于「设置」附近</div>
+
+  <!-- ============ 游戏主界面（复制自 index.html 真实结构） ============ -->
+  <div class="screen" id="screen-game" data-bg="assets/img/bg/bg_main.png">
+    <header class="hud">
+      <div class="hud-top">
+        <div class="hud-avatar"><div class="avatar-circle" id="h-avatar"><img id="h-avatar-img" class="avatar-img" src="../assets/img/portrait/me.png" alt="道号" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="avatar-fb" style="display:none">云</span></div></div>
+        <div class="hud-name">
+          <span id="h-name" class="name">云澈</span>
+          <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
+        </div>
+        <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">
+          <span class="destiny-tag grade-gold">天命之子</span>
+          <span class="destiny-tag grade-gold">万剑归宗</span>
+          <span class="destiny-tag grade-gold">天道宠儿</span>
+        </span></span>
+        <div class="hud-side">
+          <button id="btn-ach-hud" class="hud-mini" type="button" title="成就 · 轮回印记" aria-label="成就">成就</button>
+          <button id="btn-codex-hud" class="hud-mini" type="button" title="图鉴" aria-label="图鉴">图鉴</button>
+          <button id="hud-settings" class="hud-mini" type="button" title="设置" aria-label="设置">设置</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="stats panel">
+      <div class="stats-top-row">
+        <div class="six-dim-wrap">
+          <div class="stat-grid six-dim">
+            <div class="kv"><label>悟性</label><b id="st-wu">8</b></div>
+            <div class="kv"><label>体魄</label><b id="st-ti">6</b></div>
+            <div class="kv"><label>遁速</label><b id="st-dun">3</b></div>
+            <div class="kv"><label>神识</label><b id="st-shen">5</b></div>
+            <div class="kv"><label>道心</label><b id="st-dao">4</b></div>
+            <div class="kv"><label>灵力</label><b id="st-ling">2</b></div>
+          </div>
+        </div>
+        <div class="action-info-col">
+          <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
+          <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">120</b></div>
+        </div>
+      </div>
+      <div class="stat-grid combat-stats combat-full">
+        <div class="kv"><label>攻击</label><b id="st-atk">18</b></div>
+        <div class="kv"><label>防御</label><b id="st-def">6</b></div>
+        <div class="kv"><label>气血</label><b id="st-hp">140</b></div>
+        <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">19</b></div>
+        <div class="kv"><label>暴击</label><b id="st-crit">12%</b></div>
+        <div class="kv"><label>闪避</label><b id="st-dodge">8%</b></div>
+        <div class="kv"><label>灵力</label><b id="st-mo">40</b></div>
+        <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">76</b></div>
+      </div>
+      <div class="stat-row">
+        <label>修为</label><div class="bar-box"><div class="bar-fill" id="bar-qi" style="width:38%"></div></div><span id="qi-val" class="num">23 / 60</span>
+      </div>
+    </section>
+
+    <section class="log panel" id="log">
+      <div class="log-line year">第 3 年 · 春</div>
+      <div class="log-line">你于山门静室打坐，灵机渐润，悟性微涨。</div>
+      <div class="log-line gold">【命格】觉醒仙命 · 万剑归宗！剑道之路豁然开朗。</div>
+      <div class="log-line">城中出现一位衣衫褴褛的老乞丐，似有传承。</div>
+    </section>
+
+    <footer class="actions">
+      <div class="act-grid">
+        <button id="btn-cult" class="act"><span id="btn-cult-label">修炼</span></button>
+        <button id="btn-explore" class="act"><span>秘境</span></button>
+        <button id="btn-sect" class="act"><span>宗门</span></button>
+        <button id="btn-arts" class="act"><span id="btn-arts-label">锻体</span></button>
+        <button id="btn-social" class="act"><span id="btn-social-label">游历</span></button>
+        <button id="btn-baiyi" class="act" disabled><span id="btn-baiyi-label">百艺（未解锁）</span></button>
+      </div>
+      <div class="year-row">
+        <button id="btn-break" class="btn-break"><span id="btn-break-label">突破（修为未满）</span></button>
+        <button id="btn-year" class="btn-year">下一年</button>
+      </div>
+    </footer>
+
+    <!-- 底部栏：仅 角色 / 储物袋 / 仙缘 3 项（成就/图鉴/设置已上移 HUD） -->
+    <nav class="bottom-bar" id="bottom-bar">
+      <button id="btn-char-bottom" class="bottom-btn">
+        <span class="bottom-icon">👤</span>
+        <span class="bottom-text">角色</span>
+      </button>
+      <button id="btn-bag-bottom" class="bottom-btn">
+        <span class="bottom-icon">📦</span>
+        <span class="bottom-text">储物袋</span>
+      </button>
+      <button id="btn-npc-bottom" class="bottom-btn">
+        <span class="bottom-icon">🐾</span>
+        <span class="bottom-text">仙缘</span>
+      </button>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

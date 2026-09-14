@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全 BUFF / DEBUFF 战斗状态图标 · 预览</title>
+<base href="../">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* 预览壳：无头 Edge 的 CSS 视口有 ~504px 下限，故不靠窗口宽度，
+     而是把战斗层**绝对定位**钉在 390px 宽的容器里，右侧放图例说明。 */
+  html, body { margin: 0; background: #0e0c14; }
+  body { display: flex; flex-direction: column; align-items: flex-start; }
+  #preview-wrap { position: relative; width: 390px; height: 844px; overflow: hidden; flex: none; }
+  #battle.chapter-overlay { position: absolute !important; inset: 0 !important; padding: 12px 10px; }
+  /* 预览页没有 JS 层：浮字层隐藏，按钮保持静态 */
+  #battle .fx-layer { display: none; }
+  #preview-cap { color: #cbc0e6; font: 12px/1.85 monospace; padding: 16px 16px 34px; width: 470px; }
+  #preview-cap b { color: #ffd27a; font-weight: 400; }
+  #preview-cap .k { color: #ff8a7a; }
+</style></head>
+<body>
+<div id="preview-wrap">
+<div class="chapter-overlay" id="battle" style="display:flex">
+    <div class="chapter-inner">
+      <div class="chapter-head">
+        <div id="battle-sub" class="chapter-sub"></div>
+        <div id="battle-title" class="chapter-title">遭遇战</div>
+      </div>
+      <div class="chapter-body">
+        <div id="battle-board" class="battle-board">
+          <div class="combatants">
+            <div class="fighter me">
+              <div class="portrait" id="b-me-portrait">
+                <img id="b-me-img" alt="主角">
+                <div class="ph-fallback" id="b-me-ph">道</div>
+              </div>
+              <div class="fname" id="b-me-name">『修行者』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-me-bar" style="width:100%;background:#e8443e"></i></span><span class="hp-num" id="b-me-num"></span></div>
+              <div class="hp-row"><span class="who">灵</span><span class="hp-bar"><i id="b-me-mp-bar" style="width:100%;background:#3a86d6"></i></span><span class="hp-num" id="b-me-mp-num"></span></div>
+              <div class="buffs" id="b-me-buffs"><span class="buff" title="攻击提升 12% · 剩 3 回合"><i class="bf-ic">⚔️</i><b class="bf-tx">攻击 +12%</b></span><span class="buff" title="受到的伤害降低 40% · 剩 2 回合"><i class="bf-ic">🛡️</i><b class="bf-tx">减伤 40%</b></span><span class="buff" title="暴击率提升 8% · 剩 2 回合"><i class="bf-ic">🎯</i><b class="bf-tx">暴击 +8%</b></span><span class="buff" title="金系伐灾 3 层（每 3 层可抵消一次眩晕/冻结）· 剩 3 回合"><i class="bf-ic">✨</i><b class="bf-tx">伐灾 3 层</b></span><span class="buff" title="本回合受到的伤害降低 65%"><i class="bf-ic">🧱</i><b class="bf-tx">防御</b></span><span class="buff bad" title="下一回合无法行动"><i class="bf-ic">❄️</i><b class="bf-tx">冻结</b></span><span class="buff bad" title="每回合 1 层结算，扣除当前生命 10%"><i class="bf-ic">🔥</i><b class="bf-tx">灼烧 2 层</b></span><span class="buff bad" title="每回合 1 层结算，扣除当前生命 10%"><i class="bf-ic">☠️</i><b class="bf-tx">中毒 1 层</b></span><span class="buff bad" title="心神失守：本次出手被空过"><i class="bf-ic">😵</i><b class="bf-tx">心神失守</b></span></div>
+            </div>
+            <div class="vs">⚔</div>
+            <div class="fighter enemy">
+              <div class="portrait" id="b-enemy-portrait">
+                <img id="b-enemy-img" alt="敌人">
+                <div class="ph-fallback" id="b-enemy-ph">敌</div>
+              </div>
+              <div class="fname" id="b-enemy-name">『敌人』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-enemy-bar" style="width:100%;background:#e0604a"></i></span><span class="hp-num" id="b-enemy-num"></span></div>
+              <div class="buffs" id="b-enemy-buffs"><span class="buff bad" title="下一回合无法行动"><i class="bf-ic">❄️</i><b class="bf-tx">冻结</b></span><span class="buff bad" title="每回合 1 层结算，扣除当前生命 10%"><i class="bf-ic">🔥</i><b class="bf-tx">灼烧 4 层</b></span><span class="buff bad" title="每回合 1 层结算，扣除当前生命 10%"><i class="bf-ic">☠️</i><b class="bf-tx">中毒 2 层</b></span><span class="buff bad" title="攻击下降 30% · 剩 2 回合"><i class="bf-ic">🔻</i><b class="bf-tx">攻击 −30%</b></span><span class="buff" title="受到的伤害降低 25% · 剩 2 回合"><i class="bf-ic">🪨</i><b class="bf-tx">减伤 25%</b></span><span class="buff" title="气血过半后狂暴，攻势大增"><i class="bf-ic">💢</i><b class="bf-tx">狂暴</b></span></div>
+            </div>
+          </div>
+          <div class="fx-layer" id="b-fx"></div>
+        </div>
+        <div id="battle-log" class="battle-log"></div>
+      </div>
+      <div class="battle-btns">
+        <button id="b-atk" class="btn-main ghost">攻击</button>
+        <button id="b-spell" class="btn-main ghost">法术</button>
+        <button id="b-guard" class="btn-main ghost" title="本回合受到的伤害降低 65%">防御</button>
+        <button id="b-flee" class="btn-main ghost">逃跑</button>
+        <button id="b-elixir" class="btn-main ghost" style="display:none">服药</button>
+        <button id="b-order" class="btn-main ghost">编排</button>
+      </div>
+      <div id="b-spellbar" class="b-spellbar" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+<div id="preview-cap">
+  <div style="color:#e8c15a;font-size:14px;letter-spacing:1px;margin-bottom:6px">战斗状态图标 · 全 BUFF 演示</div>
+  <b>我方（9 项）</b><br>
+  ⚔️ 攻击提升　🛡️ 受伤减免　🎯 暴击提升<br>
+  ✨ 伐灾　🧱 防御姿态<br>
+  <span class="k">❄️ 冻结 · 🔥 灼烧 · ☠️ 中毒 · 😵 心神失守</span><br><br>
+  <b>敌方（6 项）</b><br>
+  <span class="k">❄️ 冻结 · 🔥 灼烧 · ☠️ 中毒 · 🔻 攻击削弱</span><br>
+  🪨 减伤　💢 狂暴<br><br>
+  <span style="color:#8b7fae">徽章内容由 Engine.battleFxList() 现算，<br>
+  样式取自 css/style.css；悬停可看完整说明。</span>
+</div>
+<script>
+  /* 填上示例数值，让血条/名字看起来是实战状态 */
+  document.getElementById('b-me-num').textContent = '812 / 1200';
+  document.getElementById('b-me-mp-num').textContent = '34 / 60 灵';
+  document.getElementById('b-enemy-num').textContent = '2140 / 6000';
+  document.getElementById('b-me-name').textContent = '『修行者』';
+  document.getElementById('b-enemy-name').textContent = '『沧溟蛟』';
+  document.getElementById('battle-sub').textContent = '秘境 · 玄级深潭';
+  document.getElementById('battle-title').textContent = '遭遇战';
+  const meBar = document.getElementById('b-me-bar'); if (meBar) meBar.style.width = '68%';
+  const mpBar = document.getElementById('b-me-mp-bar'); if (mpBar) mpBar.style.width = '57%';
+  const enBar = document.getElementById('b-enemy-bar'); if (enBar) enBar.style.width = '36%';
+  const log = document.getElementById('battle-log');
+  if (log) log.innerHTML = '<div>你施展【烈火焚】，烈焰缠上『沧溟蛟』，灼烧 4 层。</div>' +
+    '<div>『沧溟蛟』以水法还击，寒冰封住你的身形——冻结生效。</div>' +
+    '<div>你身中灼烧，生命流逝 81。你身中中毒，生命流逝 73。</div>';
+  const meImg = document.getElementById('b-me-img');
+  if (meImg) meImg.src = 'assets/img/portrait/me.png';
+</script>
+</body></html>

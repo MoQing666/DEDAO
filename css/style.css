@@ -361,8 +361,11 @@ button:disabled { opacity: .4; cursor: default; }
 .ph-fallback { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 44px; color: #cdb9ff; font-family: 'YuYang', 'SimSun', '宋体', serif; }
 .vs { align-self: center; color: #8a7ab0; font-size: 18px; font-family: 'YuYang', 'SimSun', '宋体', serif; flex: none; }
 .buffs { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; margin-top: 3px; }
-.buff { font-size: 11px; padding: 1px 4px; border: 1px solid #6a5a90; border-radius: 3px; color: #ffd27a; background: rgba(0,0,0,.3); }
-.buff.bad { color: #ff8a7a; border-color: #8a4a4a; }
+/* 2026-09-14：战斗状态徽章 = 图标 + 名称（+ 层数/回合）。增益金黄 / 减益暗红（底色一并区分）。 */
+.buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid #6a5a90; border-radius: 3px; color: #ffd27a; background: rgba(0,0,0,.3); }
+.buff .bf-ic { font-style: normal; font-size: 13px; line-height: 1; }
+.buff .bf-tx { font-weight: 400; }
+.buff.bad { color: #ff8a7a; border-color: #8a4a4a; background: rgba(74,10,10,.42); }
 .fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
 .float-dmg {
   position: absolute; font-size: 19px; font-weight: bold; font-family: 'YuYang', 'SimSun', '宋体', serif;

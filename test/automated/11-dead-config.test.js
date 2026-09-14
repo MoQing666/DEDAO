@@ -672,5 +672,117 @@ module.exports = async function build() {
     E.saveMeta({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0 });
   });
 
+  /* ---------------------------------------------------------------- */
+  /* 战斗状态图标（2026-09-14）：battleFxList 数据源 + 控制区分 + 解毒真解 */
+  /* ---------------------------------------------------------------- */
+  S.case('战斗状态图标①：battleFxList 覆盖全部 15 项（我方 9 / 敌方 6），空状态为空', (t) => {
+    // 先验「空状态」——旧版两行都读 s.battle.buffs（全仓库从未写入）→ 徽章恒空；
+    //   现在读的是派生函数，无状态时必须返回空列表，避免凭空冒出徽章。
+    const s0 = bare('空状态');
+    dummyFight(s0, 0, 100000);
+    const empty = E.battleFxList(s0, s0.battle);
+    t.eq(empty.me.length, 0, '无状态时我方徽章应为 0（实际 ' + empty.me.length + '）');
+    t.eq(empty.foe.length, 0, '无状态时敌方徽章应为 0（实际 ' + empty.foe.length + '）');
+
+    // 全状态：把 12 类可变状态一次性点亮
+    const s = bare('全状态');
+    const b = dummyFight(s, 0, 100000);
+    b.fxAtkUp = { amt: 12, turns: 3 };
+    b.fxDefUp = { amt: 40, turns: 2 };
+    b.fxCritUp = { amt: 8, turns: 2 };
+    b.disasterStacks = 3; b.disasterTurns = 3;
+    b.guarded = true;
+    b.pStunNext = true; b.pStunKind = 'freeze';
+    b.pDotBurn = 2; b.pDotPoison = 1;
+    b.suppressed = true;
+    b.stunNext = true; b.stunKind = 'stun';
+    b.dotBurn = 4; b.dotPoison = 2;
+    b.fxAtkDown = { amt: 30, turns: 2 };
+    b.fxBossDefUp = { amt: 25, turns: 2 };
+    b.enraged = true;
+
+    const fx = E.battleFxList(s, b);
+    t.eq(fx.me.length, 9, '我方应渲染 9 枚徽章（增益5 + 减益4），实际 ' + fx.me.length);
+    t.eq(fx.foe.length, 6, '敌方应渲染 6 枚徽章（减益4 + 增益2），实际 ' + fx.foe.length);
+    // 每项必须齐备 { icon, label, bad, tip }，缺一渲染就会出空徽章
+    fx.me.concat(fx.foe).forEach(function (x) {
+      t.ok(x.icon && x.label && typeof x.bad === 'boolean' && x.tip,
+        '徽章项字段应齐备（icon/label/bad/tip）：' + JSON.stringify(x));
+    });
+    const iconOf = (arr, re) => (arr.find(x => re.test(x.label)) || {}).icon;
+    t.eq(iconOf(fx.me, /^攻击 \+/), '⚔️', '攻击提升图标');
+    t.eq(iconOf(fx.me, /^减伤/), '🛡️', '受伤减免图标');
+    t.eq(iconOf(fx.me, /^暴击/), '🎯', '暴击提升图标');
+    t.eq(iconOf(fx.me, /^伐灾/), '✨', '伐灾图标');
+    t.eq(iconOf(fx.me, /^防御$/), '🧱', '防御姿态图标');
+    t.eq(iconOf(fx.me, /^灼烧/), '🔥', '灼烧图标');
+    t.eq(iconOf(fx.me, /^中毒/), '☠️', '中毒图标');
+    t.eq(iconOf(fx.me, /^心神失守/), '😵', '心神失守图标');
+    t.eq(iconOf(fx.foe, /^攻击 −/), '🔻', '敌方攻击削弱图标');
+    t.eq(iconOf(fx.foe, /^狂暴$/), '💢', '狂暴图标');
+    // 增益/减益标记（bad → 暗红配色）
+    t.eq(fx.me.filter(x => x.bad).length, 4, '我方减益 4 项（冻结/灼烧/中毒/心神失守）');
+    t.eq(fx.me.filter(x => !x.bad).length, 5, '我方增益 5 项');
+    // 死状态 / 非状态不得进列表
+    b.slow = true; b.guard = 0.3; b.mechanic = 'enrage';
+    t.eq(E.battleFxList(s, b).me.length, 9, 'b.slow（死状态）/ b.guard（遁术常驻）/ b.mechanic（固有特性）不得进徽章');
+  });
+
+  S.case('战斗状态图标②：眩晕 💫 与冻结 ❄️ 按五行区分（旧版共用同一字段、图标无法分辨）', (t) => {
+    const s = bare('控制区分');
+    const b = dummyFight(s, 0, 100000);
+    // 玩家施控 → 敌方侧：水→冻结 / 土→眩晕
+    E.applySpellFx(s, b, { name: '凝霜诀', grade: '玄', element: '水', stun: 1 }, []);
+    t.eq(b.stunNext, true, '水法应控住敌方');
+    t.eq(b.stunKind, 'freeze', '水法应记为冻结');
+    t.eq(E.battleFxList(s, b).foe.find(x => /冻结/.test(x.label)).icon, '❄️', '冻结应显示 ❄️');
+    b.stunNext = false; b.stunKind = 'stun';
+    E.applySpellFx(s, b, { name: '落石术', grade: '玄', element: '土', stun: 1 }, []);
+    t.eq(b.stunKind, 'stun', '土法应记为眩晕');
+    t.eq(E.battleFxList(s, b).foe.find(x => /眩晕/.test(x.label)).icon, '💫', '眩晕应显示 💫');
+
+    // 敌方施控 → 玩家侧：走 applyPlayerControl 的可选第 4 参
+    const s2 = bare('受控区分');
+    const b2 = dummyFight(s2, 0, 100000);
+    const SMath = G.get('Math'); const realRandom = SMath.random;
+    SMath.random = () => 0;                                   // 必定命中
+    E.applyPlayerControl(s2, b2, 0.5, 'freeze');
+    SMath.random = realRandom;
+    t.eq(b2.pStunNext, true, '玩家应被控');
+    t.eq(b2.pStunKind, 'freeze', '玩家受控应记为冻结');
+    t.eq(E.battleFxList(s2, b2).me.find(x => /冻结/.test(x.label)).icon, '❄️', '玩家侧冻结图标');
+    // 旧签名（3 参）必须仍然可用，且默认落到「眩晕」
+    const s3 = bare('旧签名');
+    const b3 = dummyFight(s3, 0, 100000);
+    SMath.random = () => 0;
+    E.applyPlayerControl(s3, b3, 0.5);
+    SMath.random = realRandom;
+    t.eq(b3.pStunNext, true, '三参旧签名应保持可用');
+    t.eq(b3.pStunKind, 'stun', '未传 kind 时默认眩晕');
+  });
+
+  S.case('战斗状态图标③：解毒丹真解负面（旧版 filter 空列表 = 静默无效）', (t) => {
+    const s = bare('解毒');
+    const b = dummyFight(s, 0, 100000);
+    s.adv = { items: [{ id: 'jiedu', count: 1 }] };
+    // 挂满负面状态：毒 / 灼 / 被控 / 心神失守
+    b.pDotBurn = 3; b.pDotPoison = 2; b.pStunNext = true; b.pStunKind = 'freeze'; b.suppressed = true;
+    // 旧实现在此之前会去 filter 一个恒为空的 s.battle.buffs → 字段纹丝不动
+    const r = E.useAdvElixir(s, 'jiedu');
+    t.ok(r.ok, '解毒丹应可服用');
+    t.eq(b.pDotBurn, 0, '中毒应被真解（旧版无效）');
+    t.eq(b.pDotPoison, 0, '灼烧应被真解');
+    t.eq(b.pStunNext, false, '控制应被真解');
+    t.eq(b.suppressed, false, '心神失守应被真解');
+    t.ok(r.lines.join('|').indexOf('负面状态已解除') >= 0, '应提示已解除负面状态');
+    t.eq(E.battleFxList(s, b).me.filter(x => x.bad).length, 0, '解毒后我方不应再有减益徽章');
+    // 正面状态不得被解毒误伤
+    b.fxAtkUp = { amt: 12, turns: 3 }; b.disasterStacks = 2;
+    s.adv.items = [{ id: 'jiedu', count: 1 }];
+    E.useAdvElixir(s, 'jiedu');
+    t.eq(b.fxAtkUp.amt, 12, '解毒不得清掉攻击增益');
+    t.eq(b.disasterStacks, 2, '解毒不得清掉伐灾层数');
+  });
+
   return S;
 };

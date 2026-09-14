@@ -528,22 +528,30 @@
         const meMp = Math.max(0, Math.min(100, (S.mpMax ? S.mp / S.mpMax * 100 : 0)));
         $('b-me-mp-bar').style.width = meMp + '%';
         $('b-me-mp-num').textContent = (S.mp || 0) + ' / ' + (S.mpMax || 0) + ' 灵';
-        renderBuffs('b-enemy-buffs', bb.buffs);
-        renderBuffs('b-me-buffs', S.battle.buffs);
+        /* 2026-09-14：徽章数据源改为 Engine.battleFxList(s, b) —— 现算的 { me, foe }。
+           旧版两行都读 bb.buffs（bb === S.battle）→ 敌我同源，且 s.battle.buffs 全仓库从未被写入，
+           徽章因此恒为空；现在由「唯一真源」的派生函数供数。 */
+        const fxl = Engine.battleFxList(S, bb);
+        renderBuffs('b-enemy-buffs', fxl.foe);
+        renderBuffs('b-me-buffs', fxl.me);
         const list = bb.spellList || [];
         $('b-spell').disabled = !list.length;
         $('b-spell').textContent = '法术' + (bb.spellName ? '·' + bb.spellName + (list.length > 1 ? '（' + list.length + '）' : '') : '(无)');
         $('b-flee').textContent = bb.noFlee ? '本战斗不可逃跑' : '逃跑（' + Math.round(bb.flee * 100) + '% · 遁速' + (S.dunSpeed || 1) + '）';
       if (bb.noFlee) { $('b-flee').disabled = true; $('b-flee').style.opacity = '0.5'; }
       }
-      function renderBuffs(elId, buffs) {
+      /* 战斗状态徽章：图标 + 名称（+ 层数/回合），增益金黄 / 减益暗红。
+         数据项：{ icon, label, bad, tip }，来自 Engine.battleFxList（纯派生，不落盘）。 */
+      function renderBuffs(elId, list) {
         const el = $(elId); if (!el) return;
         el.innerHTML = '';
-        (buffs || []).forEach(function (x) {
+        (list || []).forEach(function (x) {
           const s = document.createElement('span');
           s.className = 'buff' + (x.bad ? ' bad' : '');
-          s.textContent = x.label;
-          if (x.tip) s.title = x.tip;
+          const ic = document.createElement('i'); ic.className = 'bf-ic'; ic.textContent = x.icon;
+          const tx = document.createElement('b'); tx.className = 'bf-tx'; tx.textContent = x.label;
+          s.appendChild(ic); s.appendChild(tx);
+          s.title = x.tip || x.label;
           el.appendChild(s);
         });
       }

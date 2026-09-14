@@ -494,5 +494,24 @@ module.exports = async function build() {
     t.note('滚动适配规则 7/7 在位');
   });
 
+  /* === 回归 2026-09-14：战斗状态徽章（图标 + 名称）的供数与渲染契约 ===
+     背景：index.html 的 #b-me-buffs / #b-enemy-buffs 与 ui.js 的 renderBuffs() 早就写好，
+     但 s.battle.buffs 全仓库从未被写入 → 徽章恒为空、敌我两行又因 bb === S.battle 而同源。
+     现在改为调用 Engine.battleFxList(s, b) 现算。本用例守住这条链路，防回退。 */
+  S.case('战斗徽章契约：由 Engine.battleFxList 供数 + 图标/文字双节点 + 减益底色区分', (t) => {
+    const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+    t.ok(/Engine\.battleFxList\(/.test(uiJs), 'ui.js 必须调用 Engine.battleFxList() 取状态列表');
+    t.ok(/renderBuffs\('b-enemy-buffs',\s*fxl\.foe\)/.test(uiJs), '敌方徽章应取 fxl.foe（独立于我方）');
+    t.ok(/renderBuffs\('b-me-buffs',\s*fxl\.me\)/.test(uiJs), '我方徽章应取 fxl.me');
+    // 回退守卫：不得再读 battle.buffs（无写入点 → 徽章会恒空）
+    t.ok(!/renderBuffs\([^)]*\.buffs\)/.test(uiJs),
+      '不得回退读 s.battle.buffs（该字段全仓库无写入点，徽章会恒空且敌我同源）');
+    // 渲染出「图标 + 名称」两个子节点
+    t.ok(/bf-ic/.test(uiJs) && /bf-tx/.test(uiJs), '徽章应渲染图标(.bf-ic)与文字(.bf-tx)两个子节点');
+    t.ok(/\.buff\s+\.bf-ic\s*\{/.test(cssSrc), 'CSS 应有 .buff .bf-ic 图标样式');
+    t.ok(/\.buff\.bad\s*\{[^}]*background/.test(cssSrc), '减益徽章应有用底色区分（.buff.bad background）');
+    t.note('链路：Engine.battleFxList → renderBuffs → .buff/.bf-ic/.bf-tx');
+  });
+
   return S;
 };

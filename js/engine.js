@@ -1511,6 +1511,9 @@ const Engine = (function () {
     if (!b.fxCritUp) b.fxCritUp = { amt: 0, turns: 0 };  // 玩家暴击率加成 %（金刃术/剑气诀/雷音引，金系语义）
     if (typeof b.stunNext !== 'boolean') b.stunNext = false;      // 敌方下回合被控（土·眩晕 / 水·冻结）
     if (typeof b.pStunNext !== 'boolean') b.pStunNext = false;    // 玩家下回合被控（双向：敌方/boss 施加）
+    // 控制种类（仅用于图标区分，不影响结算）：'stun' 眩晕(土) / 'freeze' 冻结(水)
+    if (b.stunKind !== 'freeze' && b.stunKind !== 'stun') b.stunKind = 'stun';
+    if (b.pStunKind !== 'freeze' && b.pStunKind !== 'stun') b.pStunKind = 'stun';
     if (typeof b.dotBurn !== 'number') b.dotBurn = 0;             // 敌方灼烧层数（火）
     if (typeof b.dotPoison !== 'number') b.dotPoison = 0;         // 敌方中毒层数（木）
     if (typeof b.pDotBurn !== 'number') b.pDotBurn = 0;           // 玩家灼烧层数（双向）
@@ -1569,6 +1572,7 @@ const Engine = (function () {
       const label = isWater ? '冻结' : '眩晕';
       if (Math.random() < sp.stun) {
         b.stunNext = true;
+        b.stunKind = isWater ? 'freeze' : 'stun';     // 仅用于图标区分（水→❄️冻结 / 土→💫眩晕）
         out.push('『' + b.name + '』' + (isWater ? '被寒冰封住' : '身形猛地一滞') + '，' + label + '生效——下一回合无法行动。');
       } else {
         out.push('『' + b.name + '』稳住身形，未被' + label + '命中。');
@@ -1635,7 +1639,7 @@ const Engine = (function () {
   /* 外部（敌方 / boss）对玩家施加控制（眩晕 / 冻结）的唯一入口。
      概率判定命中后：玩家伐灾层数 ≥3 时消耗 3 层抵消这次控制（免控），否则玩家下回合被控。
      返回 true = 玩家被控。双向设计：boss 施控与玩家受控共用同一字段与判定。 */
-  function applyPlayerControl(s, b, chance) {
+  function applyPlayerControl(s, b, chance, kind) {
     ensureBattleFx(b);
     if (!(chance > 0)) return false;
     if (Math.random() >= chance) return false;
@@ -1645,7 +1649,43 @@ const Engine = (function () {
       return false;
     }
     b.pStunNext = true;
+    b.pStunKind = (kind === 'freeze') ? 'freeze' : 'stun';   // 仅用于图标区分（水→冻结 / 土→眩晕）
     return true;
+  }
+  /* ---- 战斗状态图标列表（2026-09-14 实装）——「唯一真源」的纯派生函数 ----
+     徽章渲染（ui.renderBuffs）与「解毒」判定共用同一份口径，避免两处各写一套漏掉字段。
+     ⚠ 刻意「不写回 s.battle」：s.battle 会被整对象序列化进存档，若把派生数组存进去，
+       一旦真实字段变化（DoT 结算、回合结束递减）数组就会与字段不同步；旧档也没有该字段。
+     每项：{ icon, label, bad, tip }。bad=true → 减益配色（暗红）。
+     不进列表：b.slow（全仓库只读、从未置真，属死状态）、b.guard（遁术常驻减伤，已有遁术列表承担）、
+               b.mechanic（召唤/荆棘/吸血是敌人固有特性，非可变状态）、瞬时量（heal/mpRestore/lifesteal）。 */
+  function battleFxList(s, b) {
+    const me = [], foe = [];
+    if (!b) return { me: me, foe: foe };
+    ensureBattleFx(b);
+    const add = (arr, icon, label, bad, tip) => arr.push({ icon: icon, label: label, bad: !!bad, tip: tip || label });
+    const stunIcon = (k) => (k === 'freeze' ? '❄️' : '💫');
+    const stunName = (k) => (k === 'freeze' ? '冻结' : '眩晕');
+    /* —— 我方增益 —— */
+    if (b.fxAtkUp && b.fxAtkUp.amt > 0) add(me, '⚔️', '攻击 +' + b.fxAtkUp.amt + '%', false, '攻击提升 ' + b.fxAtkUp.amt + '% · 剩 ' + b.fxAtkUp.turns + ' 回合');
+    if (b.fxDefUp && b.fxDefUp.amt > 0) add(me, '🛡️', '减伤 ' + b.fxDefUp.amt + '%', false, '受到的伤害降低 ' + b.fxDefUp.amt + '% · 剩 ' + b.fxDefUp.turns + ' 回合');
+    if (b.fxCritUp && b.fxCritUp.amt > 0) add(me, '🎯', '暴击 +' + b.fxCritUp.amt + '%', false, '暴击率提升 ' + b.fxCritUp.amt + '% · 剩 ' + b.fxCritUp.turns + ' 回合');
+    if (b.disasterStacks > 0) add(me, '✨', '伐灾 ' + b.disasterStacks + ' 层', false, '金系伐灾 ' + b.disasterStacks + ' 层（每 3 层可抵消一次眩晕/冻结）· 剩 ' + b.disasterTurns + ' 回合');
+    if (b.guarded) add(me, '🧱', '防御', false, '本回合受到的伤害降低 65%');
+    /* —— 我方减益 —— */
+    if (b.pStunNext) add(me, stunIcon(b.pStunKind), stunName(b.pStunKind), true, '下一回合无法行动');
+    if (b.pDotBurn > 0) add(me, '🔥', '灼烧 ' + b.pDotBurn + ' 层', true, '每回合 1 层结算，扣除当前生命 10%');
+    if (b.pDotPoison > 0) add(me, '☠️', '中毒 ' + b.pDotPoison + ' 层', true, '每回合 1 层结算，扣除当前生命 10%');
+    if (b.suppressed) add(me, '😵', '心神失守', true, '心神失守：本次出手被空过');
+    /* —— 敌方减益 —— */
+    if (b.stunNext) add(foe, stunIcon(b.stunKind), stunName(b.stunKind), true, '下一回合无法行动');
+    if (b.dotBurn > 0) add(foe, '🔥', '灼烧 ' + b.dotBurn + ' 层', true, '每回合 1 层结算，扣除当前生命 10%');
+    if (b.dotPoison > 0) add(foe, '☠️', '中毒 ' + b.dotPoison + ' 层', true, '每回合 1 层结算，扣除当前生命 10%');
+    if (b.fxAtkDown && b.fxAtkDown.amt > 0) add(foe, '🔻', '攻击 −' + b.fxAtkDown.amt + '%', true, '攻击下降 ' + b.fxAtkDown.amt + '% · 剩 ' + b.fxAtkDown.turns + ' 回合');
+    /* —— 敌方增益 —— */
+    if (b.fxBossDefUp && b.fxBossDefUp.amt > 0) add(foe, '🪨', '减伤 ' + b.fxBossDefUp.amt + '%', false, '受到的伤害降低 ' + b.fxBossDefUp.amt + '% · 剩 ' + b.fxBossDefUp.turns + ' 回合');
+    if (b.enraged) add(foe, '💢', '狂暴', false, '气血过半后狂暴，攻势大增');
+    return { me: me, foe: foe };
   }
   /* ---- BOSS 五行生克与 BOSS 施法（2026-09-13 实装） ----
      生克：克 ×1.2 / 同属 ×0.9 / 被克 ×0.8 / 无属性法术（青云剑宗）恒 ×1.0
@@ -1728,7 +1768,7 @@ const Engine = (function () {
     // 眩晕（土）/ 冻结（水）：复用 applyPlayerControl（内含金系伐灾 3 层免控）
     if (sp.stun > 0) {
       const before = b.disasterStacks;
-      if (applyPlayerControl(s, b, sp.stun)) {
+      if (applyPlayerControl(s, b, sp.stun, sp.element === '水' ? 'freeze' : 'stun')) {
         out.push('你身形一滞，下一回合恐难出手。');
       } else if (before >= DISASTER_IMMUNE_COST) {
         out.push('金光伐灾自行消抵，这一控没能落在你身上（伐灾 -' + DISASTER_IMMUNE_COST + ' 层）。');
@@ -1837,6 +1877,8 @@ const Engine = (function () {
       fxCritUp: { amt: 0, turns: 0 },
       stunNext: false,
       pStunNext: false,
+      stunKind: 'stun',
+      pStunKind: 'stun',
       dotBurn: 0,
       dotPoison: 0,
       pDotBurn: 0,
@@ -3183,9 +3225,15 @@ const Engine = (function () {
       s.mp = Math.min(s.mpMax, s.mp + m);
       lines.push('灵力 +' + m);
     }
-    if (eff.cure && s.battle && s.battle.buffs) {
-      s.battle.buffs = (s.battle.buffs || []).filter(function (bf) { return !bf.bad; });
-      lines.push('负面状态已解除');
+    if (eff.cure && s.battle && !s.battle.done) {
+      /* 真·解除负面：直接清结算字段。
+         ⚠ 旧版写的是 `s.battle.buffs.filter(bf => !bf.bad)` —— 而 s.battle.buffs 全仓库从未被写入，
+           列表恒为空 → 解毒丹一直「无效但也不报错」；且 filter 派生数组也清不掉 pDotBurn/pDotPoison 真实字段。
+           新机制②③④的负面状态真源是 pDotBurn / pDotPoison / pStunNext / suppressed，必须直接置零。 */
+      const b = ensureBattleFx(s.battle);
+      const had = b.pDotBurn > 0 || b.pDotPoison > 0 || b.pStunNext || b.suppressed;
+      b.pDotBurn = 0; b.pDotPoison = 0; b.pStunNext = false; b.suppressed = false;
+      lines.push(had ? '负面状态已解除' : '并无负面状态可解');
     }
     slot.count -= 1;
     if (slot.count <= 0) a.items = a.items.filter(function (x) { return x.id !== id; });
@@ -5412,6 +5460,7 @@ const Engine = (function () {
     // —— 五行新机制导出（眩晕/冻结 · 灼烧/中毒 · 伐灾）——
     applySpellFx: applySpellFx, tickBattleFx: tickBattleFx, tickDot: tickDot,
     applyPlayerControl: applyPlayerControl, dotCapByGrade: dotCapByGrade,
+    battleFxList: battleFxList,
     equipStats: equipStats, cultGain: cultGain, getBestShufa: getBestShufa, getDunshu: getDunshu,
     findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, sellEquipAll: sellEquipAll, gainEquip: gainEquip,
     startAdventure: startAdventure, startTrial: startTrial, advGenLayer: advGenLayer, advResolve: advResolve,

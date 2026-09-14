@@ -876,3 +876,24 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
       右侧 90px 被裁——**看起来像「布局横向溢出」，实际是截图与视口宽度不匹配**。截图请用 `--window-size=504,H`。
     - **工具同步**：`tools/reinc_sim.js`、`tools/player_sim.js` 的天赋表 / 结算分支同步下线退役项（都读真实 `REINCARNATION`，不再残留 phantom 天赋）。
     - 缓存 **v132/dedao-v170**。测试 **243/243**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。
+
+51. **战斗状态图标实装（BUFF/DEBUFF 徽章）：图标 + 名称 + 层数/回合（2026-09-14，用户需求「给BUFF和DEBUFF分别增设图标」+「测试运行，给我跑战斗图标，全BUFF的」）**：
+    - **🔴 关键发现（三个既有缺陷一次修掉）**：
+      1. `index.html` 的 `#b-me-buffs` / `#b-enemy-buffs` 与 `ui.js renderBuffs()` 早就写好，但 **`s.battle.buffs` 全仓库从未被任何代码写入**（全仓 `.buffs` 仅 4 处引用：engine 两行解毒、ui 两行渲染）→ **战斗徽章一直恒为空**，玩家看不到眩晕/灼烧/中毒/伐灾/减伤。
+      2. `renderBuffs('b-enemy-buffs', bb.buffs)` 与 `renderBuffs('b-me-buffs', S.battle.buffs)` 读的是**同一个对象**（`bb === S.battle`）→ 即便填了数据，敌我面板也注定同源。
+      3. `解毒丹`（`data.js:52 adv:{cure:true}`）用 `s.battle.buffs.filter(bf => !bf.bad)` 解毒 → 列表恒空 = **完全无效但不报错**；且 filter 派生数组也**清不掉** `pDotBurn`/`pDotPoison` 真实字段，属假实现。
+    - **① 数据源 `Engine.battleFxList(s, b)`（`js/engine.js`，导出）**：返回 `{ me, foe }` 两个列表，每项 `{ icon, label, bad, tip }`。
+      **刻意「纯派生、不落盘」**——不写回 `s.battle`：`s.battle` 会被整对象序列化进存档，存派生数组会造成「字段与数组不同步」（DoT 结算、回合递减都会让数组过期），旧档也没有该字段。UI 渲染与解毒判定**共用这一份口径**。
+      - 我方增益 5：⚔️ 攻击提升 / 🛡️ 受伤减免 / 🎯 暴击提升 / ✨ 伐灾（层数）/ 🧱 防御姿态。
+      - 我方减益 4：💫 眩晕 · ❄️ 冻结 / 🔥 灼烧（层数）/ ☠️ 中毒（层数）/ 😵 心神失守。
+      - 敌方减益 4：💫/❄️ / 🔥 / ☠️ / 🔻 攻击削弱。敌方增益 2：🪨 减伤 / 💢 狂暴。
+      - **明确不进徽章**：`b.slow`（**死状态**——全仓库只被读取、从未被置真，展示窗口为 0）、`b.guard`（遁术常驻减伤，已有遁术列表承担）、`b.mechanic`（召唤/荆棘/吸血是敌人**固有特性**非可变状态）、瞬时量（heal / mpRestore / lifesteal）。
+    - **② 眩晕 / 冻结 图标区分（`js/engine.js`）**：两者共用 `stunNext` 字段，故新增 `b.stunKind` / `b.pStunKind`（`'stun'` 眩晕(土) / `'freeze'` 冻结(水)），**仅用于图标，不参与任何结算**。
+      `applySpellFx` 施控时按 `sp.element === '水'` 写入 `b.stunKind`；`applyPlayerControl` 加**可选第 4 参** `kind`（既有测试 `E.applyPlayerControl(s, b, 1.0)` 三参调用不受影响，未传则回落 `'stun'`）；`bossCastSpell` 传 `sp.element === '水' ? 'freeze' : 'stun'`。`ensureBattleFx` / `startBattle` 补初始化（旧档缺失回落 `'stun'`）。
+    - **③ 解毒丹真解负面（`js/engine.js useAdvElixir`）**：由 filter 派生数组改为**直接清结算字段** `pDotBurn = 0 / pDotPoison = 0 / pStunNext = false / suppressed = false`；文案按实际情况区分「负面状态已解除」/「并无负面状态可解」。**正面状态（攻击增益、伐灾层数）不受影响**。
+    - **④ UI（`js/ui.js renderBattle` + `renderBuffs`）**：`renderBattle` 改调 `Engine.battleFxList(S, bb)` 并分别喂 `fxl.foe` / `fxl.me`（敌我彻底分离）；`renderBuffs` 渲染为 `<span class="buff[ bad]"><i class="bf-ic">图标</i><b class="bf-tx">名称</b></span>`，`title` 挂完整说明（数值 + 剩余回合）。
+    - **⑤ CSS（`css/style.css`）**：`.buff` 改 `inline-flex` + `gap:3px`；新增 `.buff .bf-ic`（图标，13px）/ `.buff .bf-tx`（名称，`font-weight:400` 抵消 `<b>` 加粗）；`.buff.bad` 补暗红底 `rgba(74,10,10,.42)`，与增益金黄底一眼可分。
+    - **⑥ 全 BUFF 预览（`tools/build_battle_preview.js` → `_preview/battle_buffs.html` + `_preview/battle_buffs.png`）**：徽章内容由**真实引擎** `Engine.battleFxList()` 现算，样式引用真实 `css/style.css`，战斗 DOM 直接从 `index.html` 的 `#battle` 层抓取 → 预览 = 实装（共 15 枚：我方 9 / 敌方 6）。
+      ⚠ 抓取正则必须把战斗层的收尾 `</div>` 一并吃进捕获组，否则外层 `#preview-wrap` 被缺失的闭合标签吃掉、图例 DOM 落进手机层内部、被 `z-index:9999` 的不透明遮罩盖住而「看不见」。
+    - **⑦ 回归（4 例，回退修复后实测转红 → 244/247）**：`11` 新增「battleFxList 覆盖全部 15 项（我方 9 / 敌方 6）+ 空状态必须为空 + 死状态 `slow`/`guard`/`mechanic` 不得进列表」「眩晕 💫 与冻结 ❄️ 按五行区分（含三参旧签名兼容）」「解毒丹真解负面（旧版 filter 恒空 = 静默无效）+ 不得误伤正面状态」；`01` 新增「战斗徽章契约：由 `Engine.battleFxList` 供数 + 图标/文字双节点 + 减益底色区分」**含回退守卫**（`!/renderBuffs\([^)]*\.buffs\)/`，防再退回读恒空的 `s.battle.buffs`）。
+    - 缓存 **v133/dedao-v171**。测试 **247/247**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。

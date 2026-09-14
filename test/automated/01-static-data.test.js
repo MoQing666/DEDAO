@@ -35,13 +35,16 @@ module.exports = async function build() {
   /* ---------- 2. DOM 引用一致性 ---------- */
   S.case('ui.js 引用的元素 ID 均存在于 index.html（非守护式引用）', (t) => {
     const htmlIds = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
-    // PC 副本（index_pc.html）里有「隐藏靶点」按钮：ui_pc.js / ui_pc 顶部状态条用
+    // PC 副本（index_pc.html）里有「隐藏靶点」按钮：ui_pc.js 的顶部状态条用
     // clickBtn('btn-xxx') 代理触发 ui.js 的绑定（如 #btn-settings-bottom）。
     // 这类 ID 在手机版 index.html 中不存在属预期，不计入「死 ID」。
-    let pcIds = new Set();
+    // ⚠ 发布包（dist/*）按白名单打包、**不含 index_pc.html**，故此处显式列出，
+    //   不能只靠读 index_pc.html —— 否则跑 dist 副本时会误报「守护式死代码」。
+    const PC_PROXY_IDS = ['btn-omen-bottom', 'btn-ach-bottom', 'btn-codex-bottom', 'btn-settings-bottom'];
+    const pcIds = new Set(PC_PROXY_IDS);
     const pcPath = path.join(ROOT, 'index_pc.html');
     if (fs.existsSync(pcPath)) {
-      pcIds = new Set([...fs.readFileSync(pcPath, 'utf8').matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+      for (const m of fs.readFileSync(pcPath, 'utf8').matchAll(/\sid="([^"]+)"/g)) pcIds.add(m[1]);
     }
     const refs = new Set();
     for (const m of uiJs.matchAll(/getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) refs.add(m[1]);

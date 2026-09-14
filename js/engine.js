@@ -28,6 +28,22 @@ const Engine = (function () {
           delete m.reinc.extra_destiny;
           saveMeta(m);
         }
+        // 迁移：2026-09-14 二批天赋下线
+        //   · 殷实 / 见面礼 / 延寿 → 移入「开荒 · 三 经历」（改吃开荒点数，不再吃轮回点）
+        //   · 舍生 → 直接删除
+        // 已购买等级按**原价**全额退还轮回点（单价 × 1+2+…+n，与轮回阁「第 n 级 cost×n」的定价一致），
+        // 并清除字段，避免旧档残留继续生效或显示成幽灵卡。
+        (function () {
+          const REMOVED = { stone: 2, juling0: 3, life20: 2, shesheng: 5 };  // id → 首级单价
+          let refunded = 0;
+          Object.keys(REMOVED).forEach(function (id) {
+            const lv = m.reinc[id] || 0;
+            if (!lv) return;
+            refunded += REMOVED[id] * lv * (lv + 1) / 2;
+            delete m.reinc[id];
+          });
+          if (refunded > 0) { m.points = (m.points || 0) + refunded; saveMeta(m); }
+        })();
         // 兼容：补齐缺失字段（旧档可能只有 reinc 而无 achievements/points/lives 等），
         // 否则 openAchievements 里 `meta.achievements[id]` 会抛 TypeError，导致成就页（成就·轮回印记）整页空白。
         const d = defaultMeta();
@@ -532,7 +548,7 @@ const Engine = (function () {
     if (s.flags.petGrown) g *= 1.15;
     else if (s.flags.pet) g *= 1.05;
     g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
-    g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
+    // 「舍生」（s.reinc.shesheng，修炼 +10% / 每次修炼 -1 寿元）已于 2026-09-14 删除，不再计入
     // 命格修炼加成
     var talentCultMul = 0;
     s.talents.forEach(function (tid) {
@@ -823,7 +839,8 @@ const Engine = (function () {
     s.reinc.cult = meta.reinc.cult || 0;
     s.reinc.alchemyTimeReduce = meta.reinc.alchemy || 0;
     s.reinc.forgeTimeReduce = meta.reinc.forge || 0;
-    s.reinc.shesheng = meta.reinc.shesheng || 0;
+    // 「舍生」（s.reinc.shesheng）已于 2026-09-14 删除：修炼 +10% 与「每次修炼 -1 寿元」一并下线；
+    //   旧档字段由 loadMeta 按原价退还轮回点并清空，故此处不再拷贝。
     s.reinc.herbGrowReduce = meta.reinc.lvling_bottle || 0;
     s.reinc.extraField = meta.reinc.extra_field || 0;
     s.reinc.destinySlot = meta.reinc.destiny_slot || 0;
@@ -840,9 +857,7 @@ const Engine = (function () {
         else if (r.id === 'shen') s.shen = (s.shen || 0) + 1;
         else if (r.id === 'dao') s.dao = (s.dao || 0) + 1;
         else if (r.id === 'ling') s.ling = (s.ling || 0) + 1;
-        else if (r.id === 'stone') s.stone += 100;
-        else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 3;
-        else if (r.id === 'life20') s.lifeMax += 20;
+        // stone / juling0 / life20 已于 2026-09-14 移入「开荒 · 三 经历」（见 applyInit + INIT_EXP）
       }
     });
     // 初始化命格系统
@@ -3440,11 +3455,7 @@ const Engine = (function () {
     s.cultedThisYear = true;
     spend(s, m.ap);
     let note2 = '';
-    const sheshengLv = (s.reinc && s.reinc.shesheng) || 0;
-    if (sheshengLv > 0) {
-      s.lifeMax -= 1;
-      note2 += '（舍生：寿元 -1）';
-    }
+    // 「舍生」（每次修炼 -1 寿元）已于 2026-09-14 随天赋删除，此处不再扣寿元
     if (s.qi >= need) note2 += '（修为已满，可尝试突破！）';
     if (cultDoubled) note2 += '（洞虚秘淬共鸣，修为翻倍！）';
     refreshStats(s);
@@ -4956,6 +4967,20 @@ const Engine = (function () {
       ['wu', 'ti', 'dun', 'shen', 'dao', 'ling'].forEach(function (k) { if (sel.points[k]) s[k] += sel.points[k]; });
     }
     s.initPoints = sel.initPoints || 0;
+    // 开荒 · 三 经历（殷实 / 见面礼 / 延寿 / 早夭）——本世开局一次性结算，不入 meta、不跨世
+    if (sel.exp && sel.exp.length) {
+      sel.exp.forEach(function (id) {
+        const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
+        if (!it || !it.apply) return;
+        const a = it.apply;
+        if (a.stone) s.stone += a.stone;
+        if (a.life) s.lifeMax += a.life;
+        if (a.elixirs) { for (const k in a.elixirs) s.elixirs[k] = (s.elixirs[k] || 0) + a.elixirs[k]; }
+      });
+      // 【早夭】会把出生寿元压到 70-20=50；与「负属性地板」同口径，寿元下限恒保为 1
+      if (s.lifeMax < 1) s.lifeMax = 1;
+      if (s.hp > s.hpMax) s.hp = s.hpMax;
+    }
     s.gongye = 0; s.gongyeEarned = 0; s.sectRank = null;
     if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
     if (!s.array.wuxing) s.array.wuxing = {};
@@ -4964,6 +4989,17 @@ const Engine = (function () {
     return finalizeNewLife(s);
   }
   function openPointsTotal(s) { return INIT_POINTS + reincTalentBonus(s.reincTalent || 1); }
+  // 开荒 · 经历的点数折算（口径唯一化：UI 的 createSpent 直接调它，不再自算一遍）
+  //   【早夭】cost 为负 → 返回值为负，即「选它反而多出 3 点预算」。
+  function initExpCost(sel) {
+    if (!sel || !sel.exp || !sel.exp.length) return 0;
+    let c = 0;
+    sel.exp.forEach(function (id) {
+      const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
+      if (it) c += it.cost;
+    });
+    return c;
+  }
 
   // —— 【开荒】天赋（REINC_TALENT，持久化于 meta.reincTalent，与轮回阁同池扣费）——
   //    等级存于 meta（跨世持久），startLife 时拷进 s.reincTalent 供本世开荒池使用。
@@ -5400,7 +5436,7 @@ const Engine = (function () {
     bigIdxOf: bigIdxOf,
     duantiInfo: duantiInfo, doDuanti: doDuanti,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
-    ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION,
+    ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION, INIT_EXP: INIT_EXP,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, achDefs: achDefs,
     checkAchievements: checkAchievements, checkAchievementsLive: checkAchievementsLive,
     codexState: codexState, syncTreasureSeen: syncTreasureSeen,
@@ -5424,7 +5460,7 @@ const Engine = (function () {
     applyWuxing: applyWuxing, recalcLinggenBonus: recalcLinggenBonus,
     cultModes: cultModes,
     finalizeNewLife: finalizeNewLife, applyInit: applyInit,
-    openPointsTotal: openPointsTotal, reincTalentUpgrade: reincTalentUpgrade,
+    openPointsTotal: openPointsTotal, reincTalentUpgrade: reincTalentUpgrade, initExpCost: initExpCost,
     julingSet: julingSet, julingYearEnd: julingYearEnd, wuxingToggle: wuxingToggle,
     addGongye: addGongye, spendGongye: spendGongye,
     craftStudy: craftStudy,

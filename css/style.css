@@ -1332,7 +1332,10 @@ button:disabled { opacity: .4; cursor: default; }
 #screen-create .ct-craft-row span { font-size: 13px; }
 #modal-body h3 { color: var(--gold); font-size: 15px; font-weight: 400; letter-spacing: 2px; margin: 6px 0 10px; }
 .ct-sec { color: var(--gold); font-size: 15px; font-weight: 400; margin: 9px 0 4px; border-left: 3px solid var(--gold); padding-left: 8px; }
-.ct-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* minmax(0, 1fr)：1fr 的隐含下限是 min-content，卡片里长文案（如「灵力上限+40 · 遁速+8%」）
+   会把两列撑破容器宽度；配合 .ct-scroll3 的 overflow-y:auto（连带 overflow-x 计算成 auto），
+   表现就是「右列被横向裁掉、又看不见滚动条」。用 minmax(0,1fr) 允许列收缩 + 文案换行。 */
+.ct-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .ct-card { background: rgba(0,0,0,.22); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color .15s, background .15s; }
 .ct-card:hover { border-color: #6ab8c9; }
 .ct-card.selected { border-color: var(--gold); background: rgba(232,193,90,.12); }
@@ -1343,6 +1346,8 @@ button:disabled { opacity: .4; cursor: default; }
 .ct-desc { font-size: 13px; font-weight: 400; color: var(--dim); line-height: 1.4; }
 .ct-cost { font-size: 12px; color: var(--gold); margin-top: 4px; }
 .ct-point { font-size: 12px; font-weight: 400; color: var(--gold); white-space: nowrap; }
+/* 负点数（开荒 · 三 经历【早夭】= -3 点）：选它反而**增加**预算，用收益色区分 */
+.ct-point.good { color: var(--good); }
 .ct-bonus { font-size: 13px; font-weight: 400; color: #b9aee0; line-height: 1.4; margin-top: 1px; }
 .ct-story { display: inline-block; font-size: 13px; font-weight: 400; color: var(--dim); line-height: 1.55; margin: 2px 0 4px; font-style: normal; }
 .ct-grid2 { gap: 6px; }

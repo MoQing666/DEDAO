@@ -584,5 +584,68 @@ module.exports = async function build() {
     t.note('地板仍必须保留：它是「日后新增减体魄来源」时的最后一道防线（见 AGENTS.md 负属性安全地图）');
   });
 
+  /* ---------------------------------------------------------------- */
+  /* 2026-09-14 二批：殷实/见面礼/延寿 移入开荒「三 经历」；舍生 删除     */
+  /* ---------------------------------------------------------------- */
+  S.case('开荒 · 三 经历：四项实装结算（含【早夭】负点反向收益）', (t) => {
+    const EXPS = E.INIT_EXP;
+    t.ok(EXPS && EXPS.length === 4, 'INIT_EXP 应有 4 项（殷实/见面礼/延寿/早夭）');
+    const byId = {}; EXPS.forEach(e => { byId[e.id] = e; });
+    t.eq(byId.stone.cost, 3, '殷实 = 3 点固定');
+    t.eq(byId.juling0.cost, 4, '见面礼 = 4 点固定');
+    t.eq(byId.life20.cost, 2, '延寿 = 2 点固定');
+    t.eq(byId.zaoyao.cost, -3, '早夭 = -3 点（负值：选它反而增加预算）');
+
+    // 点数折算口径（UI 与引擎共用的唯一真源）
+    t.eq(E.initExpCost({ exp: [] }), 0, '未选经历 → 0 点');
+    t.eq(E.initExpCost({ exp: ['zaoyao'] }), -3, '只选早夭 → -3 点');
+    t.eq(E.initExpCost({ exp: ['stone', 'juling0', 'life20', 'zaoyao'] }), 6, '全选四项净花 3+4+2-3 = 6 点');
+
+    // 实际结算：殷实 +500 灵石 / 见面礼 聚气丹×3 / 延寿 +20 寿元
+    const s = E.startLife('开荒经历');
+    const lg = G.get('LINGGEN_POOL')[0], bg = G.get('BACKGROUNDS')[0];
+    const baseStone = s.stone + ((bg.flavor && bg.flavor.stone) || 0);
+    const baseLife = s.lifeMax + ((bg.flavor && bg.flavor.life) || 0);
+    E.applyInit(s, { linggenId: lg.id, bgId: bg.id, points: {}, craft: {}, exp: ['stone', 'juling0', 'life20'] });
+    t.eq(s.stone, baseStone + 500, '殷实应结算 +500 灵石（用户定稿值；旧轮回塔为 +100×等级）');
+    t.eq(s.elixirs.juling, 3, '见面礼应结算 聚气丹 ×3');
+    t.eq(s.lifeMax, baseLife + 20, '延寿应结算 寿元 +20');
+
+    // 早夭：寿元 -20，且不得把寿元压成 0/负数
+    const s2 = E.startLife('早夭');
+    E.applyInit(s2, { linggenId: lg.id, bgId: bg.id, points: {}, craft: {}, exp: ['zaoyao'] });
+    t.eq(s2.lifeMax, baseLife - 20, '早夭应结算 寿元 -20');
+    t.gt(s2.lifeMax, 0, '寿元必须有地板（不得 ≤ 0）');
+    t.note('引入负值效果一律补地板——早夭的 -20 与【九天玄体】的体魄-1 同源');
+  });
+
+  S.case('轮回塔退役天赋：殷实/见面礼/延寿/舍生 不得残留，旧档按原价退还轮回点', (t) => {
+    const REINC = E.REINCARNATION;
+    const retired = ['stone', 'juling0', 'life20', 'shesheng'];
+    const left = REINC.filter(r => retired.indexOf(r.id) >= 0).map(r => r.id);
+    if (left.length) t.fail('REINCARNATION 仍残留退役天赋: ' + left.join(', '));
+    t.ok(REINC.some(r => r.id === 'cult') && REINC.some(r => r.id === 'xianling'),
+      '其余天赋（道种 / 先天灵宝等）必须保留');
+
+    // 舍生的两条消费点必须一并下线（否则会变成「有字段、无来源」的死配置）
+    //   同一状态对象前后翻转 shesheng，排除其它 RNG 因素，断言修炼速度完全不受影响
+    const a = bare('舍生探测'); a.reinc = a.reinc || {};
+    a.reinc.shesheng = 0; const g0 = E.cultGain(a).gain;
+    a.reinc.shesheng = 3; const g1 = E.cultGain(a).gain;
+    t.eq(g1, g0, '舍生已删除：s.reinc.shesheng 不得再影响修炼速度（' + g0 + ' → ' + g1 + '）');
+
+    // 旧档退款：stone(2) ×2 级 + shesheng(5) ×1 级 = 2×(1+2) + 5×1 = 11 点
+    const meta = { points: 100, lives: 1, reinc: { stone: 2, shesheng: 1, cult: 3 }, achievements: {}, flown: false, maxJie: 0 };
+    E.saveMeta(meta);
+    const m2 = E.loadMeta();
+    t.eq(m2.reinc.stone, undefined, '旧档 stone 字段应被清除');
+    t.eq(m2.reinc.shesheng, undefined, '旧档 shesheng 字段应被清除');
+    t.eq(m2.reinc.cult, 3, '未退役天赋（道种）不得被动到');
+    t.eq(m2.points, 111, '退款应为 2×(1+2) + 5×1 = 11 点（100 → 111），实际 ' + m2.points);
+    t.note('退款口径：单价 × (1+2+…+n)，与轮回阁「第 n 级 cost×n」的定价一致');
+    // 还原，避免污染后续用例
+    E.saveMeta({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0 });
+  });
+
   return S;
 };

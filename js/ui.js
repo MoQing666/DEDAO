@@ -2548,6 +2548,24 @@
     } else {
       lines.push('玉符完好无损——因为你还没遇上一场真正的死劫。');
     }
+    // —— 已战胜的死劫记录（死劫倒计时之外的战绩陈列）——
+    lines.push('—— —— —— ——');
+    lines.push('【已战胜的死劫记录】');
+    for (let i = 0; i < DEATH_EVENTS.length; i++) {
+      const ev = DEATH_EVENTS[i];
+      const idx = i + 1;
+      if (i < cracks) {
+        // 已胜：完整信息
+        const boss = ev.boss && ev.boss.name ? ev.boss.name : '';
+        lines.push('✓ 第 ' + idx + ' 劫 · ' + ev.title + '（第 ' + ev.year + ' 年' + (boss ? ' · ' + boss : '') + '） — 已胜');
+      } else if (i === cracks) {
+        // 下一劫：只知道地方，BOSS 与年份未知
+        lines.push('○ 第 ' + idx + ' 劫 · ' + ev.title + ' — 未知');
+      } else {
+        // 更远的未来：连地方都未知
+        lines.push('○ 第 ' + idx + ' 劫 · 未知');
+      }
+    }
     if (s.omen.allPassed) {
       lines.push('五劫已尽。玉上的字换了，可你一点也不觉得轻松。');
       if ((s.jie || 0) >= 6) lines.push('更糟的是：玉符正在从里面裂开，裂缝里透出来的不是光。');
@@ -6378,11 +6396,12 @@
     // 灵根展示（P1：角色页展示灵根与特质）
     if (S.linggen) {
       const lg = S.linggen;
-      const tr = (lg.trait && lg.trait.name) ? lg.trait.name : '无';
+      const tr = (lg.trait && lg.trait.name) ? lg.trait.name : '';
       const head = document.createElement('div');
       head.className = 'char-linggen';
       head.innerHTML = '灵根：<b>' + esc(lg.name) + '</b>（灵气效率 ' + Math.round(lg.qiMul * 100) + '%'
-        + (lg.affinityBonus ? '，法术亲和 +' + lg.affinityBonus + '%' : '') + '）　特质：' + esc(tr);
+        + (lg.affinityBonus ? '，法术亲和 +' + lg.affinityBonus + '%' : '') + '）'
+        + (tr ? '　特质：' + esc(tr) : '');
       box.appendChild(head);
     }
     const st = safeStage(S);
@@ -6955,7 +6974,7 @@
   let createSel = null;
   let createStep = 1;
   function showCreatePage() {
-    createSel = { linggenId: null, bgId: null, points: { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0 }, craft: {} };
+    createSel = { linggenId: null, bgId: null, points: { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0 }, craft: {}, exp: [] };
     createStep = 1;
     CRAFT_KINDS.forEach(function (k) { createSel.craft[k.id] = 0; });
     showScreen('create');
@@ -6967,6 +6986,8 @@
     if (createSel.bgId) { const bg = findBackground(createSel.bgId); spent += (bg.point || 0); }
     CRAFT_KINDS.forEach(function (k) { spent += (CRAFT_POINTS[createSel.craft[k.id]] || 0); });
     ['wu', 'ti', 'dun', 'shen', 'dao', 'ling'].forEach(function (k) { spent += (createSel.points[k] || 0); });
+    // 经历：口径在引擎（Engine.initExpCost），UI 不自算。【早夭】为负 → 抵消其他花费
+    spent += Engine.initExpCost(createSel);
     return spent;
   }
   const CT_STAT_NAMES = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', ling: '灵力' };
@@ -7025,7 +7046,15 @@
           + '<div class="ct-bonus">' + flavorBonusText(b.flavor) + '</div></div>';
       });
       h += '</div>';
-      h += '<h3 class="ct-sec">三 · 百艺</h3><div class="ct-craft">';
+      h += '<h3 class="ct-sec">三 · 经历</h3><div class="ct-grid ct-grid2">';
+      (Engine.INIT_EXP || []).forEach(function (e) {
+        const on = createSel.exp.indexOf(e.id) >= 0;
+        h += '<div class="ct-card' + (on ? ' selected' : '') + '" data-exp="' + e.id + '">'
+          + '<div class="ct-card-h"><b>' + e.name + '</b><span class="ct-point' + (e.cost < 0 ? ' good' : '') + '">' + e.cost + '点</span></div>'
+          + '<div class="ct-bonus">' + e.desc + '</div></div>';
+      });
+      h += '</div>';
+      h += '<h3 class="ct-sec">四 · 百艺</h3><div class="ct-craft">';
       CRAFT_KINDS.forEach(function (k) {
         const lv = createSel.craft[k.id];
         let opts = '';
@@ -7040,6 +7069,15 @@
         + '<button class="btn-main wide" id="ct-next"' + (canOk ? '' : ' disabled') + '>预览命数 · 下一页</button>';
       body.querySelectorAll('[data-lg]').forEach(function (c) { c.onclick = function () { createSel.linggenId = c.getAttribute('data-lg'); renderCreatePage(); }; });
       body.querySelectorAll('[data-bg]').forEach(function (c) { c.onclick = function () { createSel.bgId = c.getAttribute('data-bg'); renderCreatePage(); }; });
+      // 经历：多选 toggle（取 / 不取），点第二次即取消；【早夭】cost 为负，选中反而增加预算
+      body.querySelectorAll('[data-exp]').forEach(function (c) {
+        c.onclick = function () {
+          const id = c.getAttribute('data-exp');
+          const i = createSel.exp.indexOf(id);
+          if (i >= 0) createSel.exp.splice(i, 1); else createSel.exp.push(id);
+          renderCreatePage();
+        };
+      });
       body.querySelectorAll('.ct-lv').forEach(function (b) { b.onclick = function () { createSel.craft[b.getAttribute('data-ck')] = +b.getAttribute('data-cl'); renderCreatePage(); }; });
       $('ct-next').onclick = function () { createStep = 2; renderCreatePage(); };
       $('ct-back-enter').onclick = function () { showEnterPage(); };
@@ -7054,7 +7092,7 @@
       $('ct-back').onclick = function () { createStep = 1; renderCreatePage(); };
       $('ct-confirm').onclick = function () {
         if (!createSel.linggenId || !createSel.bgId || createSpent() > budget) { log('请先择灵根、定出身，且点数不可超支。', 'bad'); return; }
-        const sel = { linggenId: createSel.linggenId, bgId: createSel.bgId, points: createSel.points, craft: createSel.craft, initPoints: budget - createSpent() };
+        const sel = { linggenId: createSel.linggenId, bgId: createSel.bgId, points: createSel.points, craft: createSel.craft, exp: createSel.exp.slice(), initPoints: budget - createSpent() };
         Engine.applyInit(S, sel);
         const bg = findBackground(S.bg);
         showChapter('第 一 章 · ' + bg.title, bg.lines, { subtitle: '凡尘旧事' }).then(function () { showScreen('game'); initGame(); });
@@ -7077,6 +7115,10 @@
     s += '出身：' + (bg ? bg.title : '（未选）') + '<br>';
     if (bg && bg.story) s += '<span class="ct-story">出身·' + bg.story + '</span><br>';
     s += '六维（含出身/灵根/分配）：悟 ' + wu + '　体 ' + ti + '　遁 ' + dun + '　神 ' + shen + '　道 ' + dao + '　灵 ' + ling + '<br>';
+    // 经历：只列已选；早夭会把寿元压到 50（70-20），此处显式提示
+    const expNames = (Engine.INIT_EXP || []).filter(function (e) { return createSel.exp.indexOf(e.id) >= 0; });
+    s += '经历：' + (expNames.length ? expNames.map(function (e) { return e.name + '（' + e.cost + '点）'; }).join('、') : '（未选）') + '<br>';
+    s += '寿元：' + (S.lifeMax + (f.life || 0) + (createSel.exp.indexOf('life20') >= 0 ? 20 : 0) + (createSel.exp.indexOf('zaoyao') >= 0 ? -20 : 0)) + ' 年<br>';
     s += '百艺：' + CRAFT_KINDS.map(function (k) { return k.name + ' Lv' + createSel.craft[k.id]; }).join('、');
     pv.innerHTML = s;
   }

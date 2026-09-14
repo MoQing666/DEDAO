@@ -202,7 +202,7 @@ function cultGain(s) {
   if (s.flags && s.flags.daoLu) g *= 1.1;
   if (s.flags && s.flags.petGrown) g *= 1.15; else if (s.flags && s.flags.pet) g *= 1.05;
   g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
-  g *= 1 + ((s.reinc && s.reinc.shesheng) || 0) * 0.10;
+  // 舍生（s.reinc.shesheng）已于 2026-09-14 删除，模拟器同步下线该乘区
   let tCM = 0; s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.cultMul) tCM += t.apply.cultMul; }); if (tCM > 0) g *= (1 + tCM);
   s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.allMul) g *= (1 + t.apply.allMul); });
   g *= 1 + equipStats(s).cult;
@@ -274,30 +274,27 @@ function reincCost(id, level) {
 }
 function totalReincCost(inv) { let c = 0; for (const id in inv) c += reincCost(id, inv[id]); return c; }
 function applyReinc(s, inv) {
-  s.reinc = { cult: 0, alchemy: 0, forge: 0, shesheng: 0, herbGrow: 0, extraField: 0, destinySlot: 0, extraDestiny: 0 };
+  // 舍生 / 大千命格 已于 2026-09-14 删除；殷实/见面礼/延寿 已移入开荒「三 · 经历」(INIT_EXP)
+  //   故 s.reinc 只剩修炼 / 百艺 / 灵田 / 命格栏几项
+  s.reinc = { cult: 0, alchemy: 0, forge: 0, herbGrow: 0, extraField: 0, destinySlot: 0 };
   REINCARNATION.forEach(r => {
     const n = inv[r.id] || 0; if (!n) return;
     for (let i = 0; i < n; i++) {
       if (r.id === 'wu') s.wu++; else if (r.id === 'ti') s.ti++;
       else if (r.id === 'dun') s.dun++; else if (r.id === 'shen') s.shen++;
       else if (r.id === 'dao') s.dao++; else if (r.id === 'ling') s.ling++;
-      else if (r.id === 'stone') s.stone += 100;
-      else if (r.id === 'juling0') s.elixirs.juling = (s.elixirs.juling || 0) + 3;
-      else if (r.id === 'life20') s.lifeMax += 20;
       else if (r.id === 'cult') s.reinc.cult += 1;
-      else if (r.id === 'shesheng') s.reinc.shesheng += 1;
       else if (r.id === 'alchemy') s.reinc.alchemy += 1;
       else if (r.id === 'forge') s.reinc.forge += 1;
       else if (r.id === 'herbGrow') s.reinc.herbGrow += 1;
       else if (r.id === 'extraField') s.reinc.extraField += 1;
       else if (r.id === 'destinySlot') s.reinc.destinySlot += 1;
-      else if (r.id === 'extraDestiny') s.reinc.extraDestiny += 1;
       else if (r.id === 'lvling_bottle') s.reinc.lvling_bottle += 1;
     }
   });
 }
 // 正常玩家：六维停在5（死忠才叠到9），其余天赋拉满到~600点预算（旧版上限）
-const NORMAL_INV = { wu: 5, ti: 5, dun: 5, shen: 5, dao: 5, ling: 5, stone: 4, life20: 3, alchemy: 3, forge: 3, herbGrow: 3, extraField: 3, destinySlot: 1, extraDestiny: 1, cult: 5, shesheng: 3, lvling_bottle: 3, juling0: 3 };
+const NORMAL_INV = { wu: 5, ti: 5, dun: 5, shen: 5, dao: 5, ling: 5, alchemy: 3, forge: 3, extraField: 3, destinySlot: 1, cult: 5, lvling_bottle: 3 };
 // 死忠玩家：全部天赋拉满（1406点，六维满9）
 const HARDCORE_INV = {}; REINCARNATION.forEach(r => HARDCORE_INV[r.id] = r.max);
 

@@ -3,19 +3,25 @@
    成本公式（ui.js:5058 实装）：第 n 级花费 = r.cost × n；
    单天赋满级成本 = r.cost × (1+2+...+max) = r.cost × max(max+1)/2。 */
 
-// 真实 REINCARNATION（data.js:2453）
+// 真实 REINCARNATION（data.js）
+// 2026-09-14 同步：殷实/见面礼/延寿 → 移入开荒「三 · 经历」(INIT_EXP)；舍生 / 大千命格 → 已删除
 const REINC = [
   { id:'wu',   name:'慧根',   cost:6, max:5 }, { id:'ti',   name:'强体',   cost:3, max:5 },
   { id:'dun',  name:'灵步',   cost:3, max:5 }, { id:'shen', name:'神念',   cost:3, max:5 },
   { id:'dao',  name:'定心',   cost:6, max:5 }, { id:'ling', name:'灵海',   cost:3, max:5 },
-  { id:'stone',name:'殷实',   cost:2, max:4 }, { id:'juling0',name:'见面礼',cost:3, max:3 },
   { id:'cult', name:'道种',   cost:6, max:5 }, { id:'alchemy',name:'丹心',  cost:3, max:3 },
-  { id:'forge',name:'器魂',   cost:3, max:3 }, { id:'life20',name:'延寿',   cost:2, max:3 },
-  { id:'shesheng',name:'舍生',cost:5, max:3 }, { id:'lvling_bottle',name:'小绿瓶',cost:3,max:3 },
+  { id:'forge',name:'器魂',   cost:3, max:3 }, { id:'lvling_bottle',name:'小绿瓶',cost:3,max:3 },
   { id:'extra_field',name:'随身灵田',cost:3, max:3 }, { id:'destiny_slot',name:'我命由我',cost:12,max:1 },
-  { id:'extra_destiny',name:'大千命格',cost:3, max:4 }, { id:'destiny_lock',name:'天命锁定',cost:12,max:1 }
+  { id:'destiny_lock',name:'天命锁定',cost:12,max:1 }, { id:'xianling',name:'先天灵宝',cost:5, max:3 }
 ];
 const SIX = ['wu','ti','dun','shen','dao','ling'];
+/* 开荒「三 · 经历」（INIT_EXP，2026-09-14 新增）：固定点数、二值选择；早夭为负值（增加预算） */
+const INIT_EXP_SIM = [
+  { id:'stone',   name:'殷实',   cost:  3, apply:'灵石 +500' },
+  { id:'juling0', name:'见面礼', cost:  4, apply:'聚气丹 ×3' },
+  { id:'life20',  name:'延寿',   cost:  2, apply:'寿元 +20' },
+  { id:'zaoyao',  name:'早夭',   cost: -3, apply:'寿元 -20' }
+];
 function talentMaxCost(r){ let s=0; for(let n=1;n<=r.max;n++) s += r.cost*n; return s; }
 
 console.log('========== 1. 轮回天赋(REINCARNATION)各满级成本 ==========');

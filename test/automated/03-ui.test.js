@@ -1251,6 +1251,84 @@ module.exports = async function build() {
     if (real.length) t.fail('百艺页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 回归 2026-09-14：开荒分四段（灵根/出身/经历/百艺）。
+     殷实/见面礼/延寿 由轮回塔移入「三 · 经历」，百艺由三挪到四；新增【早夭】= -3 点（反向收益）。 */
+  S.case('开荒页：三 · 经历 四项齐备、点数结算正确、【早夭】为负点、百艺已挪到「四」', async (t) => {
+    const { win, doc, errors } = await boot();
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    const input = doc.getElementById('enter-name-input');
+    if (input) { input.value = '经历校验'; input.dispatchEvent(new win.Event('input', { bubbles: true })); }
+    const pool = doc.getElementById('enter-destiny-pool');
+    if (pool && pool.children.length) pool.children[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 80));
+    click(win, 'enter-start');
+    await new Promise(r => setTimeout(r, 300));
+    t.eq(visible(doc, 'screen-create'), true, '未进入开荒页');
+
+    const body = doc.getElementById('create-body');
+    const secs = [...body.querySelectorAll('.ct-sec')].map(e => e.textContent.replace(/\s+/g, ''));
+    t.eq(secs.length, 4, '开荒页应有 4 段（灵根/出身/经历/百艺），实际: ' + secs.join(' | '));
+    t.eq(secs[2], '三·经历', '第三段必须是「三 · 经历」，实际: ' + secs[2]);
+    t.eq(secs[3], '四·百艺', '百艺应挪到「四 · 百艺」，实际: ' + secs[3]);
+
+    const expCard = (i) => body.querySelectorAll('[data-exp]')[i];
+    const expTxt = [...body.querySelectorAll('[data-exp]')].map(c => c.textContent.replace(/\s+/g, ''));
+    t.eq(expTxt.length, 4, '经历应有 4 项（殷实/见面礼/延寿/早夭），实际 ' + expTxt.length);
+    t.ok(/^殷实3点/.test(expTxt[0]), '殷实应为 3 点，实际: ' + expTxt[0]);
+    t.ok(/^见面礼4点/.test(expTxt[1]), '见面礼应为 4 点，实际: ' + expTxt[1]);
+    t.ok(/^延寿2点/.test(expTxt[2]), '延寿应为 2 点，实际: ' + expTxt[2]);
+    t.ok(/^早夭-3点/.test(expTxt[3]), '早夭应为 -3 点，实际: ' + expTxt[3]);
+
+    const budgetTxt = () => doc.querySelector('.create-budget b').textContent.trim();
+    const base = parseInt(budgetTxt(), 10);
+    t.eq(base, 14, '开荒池 = 基础 10 + 开荒 Lv1 的 4 = 14，实际 ' + base);
+    const fire = (el) => el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+
+    fire(expCard(0));                                  // 殷实 +3
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 3, '选「殷实」（3 点）后剩余点数应 -3');
+    t.ok(/selected/.test(expCard(0).className), '「殷实」卡片应高亮为已选');
+
+    fire(expCard(3));                                  // 早夭 -3
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base, '再选「早夭」（-3 点）应把消耗抵消回原值 —— 早夭是「增加预算」而非消耗');
+    t.note('全选四项净花 = 3+4+2-3 = 6 点');
+
+    fire(expCard(3));                                  // 再点一次取消
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 3, '再点一次「早夭」应取消选择（多选 toggle）');
+    t.ok(!/selected/.test(expCard(3).className), '取消后卡片不应再高亮');
+
+    fire(expCard(1));                                  // 见面礼 +4
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 7, '再选「见面礼」（4 点）剩余应再 -4（累计 -7）');
+    fire(expCard(1));                                  // 取消见面礼
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 3, '取消「见面礼」应退回 4 点');
+    t.note('全选四项净花 = 3 + 4 + 2 - 3 = 6 点');
+
+    // 命数总览页应列出已选经历（灵根 5 + 出身 1 + 殷实 3 + 延寿 2 = 11 ≤ 14，不超支）
+    fire(expCard(2));                                  // 延寿 +2 → 已选 [殷实, 延寿]
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 5, '已选殷实+延寿 → 累计 -5 点');
+    // 「下一页」需先择灵根 / 定出身，否则按钮 disabled（预览页不会渲染）
+    fire(body.querySelector('[data-lg]'));
+    await new Promise(r => setTimeout(r, 80));
+    fire(body.querySelector('[data-bg]'));
+    await new Promise(r => setTimeout(r, 80));
+    const nx = doc.getElementById('ct-next');
+    t.ok(nx && !nx.disabled, '择灵根 + 定出身 + 未超支 后「预览命数」应可点');
+    if (nx && !nx.disabled) fire(nx);
+    await new Promise(r => setTimeout(r, 180));
+    const pv = doc.getElementById('ct-preview');
+    t.ok(pv && /经历：[\s\S]*殷实[\s\S]*延寿/.test(pv.textContent), '命数总览应列出已选经历（殷实/延寿），实际: ' + (pv ? pv.textContent.replace(/\s+/g, ' ').slice(-90) : '无预览'));
+    t.ok(pv && /寿元：90\s*年/.test(pv.textContent), '总览寿元应为 70 + 20（延寿）= 90 年，实际: ' + (pv ? pv.textContent.replace(/\s+/g, ' ').slice(-90) : '无预览'));
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('开荒经历页报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   S.case('轮回塔：加减按钮真实可点（+/− 生效·点数变动·可返还）', async (t) => {
     const meta = { points: 999, lives: 1, reinc: {}, achievements: {}, flown: false, maxJie: 0 };
     const { win, doc, errors } = await boot({ seed: { dedao_meta: JSON.stringify(meta) } });
@@ -1259,7 +1337,16 @@ module.exports = async function build() {
     const list = doc.getElementById('rb-list');
     if (!list) { t.fail('轮回塔列表 #rb-list 缺失'); return; }
     const cards = () => [...list.querySelectorAll('.rb-card')];
-    t.ok(cards().length >= 19, '轮回塔应渲染 19 张卡（开荒 + 18 天赋），实际 ' + cards().length);
+    // 卡数 = 「开荒」1 张 + REINCARNATION 全量。2026-09-14 二批：殷实/见面礼/延寿 移入开荒经历、
+    // 舍生 删除 → 18 → 14。这里取引擎真值动态断言，避免以后再动天赋表时写死数字失效。
+    const reincLen = (win.Engine && win.Engine.REINCARNATION) ? win.Engine.REINCARNATION.length : 14;
+    t.eq(cards().length, reincLen + 1,
+      '轮回塔应渲染「开荒 + ' + reincLen + ' 天赋」共 ' + (reincLen + 1) + ' 张卡，实际 ' + cards().length);
+    // 退役天赋不得再出现（殷实/见面礼/延寿/舍生）
+    const gone = ['殷实', '见面礼', '延寿', '舍生'];
+    const still = cards().filter(c => gone.some(n => (c.querySelector('h4') || {}).textContent === n));
+    if (still.length) t.fail('轮回塔仍残留已退役天赋：' + still.map(c => c.querySelector('h4').textContent).join('、'));
+    t.note('殷实/见面礼/延寿 → 开荒「三 经历」；舍生 → 删除。旧档已购等级由 loadMeta 全额退还轮回点');
 
     // 结构：每张卡恰有 2 个步进按钮，且位于天赋名所在行（.rb-head）—— 手机端不再单占一行
     const noBtns = cards().filter(c => c.querySelectorAll('.rb-step').length !== 2);

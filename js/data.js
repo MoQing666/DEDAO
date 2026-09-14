@@ -2983,13 +2983,15 @@ const REINCARNATION = [
   { id: 'ling',       name: '灵海',     desc: '灵力 +1（灵力上限+20、攻击+5）', cost: 3, max: 9,  apply: { ling: 1 } },
   { id: 'xianling',  name: '先天灵宝', desc: '法宝装备槽 +1',                  cost: 5, max: 3,  apply: { treasureSlot: 1 } },
   /* ===== 其余天赋 ===== */
-  { id: 'stone',      name: '殷实',     desc: '出生时灵石 +100',                cost: 2, max: 4,  apply: { stone: 100 } },
-  { id: 'juling0',    name: '见面礼',   desc: '出生时自带聚气丹 ×3',           cost: 3, max: 3,  apply: { elixirs: { juling: 3 } } },
+  /* 2026-09-14 用户二批定稿（本轮）：
+     · 殷实 / 见面礼 / 延寿 → **移出轮回塔**，改挂「开荒 · 三 经历」（见下方 INIT_EXP），
+       与开荒点数同池结算，不再占用轮回点；
+     · 舍生 → **删除**（连带引擎里 `s.reinc.shesheng` 的「修炼 +10%」与「每次修炼 -1 寿元」
+       两条消费点一并下线，避免留下无来源的死配置）；
+     · 旧档若买过这 4 项，由 `loadMeta` 按原价（首价 × 1+2+…+n）全额退还轮回点。 */
   { id: 'cult',       name: '道种',     desc: '修炼速度 +10%（永驻）',          cost: 6, max: 5,  apply: { cultMul: 0.10 } },
   { id: 'alchemy',    name: '丹心',     desc: '炼丹时间 -1年',                   cost: 3, max: 3,  apply: { alchemyTimeReduce: 1 } },
   { id: 'forge',      name: '器魂',     desc: '炼器时间 -1年',                   cost: 3, max: 3,  apply: { forgeTimeReduce: 1 } },
-  { id: 'life20',     name: '延寿',     desc: '出生寿元 +20',                   cost: 2, max: 3,  apply: { life: 20 } },
-  { id: 'shesheng',   name: '舍生',     desc: '修炼速度 +10%，每次修炼 -1寿元', cost: 5, max: 3,  apply: { shesheng: 0.10 } },
   { id: 'lvling_bottle', name: '小绿瓶', desc: '灵草成长时间 -1年',              cost: 3, max: 3,  apply: { herbGrowReduce: 1 } },
   { id: 'extra_field',   name: '随身灵田', desc: '初始灵田 +1块',                cost: 3, max: 3,  apply: { extraField: 1 } },
   { id: 'destiny_slot',  name: '我命由我', desc: '初始命格栏 +1格',                cost: 12, max: 1,  apply: { destinySlot: 1 } },
@@ -3651,6 +3653,18 @@ function reincTalentNextCost(lv) {
 }
 // 百艺目标等级占点（base lv0 → 上限 lv3；Lv0 默认 0 点，Lv1 需 1 点）
 const CRAFT_POINTS = { 0: 0, 1: 1, 2: 2, 3: 6 };
+
+/* ---------------- 开荒 · 三 经历（§3.5） ----------------
+   2026-09-14 用户定稿：由轮回阁移入（殷实 / 见面礼 / 延寿）+ 新增【早夭】。
+   · 每项都是「取 / 不取」的二值选择，cost 为**固定点数**（不像轮回天赋那样随等级递增）；
+   · 【早夭】cost 为负数（-3）→ 选它反而**增加** 3 点开荒预算，用来对冲其他选择（以寿元换点数）；
+   · 效果在本世开局（`Engine.applyInit`）一次性结算，不入 meta、不跨世、可重复选择。 */
+const INIT_EXP = [
+  { id: 'stone',   name: '殷实',   desc: '出生时灵石 +500',          cost: 3,  apply: { stone: 500 } },
+  { id: 'juling0', name: '见面礼', desc: '出生时自带聚气丹 ×3',      cost: 4,  apply: { elixirs: { juling: 3 } } },
+  { id: 'life20',  name: '延寿',   desc: '出生寿元 +20',             cost: 2,  apply: { life: 20 } },
+  { id: 'zaoyao',  name: '早夭',   desc: '出生寿元 -20（换取 3 点）', cost: -3, apply: { life: -20 } }
+];
 
 /* ---------------- 百艺（§5.3） ---------------- */
 const CRAFT_KINDS = [

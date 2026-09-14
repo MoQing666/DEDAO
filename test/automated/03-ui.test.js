@@ -1187,5 +1187,72 @@ module.exports = async function build() {
     if (real.length) t.fail('轮回塔交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 回归 2026-09-14：山河探索的「文案 / 选项 / 属性结果」都必须展示并真正结算。
+     旧逻辑 runEvent 只在 ev.chapter 为真时才走章节层，而 shanhe 池 13 个事件里有 7 个是
+     chapter:false 且带 choices（又没有顶层 effect）：
+       → 选项永不展示 → choices[].effect 永不结算（拿不到任何属性）
+       → 文案与结果只能写进主界面日志，而玩家当时停留在游历页（静态地图，没有日志区）
+     玩家端表现就是「文案和结果都不出现，且没有属性结果」。 */
+  S.case('山河探索：文案/选项/属性结果都要展示并结算（chapter:false 也走章节层）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '山河');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+    // 把 shanhe 池替换为一个**确定性的** chapter:false + choices + 无顶层 effect 事件
+    //   —— 正是旧版被静默吞掉的那一类（chapter:false 才是复现关键）。
+    //   min:0 保证炼气期（idx=0）也满足 evOK，无需伪造境界存档。
+    win.eval(`(function(){
+      EVENTS.shanhe.length = 0;
+      E('shanhe', {
+        id: 'test_shanhe_reg', title: '测试山河', weight: 1, min: 0, max: 14,
+        lines: ['山河文案·第一段', '山河文案·第二段'],
+        choices: [{ t: '拾取灵石', effect: { stone: 123 }, lines: ['你拾得灵石一枚。（灵石+123）'] }]
+      });
+    })()`);
+    const stoneBefore = parseInt((doc.getElementById('h-stone') || {}).textContent, 10);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+    const node = doc.querySelector('#travel-body [data-act="shanhe"]');
+    t.ok(!!node, '游历页应有「山河探索」入口');
+    if (!node) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // ① 择一而往的弹窗必须回到主界面（游历页没有日志区，否则文案/结果全落在离屏日志）
+    t.eq(visible(doc, 'screen-game'), true, '择一弹窗应回到主界面展示');
+    const cards = [...doc.querySelectorAll('#modal-body > div')].filter(e => /测试山河/.test(e.textContent));
+    t.ok(cards.length >= 1, '弹窗应列出可去的际遇');
+    if (!cards.length) return;
+    cards[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // ② chapter:false 的事件同样要弹章节层，文案必须可见
+    t.eq(visible(doc, 'chapter'), true, 'chapter:false 的山河事件也应弹章节层（旧版此处无任何展示）');
+    const cbody = () => (doc.getElementById('chapter-body') || {}).textContent || '';
+    t.ok(/山河文案·第一段/.test(cbody()), '章节层应展示文案（实：' + cbody().slice(0, 60) + '）');
+    // 推进到选项
+    for (let i = 0; i < 6 && !doc.querySelector('#chapter-choices .choice-btn'); i++) {
+      click(win, 'chapter-actions');
+      await new Promise(r => setTimeout(r, 160));
+    }
+    const cb = doc.querySelector('#chapter-choices .choice-btn');
+    t.ok(!!cb, '应出现可选项（旧版此处永远不展示 → 属性永远拿不到）');
+    if (!cb) return;
+    cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // ③ 结果必须展示在章节层
+    t.ok(/灵石 \+123/.test(cbody()), '属性结果应展示在章节层（实：' + cbody().slice(-70) + '）');
+    // 收尾：关掉章节层 → 触发 afterAction/refresh，确认主日志与主界面数值都同步
+    click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 250));
+    const logTxt = (doc.getElementById('log') || {}).textContent || '';
+    t.ok(/【测试山河】/.test(logTxt), '主日志应留下山河际遇记录（实：' + logTxt.slice(-90) + '）');
+    // 主界面顶栏由 refresh() 驱动，可能比章节层晚一拍；轮询等它同步（固定等待在慢机器上假红）
+    await waitUntil(() => parseInt((doc.getElementById('h-stone') || {}).textContent, 10) === stoneBefore + 123);
+    const stoneAfter = parseInt((doc.getElementById('h-stone') || {}).textContent, 10);
+    t.eq(stoneAfter, stoneBefore + 123,
+      '选项 effect 应真正结算（灵石应 +123，实 ' + stoneBefore + ' → ' + stoneAfter + '）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('山河探索流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

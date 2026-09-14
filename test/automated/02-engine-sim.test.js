@@ -606,6 +606,17 @@ module.exports = async function build() {
     ['youhun_pijian', 'xuanwu_guijia', 'dixue_ren', 'jilin_jia', 'panshi_kai', 'tafeng_lv'].forEach(a => {
       t.ok(ART[a], '山河掉落法宝应存在于 ARTIFACTS: ' + a);
     });
+    // 每个山河事件都必须「有结果」：选项要么是战斗（有胜负结算），要么带 effect。
+    //   2026-09-14 用户反馈「山河探索文案和结果都不展示、且没有属性结果」——
+    //   根因就是 7 个 chapter:false 的事件虽有 choices 却没有顶层 effect，
+    //   UI 层又只在 chapter 时弹章节层 → 选项与 effect 双双失效。此处守死数据侧。
+    shanhe.forEach(function (ev) {
+      t.ok(!!(ev.choices && ev.choices.length), '山河事件 ' + ev.id + ' 应含选项');
+      (ev.choices || []).forEach(function (c, ci) {
+        t.ok(!!c.fight || !!c.effect || !!c.next || !!c.special,
+          '山河事件 ' + ev.id + ' 的第 ' + (ci + 1) + ' 个选项必须有结果（fight/effect/next）');
+      });
+    });
     // 引擎可触发：高境界角色连续山河探索应返回 multi 事件选择
     const s = E.startLife('山河探索');
     E.commitStart(s, TALENTS[0].id);

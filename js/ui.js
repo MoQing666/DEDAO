@@ -1861,7 +1861,12 @@
       else if (hasMoney) AudioManager.playSfx('money');
       else AudioManager.playSfx('good');
     }
-    if (ev.chapter) {
+    // ⚠ 带选项的事件一律走章节层，不能只看 ev.chapter。
+    //   「山河探索」的 13 个事件里有 7 个是 chapter:false 但带 choices（且没有顶层 effect）：
+    //   旧逻辑会跳过章节层 → 选项永不展示、choices[].effect 永不结算，
+    //   玩家端表现为「文案和结果都不出现，且拿不到任何属性」。
+    const hasChoices = !!(ev.choices && ev.choices.length);
+    if (ev.chapter || hasChoices) {
       return showChapter(ev.title, lines, {
         choices: ev.choices,
         toLog: true,
@@ -1918,6 +1923,10 @@
     afterAction();
   }
   function openEventChoice(events) {
+    // 择一而往的弹窗、随后的章节层与结算日志统一在主界面展示：
+    //   游历页（#screen-travel）是静态地图、没有日志区，从那里触发时文案/结果会全部落在离屏的主日志里。
+    //   与「游历 / 仙缘 / 探寻仙缘」入口保持一致（它们都先 showScreen('game') 再触发）。
+    showScreen('game');
     const ov = $('modal');
     const box = $('modal-body');
     ov.style.display = 'flex';

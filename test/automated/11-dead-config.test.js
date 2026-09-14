@@ -121,20 +121,65 @@ module.exports = async function build() {
   });
 
   /* ---------------------------------------------------------------- */
-  /* 2. 新命格 DESTINIES.effect：techTypeBonus / tribBonus              */
+  /* 2. 新命格 DESTINIES.effect：noElemSpellMul / swordCritRate / tribBonus */
   /* ---------------------------------------------------------------- */
-  S.case('新命格 effect：万剑归宗 techTypeBonus（心法效果 +25%）', (t) => {
-    const s = bare('万剑归宗');
-    s.techs = ['xt_xinfa4'];                       // 玄武真经 mult 2.30
-    s.techEquip = { xinfa: null, shufa: [], dunshu: null };
-    E.refreshStats(s);
-    t.ok(Math.abs(E.techMult(s) - 2.30) < 1e-9, '无命格：心法倍率 = 2.30');
-    t.eq(E.getTechTypeBonus(s, 'xinfa'), 0, '未选命格时 techTypeBonus 应为 0');
-    s.destinies = ['wanjian'];
-    E.refreshStats(s);
-    t.eq(E.getTechTypeBonus(s, 'xinfa'), 0.25, '万剑归宗 techTypeBonus{xinfa:0.25}');
-    t.ok(Math.abs(E.techMult(s) - 2.30 * 1.25) < 1e-9, '心法倍率应乘上 1.25 = 2.875');
-    t.note('techMult = 心法倍率 × (1 + getTechTypeBonus(xinfa))；无心法不生效，避免白送');
+  S.case('新命格 effect：万剑归宗 noElemSpellMul / swordCritRate（无属性剑法 +50% 伤害 / +50% 暴击）', (t) => {
+    // ⚠ 用独立上下文：本用例要跑 120 次施法，会大量消耗随机数流；
+    //   若复用套件共享的 E，会改变后续用例（眩晕 stun 等）的确定性随机结果。
+    const G2 = createGameContext({ seed: 20260914 });
+    const E2 = G2.get('Engine');
+    const bare2 = function () {
+      const s = E2.startLife('万剑归宗');
+      E2.commitStart(s, 'wuxing');
+      s.talents = []; s.destinies = []; s.arts = []; s.linggen = null;
+      s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+      s.array = { wuxing: {}, juling: { level: 0 } };
+      s.sect = null; s.elixirs = {};
+      s.dun = 0; s.dodgePct = 0; s.atkPct = 0; s.critPct = 0; s.earthPct = 0;
+      s.ti = 0; s.shen = 0; s.dao = 0;
+      s.ling = 100;                            // 让 atk 由灵力主导，隔离「命格+3神识」带来的 atk 抬升
+      E2.refreshStats(s);
+      return s;
+    };
+    // 单次释放剑气诀（element:'无'，青云剑宗剑法），返回 { 掉血, 是否真暴击 }
+    const castJianqi = function (destinies, times) {
+      const s = bare2();
+      s.destinies = destinies;
+      E2.refreshStats(s);
+      const out = [];
+      for (let i = 0; i < times; i++) {
+        s.mp = 9999;
+        s.hp = s.hpMax;
+        E2.combatStart(s, { name: '木桩', atk: 1, hp: 1000000 });
+        s.battle.hp = 1000000; s.battle.hpMax = 1000000;
+        const before = s.battle.hp;
+        const r = E2.combatAct(s, 'spell', 'jianqi');
+        out.push({
+          dmg: before - s.battle.hp,
+          // 真暴击战报只有两种（与「法术附带 critUp 暴击率+8%」的增益行区分开）
+          crit: (r.lines || []).some(function (l) { return /暴击！|暴击连击/.test(l); })
+        });
+      }
+      return out;
+    };
+    const avg = function (arr) { return arr.reduce(function (a, x) { return a + x.dmg; }, 0) / arr.length; };
+
+    // 数值口径：字段确实被引擎读到
+    t.eq(E2.getDestinyBonus({ destinies: ['wanjian'] }, 'noElemSpellMul'), 0.5, '万剑归宗 noElemSpellMul = 0.5');
+    t.eq(E2.getDestinyBonus({ destinies: ['wanjian'] }, 'swordCritRate'), 0.5, '万剑归宗 swordCritRate = 0.5');
+
+    // 行为：无属性剑法伤害至少 ×1.5（atk 抬升只占 ~3%，不足以解释 1.45 倍）
+    const N = 60;
+    const baseArr = castJianqi([], N), upArr = castJianqi(['wanjian'], N);
+    const a0 = avg(baseArr), a1 = avg(upArr);
+    t.ok(a0 > 0, '无命格时剑气诀应造成伤害');
+    t.ok(a1 >= a0 * 1.45, '万剑归宗应令剑法伤害 ≥ +50%（均值 ' + a0.toFixed(1) + ' → ' + a1.toFixed(1) + '）');
+
+    // 行为：剑法暴击率显著提升（基础 ≈ 剑气诀自身 critUp 8%，命格再 +50%）
+    const c0 = baseArr.filter(function (x) { return x.crit; }).length / N;
+    const c1 = upArr.filter(function (x) { return x.crit; }).length / N;
+    t.ok(c1 - c0 > 0.25, '万剑归宗应显著提高剑法暴击率（' + Math.round(c0 * 100) + '% → ' + Math.round(c1 * 100) + '%）');
+    t.note('无属性（青云剑宗剑法：剑气诀/万剑归宗/破天一击）在 combatAct 法术分支 ×(1+noElemSpellMul)，并经 playerHit 的 extraCrit 叠加 swordCritRate');
   });
 
   S.case('新命格 effect：天命之子 tribBonus（+15% 渡劫成功率）', (t) => {
@@ -380,19 +425,23 @@ module.exports = async function build() {
   });
 
   S.case('新机制①：眩晕 stun（裂地诀 概率命中 → 敌方下回合无法行动）', (t) => {
-    const realRandom = Math.random;
+    // ⚠ 必须 stub「沙箱内」的 Math：引擎在 vm 沙箱里跑，用的是沙箱自己的 Math，
+    //   直接改宿主 Node 的 Math.random 对引擎无效（旧写法一直空转，靠随机数运气过关，
+    //   2026-09-14 因随机流位置变动而暴露 → 改为 stub 沙箱 Math，用例真正确定化）。
+    const SMath = G.get('Math');
+    const realRandom = SMath.random;
     function castLieDi(forceHit) {
       const s = bare('裂地诀');
-      s.ling = 200;                                  // 抬升灵力上限，确保 22 点消耗必能施展
+      s.ling = 200;                                  // 抬升灵力上限，确保 55 点消耗必能施展
       E.refreshStats(s);
       s.techs = ['lie_di'];
       s.techEquip = { xinfa: null, shufa: ['lie_di'], dunshu: null };
       E.refreshStats(s);
       dummyFight(s, 100, 1000000);
       s.mp = s.mpMax;
-      Math.random = () => (forceHit ? 0 : 0.99);      // 0 < 20% 命中；0.99 > 20% 未中
+      SMath.random = () => (forceHit ? 0 : 0.99);     // 0 < 20% 命中；0.99 > 20% 未中
       const r = E.combatAct(s, 'spell', 'lie_di');
-      Math.random = realRandom;
+      SMath.random = realRandom;
       return { s: s, lines: r.lines.join('|') };
     }
     const hit = castLieDi(true);

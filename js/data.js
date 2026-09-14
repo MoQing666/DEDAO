@@ -3045,17 +3045,18 @@ const DESTINIES = {
   xiantijian:   { name:'先天剑体',   grade:'紫', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.08, critRate:0.06 }, desc:'先天剑体，剑道无双' },
   tianming:     { name:'天命之子',   grade:'紫', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, effect:{ stonePerYear:15 }, desc:'天命所归，万事亨通' },
 
-  /* ======== 仙命（金）—— 全维+2 / 战斗+18~25% ======== */
-  jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, desc:'九天之上，唯我独尊' },
-  daoxinjm:     { name:'道心渐明',   grade:'金', type:'attr',  effect:{ wuPerYear:0.3 }, desc:'道心通明，悟性渐增' },
-  roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:0.3, defMul:0.15 }, desc:'肉身成圣，万法不侵' },
-  tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, ling:3 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
+  /* ======== 仙命（金）—— 2026-09-14 用户重做数值表 ========
+     允许负值属性；「前6年每年+X」用 *_PerYear + *_PerYearCap 表达 */
+  jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, shen:2, dao:1, ling:2, ti:-1, dun:-1 }, desc:'九天之上，唯我独尊' },
+  daoxinjm:     { name:'道心渐明',   grade:'金', type:'attr',  effect:{ wuPerYear:1, wuPerYearCap:6 }, desc:'道心通明，悟性渐增' },
+  roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:1, tiPerYearCap:6, defMul:0.30 }, desc:'肉身成圣，万法不侵' },
+  tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, ling:2 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
   shafadj:      { name:'杀伐果断',   grade:'金', type:'combat', effect:{ atkMul:0.15, critRate:0.13, executeBonus:0.10 }, desc:'一击必杀，挡我者死' },
-  wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', effect:{ defMul:0.18, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
-  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, effect:{ stonePerYear:25 }, desc:'先天道体，万法皆通' },
-  zhanshen:     { name:'战神降世',   grade:'金', type:'combat', effect:{ atkMul:0.18, critRate:0.15, lifesteal:0.08 }, desc:'战神降世，天下无敌' },
-  tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:2, dun:2, shen:2, dao:2, ling:2 }, effect:{ tribBonus:0.15, stonePerYear:20 }, desc:'天道眷顾，万事如意' },
-  wanjian:      { name:'万剑归宗',   grade:'金', type:'combat', effect:{ atkMul:0.20, critRate:0.18, techTypeBonus:{ xinfa:0.25 } }, desc:'万剑归宗，剑道巅峰' }
+  wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.20, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
+  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, desc:'先天道体，万法皆通' },
+  zhanshen:     { name:'战神降世',   grade:'金', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.20, recoverPct:0.10 }, desc:'战神降世，天下无敌' },
+  tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:1, shen:1, ling:1 }, effect:{ tribBonus:0.15 }, desc:'天道眷顾，万事如意' },
+  wanjian:      { name:'万剑归宗',   grade:'金', type:'combat', attr:{ shen:3 }, effect:{ noElemSpellMul:0.50, swordCritRate:0.50 }, desc:'万剑归宗，剑道巅峰' }
 };
 
 /* ---------------- 工具函数 ---------------- */

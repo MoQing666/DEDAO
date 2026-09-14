@@ -779,8 +779,8 @@ const Engine = (function () {
   function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
   /* 攻速（几率额外攻击一次）：遁速×1%（×dunMul）+ 命格额外攻击 + 装备攻速 + 疾风连击 doubleHit */
   function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + talentApply(s, 'doubleHit'); }
-  /* 回复（吸血）：体魄×1% + 命格 lifesteal + 装备回复词条 */
-  function getRecoverPct(s) { return effAttr(s, 'ti') * 0.01 + getDestinyBonus(s, 'lifesteal') + (equipStats(s).recover || 0) / 100; }
+  /* 回复（吸血）：体魄×1% + 命格 recoverPct（回复）+ 命格 lifesteal（吸血）+ 装备回复词条 */
+  function getRecoverPct(s) { return effAttr(s, 'ti') * 0.01 + getDestinyBonus(s, 'recoverPct') + getDestinyBonus(s, 'lifesteal') + (equipStats(s).recover || 0) / 100; }
   /* 反击率：遁速（有效值）×1% + 命格反击率。与 getDodgeRate/getExtraAtkChance 同族，一律取 effAttr（漏用基础值会让命格/法宝加成失效） */
   function getCounterRate(s) { return effAttr(s, 'dun') * 0.01 + getDestinyBonus(s, 'counterRate'); }
   /* ---------------- 防御：唯一权威口径（面板显示 = 战斗实际减伤） ----------------
@@ -805,8 +805,11 @@ const Engine = (function () {
     (s.destinies || []).forEach(function(d) {
       const dest = DESTINIES[d];
       if (!dest || !dest.effect) return;
-      if (dest.effect.wuPerYear) s.wu = (s.wu || 0) + dest.effect.wuPerYear;
-      if (dest.effect.tiPerYear) s.ti = (s.ti || 0) + dest.effect.tiPerYear;
+      // *_PerYearCap：只在前 N 年逐年生效（仙命【道心渐明】/【肉身成圣】= 前 6 年每年 +1）
+      const y = s.year || 0;
+      const inCap = function (cap) { return !cap || y <= cap; };
+      if (dest.effect.wuPerYear && inCap(dest.effect.wuPerYearCap)) s.wu = (s.wu || 0) + dest.effect.wuPerYear;
+      if (dest.effect.tiPerYear && inCap(dest.effect.tiPerYearCap)) s.ti = (s.ti || 0) + dest.effect.tiPerYear;
     });
   }
 
@@ -1246,6 +1249,17 @@ const Engine = (function () {
     out.push('获得装备【' + it.name + '】（收入储物袋，可于角色页手动穿戴）');
     return out;
   }
+  // 从储物袋移除「被穿戴的那一件」——按 id + 词条匹配，只删一件。
+  // ⚠ 不能用 filter(x => x.id !== id) 全删：袋里有两件同名装备时，穿一件会把两件一起
+  //   从袋里删掉（另一件凭空消失，2026-09-14 用户实测反馈「装备了同名装备后另一件自动消失」）。
+  function removeOneFromInventory(s, inst) {
+    if (!Array.isArray(s.inventory)) return;
+    const id = inst.id;
+    const want = JSON.stringify(inst.aff || []);
+    let idx = s.inventory.findIndex(function (x) { const e = equipInst(x); return e && e.id === id && JSON.stringify(e.aff || []) === want; });
+    if (idx < 0) idx = s.inventory.findIndex(function (x) { const e = equipInst(x); return e && e.id === id; });
+    if (idx >= 0) s.inventory.splice(idx, 1);
+  }
   function wearEquip(s, idOrInst) {
     const inst = equipInst(idOrInst);
     if (!inst) return false;
@@ -1280,7 +1294,7 @@ const Engine = (function () {
       }
       s.equip.treasure.push(id);
       if (s.arts) s.arts = s.arts.filter(function (x) { return x !== id; });
-      if (s.inventory) s.inventory = s.inventory.filter(function (x) { return equipInst(x) ? equipInst(x).id !== id : x !== id; });
+      removeOneFromInventory(s, inst);
       refreshStats(s); saveState(s);
       return true;
     }
@@ -1289,7 +1303,7 @@ const Engine = (function () {
     if (cur && cur.id === id) return true;
     if (cur) s.inventory.push(cur);
     s.equip[slot] = inst;
-    s.inventory = s.inventory.filter(function (x) { return equipInst(x) ? equipInst(x).id !== id : x !== id; });
+    removeOneFromInventory(s, inst);
     refreshStats(s); saveState(s);
     return true;
   }
@@ -1330,11 +1344,11 @@ const Engine = (function () {
   //   旧值 0.18 + 深度×0.02（封顶 0.55）、更旧 0.30 + 深度×0.03（封顶 0.90）——层层收紧。
   const RANGE_BIAS_PER_DEPTH = 0.02;
   const RANGE_BIAS_CAP = 0.30;
-  // 装备总掉落率（同批三调，用户拍板公式）：杂兵/精英 p = min(0.30, 有效深度 × 0.02)
-  //   → 首层 2% / 第 10 层 20% / 第 15 层封顶 30%；Boss 固定 0.60。
-  //   旧值 (0.06 + ed×0.02, 封顶 0.35)、更旧 (0.10 + ed×0.04, 封顶 0.55)。
-  const EQUIP_DROP_PER_DEPTH = 0.02;
-  const EQUIP_DROP_CAP = 0.30;
+  // 装备总掉落率（2026-09-14 四调 · 用户拍板公式）：杂兵/精英 p = min(0.40, 有效深度 × 0.025)
+  //   → 首层 2.5% / 第 10 层 25% / 第 16 层起封顶 40%；Boss 固定 0.60（本轮未动）。
+  //   旧值 min(0.30, ed×0.02)、更旧 (0.06 + ed×0.02, 封顶 0.35)、最旧 (0.10 + ed×0.04, 封顶 0.55)。
+  const EQUIP_DROP_PER_DEPTH = 0.025;
+  const EQUIP_DROP_CAP = 0.40;
   const EQUIP_DROP_BOSS = 0.60;
   // 装备掉落率查询（供 UI 展示，与 randomEquip 同一套公式）
   //   杂兵/精英 p = min(EQUIP_DROP_CAP, 深度 × EQUIP_DROP_PER_DEPTH)
@@ -1810,7 +1824,7 @@ const Engine = (function () {
     return s.battle;
   }
   /* 统一处理一次出手（含暴击/斩杀/吸血/先手/额外攻击），供普攻与法术复用 */
-  function playerHit(s, b, baseDmg, labelPrefix, allowExtra, fx, spLifesteal) {
+  function playerHit(s, b, baseDmg, labelPrefix, allowExtra, fx, spLifesteal, extraCrit) {
     const out = [];
     fx = fx || [];
     ensureBattleFx(b);
@@ -1829,7 +1843,8 @@ const Engine = (function () {
       return out;
     }
     // 暴击率无上限：整数=必定暴击次数，小数部分=额外暴击概率（如 200% → 每击必双倍暴击）
-    const critVal = getCritRate(s) + (b.fxCritUp.amt / 100);
+    // extraCrit：法术专属暴击加成（仙命【万剑归宗】对无属性/剑法 +50%）
+    const critVal = getCritRate(s) + (b.fxCritUp.amt / 100) + (extraCrit || 0);
     let critCount = Math.floor(critVal);
     if (Math.random() < (critVal - critCount)) critCount++;
     if (critCount > 0) {
@@ -2057,8 +2072,12 @@ const Engine = (function () {
       applySpellFx(s, b, sp, out);
       if (sp.dmg > 0) {
         fx.push({ side: 'enemy', kind: 'spell', el: sp.grade });
-        let dmg = Math.max(2, Math.round(s.atk * sp.dmg * linggenAffinityMul(s, sp.element) * (1 + getXinfaSpellMul(s)) * enemyTakenMul(b, sp.element))); // 无随机
-        const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true, fx, sp.lifesteal || 0);
+        // 仙命【万剑归宗】：无属性（青云剑宗剑法）法术伤害 +noElemSpellMul、暴击 +swordCritRate
+        const isSword = (sp.element === '无');
+        const noElemMul = isSword ? getDestinyBonus(s, 'noElemSpellMul') : 0;
+        const swordCrit = isSword ? getDestinyBonus(s, 'swordCritRate') : 0;
+        let dmg = Math.max(2, Math.round(s.atk * sp.dmg * linggenAffinityMul(s, sp.element) * (1 + getXinfaSpellMul(s)) * (1 + noElemMul) * enemyTakenMul(b, sp.element))); // 无随机
+        const lines = playerHit(s, b, dmg, '你施展【' + sp.name + '】' + (sp.dmg >= 3 ? '声威震天' : '灵力激荡') + '，对『' + b.name + '』', true, fx, sp.lifesteal || 0, swordCrit);
         lines.forEach(function (l) { out.push(l); });
       } else if (!sp.heal) {
         out.push('你施展【' + sp.name + '】。');

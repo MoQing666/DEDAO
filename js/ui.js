@@ -784,13 +784,8 @@
         '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
         '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : lockTxt) + '</p>' +
         '<div style="font-size:12px;color:#6a6a7a;">产出：' + adv.drops + '</div>' +
-        (function () {
-          const d1 = Engine.equipDropRate(1, false), dCap = Engine.equipDropRate(999, false), dBoss = Engine.equipDropRate(1, true);
-          const b1 = Engine.equipBiasRate(1), bCap = Engine.equipBiasRate(999);
-          const capFloor = Math.ceil(dCap / d1);
-          return '<div style="font-size:12px;color:#e8c15a;margin-top:4px;">装备掉落：第1层 ' + Math.round(d1 * 100) + '% → 第' + capFloor + '层 ' + Math.round(dCap * 100) + '%（封顶）· BOSS ' + Math.round(dBoss * 100) + '%</div>' +
-                 '<div style="font-size:11px;color:#8a8a9a;margin-top:2px;">品质偏置：随层数 ' + Math.round(b1 * 100) + '%→' + Math.round(bCap * 100) + '%（越深越易出高品，不越阶）</div>';
-        })() +
+        // 掉落率数值不展示（用户要求）：只留定性提示
+        '<div style="font-size:11px;color:#8a8a9a;margin-top:2px;">（越深越容易出高品装备）</div>' +
         artLine;
       const btnWrap = document.createElement('div');
       btnWrap.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
@@ -7639,6 +7634,7 @@
     tiPerYear: '年度体魄', tribBonus: '渡劫加成', trib: '渡劫加成', thorns: '反伤', lifesteal: '吸血',
     counterRate: '反击', firstStrike: '先手', executeBonus: '斩杀', controlImmune: '免疫控制',
     atkMul: '攻击', defMul: '防御', critRate: '暴击',
+    recoverPct: '回复', noElemSpellMul: '无属性法术伤害', swordCritRate: '剑法暴击',
     growWu: '年度悟性', growTi: '年度体魄', growDun: '年度遁速'
   };
   // 命格可同时带 attr（六维）与 effect（战斗/被动），之前 `attr || effect` 只取其一 → 丢掉后半段效果
@@ -7650,25 +7646,38 @@
     return o;
   }
   const TECH_TYPE_LABEL = { xinfa: '心法', shufa: '术法', dunshu: '遁术', shu: '术法', dun: '遁术' };
+  // 数值 → 显示串：|v|<1 视为百分比；支持负值（如仙命【九天玄体】体魄-1）
+  function effNum(v) {
+    const isPct = v !== 0 && Math.abs(v) < 1;
+    const shown = isPct ? (Math.round(Math.abs(v) * 100) + '%') : String(Math.abs(v));
+    return (v < 0 ? '-' : '+') + shown;
+  }
   function effText(eff) {
     if (!eff) return '';
     const parts = [];
     Object.keys(eff).forEach(function (k) {
       const v = eff[k];
       if (typeof v === 'function') return;
+      if (/Cap$/.test(k)) return;                    // *PerYearCap 等封顶字段只作机制参数，不展示
       const lb = EFF_LABEL[k] || k;
       if (v && typeof v === 'object') {
         // 对象型效果（如 techTypeBonus:{xinfa:0.25}）展开为「心法+25%」
         Object.keys(v).forEach(function (sk) {
           const sb = TECH_TYPE_LABEL[sk] || EFF_LABEL[sk] || sk;
           const sv = v[sk];
-          if (typeof sv === 'number' && sv > 0 && sv < 1) parts.push(sb + '+' + Math.round(sv * 100) + '%');
-          else if (typeof sv === 'number') parts.push(sb + '+' + sv);
+          if (typeof sv === 'number') parts.push(sb + effNum(sv));
         });
       }
       else if (typeof v === 'boolean') { if (v) parts.push(lb); }
-      else if (typeof v === 'number' && v > 0 && v < 1) parts.push(lb + '+' + Math.round(v * 100) + '%');
-      else if (typeof v === 'number') parts.push(lb + '+' + v);
+      else if (typeof v === 'number') {
+        // 逐年成长：若带 *PerYearCap（如仙命【道心渐明】前6年每年悟性+1），
+        // 展示为「前6年每年悟性+1」，把封顶年限讲清楚，避免玩家误以为终身叠加。
+        if (/PerYear$/.test(k) && typeof eff[k + 'Cap'] === 'number') {
+          parts.push('前' + eff[k + 'Cap'] + '年每年' + lb.replace(/^年度/, '') + effNum(v));
+        } else {
+          parts.push(lb + effNum(v));
+        }
+      }
     });
     return parts.filter(Boolean).join(' · ');
   }

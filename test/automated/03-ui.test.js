@@ -151,6 +151,18 @@ const visible = (doc, id) => {
   if (/display:\s*none/.test(st)) return false;
   return true;
 };
+/* 轮询等待：UI 刷新依赖 setTimeout / 动画回调，固定等待在慢机器上会假红。
+   用法：await waitUntil(() => cond, 1500) */
+async function waitUntil(fn, ms = 1500, step = 40) {
+  const t0 = Date.now();
+  for (;;) {
+    let v = false;
+    try { v = !!fn(); } catch (e) { /* 中途 DOM 未就绪，继续等 */ }
+    if (v) return true;
+    if (Date.now() - t0 >= ms) return false;
+    await new Promise(r => setTimeout(r, step));
+  }
+}
 
 module.exports = async function build() {
   const S = new Suite('03 UI / DOM 层（jsdom）');

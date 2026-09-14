@@ -744,3 +744,15 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - **新增静态守卫**：`01`「静室歇脚：已删除「不再停留」，原位置为「撤离（保住收获）」」——断言 ①`不再停留` 不出现 ②`撤离（保住收获）` 存在、且在 `养精蓄锐（秘境体力 +10）` 之后（即原位置）③全文只出现一次 ④仍走 `advFinish('撤离')`。
     - **顺带教训**：源码级文案守卫**必须先剥掉 `//` 与 `/* */` 注释再断言**——本用例首版直接匹配原文，被自己新增的说明性注释误报成红灯。
     - 缓存 **v117/dedao-v155**。测试 **227/227**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。
+
+44. **成就·轮回印记全不显示 / 宗门商人灵石 / 巨灵腰带装备后属性不刷新（2026-09-14，用户反馈）**：
+    - **症状 A（成就页「轮回」整页空白）**：成就页（含「轮回」分类 6 项）时不时刷新后整页空白、一个都不显示。
+    - **根因（js/engine.js `loadMeta`）**：旧档兼容缺失——`loadMeta` 仅在 `m && m.reinc` 时返回，**不保证 `achievements` 字段存在**。旧档（有 `reinc` 但无 `achievements`）令 `openAchievements` 中 `meta.achievements[id]` 抛 `TypeError`，导致成就页整页崩溃空白（用 `legacyMeta={points:5,lives:2,reinc:{}}` 实测复现：ach-body 长度 0、0 卡片、页面不可见）。
+    - **修法**：`loadMeta` 补齐缺省字段——`const d = defaultMeta(); for (const k in d) if (m[k] === undefined) m[k] = d[k];` 额外 `if (!m.achievements) m.achievements = {};`。修复后旧档不再崩溃，轮回印记正常渲染。
+    - **症状 B（宗门商人无灵石可见量）**：宗门商人界面未展示玩家当前可用灵石，无法判断能否购买。
+    - **修法（js/ui.js `sectDoShop`）**：标题下新增一行「当前可用灵石：**N** 枚」（取 `S.stone`，缺省 0），置于商品网格之上。
+    - **症状 C（巨灵腰带「代码层无效」）**：用户反馈装备/卸下巨灵腰带（`juling_yaodai`，`effect.tiHpBonus:0.50`）后，主页面战斗属性、角色页战斗属性、角色页六维体魄文案均无任何变化；预期原版体魄气血 +100、装备后 +150。
+    - **核查结论（关键）**：经 `vm` 沙箱实测，**引擎层计算本身正确**——装备后 `hpMax` 由 180→230、六维体魄文案由 +100→+150，`artifactStats(s).tiHpBonus` 累加无误（`attrGainText` 体魄公式含 `(1 + tiHpBonus)`）。真凶是**装备/卸下操作后未触发界面重算**：`equipTreasureAuto` 写入 `s.equip.treasure` 后，主页面 `refresh()` 与角色页 `renderCharAttr()` 没被调用，属性面板停留在旧值。故「巨灵腰带无效」实为 UI 同步缺失，非计算 bug。
+    - **修法（js/ui.js 装备/法宝页 4 处按钮回调）**：装备页「卸下 / 穿戴」、法宝页「卸下 / 装备」四个回调，操作后均追加 `refresh(); renderCharAttr(); renderCharEquip()/renderCharTreasure();`，使主页面六维/战斗属性与角色页同步刷新。
+    - **顺带确认**：`data.js` 中巨灵腰带定义与宗门商店条目本就正确，无需改动。
+    - 缓存 **v122/dedao-v160**。测试 **230/231**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致；唯一失败为并发会话在途改动的「山河探索」UI 用例，与本次 4 项修复无关）。

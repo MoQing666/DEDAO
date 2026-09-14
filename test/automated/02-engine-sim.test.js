@@ -513,6 +513,25 @@ module.exports = async function build() {
     t.eq(s.equip.treasure.indexOf(eidStr) >= 0, true, '全部出售也不动已穿戴');
   });
 
+  S.case('穿戴装备：同名只消耗一件（另一件不得凭空消失 · 2026-09-14 用户实测 BUG）', (t) => {
+    const s = E.startLife('穿戴甲');
+    E.commitStart(s, TALENTS[0].id);
+    const eid = E.randomEquip(0, 1);   // 返回实例 {id, aff}
+    const eidStr = (eid && eid.id) ? eid.id : eid;
+    t.ok(!!eidStr && !!E.findEquip(eidStr), '应能生成合法装备');
+    s.equip = { weapon: null, head: null, body: null, accessory: null, treasure: [] };
+    s.inventory = [{ id: eidStr, aff: [] }, { id: eidStr, aff: [] }];   // 袋中两件同名
+    E.wearEquip(s, s.inventory[0]);
+    const left = s.inventory.filter(function (x) { const e = (x && x.id) ? x : { id: x }; return e.id === eidStr; }).length;
+    t.eq(left, 1, '穿一件后袋中应剩 1 件同名（旧 bug 按 id 全删 → 剩 0 件，另一件凭空消失）');
+    const wornAnywhere = ['weapon', 'head', 'body', 'accessory'].some(function (k) {
+      const e = s.equip[k]; const id = (e && e.id) ? e.id : e;
+      return id === eidStr;
+    }) || (s.equip.treasure || []).indexOf(eidStr) >= 0;
+    t.ok(wornAnywhere, '装备应已进入对应槽位');
+    t.note('修复：wearEquip 改调 removeOneFromInventory（按 id+词条只删一件），不再用 filter(id !== id) 全删');
+  });
+
   S.case('宗门商人：单货币按类型（丹药/灵材=功业，功法/装备/法宝=灵石）', (t) => {
     const s = E.startLife('宗门商店');
     E.commitStart(s, TALENTS[0].id);

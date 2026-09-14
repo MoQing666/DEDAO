@@ -3046,12 +3046,13 @@ const DESTINIES = {
   tianming:     { name:'天命之子',   grade:'紫', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, effect:{ stonePerYear:15 }, desc:'天命所归，万事亨通' },
 
   /* ======== 仙命（金）—— 2026-09-14 用户重做数值表 ========
-     允许负值属性；「前6年每年+X」用 *_PerYear + *_PerYearCap 表达 */
+     允许负值属性；「前6年每年+X」用 *_PerYear + *_PerYearCap 表达。
+     2026-09-14 二次定稿：删除【杀伐果断】（金）——保留同名的白阶命格 `shafa`，
+     两者只是重名、各自独立；删除后金阶仙命共 **9 条**。 */
   jiutian:      { name:'九天玄体',   grade:'金', type:'attr',  attr:{ wu:2, shen:2, dao:1, ling:2, ti:-1, dun:-1 }, desc:'九天之上，唯我独尊' },
   daoxinjm:     { name:'道心渐明',   grade:'金', type:'attr',  effect:{ wuPerYear:1, wuPerYearCap:6 }, desc:'道心通明，悟性渐增' },
   roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:1, tiPerYearCap:6, defMul:0.30 }, desc:'肉身成圣，万法不侵' },
   tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, ling:2 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
-  shafadj:      { name:'杀伐果断',   grade:'金', type:'combat', effect:{ atkMul:0.15, critRate:0.13, executeBonus:0.10 }, desc:'一击必杀，挡我者死' },
   wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.20, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
   xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, desc:'先天道体，万法皆通' },
   zhanshen:     { name:'战神降世',   grade:'金', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.20, recoverPct:0.10 }, desc:'战神降世，天下无敌' },

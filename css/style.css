@@ -129,12 +129,12 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- HUD ---------------- */
 .hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
-/* HUD 顶栏 = 2 行 × 3 列 网格（2026-09-14 用户定稿）
-   ┌──────┬──────────────────────────┬────────┐
-   │      │ 道号 + 境界（第 1 行）    │        │
-   │ 头像 │──────────────────────────┼────────│
-   │(跨行)│ 命格（第 2 行）           │ ⚙ 设置 │
-   └──────┴──────────────────────────┴────────┘
+/* HUD 顶栏 = 2 行 × 3 列 网格（2026-09-14 用户定稿，同日二次修订右侧功能列）
+   ┌──────┬──────────────────────────┬──────────┐
+   │      │ 道号 + 境界（第 1 行）    │  成就     │
+   │ 头像 │──────────────────────────┼──────────│
+   │(跨行)│ 命格（第 2 行）           │  设置     │
+   └──────┴──────────────────────────┴──────────┘
    旧版是 flex + flex-wrap：窄屏上 .hud-name 的 min-content（道号+境界+命格不可收缩）
    顶破容器宽度 → 整块换行，表现就是「头像单独占了一行」。
    改用固定列网格后，头像永不换行。 */
@@ -147,6 +147,23 @@ button:disabled { opacity: .4; cursor: default; }
   row-gap: 4px;
   margin-bottom: 6px;
 }
+
+/* 右侧功能列（2026-09-14 二次定稿）：跨两行，成就在上、设置在下方
+   —— 用户要求「设置还原回【设置】」，并把【成就】放在设置上方。
+   原先这里是单个 ⚙ 齿轮按钮（.hud-gear，仅占第 2 行第 3 列）。 */
+.hud-side {
+  grid-column: 3; grid-row: 1 / span 2;
+  align-self: center; justify-self: end;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.hud-mini {
+  min-width: 46px; padding: 3px 8px;
+  background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 6px;
+  color: #b8b8c8; font-size: 12px; line-height: 1.5; letter-spacing: 1px;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.hud-mini:hover, .hud-mini:active { color: var(--gold); border-color: var(--gold); background: rgba(232,193,90,.10); }
+
 /* 头像在左，跨两行（道号、命格两行都贴着它右侧）
    align-self:start 而非 center：命格多到换行时，整块会变高；若居中，头像会漂到
    第二/三行旁边。顶对齐可保证头像始终与「道号」同一行（用户要求「头像在左，道号在右」）。 */
@@ -157,17 +174,9 @@ button:disabled { opacity: .4; cursor: default; }
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   min-width: 0;
 }
-/* 命格：第 2 行、与道号左对齐 */
-/* 设置：第 2 行最右（命格右侧） */
-.hud-gear {
-  grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
-  width: 30px; height: 30px; padding: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 6px;
-  color: #b8b8c8; font-size: 15px; line-height: 1; cursor: pointer;
-  font-family: inherit;
-}
-.hud-gear:hover, .hud-gear:active { color: var(--gold); border-color: var(--gold); background: rgba(232,193,90,.10); }
+/* 命格：第 2 行、与道号左对齐；右侧功能列见上方 .hud-side（成就在上 / 设置在下方）。
+   旧版此处是 .hud-gear（⚙ 齿轮，仅第 2 行第 3 列）——2026-09-14 已退役，
+   因为它只放得下一个按钮，放不下「设置 + 成就」。 */
 .avatar-circle {
   position: relative; overflow: hidden;
   width: 40px; height: 40px; border-radius: 50%;
@@ -478,14 +487,19 @@ button:disabled { opacity: .4; cursor: default; }
 .actions { flex: none; padding-bottom: 8px; }
 .act-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
-/* 资料页入口（玉符 / 成就 / 图鉴）：放在标题页，三格均分、与 .title-btns 同宽 */
+/* 资料页入口行：放在标题页。
+   2026-09-14：成就 / 图鉴 已迁到主页面（成就→HUD、图鉴→底部栏），此处只剩玉符，
+   故由「固定 3 列等分」改为 auto-fit —— 剩 1 项时居中、将来回填也自动铺开。 */
 .title-util-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   max-width: 280px;
   margin: 10px auto 0;
 }
+/* 单枚按钮不铺满整行：拉伸上限 132px，居中摆放 */
+.title-util-row .util-btn { flex: 1 1 84px; max-width: 132px; }
 .util-btn {
   display: flex;
   align-items: center;
@@ -799,7 +813,8 @@ button:disabled { opacity: .4; cursor: default; }
   max-width: 520px;
   display: flex;
   flex-wrap: nowrap;
-  /* 成就/图鉴/玉符 已挪到标题页、设置已挪到 HUD，此处仅剩 3 项：等分铺开、留出呼吸感 */
+  /* 2026-09-14 定稿：角色 / 储物袋 / 仙缘 / 图鉴 共 4 项（设置已上移 HUD、
+     成就已上移 HUD、玉符在标题页）。flex:1 等分铺开，留出呼吸感。 */
   justify-content: space-evenly;
   gap: 6px;
   align-items: stretch;
@@ -830,7 +845,7 @@ button:disabled { opacity: .4; cursor: default; }
   background: rgba(232, 193, 90, 0.08);
 }
 .bottom-icon {
-  /* 3 项布局下单元格更宽，图标略放大以免留白过空 */
+  /* 4 项布局下单格仍够宽，图标保持 24px；若将来加到 5 项再回调 */
   font-size: 24px;
   margin-bottom: 3px;
   line-height: 1;

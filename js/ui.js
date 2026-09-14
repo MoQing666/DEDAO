@@ -2962,7 +2962,8 @@
 
     // 解锁内容
     const unlockParts = [];
-    if (jie >= 3) unlockParts.push('3劫解锁「我命由我」命格栏+1');
+    // 2026-09-14：3 劫起开局六维由 1 提到 2（与「我命由我」同阈值，见 Engine.startLife）
+    if (jie >= 3) unlockParts.push('3劫起开局六维 +1、解锁「我命由我」命格栏+1');
     if (jie >= 6) unlockParts.push('+1锁定槽');
     $('enter-jie-status').textContent = unlockParts.length ? unlockParts.join('、') : '无额外解锁';
 
@@ -6208,8 +6209,9 @@
     // 底部栏按钮事件
     $('btn-char-bottom').onclick = function () { if (!S) return; sfx('click'); openChar(); };
     $('btn-bag-bottom').onclick = function () { sfx('click'); openBag(); };
-    // 设置：2026-09-14 由底部栏上移到 HUD「命格」行右侧（#hud-settings）。
-    //   底部栏已无此按钮 → 绑定必须判空（PC 版 index_pc.html 无 #hud-settings，属另一独立序列）。
+    // 设置：2026-09-14 由底部栏上移到 HUD 右侧功能列（#hud-settings，文字【设置】，
+    //   原先为 ⚙ 齿轮图标，用户要求「还原回【设置】」）。其上方同时放入【成就】。
+    //   绑定必须判空（PC 版 index_pc.html 无 #hud-settings，属另一独立序列）。
     if ($('hud-settings')) $('hud-settings').onclick = function () { sfx('click'); openSettings(); };
     if ($('btn-settings-bottom')) $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
 
@@ -6228,8 +6230,11 @@
       });
     }
     bindNav(['btn-omen-title', 'btn-omen-bottom'], openOmen);
-    bindNav(['btn-ach-title', 'btn-ach-bottom'], openAchievements);
-    bindNav(['btn-codex-title', 'btn-codex-bottom'], openCodex);
+    // 2026-09-14：成就 / 图鉴 的局内入口 = HUD 右侧功能列（btn-ach-hud / btn-codex-hud），
+    //   与【设置】同簇（用户要求「成就和图鉴放回主页面、放在设置附近」）。
+    //   两者在标题页的入口已撤（btn-ach-title / btn-codex-title 仅作 PC 代理靶点兼容）。
+    bindNav(['btn-ach-title', 'btn-ach-bottom', 'btn-ach-hud'], openAchievements);
+    bindNav(['btn-codex-title', 'btn-codex-bottom', 'btn-codex-hud'], openCodex);
     // 秘境【说明】按钮：点开详细规则（原来进场就弹的长文改为可点开）
     if ($('adv-info')) $('adv-info').onclick = function () {
       if (!advIntroText) return;

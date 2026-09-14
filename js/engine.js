@@ -858,15 +858,23 @@ const Engine = (function () {
   }
   function startLife(name) {
     const meta = loadMeta();
+    // 开局六维基准值（2026-09-14 用户定稿）：0~2 劫为 1，**3 劫及以上为 2**。
+    //   动机① 高劫难度系数更高（JIE_DATA.diff 1.50 起），需要更好的起手面板；
+    //   动机② **规避负值风险**——金阶仙命【九天玄体】带 ti-1 / dun-1，
+    //         六维为 1 时有效体魄会被扣到 0（气血仅 80 且离负数只差一步），
+    //         六维为 2 时最坏仍为 1，永不触及 0 与负数。
+    //   注：3 劫起才可能抽到金阶命格（JIE_TIER_WEIGHTS[3] 起 gold 权重 > 0），
+    //       两处阈值天然对齐，不存在「有金命格却没吃到基准值」的窗口。
+    const jieBase = (meta.nextJie || 0) >= 3 ? 2 : 1;
     const s = {
       name: name, bgIdx: 0, age: 16,
       linggen: null, talents: [],
       realm: '炼气', idx: 0, qi: 0,
       hp: 100, hpMax: 100, atk: 10, hpMaxBonus: 0,
       dunSpeed: 1,
-      wu: 1, wuAcc: 0,
-      ti: 1,
-      dun: 1, shen: 1, dao: 1,       ling: 1,
+      wu: jieBase, wuAcc: 0,
+      ti: jieBase,
+      dun: jieBase, shen: jieBase, dao: jieBase, ling: jieBase,
       mp: 1, mpMax: 10,
       destinies: [], destinySlots: 1,
       stone: 50, herb: 3, iron: 0,
@@ -886,6 +894,7 @@ const Engine = (function () {
       inventory: [], battle: null, adv: null,
       jie: meta.nextJie || 0
     };
+
     meta.lives++;
     const egg = (s.name && s.name.trim()) ? EASTER_EGGS[s.name.trim()] : null;
     const talentRolled = rollMingge(egg && egg.effect.linggen ? 4 : 5, s.jie);

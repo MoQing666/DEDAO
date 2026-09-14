@@ -254,7 +254,7 @@ module.exports = async function build() {
     E.combatAct(s2, 'atk');
     t.lt(s2.battle.hp, 250, '气血 25% 应受正常伤害');
     t.gt(s2.battle.hp, 0, '气血 25%（>20%）不应被斩杀');
-    t.note('与命格 executeBonus（杀伐果断：气血<30% 提升伤害）区分：execute 是阈值以内直接斩杀');
+    t.note('与命格 executeBonus（气血<30% 提升伤害）区分：execute 是阈值以内直接斩杀');
   });
 
   /* ---------------------------------------------------------------- */
@@ -580,7 +580,8 @@ module.exports = async function build() {
     t.gt(d3.hpMax, 0, 'hpMax 必须 ≥ 1（实际 ' + d3.hpMax + '）');
     t.eq(E.getRecoverPct(d3), 0, '负体魄时回复应夹到 0，不得变成自残');
     t.note('加固前该极端下 hpMax = -70、getRecoverPct = -0.01（战斗中即为自伤）');
-    t.note('开局六维恒为 1，故线上最坏为 effAttr(ti)=0 → hpMax=80，本次加固不改变任何现状数值');
+    t.note('2026-09-14 起开局六维为「0~2 劫=1 / 3 劫及以上=2」，故线上最坏为 effAttr(ti)=1 → hpMax=130');
+    t.note('地板仍必须保留：它是「日后新增减体魄来源」时的最后一道防线（见 AGENTS.md 负属性安全地图）');
   });
 
   return S;

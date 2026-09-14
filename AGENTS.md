@@ -462,10 +462,13 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - 命格加成：`getDestinyAttrBonus`（平加）、`getDestinyAttrMult`（乘区 atkMul/defMul）、`getDestinyBonus`（暴击/闪避/吸血/反伤等）。
 - 轮回阁：`REINCARNATION` 提供转世加成（修为/舍生等）。
 - **进入页劫数自由选择（2026-09-13 用户定稿）**：`showEnterPage` 的 `maxJie` 恒为 **9**——新账号开局即可选 0–9 劫，不再受「历史最高劫数」（`meta.maxJie`，仍在结算页作成就展示）封顶。所选劫数写入 `S.jie`，JIE_DATA 难度倍率、命格金池（3劫+）、隐藏线阈值（6劫+）、3 劫命格栏 +1 等全部按**所选**劫数生效——选高劫 = 主动提升难度。结算页「应劫轮回（X劫）」写入 `meta.nextJie` 后，进入页默认落在该劫（此前 `enterState.jie` 恒 0，预设实际被丢弃——属顺带修复）。
+- **开局六维基准值（2026-09-14 用户定稿）**：`startLife` 的 `jieBase = (meta.nextJie >= 3) ? 2 : 1`，即 **0~2 劫六维各 1，3 劫及以上各 2**。动机：① 高劫难度系数更高（3 劫 `JIE_DATA.diff = 1.50`），需要更好的起手面板；② **规避负值风险**——金阶仙命【九天玄体】带 `ti-1 / dun-1`，六维为 1 时有效体魄会被扣到 0（`hpMax` 仅 80，离负数只差一步），六维为 2 时最坏仍为 1。**阈值与「3 劫起金池才有金命格」（`JIE_TIER_WEIGHTS[3]` 起 gold 权重 > 0）天然对齐**，不存在「有金命格却没吃到基准值」的窗口。连带效应：`ling` 由 1→2 时 `mpMax` 由 20→40（公式 `20 + Math.max(0, ling-1)×20`），属预期。守卫见 `03`「主角初始六维：0~2 劫为 1，3 劫及以上为 2（规避负属性风险）」。
 
 ## 十七、UI 结构
 - **行动栏**（主页中上部）：修炼 / 秘境 / 宗门 / 锻体 / 游历 / 百艺(未解锁置灰) / 突破 / 下一年。
-- **底部栏**：角色 / 储物袋 / 仙缘 / 设置（z-index 50）。
+- **底部栏**：角色 / 储物袋 / 仙缘 / 图鉴（**4 项**，z-index 50）。2026-09-14 二次定稿：设置上移 HUD、成就上移 HUD 右侧功能列、图鉴落到此处（原 3 项 → 4 项）。
+- **HUD 右侧功能列**（`.hud-top` 第 3 列、跨两行 `.hud-side`）：**成就在上 / 设置在下方**（`#btn-ach-hud` / `#hud-settings`）。设置由 ⚙ 齿轮**还原为文字【设置】**。
+- **标题页资料入口**（`.title-util-row`）：仅剩 **玉符**（成就 / 图鉴 已迁至主页面）。
 - **Modal** z-index 250；**战斗层** z-index 9999（`!important`）。
 - **屏幕**：`overflow:hidden`，底部留 70px 给底部栏。**滚动适配**：内容可能超屏的页面必须有受约束滚动容器（`min-height:0` + `overflow-y:auto`），规则集中在 style.css 末尾「手机端滑动适配修复」段，守卫见 `01` 套件。
 - **角色页** `screen-char` 全屏，Tab：属性 / 装备 / 法宝 / 功法。
@@ -798,3 +801,14 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 
       **结论**：真正会「收益翻转」的只有 `hpMax` 与 `recoverPct` 两处，均已修复；其余要么已被下游守卫拦住、要么退化为「永不触发」，**不需要再加夹紧**。以后新增「减六维」内容时，按上表只复查标 ❌ 的两格 + `tribBonus`。本项为文档审计、无代码变更，故**不 bump 缓存版本**（AGENTS.md 不在浏览器可缓存资源内）。
     - 缓存 **v127/dedao-v165**。测试 **236/236**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致），`tools/pool-audit.js` 0 错 0 警。
+47. **3 劫起开局六维 2 点 + 删【杀伐果断】+ 手机端主页面入口重排（成就上 HUD / 图鉴下底栏）（2026-09-14，用户逐条拍板）**：
+    - **① 开局六维基准值上浮（规避负值风险）**：`startLife` 新增 `jieBase = (meta.nextJie >= 3) ? 2 : 1`，六维（`wu/ti/dun/shen/dao/ling`）由硬编码 `1` 改吃 `jieBase`。**0~2 劫仍为 1（行为零变化），3 劫及以上为 2**。详见 §十六「开局六维基准值」。实测 3 劫开局：六维 `[2,2,2,2,2,2]`、`hpMax=180`、`mpMax=40`；叠【九天玄体】后有效体魄 1、`hpMax=130`、回复 `0.01`（**永不触 0 或负数**）。进入页 `enter-jie-status` 文案同步改为「3劫起开局六维 +1、解锁「我命由我」命格栏+1」。
+    - **② 删除金阶仙命【杀伐果断】**（`DESTINIES.shafadj`）：用户此前两轮未列该条，本轮直接裁定删除。**注意重名**——白阶 `DESTINIES.shafa`（`critRate:0.02`）**保留不动**，两者只是同名、各自独立。删除后**金阶仙命 10 → 9 条**，连锁：图鉴「🌟 仙命」徽标 `10/10 → 9/9`、总览分母 `264 → 263`。副作用：`effect.executeBonus`（气血 <30% 增伤，`playerHit` 消费）**暂时没有配置来源**，机制保留待后续内容复用，`11` 套件的相关 `note` 已改为不带「杀伐果断」字样。
+    - **③ 手机端主页面入口重排**（`index.html` + `css/style.css` + `js/ui.js`）：
+      - **设置还原为文字**：HUD 的 `⚙` 齿轮（`.hud-gear`，仅第 2 行第 3 列）**退役**，改为第 3 列跨两行的右侧功能列 `.hud-side`，内含 **`#btn-ach-hud`（成就，在上）+ `#hud-settings`（设置，文字，在下）**。
+      - **成就上 HUD**：`bindNav` 增加 `btn-ach-hud`（原局内无成入口，成就只能从标题页进）。
+      - **图鉴下底栏**：`.bottom-bar` 新增第 4 项 `btn-codex-bottom`（📖 图鉴）——这个 ID 在 `ui.js` 里**早就 bindNav 了**，此前只是 HTML 里没有实体按钮（PC 用隐藏靶点代理），本次「实装」。
+      - **标题页减负**：`.title-util-row` 只留 **玉符**（成就/图鉴 撤除）；`.title-util-row` 由「固定 3 列等分」改为 `flex` + `justify-content:center` + 单枚 `max-width:132px`（剩 1 项时居中，回填也自动铺开）。
+      - **PC 兼容不变**：`index_pc.html` 的隐藏靶点 `btn-ach-bottom` / `btn-codex-bottom` / `btn-omen-bottom` / `btn-settings-bottom` **一律保留**（`ui_pc.js` 的 `pc-ach` / `pc-codex` 靠 `clickBtn` 代理触发）。
+      - **回归改造**：`03` 「底部栏只保留 3 项…」→ **「底部栏 4 项（角色/储物袋/仙缘/图鉴），成就与设置已在 HUD」**；`03`「主页面 HUD…」用例的 CSS 守卫由 `.hud-gear` 改为 `.hud-side`（`grid-column:3` + `grid-row:1/span 2`）；`03`「标题页可见且主按钮齐备」删除 `btn-ach-title`/`btn-codex-title` 并反向断言已迁走；`03`「主角初始六维=1」→ **「0~2 劫为 1，3 劫及以上为 2」**（含 2 劫边界 + 3/5/9 劫 + 九天玄体最坏值守卫）；新增 `03`「HUD 成就 / 设置 与底部栏图鉴：局内可点开且返回主界面」。
+    - 缓存 **v128/dedao-v166**。测试 **238/238**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。

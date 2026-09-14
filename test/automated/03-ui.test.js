@@ -180,9 +180,12 @@ module.exports = async function build() {
   S.case('标题页可见且主按钮齐备', async (t) => {
     const { doc } = await boot();
     t.eq(visible(doc, 'screen-title'), true, '标题页应可见');
-    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings',
-                      'btn-omen-title', 'btn-ach-title', 'btn-codex-title']) {
+    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings', 'btn-omen-title']) {
       t.ok(!!doc.getElementById(id), `标题页缺少按钮 #${id}`);
+    }
+    // 2026-09-14：成就/图鉴 已「挪」到主页面（成就→HUD 设置上方、图鉴→底部栏），标题页不再有
+    for (const id of ['btn-ach-title', 'btn-codex-title']) {
+      t.ok(!doc.querySelector('.title-util-row #' + id), `#${id} 应已从标题页迁走`);
     }
   });
 
@@ -267,37 +270,64 @@ module.exports = async function build() {
     t.note(`已遍历 ${bars.length} 个底部入口`);
   });
 
-  S.case('底部栏只保留 3 项，玉符/成就/图鉴/设置 已挪走', async (t) => {
+  S.case('底部栏 3 项（角色/储物袋/仙缘），成就/图鉴/设置 已上移 HUD 功能列', async (t) => {
     const { win, doc, errors } = await boot();
     const ids = [...doc.querySelectorAll('.bottom-bar .bottom-btn')].map(e => e.id).filter(Boolean);
-    // 2026-09-14：设置从底部栏上移到 HUD「命格」行右侧 → 底部栏由 4 项变 3 项
+    // 2026-09-14：设置上移 HUD（3 项）；同日二次定稿把【图鉴】落到底部栏（4 项）；
+    // 本次（用户要求「成就和图鉴放回主页面、放在设置附近」）把【图鉴】也上移 HUD，
+    // 与【成就】【设置】同簇 → 底部栏回到 3 项。
     t.eq(ids.length, 3, '底部栏应只剩 3 个入口（角色/储物袋/仙缘），实际: ' + ids.join(', '));
-    ['btn-ach-bottom', 'btn-codex-bottom', 'btn-omen-bottom', 'btn-settings-bottom'].forEach(function (id) {
+    t.ok(!doc.querySelector('.bottom-bar #btn-codex-bottom'), '图鉴不应再出现在底部栏（已上移 HUD）');
+    ['btn-ach-bottom', 'btn-omen-bottom', 'btn-settings-bottom'].forEach(function (id) {
       t.ok(!doc.querySelector('.bottom-bar #' + id), id + ' 不应再出现在底部栏');
     });
-    // 设置的新家：HUD 命格行右侧
-    t.ok(!!doc.querySelector('#screen-game .hud-top #hud-settings'), '设置应位于 HUD（命格行右侧）');
-    // 三个入口应落在标题页
-    ['btn-omen-title', 'btn-ach-title', 'btn-codex-title'].forEach(function (id) {
-      t.ok(!!doc.querySelector('.title-util-row #' + id), id + ' 应位于标题页 .title-util-row');
-    });
+    // 成就 / 图鉴 / 设置 的新家：HUD 右侧功能列（.hud-side），三者同簇、图鉴夹在成就与设置之间
+    const side = doc.querySelector('#screen-game .hud-top .hud-side');
+    t.ok(!!side, 'HUD 应有右侧功能列 .hud-side');
+    const ach = doc.getElementById('btn-ach-hud');
+    const codex = doc.getElementById('btn-codex-hud');
+    const set = doc.getElementById('hud-settings');
+    t.ok(!!ach, 'HUD 应有成就按钮 #btn-ach-hud');
+    t.ok(!!codex, 'HUD 应有图鉴按钮 #btn-codex-hud（设置附近）');
+    t.ok(!!set, 'HUD 应有设置按钮 #hud-settings');
+    if (side && ach && codex && set) {
+      const kids = [...side.children];
+      t.ok(kids.indexOf(ach) < kids.indexOf(codex), '成就应排在图鉴之前');
+      t.ok(kids.indexOf(codex) < kids.indexOf(set), '图鉴应排在设置之前（两者相邻、同在设置附近）');
+    }
+    // 标题页只保留玉符
+    t.ok(!!doc.querySelector('.title-util-row #btn-omen-title'), '玉符应仍在标题页');
     // 主页面行动区不应再挂这排入口
     t.ok(!doc.querySelector('.actions .util-row'), '主页面行动区不应再有资料页入口行');
+    // 未开局（局内无状态）也能从标题页开玉符
     t.eq(visible(doc, 'screen-title'), true, '开局前应停在标题页');
-    // 未开局（局内无状态）也能打开；返回应回到标题页而不是主界面
-    click(win, 'btn-ach-title'); await new Promise(r => setTimeout(r, 200));
-    t.eq(visible(doc, 'screen-achievements'), true, '标题页点「成就」未进入成就页');
-    click(win, 'ach-back'); await new Promise(r => setTimeout(r, 150));
-    t.eq(visible(doc, 'screen-title'), true, '从成就返回应回到标题页');
-    click(win, 'btn-codex-title'); await new Promise(r => setTimeout(r, 220));
-    t.eq(visible(doc, 'screen-codex'), true, '标题页点「图鉴」未进入图鉴页');
-    click(win, 'codex-back'); await new Promise(r => setTimeout(r, 150));
-    t.eq(visible(doc, 'screen-title'), true, '从图鉴返回应回到标题页');
-    // 玉符：未获得时也应有「尚未获得」详情，而不是点了没反应
     click(win, 'btn-omen-title'); await new Promise(r => setTimeout(r, 250));
     t.ok(!!doc.querySelector('.chapter-overlay'), '标题页点「玉符」未弹出玉符详情');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('标题页资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
+  });
+
+  S.case('HUD 成就 / 图鉴 / 设置：局内可点开且返回主界面', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '局内入口');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+
+    click(win, 'btn-ach-hud');
+    await waitUntil(() => visible(doc, 'screen-achievements') === true);
+    t.eq(visible(doc, 'screen-achievements'), true, '局内点 HUD「成就」未进入成就页');
+    click(win, 'ach-back');
+    await waitUntil(() => visible(doc, 'screen-game') === true);
+    t.eq(visible(doc, 'screen-game'), true, '从成就返回应回到主界面');
+
+    click(win, 'btn-codex-hud');
+    await waitUntil(() => visible(doc, 'screen-codex') === true);
+    t.eq(visible(doc, 'screen-codex'), true, 'HUD 点「图鉴」未进入图鉴页');
+    click(win, 'codex-back');
+    await waitUntil(() => visible(doc, 'screen-game') === true);
+    t.eq(visible(doc, 'screen-game'), true, '从图鉴返回应回到主界面');
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('局内入口流程报错: ' + real.slice(0, 4).join(' ;; '));
   });
 
   /* 「仙命」卷是命格（DESTINIES）金阶子集，不是独立收藏集。
@@ -306,7 +336,7 @@ module.exports = async function build() {
   S.case('图鉴计数：分母不得因「仙命卷」重复统计金阶命格', async (t) => {
     const { win, doc, errors } = await boot();
     await enterGame(win, doc, '图鉴计数');
-    click(win, 'btn-codex-title');
+    click(win, 'btn-codex-hud');
     await waitUntil(() => visible(doc, 'screen-codex') === true);
     t.eq(visible(doc, 'screen-codex'), true, '未进入图鉴页');
 
@@ -328,13 +358,13 @@ module.exports = async function build() {
       perTab += n;
       if (/仙命/.test(b.textContent)) skip += n;
     });
-    t.eq(skip, 10, '仙命卷应恒为 10 条金阶命格');
+    t.eq(skip, 9, '仙命卷应恒为 9 条金阶命格（2026-09-14 删除【杀伐果断】后：10 → 9）');
     t.eq(denom, perTab - skip, '总览分母应等于「各卷之和 − 仙命卷」（仙命是命格子集，不得重复计入）');
 
     // 仙命卷徽标保留满额：那是「本卷展示条数」，不是收藏进度
     const xm = tabs.filter(function (b) { return /仙命/.test(b.textContent); })[0];
-    t.ok(!!xm && /10\s*\/\s*10/.test(xm.textContent), '仙命卷徽标应为 10/10（全展示）');
-    t.note('修复前分母虚高 10（题面 274，真实唯一项 264），且抽到金阶命格后分子也会重复 +1');
+    t.ok(!!xm && /9\s*\/\s*9/.test(xm.textContent), '仙命卷徽标应为 9/9（全展示）');
+    t.note('修复前分母虚高 10（题面 274，真实唯一项 264）；删【杀伐果断】后再降 1 → 263');
 
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('图鉴计数流程报错: ' + real.slice(0, 3).join(' ;; '));
@@ -345,7 +375,7 @@ module.exports = async function build() {
     await enterGame(win, doc, '丁');
     t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
     // 局内触发同一个 openAchievements（PC 侧栏就是这样 clickBtn 隐藏靶点的）
-    click(win, 'btn-ach-title'); await new Promise(r => setTimeout(r, 220));
+    click(win, 'btn-ach-hud'); await new Promise(r => setTimeout(r, 220));
     t.eq(visible(doc, 'screen-achievements'), true, '局内点「成就」未进入成就页');
     click(win, 'ach-back'); await new Promise(r => setTimeout(r, 180));
     t.eq(visible(doc, 'screen-game'), true, '从成就返回应回到主界面（而非标题页）');
@@ -704,20 +734,42 @@ module.exports = async function build() {
     if (real.length) t.fail('角色面板交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
-  // === 回归：主角初始六维=1 ===
-  S.case('主角初始六维=1（开局基础值）', async (t) => {
+  // === 回归：主角初始六维（0~2 劫 = 1；3 劫及以上 = 2） ===
+  S.case('主角初始六维：0~2 劫为 1，3 劫及以上为 2（规避负属性风险）', async (t) => {
     const { win } = await boot();
-    const v = JSON.parse(win.eval(`(function(){
+    const read = (jie) => JSON.parse(win.eval(`(function(){
+      var m = Engine.loadMeta(); m.nextJie = ${jie}; Engine.saveMeta(m);
       var s = Engine.startLife('初始六维');
-      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, ling:s.ling, linggen: s.linggen});
+      return JSON.stringify({wu:s.wu, ti:s.ti, dun:s.dun, shen:s.shen, dao:s.dao, ling:s.ling, linggen: s.linggen, jie: s.jie});
     })()`));
-    t.eq(v.wu, 1, '悟性初始应为1');
-    t.eq(v.ti, 1, '体魄初始应为1');
-    t.eq(v.dun, 1, '遁速初始应为1');
-    t.eq(v.shen, 1, '神识初始应为1');
-    t.eq(v.dao, 1, '道心初始应为1');
-    t.eq(v.ling, 1, '灵力初始应为1（六维之一，替代福源）');
-    t.eq(v.linggen, null, '开局前灵根应为 null（提交后觉醒）');
+    const keys = ['wu', 'ti', 'dun', 'shen', 'dao', 'ling'];
+    const names = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', ling: '灵力' };
+
+    const low = read(0);
+    keys.forEach((k) => t.eq(low[k], 1, `${names[k]} 在 0 劫初始应为 1`));
+    t.eq(low.linggen, null, '开局前灵根应为 null（提交后觉醒）');
+    // 边界：2 劫仍是 1（阈值是「3 劫及以上」）
+    const two = read(2);
+    keys.forEach((k) => t.eq(two[k], 1, `${names[k]} 在 2 劫初始应仍为 1`));
+
+    [3, 5, 9].forEach((jie) => {
+      const hi = read(jie);
+      t.eq(hi.jie, jie, `${jie} 劫应写入 s.jie`);
+      keys.forEach((k) => t.eq(hi[k], 2, `${names[k]} 在 ${jie} 劫初始应为 2`));
+    });
+
+    // 动机守卫：3 劫起才可能抽到金阶仙命【九天玄体】（ti-1/dun-1）——
+    // 六维为 2 时有效值最坏为 1，永不落到 0 或负数（气血/回复不会被扣穿）。
+    const worst = JSON.parse(win.eval(`(function(){
+      var m = Engine.loadMeta(); m.nextJie = 3; Engine.saveMeta(m);
+      var s = Engine.startLife('负值风险'); s.destinies = ['jiutian']; Engine.refreshStats(s);
+      return JSON.stringify({ ti: Engine.effAttr(s,'ti'), dun: Engine.effAttr(s,'dun'), hpMax: s.hpMax, recover: Engine.getRecoverPct(s) });
+    })()`));
+    t.gte(worst.ti, 1, '3 劫 + 【九天玄体】有效体魄应 ≥ 1（不得触 0）');
+    t.gte(worst.dun, 1, '3 劫 + 【九天玄体】有效遁速应 ≥ 1（不得触 0）');
+    t.gt(worst.hpMax, 0, '3 劫 + 【九天玄体】气血上限应为正');
+    t.gte(worst.recover, 0, '3 劫 + 【九天玄体】回复不得为负');
+    t.note(`3 劫基准 2 + 九天玄体 → 有效体魄 ${worst.ti} / 遁速 ${worst.dun} / 气血上限 ${worst.hpMax} / 回复 ${worst.recover}`);
   });
 
   // === 回归：灵根开局即觉醒（commitStart 已实装，不再显示“未觉醒”） ===
@@ -1382,10 +1434,10 @@ module.exports = async function build() {
   });
 
   /* 回归 2026-09-14：主页面 HUD 布局（用户反馈「头像单独占了一行」）。
-     目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 设置在命格右侧。
+     目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 右侧功能列（成就上、设置下）。
      旧版 flex + flex-wrap：窄屏上 .hud-name 的 min-content 顶破容器 → 整块换行。
      jsdom 量不出几何，故这里断言「结构 + 网格口径」（防回退），几何由 Edge 探针实测。 */
-  S.case('主页面 HUD：头像左 / 道号右 / 命格下一行 / 设置在命格右侧', async (t) => {
+  S.case('主页面 HUD：头像左 / 道号右 / 命格下一行 / 右侧功能列（成就上·设置下）', async (t) => {
     const { win, doc, errors } = await boot();
     await enterGame(win, doc, '布局');
     const top = doc.querySelector('#screen-game .hud-top');
@@ -1410,15 +1462,17 @@ module.exports = async function build() {
     gear.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
     await new Promise(r => setTimeout(r, 200));
     t.eq(visible(doc, 'modal'), true, '点 HUD 设置按钮应打开设置面板');
-    // 底部栏不再重复放设置
+    // 底部栏不再重复放设置，也不放成就（两者都在 HUD）
     t.ok(!doc.getElementById('btn-settings-bottom'), '底部栏不应再有设置按钮（已上移到 HUD）');
-    t.eq(doc.querySelectorAll('#bottom-bar .bottom-btn').length, 3, '底部栏应剩 3 项（角色/储物袋/仙缘）');
+    t.ok(!doc.getElementById('btn-ach-bottom'), '底部栏不应有成就按钮（成就已上移 HUD）');
+    t.eq(doc.querySelectorAll('#bottom-bar .bottom-btn').length, 3, '底部栏应 3 项（角色/储物袋/仙缘）');
     // 布局口径守卫：必须是固定列网格，禁止回退成 flex-wrap（回退=头像又会单独占一行）
     const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
     t.ok(/\.hud-top\s*\{[^}]*display:\s*grid/.test(css), '.hud-top 必须是网格布局');
     t.ok(/\.hud-top\s*\{[^}]*grid-template-columns/.test(css), '.hud-top 必须固定列（否则窄屏又换行）');
     t.ok(/\.hud-avatar\s*\{[^}]*grid-row:\s*1\s*\/\s*span\s*2/.test(css), '头像应跨两行（左侧竖排居中）');
-    t.ok(/\.hud-gear\s*\{[^}]*grid-column:\s*3/.test(css), '设置应固定在第 3 列（命格右侧）');
+    t.ok(/\.hud-side\s*\{[^}]*grid-column:\s*3/.test(css), '右侧功能列应固定在第 3 列（命格右侧）');
+    t.ok(/\.hud-side\s*\{[^}]*grid-row:\s*1\s*\/\s*span\s*2/.test(css), '右侧功能列应跨两行（成就在上/设置在下方）');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('HUD 渲染报错: ' + real.slice(0, 3).join(' ;; '));
   });

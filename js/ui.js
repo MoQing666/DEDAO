@@ -7767,8 +7767,14 @@
         b.onclick = function () { codexTab = b.getAttribute('data-tab'); sfx('click'); renderCodex(); };
       });
     }
+    // 「仙命」是**命格（DESTINIES）金阶子集**的展示视图，不是独立收藏集。
+    //   计入总数会把那 10 条**重复统计**一次（既在「命格 47」内、又在「仙命 10」内）：
+    //   分母虚高 10（274 → 真实唯一项 264），且玩家抽到金阶命格后分子也重复 +1。
+    //   故仅排除全局统计，tab 上的「仙命 10/10」徽标保留（那是"本卷展示条数"，本身就该是 10/10）。
+    const TALLY_SKIP = { xianming: 1 };
     let tot = 0, got = 0;
     CODEX_TABS.forEach(function (t) {
+      if (TALLY_SKIP[t.key]) return;
       const m = st[t.key] || {};
       Object.keys(m).forEach(function (i) { tot++; if (m[i]) got++; });
     });

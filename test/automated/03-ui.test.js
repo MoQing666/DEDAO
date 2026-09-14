@@ -300,6 +300,46 @@ module.exports = async function build() {
     if (real.length) t.fail('标题页资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
   });
 
+  /* 「仙命」卷是命格（DESTINIES）金阶子集，不是独立收藏集。
+     若把它并入总览计数，那 10 条会被算两次（既在「命格 47」内、又在「仙命 10」内）：
+     分母虚高 10（274，真实唯一项 264），玩家抽到金阶命格后分子同样重复 +1。 */
+  S.case('图鉴计数：分母不得因「仙命卷」重复统计金阶命格', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '图鉴计数');
+    click(win, 'btn-codex-title');
+    await waitUntil(() => visible(doc, 'screen-codex') === true);
+    t.eq(visible(doc, 'screen-codex'), true, '未进入图鉴页');
+
+    const tabs = [...doc.querySelectorAll('#codex-tabs .codex-tab')];
+    t.gt(tabs.length, 0, '图鉴应有分卷按钮');
+
+    const sumTxt = (doc.getElementById('codex-summary') || {}).textContent || '';
+    const m = /已发现\s*(\d+)\s*\/\s*(\d+)\s*项/.exec(sumTxt);
+    t.ok(!!m, '总览文案应形如「已发现 N / M 项」（实：' + sumTxt + '）');
+    if (!m) return;
+    const denom = parseInt(m[2], 10);
+
+    // 各卷徽标分母之和 − 「仙命」卷 = 唯一项数
+    let perTab = 0, skip = 0;
+    tabs.forEach(function (b) {
+      const mm = /(\d+)\s*\/\s*(\d+)\s*$/.exec(b.textContent.trim());
+      if (!mm) return;
+      const n = parseInt(mm[2], 10);
+      perTab += n;
+      if (/仙命/.test(b.textContent)) skip += n;
+    });
+    t.eq(skip, 10, '仙命卷应恒为 10 条金阶命格');
+    t.eq(denom, perTab - skip, '总览分母应等于「各卷之和 − 仙命卷」（仙命是命格子集，不得重复计入）');
+
+    // 仙命卷徽标保留满额：那是「本卷展示条数」，不是收藏进度
+    const xm = tabs.filter(function (b) { return /仙命/.test(b.textContent); })[0];
+    t.ok(!!xm && /10\s*\/\s*10/.test(xm.textContent), '仙命卷徽标应为 10/10（全展示）');
+    t.note('修复前分母虚高 10（题面 274，真实唯一项 264），且抽到金阶命格后分子也会重复 +1');
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('图鉴计数流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   S.case('局内打开成就，返回仍回主界面（PC 侧栏经隐藏靶点触发）', async (t) => {
     const { win, doc, errors } = await boot();
     await enterGame(win, doc, '丁');

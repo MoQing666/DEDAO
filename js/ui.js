@@ -2490,10 +2490,34 @@
       });
     });
   }
-  // 玉符详情（底部「玉符」按钮）
+  /* ---------------- 资料页（玉符 / 成就 / 图鉴）通用 ---------------- */
+  // 标题页打开资料页时还没有局内状态，这里给出一份「可读状态」：
+  // 局内 S 优先 → 磁盘存档 → 最后的空壳（成就/图鉴仍可看跨世部分，玉符提示「尚未获得」）。
+  const EMPTY_VIEW_STATE = { seen: {}, year: 0, age: 0, equip: {}, techs: [], treasureSeen: {}, flags: {} };
+  function pageState() {
+    if (S) return S;
+    const saved = Engine.loadState();
+    return validSave(saved) ? saved : EMPTY_VIEW_STATE;
+  }
+  // 资料页由哪个屏幕打开的（标题页 / 主界面），返回时回到原处
+  let pageReturnTo = 'game';
+  function visibleScreenName() {
+    const els = document.querySelectorAll('.screen');
+    for (let i = 0; i < els.length; i++) {
+      if (els[i].style.display === 'flex') return String(els[i].id || '').replace(/^screen-/, '');
+    }
+    return 'game';
+  }
+  function backFromPage() {
+    const to = pageReturnTo;
+    showScreen(to);
+    if (to === 'game') refresh();
+    else if (to === 'title') renderTitle();
+  }
+  // 玉符详情（标题页 / PC 侧栏「玉符」入口）
   function openOmen() {
-    if (!S) return;
-    if (!S.omen || !S.omen.got) {
+    const s = pageState();
+    if (!s.omen || !s.omen.got) {
       showChapter('灾劫玉符', [
         '你探了探神台识海——空空如也。',
         '你还没见过那块玉，也没遇见过那个老道。',
@@ -2502,8 +2526,8 @@
       return;
     }
     const om = OMEN_TALISMAN;
-    const txt = Engine.omenText(S);
-    const cracks = S.omen.cracks || 0;
+    const txt = Engine.omenText(s);
+    const cracks = s.omen.cracks || 0;
     const lines = om.desc.slice();
     lines.push('—— —— —— ——');
     lines.push('玉上此刻写着：「' + txt + '」');
@@ -2515,11 +2539,11 @@
     } else {
       lines.push('玉符完好无损——因为你还没遇上一场真正的死劫。');
     }
-    if (S.omen.allPassed) {
+    if (s.omen.allPassed) {
       lines.push('五劫已尽。玉上的字换了，可你一点也不觉得轻松。');
-      if ((S.jie || 0) >= 6) lines.push('更糟的是：玉符正在从里面裂开，裂缝里透出来的不是光。');
+      if ((s.jie || 0) >= 6) lines.push('更糟的是：玉符正在从里面裂开，裂缝里透出来的不是光。');
     }
-    showChapter('灾劫玉符', lines, { subtitle: '第 ' + S.year + ' 年 · ' + S.age + ' 岁' });
+    showChapter('灾劫玉符', lines, { subtitle: '第 ' + s.year + ' 年 · ' + s.age + ' 岁' });
   }
   /* ---------------- 隐藏线 · 轮回之外（魔祖仙帝 / s.jie >= 6） ---------------- */
   function hiddenBossFlow() {
@@ -6185,18 +6209,20 @@
     // 新场景底部导航（宗门/游历已移除底部栏，入口在行动栏：btn-sect / btn-social）
     if ($('btn-sect')) $('btn-sect').onclick = function () { if (!S) return; sfx('click'); openSect(); };
     $('btn-npc-bottom').onclick = function () { if (!S) return; sfx('click'); openNpc(); };
-    if ($('ach-back')) $('ach-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
-    if ($('codex-back')) $('codex-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
-    // 资料页入口：玉符 / 成就 / 图鉴 已从底部栏挪到主页面行动区（*-main）。
+    // 成就 / 图鉴「返回」：回到打开它的那个屏幕（标题页 or 主界面），而非一律回主界面
+    if ($('ach-back')) $('ach-back').onclick = function () { sfx('click'); backFromPage(); };
+    if ($('codex-back')) $('codex-back').onclick = function () { sfx('click'); backFromPage(); };
+    // 资料页入口：玉符 / 成就 / 图鉴 已从底部栏挪到标题页（*-title）。
+    // 标题页没有局内状态，open* 内部会用 pageState() 回落到存档，故此处不再拦截 !S。
     // 兼容保留 *-bottom 靶点 —— PC 版右上角文字入口（js/ui_pc.js）仍以隐藏按钮代理触发。
-    function bindNav(mainId, bottomId, open) {
-      function handler() { if (!S) return; sfx('click'); open(); }
-      if ($(mainId)) $(mainId).onclick = handler;
-      if ($(bottomId)) $(bottomId).onclick = handler;
+    function bindNav(ids, open) {
+      ids.forEach(function (id) {
+        if ($(id)) $(id).onclick = function () { sfx('click'); open(); };
+      });
     }
-    bindNav('btn-omen-main', 'btn-omen-bottom', openOmen);
-    bindNav('btn-ach-main', 'btn-ach-bottom', openAchievements);
-    bindNav('btn-codex-main', 'btn-codex-bottom', openCodex);
+    bindNav(['btn-omen-title', 'btn-omen-bottom'], openOmen);
+    bindNav(['btn-ach-title', 'btn-ach-bottom'], openAchievements);
+    bindNav(['btn-codex-title', 'btn-codex-bottom'], openCodex);
     // 秘境【说明】按钮：点开详细规则（原来进场就弹的长文改为可点开）
     if ($('adv-info')) $('adv-info').onclick = function () {
       if (!advIntroText) return;
@@ -7523,7 +7549,7 @@
 
   /* ---------- 成就系统 ---------- */
   function openAchievements() {
-    if (!S) return;
+    pageReturnTo = visibleScreenName(); // 记录来源屏（标题页 / 主界面），返回时回到原处
     const meta = Engine.loadMeta();
     const A = ACHIEVEMENTS;
     const order = ['修行', '秘境', '战斗', '收集', '成长', '仙缘', '轮回', '人生', '隐藏'];
@@ -7676,14 +7702,15 @@
   }
   let codexTab = 'artifacts';
   function openCodex() {
-    if (!S) return;
-    if (Engine.syncTreasureSeen) Engine.syncTreasureSeen(S);
+    pageReturnTo = visibleScreenName(); // 记录来源屏（标题页 / 主界面），返回时回到原处
+    // 只在局内回写「已见法宝」：标题页用的是存档副本/空壳，回写会覆盖存档
+    if (S && Engine.syncTreasureSeen) Engine.syncTreasureSeen(S);
     renderCodex();
     showScreen('codex');
   }
   function renderCodex() {
     const meta = Engine.loadMeta();
-    const st = Engine.codexState(S, meta);
+    const st = Engine.codexState(pageState(), meta);
     const tabsBox = $('codex-tabs');
     if (tabsBox) {
       tabsBox.innerHTML = CODEX_TABS.map(function (t) {

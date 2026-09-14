@@ -1,4 +1,4 @@
-const CACHE = 'dedao-v157';
+const CACHE = 'dedao-v158';
 const ASSETS = [
   './',
   './index.html',

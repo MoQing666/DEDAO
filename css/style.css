@@ -437,15 +437,13 @@ button:disabled { opacity: .4; cursor: default; }
 .actions { flex: none; padding-bottom: 8px; }
 .act-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
-/* 资料页入口（玉符 / 成就 / 图鉴）：原在底部栏，现挪到主页面行动区末尾。
-   三格均分、次级样式（比 .act 更轻），与主动作区用细线分隔。 */
-.util-row {
+/* 资料页入口（玉符 / 成就 / 图鉴）：放在标题页，三格均分、与 .title-btns 同宽 */
+.title-util-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+  max-width: 280px;
+  margin: 10px auto 0;
 }
 .util-btn {
   display: flex;

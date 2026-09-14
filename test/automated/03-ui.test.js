@@ -168,7 +168,8 @@ module.exports = async function build() {
   S.case('标题页可见且主按钮齐备', async (t) => {
     const { doc } = await boot();
     t.eq(visible(doc, 'screen-title'), true, '标题页应可见');
-    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings']) {
+    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings',
+                      'btn-omen-title', 'btn-ach-title', 'btn-codex-title']) {
       t.ok(!!doc.getElementById(id), `标题页缺少按钮 #${id}`);
     }
   });
@@ -254,31 +255,47 @@ module.exports = async function build() {
     t.note(`已遍历 ${bars.length} 个底部入口`);
   });
 
-  S.case('底部栏只保留 4 项，玉符/成就/图鉴 已挪到主页面', async (t) => {
+  S.case('底部栏只保留 4 项，玉符/成就/图鉴 已挪到标题页', async (t) => {
     const { win, doc, errors } = await boot();
-    await enterGame(win, doc, '丙');
     const ids = [...doc.querySelectorAll('.bottom-bar .bottom-btn')].map(e => e.id).filter(Boolean);
     t.eq(ids.length, 4, '底部栏应只剩 4 个入口，实际: ' + ids.join(', '));
     ['btn-ach-bottom', 'btn-codex-bottom', 'btn-omen-bottom'].forEach(function (id) {
       t.ok(!doc.querySelector('.bottom-bar #' + id), id + ' 不应再出现在底部栏');
     });
-    // 主页面行动区应出现三个资料页入口
-    ['btn-omen-main', 'btn-ach-main', 'btn-codex-main'].forEach(function (id) {
-      t.ok(!!doc.querySelector('.util-row #' + id), id + ' 应位于主页面 .util-row');
+    // 三个入口应落在标题页
+    ['btn-omen-title', 'btn-ach-title', 'btn-codex-title'].forEach(function (id) {
+      t.ok(!!doc.querySelector('.title-util-row #' + id), id + ' 应位于标题页 .title-util-row');
     });
-    // 成就 / 图鉴：点开应进入对应页面，返回回到主界面
-    click(win, 'btn-ach-main'); await new Promise(r => setTimeout(r, 150));
-    t.eq(visible(doc, 'screen-achievements'), true, '点「成就」未进入成就页');
-    click(win, 'ach-back'); await new Promise(r => setTimeout(r, 120));
-    click(win, 'btn-codex-main'); await new Promise(r => setTimeout(r, 150));
-    t.eq(visible(doc, 'screen-codex'), true, '点「图鉴」未进入图鉴页');
-    click(win, 'codex-back'); await new Promise(r => setTimeout(r, 120));
-    t.eq(visible(doc, 'screen-game'), true, '从图鉴返回后应回到主界面');
-    // 玉符：弹出玉符详情章节层
-    click(win, 'btn-omen-main'); await new Promise(r => setTimeout(r, 200));
-    t.ok(!!doc.querySelector('.chapter-overlay'), '点「玉符」未弹出玉符详情');
+    // 主页面行动区不应再挂这排入口
+    t.ok(!doc.querySelector('.actions .util-row'), '主页面行动区不应再有资料页入口行');
+    t.eq(visible(doc, 'screen-title'), true, '开局前应停在标题页');
+    // 未开局（局内无状态）也能打开；返回应回到标题页而不是主界面
+    click(win, 'btn-ach-title'); await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'screen-achievements'), true, '标题页点「成就」未进入成就页');
+    click(win, 'ach-back'); await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-title'), true, '从成就返回应回到标题页');
+    click(win, 'btn-codex-title'); await new Promise(r => setTimeout(r, 220));
+    t.eq(visible(doc, 'screen-codex'), true, '标题页点「图鉴」未进入图鉴页');
+    click(win, 'codex-back'); await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-title'), true, '从图鉴返回应回到标题页');
+    // 玉符：未获得时也应有「尚未获得」详情，而不是点了没反应
+    click(win, 'btn-omen-title'); await new Promise(r => setTimeout(r, 250));
+    t.ok(!!doc.querySelector('.chapter-overlay'), '标题页点「玉符」未弹出玉符详情');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
-    if (real.length) t.fail('资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
+    if (real.length) t.fail('标题页资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
+  });
+
+  S.case('局内打开成就，返回仍回主界面（PC 侧栏经隐藏靶点触发）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '丁');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+    // 局内触发同一个 openAchievements（PC 侧栏就是这样 clickBtn 隐藏靶点的）
+    click(win, 'btn-ach-title'); await new Promise(r => setTimeout(r, 220));
+    t.eq(visible(doc, 'screen-achievements'), true, '局内点「成就」未进入成就页');
+    click(win, 'ach-back'); await new Promise(r => setTimeout(r, 180));
+    t.eq(visible(doc, 'screen-game'), true, '从成就返回应回到主界面（而非标题页）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('局内资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
   });
 
   S.case('轮回塔页面可进入并渲染天赋列表', async (t) => {

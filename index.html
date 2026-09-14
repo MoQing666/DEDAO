@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
-  <link rel="stylesheet" href="css/style.css?v=119">
+  <link rel="stylesheet" href="css/style.css?v=120">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -59,6 +59,12 @@
         <button id="t-load" class="btn-main ghost">存档 · 读档</button>
         <button id="t-rebirth" class="btn-main ghost">轮回塔（天赋）</button>
         <button id="t-settings" class="btn-main ghost">设置</button>
+      </div>
+      <!-- 资料页入口：玉符 / 成就 / 图鉴（标题页可查，无需先开局） -->
+      <div class="title-util-row">
+        <button id="btn-omen-title" class="util-btn"><span class="util-icon">🧿</span><span>玉符</span></button>
+        <button id="btn-ach-title" class="util-btn"><span class="util-icon">🏆</span><span>成就</span></button>
+        <button id="btn-codex-title" class="util-btn"><span class="util-icon">📖</span><span>图鉴</span></button>
       </div>
       <p class="title-tip">文字修仙 · 人生模拟 · 一世又一世</p>
     </div>
@@ -180,12 +186,6 @@
       <div class="year-row">
         <button id="btn-break" class="btn-break"><span id="btn-break-label">突破（修为未满）</span></button>
         <button id="btn-year" class="btn-year">下一年</button>
-      </div>
-      <!-- 资料页入口（原底部栏）：玉符 / 成就 / 图鉴 —— 已从底部导航挪至主页面 -->
-      <div class="util-row">
-        <button id="btn-omen-main" class="util-btn"><span class="util-icon">🧿</span><span>玉符</span></button>
-        <button id="btn-ach-main" class="util-btn"><span class="util-icon">🏆</span><span>成就</span></button>
-        <button id="btn-codex-main" class="util-btn"><span class="util-icon">📖</span><span>图鉴</span></button>
       </div>
     </footer>
   </div>
@@ -579,10 +579,10 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=119"></script>
-  <script src="js/engine.js?v=119"></script>
-  <script src="js/audio.js?v=119"></script>
-  <script src="js/backend-api.js?v=119"></script>
-  <script src="js/ui.js?v=119"></script>
+  <script src="js/data.js?v=120"></script>
+  <script src="js/engine.js?v=120"></script>
+  <script src="js/audio.js?v=120"></script>
+  <script src="js/backend-api.js?v=120"></script>
+  <script src="js/ui.js?v=120"></script>
 </body>
 </html>

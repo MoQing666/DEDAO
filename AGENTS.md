@@ -853,6 +853,9 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
       **【早夭】的 cost 为负**：选它反而**增加 3 点**开荒预算（以寿元换点数），UI 用收益色（`.ct-point.good`）区分。
     - **分段顺序调整（`js/ui.js` `renderCreatePage`）**：~~一 灵根 / 二 出身 / 三 百艺~~ → **一 择灵根 / 二 定出身 / 三 经历 / 四 百艺**（百艺由三挪到四）。
     - **口径唯一化**：新增 `Engine.initExpCost(sel)` 作为「经历 → 点数」的唯一真源，UI 的 `createSpent()` 直接调用（不再各算一遍）。
+      经历是**二值选择**，故另设 `Engine.initExpIds(sel)` 做**去重 + 过滤未知 id**，`initExpCost` 与 `applyInit` 共用它。
+      ⚠ 去重必须在引擎侧做：`applyInit` 是公开接口，若容忍重复 id，`exp:['zaoyao','zaoyao',…]` 就能**量产负点（刷开荒预算）并重复扣寿元**
+      （实测未去重时 `initExpCost` 返回 -9、寿元掉到 10；UI 的 toggle 天然不重复，属「线上不可达但必须堵」的一类）。
     - **引擎侧下线（`js/engine.js`）**：`applyReinc` 不再拷贝/结算 stone・juling0・life20；`s.reinc.shesheng` 的**两条消费点**一并摘除
       （`cultGain` 的「修炼 +10%」与修炼动作里的「每次修炼 -1 寿元 + 文案」）——**避免留下「有字段、无来源」的死配置**。
     - **旧档迁移（`loadMeta`）**：已购的 4 项按**原价**退还轮回点（`单价 × (1+2+…+n)`，与轮回阁「第 n 级 `cost×n`」定价一致）并清字段。
@@ -861,11 +864,12 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
       同时 `hp` 上限重夹一次（寿元/气血口径不被压穿）。
     - **回归**：`03` 新增「开荒页：三 · 经历 四项齐备、点数结算正确、【早夭】为负点、百艺已挪到「四」」（含 toggle 反复选/取消、预算逐项核对、总览列出已选经历与寿元 90）；
       `03` 轮回塔卡数由写死 `>= 19` 改为**按引擎真值动态断言**（`REINCARNATION.length + 1`）并新增「退役天赋不得再出现」；
-      `11` 新增「开荒 · 三 经历：四项实装结算（含【早夭】负点反向收益）」+「轮回塔退役天赋：……旧档按原价退还轮回点」（含舍生消费点已摘除的断言）。
+      `11` 新增「开荒 · 三 经历：四项实装结算（含【早夭】负点反向收益）」+「开荒 · 三 经历：重复 id 只结算一次（不得刷负点 / 重复扣寿元）」
+      +「轮回塔退役天赋：……旧档按原价退还轮回点」（含舍生消费点已摘除的断言）。
     - **防御性 CSS（`css/style.css`）**：`.ct-grid` 由 `1fr 1fr` → `repeat(2, minmax(0, 1fr))`。
       `1fr` 的隐含下限是 `min-content`，卡片长文案（如「灵力上限+40 · 遁速+8%」）理论上能把两列撑破容器；
       **当前内容实测未触发**（探针量到 `clientWidth === scrollWidth`，改前改后渲染 md5 一致），属预防性加固，不改变现状观感。
     - **探针口径提醒**：无头 Edge 的 CSS 视口**锁定在 504px**，`--window-size=414` 只会截出 414px 宽的图、
       右侧 90px 被裁——**看起来像「布局横向溢出」，实际是截图与视口宽度不匹配**。截图请用 `--window-size=504,H`。
     - **工具同步**：`tools/reinc_sim.js`、`tools/player_sim.js` 的天赋表 / 结算分支同步下线退役项（都读真实 `REINCARNATION`，不再残留 phantom 天赋）。
-    - 缓存 **v131/dedao-v169**。测试 **242/242**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。
+    - 缓存 **v132/dedao-v170**。测试 **243/243**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。

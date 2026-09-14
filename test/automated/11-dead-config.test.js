@@ -619,6 +619,31 @@ module.exports = async function build() {
     t.note('引入负值效果一律补地板——早夭的 -20 与【九天玄体】的体魄-1 同源');
   });
 
+  /* 经历是「取 / 不取」的二值选择 → 每项最多结算一次。
+     若不变量被打破，`exp:['zaoyao','zaoyao',…]` 就能量产负点（刷开荒预算）并重复扣寿元。 */
+  S.case('开荒 · 三 经历：重复 id 只结算一次（不得刷负点 / 重复扣寿元）', (t) => {
+    const L = G.get('LINGGEN_POOL')[0].id, B = G.get('BACKGROUNDS')[0].id;
+    const mk = (exp) => {
+      const s = E.startLife('经历去重');
+      E.applyInit(s, { linggenId: L, bgId: B, points: {}, craft: {}, exp: exp });
+      return s;
+    };
+    t.eq(E.initExpCost({ exp: ['zaoyao'] }), -3, '早夭单次 = -3 点');
+    t.eq(E.initExpCost({ exp: ['zaoyao', 'zaoyao', 'zaoyao'] }), -3, '早夭 ×3 仍应为 -3 点（去重）');
+    t.eq(E.initExpCost({ exp: ['stone', 'stone', 'zaoyao'] }), 0, '[殷实,殷实,早夭] 应为 3-3 = 0 点');
+    t.eq(E.initExpCost({ exp: ['bogus', 'stone'] }), 3, '未知 id 应被忽略（不报错、不计点）');
+
+    const base = mk([]), rep = mk(['zaoyao', 'zaoyao', 'zaoyao']);
+    t.eq(rep.lifeMax, base.lifeMax - 20, '重复早夭只扣一次寿元（应为 ' + (base.lifeMax - 20) + '，实 ' + rep.lifeMax + '）');
+    t.gt(rep.lifeMax, 0, '寿元地板仍然成立');
+    // 正常路径不受影响
+    const all = mk(['stone', 'juling0', 'life20', 'zaoyao']);
+    t.eq(all.stone - base.stone, 500, '全选四项：殷实照样 +500 灵石');
+    t.eq(all.lifeMax, base.lifeMax, '全选四项：延寿+20 与早夭-20 抵消');
+    t.eq(all.elixirs.juling, 3, '全选四项：见面礼照样给聚气丹 ×3');
+    t.note('去重口径收在 initExpIds(sel)，initExpCost 与 applyInit 共用同一个「哪几项生效」真源');
+  });
+
   S.case('轮回塔退役天赋：殷实/见面礼/延寿/舍生 不得残留，旧档按原价退还轮回点', (t) => {
     const REINC = E.REINCARNATION;
     const retired = ['stone', 'juling0', 'life20', 'shesheng'];

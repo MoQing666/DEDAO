@@ -4968,8 +4968,10 @@ const Engine = (function () {
     }
     s.initPoints = sel.initPoints || 0;
     // 开荒 · 三 经历（殷实 / 见面礼 / 延寿 / 早夭）——本世开局一次性结算，不入 meta、不跨世
-    if (sel.exp && sel.exp.length) {
-      sel.exp.forEach(function (id) {
+    // 走 initExpIds 去重（每项最多一次），与 initExpCost 同源 —— 复用同一个「哪几项生效」口径
+    const expIds = initExpIds(sel);
+    if (expIds.length) {
+      expIds.forEach(function (id) {
         const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
         if (!it || !it.apply) return;
         const a = it.apply;
@@ -4991,10 +4993,22 @@ const Engine = (function () {
   function openPointsTotal(s) { return INIT_POINTS + reincTalentBonus(s.reincTalent || 1); }
   // 开荒 · 经历的点数折算（口径唯一化：UI 的 createSpent 直接调它，不再自算一遍）
   //   【早夭】cost 为负 → 返回值为负，即「选它反而多出 3 点预算」。
-  function initExpCost(sel) {
-    if (!sel || !sel.exp || !sel.exp.length) return 0;
-    let c = 0;
+  // 经历是「取 / 不取」的二值选择 → **每项最多结算一次**（去重口径见 initExpIds）。
+  //   去重必须在这里做：UI 的 toggle 天然不重复，但 applyInit/initExpCost 是公开接口，
+  //   若容忍重复 id 就能靠 `exp:['zaoyao','zaoyao',…]` 量产负点（等于刷开荒预算）并重复扣寿元。
+  function initExpIds(sel) {
+    if (!sel || !sel.exp || !sel.exp.length) return [];
+    const seen = {}, out = [];
     sel.exp.forEach(function (id) {
+      if (seen[id]) return;
+      if (!INIT_EXP.some(function (e) { return e.id === id; })) return;   // 未知 id 直接忽略
+      seen[id] = 1; out.push(id);
+    });
+    return out;
+  }
+  function initExpCost(sel) {
+    let c = 0;
+    initExpIds(sel).forEach(function (id) {
       const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
       if (it) c += it.cost;
     });

@@ -254,6 +254,33 @@ module.exports = async function build() {
     t.note(`已遍历 ${bars.length} 个底部入口`);
   });
 
+  S.case('底部栏只保留 4 项，玉符/成就/图鉴 已挪到主页面', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '丙');
+    const ids = [...doc.querySelectorAll('.bottom-bar .bottom-btn')].map(e => e.id).filter(Boolean);
+    t.eq(ids.length, 4, '底部栏应只剩 4 个入口，实际: ' + ids.join(', '));
+    ['btn-ach-bottom', 'btn-codex-bottom', 'btn-omen-bottom'].forEach(function (id) {
+      t.ok(!doc.querySelector('.bottom-bar #' + id), id + ' 不应再出现在底部栏');
+    });
+    // 主页面行动区应出现三个资料页入口
+    ['btn-omen-main', 'btn-ach-main', 'btn-codex-main'].forEach(function (id) {
+      t.ok(!!doc.querySelector('.util-row #' + id), id + ' 应位于主页面 .util-row');
+    });
+    // 成就 / 图鉴：点开应进入对应页面，返回回到主界面
+    click(win, 'btn-ach-main'); await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-achievements'), true, '点「成就」未进入成就页');
+    click(win, 'ach-back'); await new Promise(r => setTimeout(r, 120));
+    click(win, 'btn-codex-main'); await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'screen-codex'), true, '点「图鉴」未进入图鉴页');
+    click(win, 'codex-back'); await new Promise(r => setTimeout(r, 120));
+    t.eq(visible(doc, 'screen-game'), true, '从图鉴返回后应回到主界面');
+    // 玉符：弹出玉符详情章节层
+    click(win, 'btn-omen-main'); await new Promise(r => setTimeout(r, 200));
+    t.ok(!!doc.querySelector('.chapter-overlay'), '点「玉符」未弹出玉符详情');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
+  });
+
   S.case('轮回塔页面可进入并渲染天赋列表', async (t) => {
     const { win, doc, errors } = await boot();
     click(win, 't-rebirth'); await new Promise(r => setTimeout(r, 150));

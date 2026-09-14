@@ -6185,11 +6185,18 @@
     // 新场景底部导航（宗门/游历已移除底部栏，入口在行动栏：btn-sect / btn-social）
     if ($('btn-sect')) $('btn-sect').onclick = function () { if (!S) return; sfx('click'); openSect(); };
     $('btn-npc-bottom').onclick = function () { if (!S) return; sfx('click'); openNpc(); };
-    $('btn-ach-bottom').onclick = function () { if (!S) return; sfx('click'); openAchievements(); };
     if ($('ach-back')) $('ach-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
-    $('btn-codex-bottom').onclick = function () { if (!S) return; sfx('click'); openCodex(); };
     if ($('codex-back')) $('codex-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
-    if ($('btn-omen-bottom')) $('btn-omen-bottom').onclick = function () { if (!S) return; sfx('click'); openOmen(); };
+    // 资料页入口：玉符 / 成就 / 图鉴 已从底部栏挪到主页面行动区（*-main）。
+    // 兼容保留 *-bottom 靶点 —— PC 版右上角文字入口（js/ui_pc.js）仍以隐藏按钮代理触发。
+    function bindNav(mainId, bottomId, open) {
+      function handler() { if (!S) return; sfx('click'); open(); }
+      if ($(mainId)) $(mainId).onclick = handler;
+      if ($(bottomId)) $(bottomId).onclick = handler;
+    }
+    bindNav('btn-omen-main', 'btn-omen-bottom', openOmen);
+    bindNav('btn-ach-main', 'btn-ach-bottom', openAchievements);
+    bindNav('btn-codex-main', 'btn-codex-bottom', openCodex);
     // 秘境【说明】按钮：点开详细规则（原来进场就弹的长文改为可点开）
     if ($('adv-info')) $('adv-info').onclick = function () {
       if (!advIntroText) return;
@@ -7592,9 +7599,20 @@
     atk: '攻击', def: '防御', hpMax: '气血上限', critPct: '暴击', dodgePct: '闪避',
     stealPct: '吸血', cult: '修炼速度', atkPct: '攻击', defToAtk: '防转攻',
     lowHpAtk: '残血攻击', stonePerYear: '年度灵石', wuPerYear: '年度悟性',
-    tiPerYear: '年度体魄', tribBonus: '渡劫加成', thorns: '反伤', lifesteal: '吸血',
-    counterRate: '反击', firstStrike: '先手', executeBonus: '斩杀', controlImmune: '免疫控制'
+    tiPerYear: '年度体魄', tribBonus: '渡劫加成', trib: '渡劫加成', thorns: '反伤', lifesteal: '吸血',
+    counterRate: '反击', firstStrike: '先手', executeBonus: '斩杀', controlImmune: '免疫控制',
+    atkMul: '攻击', defMul: '防御', critRate: '暴击',
+    growWu: '年度悟性', growTi: '年度体魄', growDun: '年度遁速'
   };
+  // 命格可同时带 attr（六维）与 effect（战斗/被动），之前 `attr || effect` 只取其一 → 丢掉后半段效果
+  function mergeEff(a, b) {
+    if (!a) return b; if (!b) return a;
+    const o = {};
+    Object.keys(a).forEach(function (k) { o[k] = a[k]; });
+    Object.keys(b).forEach(function (k) { o[k] = b[k]; });
+    return o;
+  }
+  const TECH_TYPE_LABEL = { xinfa: '心法', shufa: '术法', dunshu: '遁术', shu: '术法', dun: '遁术' };
   function effText(eff) {
     if (!eff) return '';
     const parts = [];
@@ -7602,7 +7620,16 @@
       const v = eff[k];
       if (typeof v === 'function') return;
       const lb = EFF_LABEL[k] || k;
-      if (typeof v === 'boolean') { if (v) parts.push(lb); }
+      if (v && typeof v === 'object') {
+        // 对象型效果（如 techTypeBonus:{xinfa:0.25}）展开为「心法+25%」
+        Object.keys(v).forEach(function (sk) {
+          const sb = TECH_TYPE_LABEL[sk] || EFF_LABEL[sk] || sk;
+          const sv = v[sk];
+          if (typeof sv === 'number' && sv > 0 && sv < 1) parts.push(sb + '+' + Math.round(sv * 100) + '%');
+          else if (typeof sv === 'number') parts.push(sb + '+' + sv);
+        });
+      }
+      else if (typeof v === 'boolean') { if (v) parts.push(lb); }
       else if (typeof v === 'number' && v > 0 && v < 1) parts.push(lb + '+' + Math.round(v * 100) + '%');
       else if (typeof v === 'number') parts.push(lb + '+' + v);
     });
@@ -7615,11 +7642,11 @@
     }
     if (type === 'destinies') {
       const d = DESTINIES[id]; if (!d) return null;
-      return { ico: '☯️', name: d.name, grade: d.grade, meta: d.grade + '阶命格', desc: d.desc, eff: effText(d.attr || d.effect) };
+      return { ico: '☯️', name: d.name, grade: d.grade, meta: d.grade + '阶命格', desc: d.desc, eff: effText(mergeEff(d.attr, d.effect)) };
     }
     if (type === 'xianming') {
       const d = DESTINIES[id]; if (!d) return null;
-      return { ico: '🌟', name: d.name, grade: d.grade, meta: '仙命 · 金阶命格', desc: d.desc, eff: effText(d.attr || d.effect) };
+      return { ico: '🌟', name: d.name, grade: d.grade, meta: '仙命 · 金阶命格', desc: d.desc, eff: effText(mergeEff(d.attr, d.effect)) };
     }
     if (type === 'techs') {
       const t = TECHNIQUES[id]; if (!t) return null;

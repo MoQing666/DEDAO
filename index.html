@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
-  <link rel="stylesheet" href="css/style.css?v=118">
+  <link rel="stylesheet" href="css/style.css?v=119">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -181,6 +181,12 @@
         <button id="btn-break" class="btn-break"><span id="btn-break-label">突破（修为未满）</span></button>
         <button id="btn-year" class="btn-year">下一年</button>
       </div>
+      <!-- 资料页入口（原底部栏）：玉符 / 成就 / 图鉴 —— 已从底部导航挪至主页面 -->
+      <div class="util-row">
+        <button id="btn-omen-main" class="util-btn"><span class="util-icon">🧿</span><span>玉符</span></button>
+        <button id="btn-ach-main" class="util-btn"><span class="util-icon">🏆</span><span>成就</span></button>
+        <button id="btn-codex-main" class="util-btn"><span class="util-icon">📖</span><span>图鉴</span></button>
+      </div>
     </footer>
   </div>
 
@@ -242,18 +248,6 @@
     <button id="btn-settings-bottom" class="bottom-btn">
       <span class="bottom-icon">⚙️</span>
       <span class="bottom-text">设置</span>
-    </button>
-    <button id="btn-ach-bottom" class="bottom-btn">
-      <span class="bottom-icon">🏆</span>
-      <span class="bottom-text">成就</span>
-    </button>
-    <button id="btn-codex-bottom" class="bottom-btn">
-      <span class="bottom-icon">📖</span>
-      <span class="bottom-text">图鉴</span>
-    </button>
-    <button id="btn-omen-bottom" class="bottom-btn">
-      <span class="bottom-icon">🧿</span>
-      <span class="bottom-text">玉符</span>
     </button>
   </nav>
 
@@ -585,10 +579,10 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=118"></script>
-  <script src="js/engine.js?v=118"></script>
-  <script src="js/audio.js?v=118"></script>
-  <script src="js/backend-api.js?v=118"></script>
-  <script src="js/ui.js?v=118"></script>
+  <script src="js/data.js?v=119"></script>
+  <script src="js/engine.js?v=119"></script>
+  <script src="js/audio.js?v=119"></script>
+  <script src="js/backend-api.js?v=119"></script>
+  <script src="js/ui.js?v=119"></script>
 </body>
 </html>

@@ -437,6 +437,39 @@ button:disabled { opacity: .4; cursor: default; }
 .actions { flex: none; padding-bottom: 8px; }
 .act-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
+/* 资料页入口（玉符 / 成就 / 图鉴）：原在底部栏，现挪到主页面行动区末尾。
+   三格均分、次级样式（比 .act 更轻），与主动作区用细线分隔。 */
+.util-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.util-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 4px;
+  font-size: 13px;
+  line-height: 1;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid #2e2942;
+  border-radius: 8px;
+  color: #b7a9d9;
+  cursor: pointer;
+  font-family: 'YuYang', 'SimSun', '宋体', serif;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.util-btn:hover, .util-btn:active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(232, 193, 90, .08);
+}
+.util-btn .util-icon { font-size: 15px; line-height: 1; }
+
 /* ---------------- 状态栏（已合并到属性区） ---------------- */
 .arts-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
 .arts-tabs .tab { flex: 1; padding: 7px 4px; border: 1px solid #2e2942; background: rgba(0,0,0,.2); color: #b7a9d9; border-radius: 6px; font-size: 14px; cursor: pointer; }
@@ -727,12 +760,13 @@ button:disabled { opacity: .4; cursor: default; }
   max-width: 520px;
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
-  gap: 2px;
+  /* 成就/图鉴/玉符 已挪到主页面，此处仅剩 4 项：等分铺开、留出呼吸感 */
+  justify-content: space-evenly;
+  gap: 6px;
   align-items: stretch;
   background: rgba(29, 25, 38, 0.98);
   border-top: 1px solid #3a3450;
-  padding: 8px 4px;
+  padding: 8px 10px;
   z-index: 50;
 }
 .bottom-btn {
@@ -757,7 +791,8 @@ button:disabled { opacity: .4; cursor: default; }
   background: rgba(232, 193, 90, 0.08);
 }
 .bottom-icon {
-  font-size: 22px;
+  /* 4 项布局下单元格更宽，图标略放大以免留白过空 */
+  font-size: 24px;
   margin-bottom: 3px;
   line-height: 1;
 }

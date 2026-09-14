@@ -1439,10 +1439,10 @@
     mk('调息（回蓝 60%）', 'mp');
     mk('双修（气血灵力各 30%）', 'both');
     mk('养精蓄锐（秘境体力 +10）', 'stamina');
-    const leave = document.createElement('button'); leave.className = 'btn-main ghost'; leave.textContent = '不再停留';
-    leave.onclick = function () { ov.style.display = 'none'; advAdvanceToMap(); };
-    box.appendChild(leave);
-    // 静室是秘境中唯一可【撤离·完整收货】的安全点（其余中途撤离一律为「强行撤离」失五成）
+    // 「不再停留」已删除（用户 2026-09-14 要求）：它的作用与右上【关闭】完全等价——
+    //   advMove 早已把玩家移到该节点，advAdvanceToMap 只是刷回地图，留两个出口纯属冗余。
+    // 原位置改为静室专属的【撤离（保住收获）】：静室是秘境中唯一可完整收货的撤退点
+    //   （其余中途撤离一律走右下角【强行撤离（失五成收获）】）。
     const retreat = document.createElement('button'); retreat.className = 'btn-main ghost adv-retreat'; retreat.textContent = '撤离（保住收获）';
     retreat.onclick = function () { ov.style.display = 'none'; advFinish('撤离'); };
     box.appendChild(retreat);

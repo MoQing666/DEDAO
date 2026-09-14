@@ -463,7 +463,10 @@ const Engine = (function () {
     // 五行阵·木阵（气血上限 %）
     m = applyWuxing(s, 'hpMax', m);
     // 体魄=1点×50气血（命格体魄加成已并入 effAttr）
-    return m;
+    // ⚠ 下限 1：负体魄（仙命【九天玄体】ti-1）会让 effAttr(ti) 变小甚至为负；
+    //   本公式无天然地板，极端叠加能算出 hpMax ≤ 0 → 战斗一进场即死、存档不可玩。
+    //   当前最坏情况为 effAttr(ti)=0 → hpMax=80，故本次兜底不改动任何现状数值。
+    return Math.max(1, m);
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
@@ -779,8 +782,11 @@ const Engine = (function () {
   function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
   /* 攻速（几率额外攻击一次）：遁速×1%（×dunMul）+ 命格额外攻击 + 装备攻速 + 疾风连击 doubleHit */
   function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + talentApply(s, 'doubleHit'); }
-  /* 回复（吸血）：体魄×1% + 命格 recoverPct（回复）+ 命格 lifesteal（吸血）+ 装备回复词条 */
-  function getRecoverPct(s) { return effAttr(s, 'ti') * 0.01 + getDestinyBonus(s, 'recoverPct') + getDestinyBonus(s, 'lifesteal') + (equipStats(s).recover || 0) / 100; }
+  /* 回复（吸血）：体魄×1% + 命格 recoverPct（回复）+ 命格 lifesteal（吸血）+ 装备回复词条
+     ⚠ 下限 0：仙命【九天玄体】起首次引入**负体魄**（ti-1）。开局六维恒为 1，故当下 effAttr(ti)≥0、
+       结果非负；但一旦再出现第二个「减体魄」来源（剧情/新命格），负值会让吸血变成**自残**
+       （战斗中 `Math.round(dmg * recover)` 为负即扣自己血）。此处兜底，当前数值不发生任何变化。 */
+  function getRecoverPct(s) { return Math.max(0, effAttr(s, 'ti') * 0.01 + getDestinyBonus(s, 'recoverPct') + getDestinyBonus(s, 'lifesteal') + (equipStats(s).recover || 0) / 100); }
   /* 反击率：遁速（有效值）×1% + 命格反击率。与 getDodgeRate/getExtraAtkChance 同族，一律取 effAttr（漏用基础值会让命格/法宝加成失效） */
   function getCounterRate(s) { return effAttr(s, 'dun') * 0.01 + getDestinyBonus(s, 'counterRate'); }
   /* ---------------- 防御：唯一权威口径（面板显示 = 战斗实际减伤） ----------------

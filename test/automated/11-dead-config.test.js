@@ -557,5 +557,31 @@ module.exports = async function build() {
     t.note('心魔扰神 = 概率(35%)令下一次出手落空；机制由 xinmoSpec 独家注入 mechanic=suppress');
   });
 
+  /* 仙命【九天玄体】是全局第一个带**负属性**的命格（ti-1 / dun-1）。
+     负值若穿透到「体魄×50 = 气血上限」与「体魄×1% = 回复」，极端堆叠会算出 hpMax ≤ 0
+     （进场即死、存档不可玩）或负回复（吸血变自残）。此处守死这两条地板。 */
+  S.case('负体魄地板：仙命【九天玄体】不得算出 hpMax ≤ 0 或负回复', (t) => {
+    // 基线：体魄 1、无仙命 → 80 + 1×50 = 130
+    const base = bare('负体魄基线');
+    base.ti = 1; E.refreshStats(base);
+    t.eq(base.hpMax, 130, '基线（体魄 1）hpMax 应为 130');
+
+    // 线上最坏情况：开局体魄恒为 1，九天玄体 -1 → 有效体魄 0
+    const d1 = bare('九天玄体');
+    d1.ti = 1; d1.destinies = ['jiutian']; E.refreshStats(d1);
+    t.eq(E.effAttr(d1, 'ti'), 0, '体魄1 + 九天玄体(-1) → 有效体魄应为 0');
+    t.eq(d1.hpMax, 80, '九天玄体 hpMax 应为 80（不得因负属性塌成 0/负数）');
+    t.gte(E.getRecoverPct(d1), 0, '有效体魄 0 → 回复不得为负');
+
+    // 构造性极端：有效体魄 -3（现实内容拿不到，但公式必须有地板）
+    const d3 = bare('极端负体魄');
+    d3.ti = 0; d3.destinies = ['jiutian', 'jiutian', 'jiutian']; E.refreshStats(d3);
+    t.eq(E.effAttr(d3, 'ti'), -3, '应构造出有效体魄 -3');
+    t.gt(d3.hpMax, 0, 'hpMax 必须 ≥ 1（实际 ' + d3.hpMax + '）');
+    t.eq(E.getRecoverPct(d3), 0, '负体魄时回复应夹到 0，不得变成自残');
+    t.note('加固前该极端下 hpMax = -70、getRecoverPct = -0.01（战斗中即为自伤）');
+    t.note('开局六维恒为 1，故线上最坏为 effAttr(ti)=0 → hpMax=80，本次加固不改变任何现状数值');
+  });
+
   return S;
 };

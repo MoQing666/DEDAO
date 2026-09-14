@@ -35,11 +35,20 @@ module.exports = async function build() {
   /* ---------- 2. DOM 引用一致性 ---------- */
   S.case('ui.js 引用的元素 ID 均存在于 index.html（非守护式引用）', (t) => {
     const htmlIds = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+    // PC 副本（index_pc.html）里有「隐藏靶点」按钮：ui_pc.js / ui_pc 顶部状态条用
+    // clickBtn('btn-xxx') 代理触发 ui.js 的绑定（如 #btn-settings-bottom）。
+    // 这类 ID 在手机版 index.html 中不存在属预期，不计入「死 ID」。
+    let pcIds = new Set();
+    const pcPath = path.join(ROOT, 'index_pc.html');
+    if (fs.existsSync(pcPath)) {
+      pcIds = new Set([...fs.readFileSync(pcPath, 'utf8').matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+    }
     const refs = new Set();
     for (const m of uiJs.matchAll(/getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) refs.add(m[1]);
     for (const m of uiJs.matchAll(/\$\(\s*['"]([^'"]+)['"]\s*\)/g)) refs.add(m[1]);
     const missing = [...refs].filter(id =>
       !htmlIds.has(id) &&                       // 不在 index.html 中定义
+      !pcIds.has(id) &&                         // 且不在 PC 副本中（隐藏代理靶点）
       !uiJs.includes(`id="${id}"`) &&           // 且非 ui.js 运行时通过模板动态创建的 ID（如开荒/宗门/仙缘面板）
       !uiJs.includes(`id='${id}'`)
     );

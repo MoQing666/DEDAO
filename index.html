@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
-  <link rel="stylesheet" href="css/style.css?v=124">
+  <link rel="stylesheet" href="css/style.css?v=125">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -126,13 +126,20 @@
        洞府(bg_dongfu)预留给修炼界面（目前未接入，不会在主界面显示） -->
   <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <header class="hud">
+      <!-- HUD 顶栏：2 行 × 3 列网格（2026-09-14 用户定稿）
+           ① 头像在左（跨两行，竖向居中） ② 道号+境界在头像右侧（第一行）
+           ③ 命格在第二行 ④ 设置按钮在命格右侧（第二行最右）
+           旧版是 flex + flex-wrap，窄屏上 .hud-name 的 min-content 顶破宽度 →
+           整块换行、头像单独占一行（用户反馈「头像单独占了一行」）。
+           改为 CSS Grid 固定列后不再换行。 -->
       <div class="hud-top">
         <div class="hud-avatar"><div class="avatar-circle" id="h-avatar"><img id="h-avatar-img" class="avatar-img" src="assets/img/portrait/me.png" alt="道号" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="avatar-fb" style="display:none">修</span></div></div>
         <div class="hud-name">
           <span id="h-name" class="name">修行者</span>
           <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
-          <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
         </div>
+        <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
+        <button id="hud-settings" class="hud-gear" type="button" title="设置" aria-label="设置">⚙</button>
       </div>
     </header>
 
@@ -220,6 +227,9 @@
     <div class="panel">
       <div class="screen-head"><h2>游历 · 山河图</h2><button class="btn-small ghost" id="travel-back">返回</button></div>
       <div class="screen-body" id="travel-body"></div>
+      <!-- 游历页内反馈条：本页是静态地图、没有日志区，任何提示（行动点不足 / 尚无可寻访之人 /
+           今年已探寻过 …）都必须写在这里，否则玩家「点了没反应」（2026-09-14 用户反馈）。 -->
+      <div class="travel-msg" id="travel-msg" style="display:none"></div>
     </div>
   </div>
 
@@ -231,7 +241,7 @@
     </div>
   </div>
 
-  <!-- 底部栏 -->
+  <!-- 底部栏（2026-09-14：设置已上移到 HUD「命格」行右侧，此处不再重复） -->
   <nav class="bottom-bar" id="bottom-bar" style="display:none">
     <button id="btn-char-bottom" class="bottom-btn">
       <span class="bottom-icon">👤</span>
@@ -244,10 +254,6 @@
     <button id="btn-npc-bottom" class="bottom-btn">
       <span class="bottom-icon">🐾</span>
       <span class="bottom-text">仙缘</span>
-    </button>
-    <button id="btn-settings-bottom" class="bottom-btn">
-      <span class="bottom-icon">⚙️</span>
-      <span class="bottom-text">设置</span>
     </button>
   </nav>
 
@@ -579,10 +585,10 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=124"></script>
-  <script src="js/engine.js?v=124"></script>
-  <script src="js/audio.js?v=124"></script>
-  <script src="js/backend-api.js?v=124"></script>
-  <script src="js/ui.js?v=124"></script>
+  <script src="js/data.js?v=125"></script>
+  <script src="js/engine.js?v=125"></script>
+  <script src="js/audio.js?v=125"></script>
+  <script src="js/backend-api.js?v=125"></script>
+  <script src="js/ui.js?v=125"></script>
 </body>
 </html>

@@ -6208,7 +6208,10 @@
     // 底部栏按钮事件
     $('btn-char-bottom').onclick = function () { if (!S) return; sfx('click'); openChar(); };
     $('btn-bag-bottom').onclick = function () { sfx('click'); openBag(); };
-    $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
+    // 设置：2026-09-14 由底部栏上移到 HUD「命格」行右侧（#hud-settings）。
+    //   底部栏已无此按钮 → 绑定必须判空（PC 版 index_pc.html 无 #hud-settings，属另一独立序列）。
+    if ($('hud-settings')) $('hud-settings').onclick = function () { sfx('click'); openSettings(); };
+    if ($('btn-settings-bottom')) $('btn-settings-bottom').onclick = function () { sfx('click'); openSettings(); };
 
     // 新场景底部导航（宗门/游历已移除底部栏，入口在行动栏：btn-sect / btn-social）
     if ($('btn-sect')) $('btn-sect').onclick = function () { if (!S) return; sfx('click'); openSect(); };
@@ -7481,7 +7484,26 @@
     if (!S || S.dead) return;
     showScreen('travel');
     renderTravel();
+    travelMsgClear();
     $('travel-back').onclick = function () { showScreen('game'); refresh(); };
+  }
+  /* 游历页内反馈：写在页内 #travel-msg（同时补一条主界面日志留痕）。
+     ⚠ 游历页（#screen-travel）是静态地图、**没有日志区**，从本页触发的任何提示
+     若只走 log() 就等于石沉大海 —— 玩家端表现是「点了没反应」（2026-09-14 用户反馈
+     「游历的探寻仙缘，点击无反应」：炼气期尚无已解锁的仙缘之人，返回的那句提示
+     只写进了离屏的主界面日志）。凡本页触发的字符串提示都必须走这个函数。 */
+  function travelMsg(text, kind) {
+    const el = $('travel-msg');
+    if (el) {
+      el.textContent = text;
+      el.className = 'travel-msg' + (kind && kind !== 'dim' ? ' ' + kind : '');
+      el.style.display = 'block';
+    }
+    log(text, kind || 'dim');
+  }
+  function travelMsgClear() {
+    const el = $('travel-msg');
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
   }
   function renderTravel() {
     const body = $('travel-body'); if (!body) return;
@@ -7501,25 +7523,26 @@
     body.querySelectorAll('[data-act]').forEach(function (b) {
       b.onclick = function () {
         const a = b.getAttribute('data-act');
+        travelMsgClear();   // 每次点击先清掉上一次的页内提示，避免旧提示误导
         if (a === 'shop') return travelShop();
         if (a === 'travel') { showScreen('game'); actTravel(); return; }
         if (a === 'xianyuan') {
-          if (!Engine.canAction(S, 1)) { log('行动点不足，无法叩问仙缘。'); return; }
+          if (!Engine.canAction(S, 1)) { travelMsg('行动点不足，无法叩问仙缘。', 'bad'); return; }
           const r = Engine.drawXianyuan(S);
-          if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+          if (typeof r === 'string') { travelMsg(r); refresh(); return; }
           if (r && r.multi) { openEventChoice(r.events); return; }
           if (r) { showScreen('game'); runEvent(r); }
         }
         if (a === 'xunxian') {
-          if (!Engine.canAction(S, 1)) { log('行动点不足，无法探寻仙缘。'); return; }
+          if (!Engine.canAction(S, 1)) { travelMsg('行动点不足，无法探寻仙缘。', 'bad'); return; }
           const r = Engine.seekNpcXianyuan(S);
-          if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+          if (typeof r === 'string') { travelMsg(r); refresh(); return; }
           if (r) { showScreen('game'); runEvent(r); }
         }
         if (a === 'shanhe') {
-          if (!Engine.canAction(S, 1)) { log('行动点不足，无法山河探索。'); return; }
+          if (!Engine.canAction(S, 1)) { travelMsg('行动点不足，无法山河探索。', 'bad'); return; }
           const r = Engine.shanheExplore(S);
-          if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+          if (typeof r === 'string') { travelMsg(r); refresh(); return; }
           if (r && r.multi) { openEventChoice(r.events); return; }
           if (r) { showScreen('game'); runEvent(r); }
         }
@@ -7529,9 +7552,9 @@
   /* 供 PC 端“探寻仙缘”地图热点调用（与游历内 xunxian 节点同逻辑） */
   window.actSeekXianyuan = function () {
     if (!S || S.dead) return;
-    if (!Engine.canAction(S, 1)) { log('行动点不足，无法探寻仙缘。'); return; }
+    if (!Engine.canAction(S, 1)) { travelMsg('行动点不足，无法探寻仙缘。', 'bad'); return; }
     const r = Engine.seekNpcXianyuan(S);
-    if (typeof r === 'string') { log(r, 'dim'); refresh(); return; }
+    if (typeof r === 'string') { travelMsg(r); refresh(); return; }
     if (r) { showScreen('game'); runEvent(r); }
   };
   function travelShop() {

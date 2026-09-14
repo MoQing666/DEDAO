@@ -129,9 +129,45 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- HUD ---------------- */
 .hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
-.hud-top { display: flex; justify-content: space-between; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin-bottom: 6px; }
-.hud-name { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; min-width: 0; flex: 1 1 auto; }
-.hud-avatar { flex-shrink: 0; }
+/* HUD 顶栏 = 2 行 × 3 列 网格（2026-09-14 用户定稿）
+   ┌──────┬──────────────────────────┬────────┐
+   │      │ 道号 + 境界（第 1 行）    │        │
+   │ 头像 │──────────────────────────┼────────│
+   │(跨行)│ 命格（第 2 行）           │ ⚙ 设置 │
+   └──────┴──────────────────────────┴────────┘
+   旧版是 flex + flex-wrap：窄屏上 .hud-name 的 min-content（道号+境界+命格不可收缩）
+   顶破容器宽度 → 整块换行，表现就是「头像单独占了一行」。
+   改用固定列网格后，头像永不换行。 */
+.hud-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+  margin-bottom: 6px;
+}
+/* 头像在左，跨两行（道号、命格两行都贴着它右侧）
+   align-self:start 而非 center：命格多到换行时，整块会变高；若居中，头像会漂到
+   第二/三行旁边。顶对齐可保证头像始终与「道号」同一行（用户要求「头像在左，道号在右」）。 */
+.hud-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: start; flex-shrink: 0; }
+/* 道号 + 境界：第 1 行、头像右侧 */
+.hud-name {
+  grid-column: 2; grid-row: 1;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  min-width: 0;
+}
+/* 命格：第 2 行、与道号左对齐 */
+/* 设置：第 2 行最右（命格右侧） */
+.hud-gear {
+  grid-column: 3; grid-row: 2; justify-self: end; align-self: center;
+  width: 30px; height: 30px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.25); border: 1px solid var(--line); border-radius: 6px;
+  color: #b8b8c8; font-size: 15px; line-height: 1; cursor: pointer;
+  font-family: inherit;
+}
+.hud-gear:hover, .hud-gear:active { color: var(--gold); border-color: var(--gold); background: rgba(232,193,90,.10); }
 .avatar-circle {
   position: relative; overflow: hidden;
   width: 40px; height: 40px; border-radius: 50%;
@@ -142,7 +178,12 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
 .avatar-fb { position: relative; z-index: 0; }
-.hud-destiny-inline { display: inline-flex; align-items: center; gap: 4px; margin-left: 2px; }
+/* 命格行：网格第 2 行、与道号左对齐；长命格可换行，不顶破容器 */
+.hud-destiny-inline {
+  grid-column: 2; grid-row: 2;
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  min-width: 0; margin-left: 0;
+}
 .hud-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .hud-actions .action-info-item { display: inline-flex; align-items: baseline; gap: 4px; background: rgba(0,0,0,.22); border: 1px solid #2e2942; padding: 2px 8px; border-radius: 4px; min-width: 0; }
 .name { font-size: 18px; color: #fff; letter-spacing: 2px; }
@@ -758,7 +799,7 @@ button:disabled { opacity: .4; cursor: default; }
   max-width: 520px;
   display: flex;
   flex-wrap: nowrap;
-  /* 成就/图鉴/玉符 已挪到主页面，此处仅剩 4 项：等分铺开、留出呼吸感 */
+  /* 成就/图鉴/玉符 已挪到标题页、设置已挪到 HUD，此处仅剩 3 项：等分铺开、留出呼吸感 */
   justify-content: space-evenly;
   gap: 6px;
   align-items: stretch;
@@ -789,7 +830,7 @@ button:disabled { opacity: .4; cursor: default; }
   background: rgba(232, 193, 90, 0.08);
 }
 .bottom-icon {
-  /* 4 项布局下单元格更宽，图标略放大以免留白过空 */
+  /* 3 项布局下单元格更宽，图标略放大以免留白过空 */
   font-size: 24px;
   margin-bottom: 3px;
   line-height: 1;
@@ -1334,6 +1375,23 @@ button:disabled { opacity: .4; cursor: default; }
 .tn-icon { font-size: 30px; }
 .tn-name { color: var(--gold); font-size: 15px; font-weight: 400; margin: 4px 0; }
 .tn-desc { font-size: 13px; font-weight: 400; color: var(--dim); }
+/* 游历页内反馈条（页内提示，替代「写进主界面日志」——游历页看不到日志）
+   2026-09-14：点「探寻仙缘」在无仙缘之人 / 行动点不足时曾经「点了没反应」。 */
+.travel-msg {
+  flex: none;
+  margin-top: 10px;
+  padding: 9px 11px;
+  font-size: 13px;
+  line-height: 1.55;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  background: rgba(0,0,0,.34);
+  color: #e8dcc0;
+  word-break: break-word;
+}
+.travel-msg.bad { border-left-color: var(--bad); color: #ffb4a6; }
+.travel-msg.good { border-left-color: var(--good); color: #a8e8d0; }
 .dabi-foe { background: rgba(224,96,74,.1); border: 1px solid rgba(224,96,74,.4); border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 13px; }
 /* ===== 宗门大比 · 一条直线 5 连战（秘境化阶梯） ===== */
 .dabi-ladder { position: relative; margin: 12px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }

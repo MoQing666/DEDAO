@@ -267,13 +267,16 @@ module.exports = async function build() {
     t.note(`已遍历 ${bars.length} 个底部入口`);
   });
 
-  S.case('底部栏只保留 4 项，玉符/成就/图鉴 已挪到标题页', async (t) => {
+  S.case('底部栏只保留 3 项，玉符/成就/图鉴/设置 已挪走', async (t) => {
     const { win, doc, errors } = await boot();
     const ids = [...doc.querySelectorAll('.bottom-bar .bottom-btn')].map(e => e.id).filter(Boolean);
-    t.eq(ids.length, 4, '底部栏应只剩 4 个入口，实际: ' + ids.join(', '));
-    ['btn-ach-bottom', 'btn-codex-bottom', 'btn-omen-bottom'].forEach(function (id) {
+    // 2026-09-14：设置从底部栏上移到 HUD「命格」行右侧 → 底部栏由 4 项变 3 项
+    t.eq(ids.length, 3, '底部栏应只剩 3 个入口（角色/储物袋/仙缘），实际: ' + ids.join(', '));
+    ['btn-ach-bottom', 'btn-codex-bottom', 'btn-omen-bottom', 'btn-settings-bottom'].forEach(function (id) {
       t.ok(!doc.querySelector('.bottom-bar #' + id), id + ' 不应再出现在底部栏');
     });
+    // 设置的新家：HUD 命格行右侧
+    t.ok(!!doc.querySelector('#screen-game .hud-top #hud-settings'), '设置应位于 HUD（命格行右侧）');
     // 三个入口应落在标题页
     ['btn-omen-title', 'btn-ach-title', 'btn-codex-title'].forEach(function (id) {
       t.ok(!!doc.querySelector('.title-util-row #' + id), id + ' 应位于标题页 .title-util-row');
@@ -1264,6 +1267,120 @@ module.exports = async function build() {
       '选项 effect 应真正结算（灵石应 +123，实 ' + stoneBefore + ' → ' + stoneAfter + '）');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('山河探索流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* 回归 2026-09-14：游历页「探寻仙缘」点击无反应。
+     根因：游历页（#screen-travel）是静态地图、没有日志区，而 xunxian 分支在
+       「行动点不足 / 尚无已解锁的仙缘之人 / 今年已探寻过」时只调用 log()——
+       日志写进了离屏的主界面 #log，玩家在游历页上什么都看不到 = 「点了没反应」。
+     修法：新增页内提示区 #travel-msg，本页所有字符串提示走 travelMsg()。 */
+  S.case('游历页「探寻仙缘」：无仙缘之人时必须有页内提示（旧版静默无反应）', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '寻仙');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    raw.seen = {};                 // 未结识任何仙缘之人 → 探寻仙缘必然返回字符串提示
+    raw.npcTravelYearCount = 0;
+    raw.xianyuanYearCount = 0;
+    raw.actionsLeft = 9;           // 行动点充足，排除「行动点不足」这条分支
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 220));
+    await advanceChapters(win, doc);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+    const msg = doc.getElementById('travel-msg');
+    t.ok(!!msg, '游历页应有页内提示区 #travel-msg');
+    const node = doc.querySelector('#travel-body [data-act="xunxian"]');
+    t.ok(!!node, '游历页应有「探寻仙缘」入口');
+    if (!node || !msg) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    t.eq(visible(doc, 'travel-msg'), true,
+      '点「探寻仙缘」后页内提示应可见（旧版：提示只写进离屏主日志 → 玩家看到的是「没反应」）');
+    t.ok(/尚无可寻访的仙缘之人/.test(msg.textContent || ''),
+      '提示应说明「尚无可寻访的仙缘之人」（实：' + (msg.textContent || '').slice(0, 60) + '）');
+    t.eq(visible(doc, 'chapter'), false, '无仙缘之人时不应弹出章节层');
+    const hp = doc.getElementById('h-actions-left');
+    t.eq(parseInt(hp ? hp.textContent : '0', 10), 9, '无仙缘之人时不应消耗行动点');
+    // 顺带：提示必须同时留痕在主日志（回到主界面能回看）
+    const logTxt = (doc.getElementById('log') || {}).textContent || '';
+    t.ok(/尚无可寻访的仙缘之人/.test(logTxt), '页内提示应同时留痕主日志');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('探寻仙缘流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('游历页「探寻仙缘」：已结识仙缘之人时回到主界面并弹章节层', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '寻仙2');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    // 只解锁林婉儿（unlock.story = ml_0_6）→ 池中只有 xian_lin，抽取结果确定
+    raw.seen = { ml_0_6: 1 };
+    raw.npcTravelYearCount = 0;
+    raw.actionsLeft = 9;
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 220));
+    await advanceChapters(win, doc);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    const node = doc.querySelector('#travel-body [data-act="xunxian"]');
+    t.ok(!!node, '游历页应有「探寻仙缘」入口');
+    if (!node) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 300));
+    t.eq(visible(doc, 'screen-game'), true, '触发缘法后应回到主界面展示（游历页没有日志/章节区）');
+    t.eq(visible(doc, 'chapter'), true, 'NPC 缘法应弹出章节层');
+    const cbody = (doc.getElementById('chapter-body') || {}).textContent || '';
+    const ctitle = (doc.getElementById('chapter-title') || {}).textContent || '';
+    t.ok(/药庐初遇/.test(ctitle), '章节层标题应是【药庐初遇】（实：' + ctitle + '）');
+    t.ok(/青衣少女正扶着门框看你/.test(cbody), '章节层应展示缘法文案（实：' + cbody.slice(0, 60) + '）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('探寻仙缘触发报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* 回归 2026-09-14：主页面 HUD 布局（用户反馈「头像单独占了一行」）。
+     目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 设置在命格右侧。
+     旧版 flex + flex-wrap：窄屏上 .hud-name 的 min-content 顶破容器 → 整块换行。
+     jsdom 量不出几何，故这里断言「结构 + 网格口径」（防回退），几何由 Edge 探针实测。 */
+  S.case('主页面 HUD：头像左 / 道号右 / 命格下一行 / 设置在命格右侧', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '布局');
+    const top = doc.querySelector('#screen-game .hud-top');
+    t.ok(!!top, '主界面应有 .hud-top');
+    if (!top) return;
+    const avatar = top.querySelector('.hud-avatar');
+    const nameBox = top.querySelector('.hud-name');
+    const destiny = top.querySelector('.hud-destiny-inline');
+    const gear = doc.getElementById('hud-settings');
+    t.ok(!!avatar, 'HUD 应有头像块 .hud-avatar');
+    t.ok(!!nameBox, 'HUD 应有道号块 .hud-name');
+    t.ok(!!destiny, 'HUD 应有命格行 .hud-destiny-inline');
+    t.ok(!!gear, 'HUD 应有设置按钮 #hud-settings');
+    if (!avatar || !nameBox || !destiny || !gear) return;
+    // 命格必须移出 .hud-name，否则与道号挤在同一行（用户要求「命格在下一行」）
+    t.ok(!nameBox.contains(destiny), '命格必须在 .hud-name 之外（独占第二行）');
+    const kids = [...top.children];
+    t.ok(kids.indexOf(avatar) < kids.indexOf(nameBox), '头像应排在道号之前（头像在左）');
+    t.ok(kids.indexOf(nameBox) < kids.indexOf(destiny), '道号应排在命格之前（命格在下一行）');
+    t.eq(typeof gear.onclick, 'function', '设置按钮必须绑定 onclick（能点）');
+    // 设置按钮点开的是设置面板
+    gear.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'modal'), true, '点 HUD 设置按钮应打开设置面板');
+    // 底部栏不再重复放设置
+    t.ok(!doc.getElementById('btn-settings-bottom'), '底部栏不应再有设置按钮（已上移到 HUD）');
+    t.eq(doc.querySelectorAll('#bottom-bar .bottom-btn').length, 3, '底部栏应剩 3 项（角色/储物袋/仙缘）');
+    // 布局口径守卫：必须是固定列网格，禁止回退成 flex-wrap（回退=头像又会单独占一行）
+    const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
+    t.ok(/\.hud-top\s*\{[^}]*display:\s*grid/.test(css), '.hud-top 必须是网格布局');
+    t.ok(/\.hud-top\s*\{[^}]*grid-template-columns/.test(css), '.hud-top 必须固定列（否则窄屏又换行）');
+    t.ok(/\.hud-avatar\s*\{[^}]*grid-row:\s*1\s*\/\s*span\s*2/.test(css), '头像应跨两行（左侧竖排居中）');
+    t.ok(/\.hud-gear\s*\{[^}]*grid-column:\s*3/.test(css), '设置应固定在第 3 列（命格右侧）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('HUD 渲染报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   return S;

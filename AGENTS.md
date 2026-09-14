@@ -756,3 +756,14 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - **修法（js/ui.js 装备/法宝页 4 处按钮回调）**：装备页「卸下 / 穿戴」、法宝页「卸下 / 装备」四个回调，操作后均追加 `refresh(); renderCharAttr(); renderCharEquip()/renderCharTreasure();`，使主页面六维/战斗属性与角色页同步刷新。
     - **顺带确认**：`data.js` 中巨灵腰带定义与宗门商店条目本就正确，无需改动。
     - 缓存 **v122/dedao-v160**。测试 **230/231**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致；唯一失败为并发会话在途改动的「山河探索」UI 用例，与本次 4 项修复无关）。
+
+45. **游历「探寻仙缘」点击无反应 / 主页面 HUD 头像单独占一行（2026-09-14，用户反馈）**：
+    - **症状 A**：游历页点【探寻仙缘】毫无反应（战斗页服药、秘境商店那批修复之后的又一例「点了没反应」）。
+    - **根因**：游历页 `#screen-travel` 是**静态地图，没有日志区**；`xunxian` 分支在「行动点不足 / 尚无已解锁的仙缘之人 / 今年已探寻过」三条路径上都只调 `log()`，而 `log()` 写的是主界面 `#log`。玩家人在游历页，提示落在离屏日志里 → 表现为「点了没反应」。炼气期尚无已结识 NPC（`NPCS[*].unlock.story` 未达成）时必然命中这条路径，故体感是「完全没反应」。
+    - **修法（js/ui.js + index.html + css/style.css）**：`#screen-travel .panel` 新增页内提示区 `#travel-msg`，新增 `travelMsg(text, kind)`（写页内 + 同时补一条主日志留痕）与 `travelMsgClear()`；`renderTravel` 的 `xianyuan / xunxian / shanhe` 三节点**所有字符串提示**改走 `travelMsg`（"行动点不足" 走 bad 样式），每次点击先 `travelMsgClear()`；`window.actSeekXianyuan`（PC 热点）同步改用它（PC 无该元素时自动降级为纯日志）。`openTravel()` 进入时清空提示。
+    - **症状 B**：主页面 HUD 里头像**单独占了一行**（用户要：头像在左 / 道号在右 / 命格在下一行 / 设置在命格右侧）。
+    - **根因**：`.hud-top` 是 `flex` + `flex-wrap:wrap`，`.hud-name` 内含「道号+境界+命格」三块，其中 `.realm-badge` 与 `.hud-destiny-inline` 都是 `flex-shrink:0` → `.hud-name` 的 min-content 顶破容器宽度，整块换行，头像就被挤成独占一行。
+    - **修法（index.html + css/style.css）**：`.hud-top` 改 **CSS Grid 2 行 × 3 列**（`auto minmax(0,1fr) auto`）：头像 `grid-column:1 / grid-row:1 / span 2`（`align-self:start`，保证命格换行变高时仍与「道号」同行）；道号+境界 `col2 row1`；命格 **移出 `.hud-name`** 成为 `.hud-top` 直接子元素（`col2 row2`，可换行）；新增 `#hud-settings`（`.hud-gear`，`col3 row2`，⚙）。**设置从底部栏上移到 HUD**（底部栏由 4 项变 3 项：角色/储物袋/仙缘），`js/ui.js` 的 `#btn-settings-bottom` 绑定改判空（PC 副本 `index_pc.html` 仍保留该隐藏靶点，`ui_pc.js` 的 `pc-set` 靠它代理触发）。
+    - **几何实测（无头 Edge 探针，320/360/390/414px × 3~6 个命格）**：横向溢出恒为 0；`grid-column/row` 计算值恒为 `avatar 1/1-2 · name 2/1 · destiny 2/2 · gear 3/2`；390px + 3 命格时 HUD 顶栏高 65px。
+    - **新增回归**：`03`「游历页「探寻仙缘」：无仙缘之人时必须有页内提示（旧版静默无反应）」（**回退修复后该用例实测转红**，非空转）+「已结识仙缘之人时回到主界面并弹章节层」+「主页面 HUD：头像左 / 道号右 / 命格下一行 / 设置在命格右侧」（含 CSS 网格口径守卫，防回退成 flex-wrap）；`01` 的「未定义 ID」审计**新增 index_pc.html 白名单**（PC 隐藏代理靶点不再误报为死代码）；`03` 底部栏用例 4 项 → 3 项。
+    - 缓存 **v125/dedao-v163**。测试 **234/234**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。

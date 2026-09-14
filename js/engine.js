@@ -1330,6 +1330,16 @@ const Engine = (function () {
   const EQUIP_DROP_PER_DEPTH = 0.02;
   const EQUIP_DROP_CAP = 0.30;
   const EQUIP_DROP_BOSS = 0.60;
+  // 装备掉落率查询（供 UI 展示，与 randomEquip 同一套公式）
+  //   杂兵/精英 p = min(EQUIP_DROP_CAP, 深度 × EQUIP_DROP_PER_DEPTH)
+  //   Boss 固定 EQUIP_DROP_BOSS；品质偏置 min(RANGE_BIAS_CAP, 深度 × RANGE_BIAS_PER_DEPTH)
+  function equipDropRate(depth, isBoss) {
+    if (isBoss) return EQUIP_DROP_BOSS;
+    return Math.min(EQUIP_DROP_CAP, (depth || 1) * EQUIP_DROP_PER_DEPTH);
+  }
+  function equipBiasRate(depth) {
+    return Math.min(RANGE_BIAS_CAP, Math.max(0, depth || 1) * RANGE_BIAS_PER_DEPTH);
+  }
   function randomEquip(bi, depth) {
     const range = realmTierRange(bi);
     // ⚠ 掉落品质**严格落在 realmTierRange(bi) 区间内**：黄级(0) → 凡品/良品，玄级(1) → 良品/上品，
@@ -3262,18 +3272,10 @@ const Engine = (function () {
         stock.push({ id: 'EQUIP:' + eid, name: '装备·' + eq.name, price: eq.price, equip: eid });
       }
     }
-    // 秘境坊市：增售可在秘境中即时回复气血/灵力的丹药
+    // 秘境坊市：增售可「当场服用、即时生效」的回复丹药（购买即生效，不入随身、不出现在本次收获）
     if (s.adv && s.adv.status === 'running') {
-      stock.push({ id: 'adv_heal', name: '回春丹（随身·气血 +40%）', price: 40, advItem: { id: 'huichun', n: 1 } });
-      stock.push({ id: 'adv_mp', name: '灵泉（灵力 +40%）', price: 40, adv: { mpPct: 0.40 } });
-      // 战斗丹药：买下即入「随身」，战斗与歇脚时都能服（替代已删除的出发前携带机制）
-      const advElixirKeys = ['huichun', 'ningling', 'jiuzhuan', 'jiedu'].filter(function (k) { return ELIXIRS[k]; });
-      const advElixirPrice = { huichun: 55, ningling: 55, jiuzhuan: 90, jiedu: 35 };
-      const sh = advElixirKeys.slice();
-      for (let i = sh.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = sh[i]; sh[i] = sh[j]; sh[j] = t; }
-      sh.slice(0, 2).forEach(function (k) {
-        stock.push({ id: 'advd_' + k, name: ELIXIRS[k].name, price: advElixirPrice[k] || 55, advItem: { id: k, n: 1 } });
-      });
+      stock.push({ id: 'adv_heal', name: '回春丹（气血 +40%·当场服用）', price: 40, adv: { hpPct: 0.40 } });
+      stock.push({ id: 'adv_mp', name: '灵泉（灵力 +40%·当场服用）', price: 40, adv: { mpPct: 0.40 } });
     }
     // 游历流动商贩：从法宝池中随机抽取 3 件（非已拥有优先，已拥有仅在余量不足时上架并标记 owned）。
     // 判定必须用 ownsArt（背包 s.arts + 装备位 s.equip.treasure）——灵物改制后已拥有法宝多在装备位，
@@ -3309,7 +3311,6 @@ const Engine = (function () {
     if (si.sold) return { ok: false, msg: '此物已被买走。' };
     if (si.art && ownsArt(s, si.art)) return { ok: false, msg: '此法宝已在囊中，无须重金再购。' };
     if (s.stone < si.price) return { ok: false, msg: '灵石不足。' };
-    if (si.advItem && (!s.adv || s.adv.status !== 'running')) return { ok: false, msg: '不在秘境之中，无法随身携带。' };
     s.stone -= si.price;
     si.sold = true;
     const out = ['支出灵石 ' + si.price];
@@ -3327,16 +3328,10 @@ const Engine = (function () {
       if (eff.hpPct) { const h = Math.round(s.hpMax * eff.hpPct); s.hp = Math.min(s.hpMax, s.hp + h); out.push('气血 +' + h); }
       if (eff.mpPct) { const m = Math.round(s.mpMax * eff.mpPct); s.mp = Math.min(s.mpMax, s.mp + m); out.push('灵力 +' + m); }
     }
-    // 战斗丹药：直接进「随身」，可在秘境战斗 / 歇脚时服用
-    if (si.advItem) {
-      if (!s.adv.items) s.adv.items = [];
-      const ex = s.adv.items.find(function (x) { return x.id === si.advItem.id; });
-      if (ex) ex.count += si.advItem.n; else s.adv.items.push({ id: si.advItem.id, count: si.advItem.n });
-      const nm = ELIXIRS[si.advItem.id] ? ELIXIRS[si.advItem.id].name : si.advItem.id;
-      out.push('随身 ' + nm + ' +' + si.advItem.n);
-    }
+    // 本次收获只记录「所得之物」；当场生效的回复（气血/灵力）不入收获
+    const gains = out.filter(function (l) { return !/^气血 \+/.test(l) && !/^灵力 \+/.test(l); });
     saveState(s);
-    return { ok: true, lines: out };
+    return { ok: true, lines: out, gains: gains };
   }
   function sellMaterial(s, kind, n) {
     if (!s.materials) s.materials = {};
@@ -4806,6 +4801,11 @@ const Engine = (function () {
     // 命格（跨世累计）
     out.destinies = {};
     Object.keys(DESTINIES).forEach(function (id) { out.destinies[id] = !!seenDest[id]; });
+    // 仙命（金阶命格，全展示，不隐藏为 ???）
+    out.xianming = {};
+    Object.keys(DESTINIES).forEach(function (id) {
+      if (DESTINIES[id].grade === '金') out.xianming[id] = true;
+    });
     // 功法
     out.techs = {};
     Object.keys(TECHNIQUES).forEach(function (id) { out.techs[id] = techs.indexOf(id) >= 0; });
@@ -5348,6 +5348,7 @@ const Engine = (function () {
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, achDefs: achDefs,
     checkAchievements: checkAchievements, checkAchievementsLive: checkAchievementsLive,
     codexState: codexState, syncTreasureSeen: syncTreasureSeen,
+    equipDropRate: equipDropRate, equipBiasRate: equipBiasRate,
     // —— 五劫主线 / 灾劫玉符 / 隐藏线 ——
     nextDeathEvent: nextDeathEvent, omenYearsLeft: omenYearsLeft, omenText: omenText,
     grantOmen: grantOmen, omenOnDeathPassed: omenOnDeathPassed,

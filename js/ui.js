@@ -137,7 +137,10 @@
     const ap = Engine.actionPoints(S);
 
     $('h-name').textContent = S.name;
-    if ($('h-avatar')) $('h-avatar').textContent = (S.name || '修').slice(0, 1);
+    if ($('h-avatar')) {
+      const fb = $('h-avatar').querySelector('.avatar-fb');
+      if (fb) fb.textContent = (S.name || '修').slice(0, 1);
+    }
     $('h-realm').textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
     $('h-realm').style.color = st.color;
     $('h-realm').style.borderColor = st.color;
@@ -781,6 +784,13 @@
         '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
         '<p style="font-size:13px;color:#8a8a9a;margin-bottom:8px;">' + adv.desc + (canEnter ? '' : lockTxt) + '</p>' +
         '<div style="font-size:12px;color:#6a6a7a;">产出：' + adv.drops + '</div>' +
+        (function () {
+          const d1 = Engine.equipDropRate(1, false), dCap = Engine.equipDropRate(999, false), dBoss = Engine.equipDropRate(1, true);
+          const b1 = Engine.equipBiasRate(1), bCap = Engine.equipBiasRate(999);
+          const capFloor = Math.ceil(dCap / d1);
+          return '<div style="font-size:12px;color:#e8c15a;margin-top:4px;">装备掉落：第1层 ' + Math.round(d1 * 100) + '% → 第' + capFloor + '层 ' + Math.round(dCap * 100) + '%（封顶）· BOSS ' + Math.round(dBoss * 100) + '%</div>' +
+                 '<div style="font-size:11px;color:#8a8a9a;margin-top:2px;">品质偏置：随层数 ' + Math.round(b1 * 100) + '%→' + Math.round(bCap * 100) + '%（越深越易出高品，不越阶）</div>';
+        })() +
         artLine;
       const btnWrap = document.createElement('div');
       btnWrap.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
@@ -1730,7 +1740,7 @@
         const r = Engine.buyStock(S, si);
         if (!r.ok) { log(r.msg, 'bad'); return; }
         r.lines.forEach(function (l) { log(l, 'good'); });
-        if (S.adv) S.adv.gains.push.apply(S.adv.gains, r.lines);
+        if (S.adv) S.adv.gains.push.apply(S.adv.gains, r.gains || r.lines);
         syncRows();
         refresh();
       };
@@ -7570,6 +7580,7 @@
   const CODEX_TABS = [
     { key: 'artifacts', name: '法宝', ico: '⚔️' },
     { key: 'destinies', name: '命格', ico: '☯️' },
+    { key: 'xianming',  name: '仙命', ico: '🌟' },
     { key: 'techs',     name: '功法', ico: '📜' },
     { key: 'npcs',      name: '仙缘', ico: '💞' },
     { key: 'bosses',    name: '秘境之主', ico: '👹' },
@@ -7605,6 +7616,10 @@
     if (type === 'destinies') {
       const d = DESTINIES[id]; if (!d) return null;
       return { ico: '☯️', name: d.name, grade: d.grade, meta: d.grade + '阶命格', desc: d.desc, eff: effText(d.attr || d.effect) };
+    }
+    if (type === 'xianming') {
+      const d = DESTINIES[id]; if (!d) return null;
+      return { ico: '🌟', name: d.name, grade: d.grade, meta: '仙命 · 金阶命格', desc: d.desc, eff: effText(d.attr || d.effect) };
     }
     if (type === 'techs') {
       const t = TECHNIQUES[id]; if (!t) return null;

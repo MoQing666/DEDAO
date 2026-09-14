@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
-  <link rel="stylesheet" href="css/style.css?v=117">
+  <link rel="stylesheet" href="css/style.css?v=118">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -121,7 +121,7 @@
   <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <header class="hud">
       <div class="hud-top">
-        <div class="hud-avatar"><div class="avatar-circle" id="h-avatar">修</div></div>
+        <div class="hud-avatar"><div class="avatar-circle" id="h-avatar"><img id="h-avatar-img" class="avatar-img" src="assets/img/portrait/me.png" alt="道号" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="avatar-fb" style="display:none">修</span></div></div>
         <div class="hud-name">
           <span id="h-name" class="name">修行者</span>
           <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
@@ -585,10 +585,10 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=117"></script>
-  <script src="js/engine.js?v=117"></script>
-  <script src="js/audio.js?v=117"></script>
-  <script src="js/backend-api.js?v=117"></script>
-  <script src="js/ui.js?v=117"></script>
+  <script src="js/data.js?v=118"></script>
+  <script src="js/engine.js?v=118"></script>
+  <script src="js/audio.js?v=118"></script>
+  <script src="js/backend-api.js?v=118"></script>
+  <script src="js/ui.js?v=118"></script>
 </body>
 </html>

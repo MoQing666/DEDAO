@@ -214,7 +214,7 @@ module.exports = async function build() {
 
   // 机制变更（2026-09-11）：删除「出发前携带丹药」整备页。
   // 战斗丹药改由秘境内的荒野坊市购买 → 买下即入随身 → 战斗/歇脚可服 → 离场即清（不回库）。
-  S.case('秘境丹药改为坊市购买：买下入随身、可服用、离场不回库', (t) => {
+  S.case('秘境坊市回血丹：购买即当场服用、即时生效（不入随身、不进本次收获）', (t) => {
     const s = started();
     s.elixirs = s.elixirs || {};
     s.elixirs.huichun = 3; // 储物袋里的旧丹药不应被自动带入
@@ -222,25 +222,18 @@ module.exports = async function build() {
     t.ok(r.ok, '进入失败: ' + (r.msg || ''));
     t.eq(s.elixirs.huichun, 3, '进入秘境不再扣减储物袋丹药（携带机制已删除）');
     t.eq((s.adv.items || []).length, 0, '入场时随身丹药应为空');
-    // 坊市里买到一颗回春丹
+    // 坊市里买到一颗回春丹（当场服用，即时生效）
     s.stone = 9999;
-    const bought = E.buyStock(s, { id: 'advd_huichun', name: '回春丹', price: 55, advItem: { id: 'huichun', n: 1 } });
-    t.ok(bought.ok, '购买战斗丹药失败: ' + (bought.msg || ''));
-    const carried = s.adv.items.find(function (x) { return x.id === 'huichun'; });
-    t.ok(carried && carried.count === 1, '买到的丹药应进入「随身」');
-    t.eq(s.elixirs.huichun, 3, '购买不应动储物袋库存');
-    // 受伤后服用
     s.hp = Math.round(s.hpMax * 0.4);
     const hpBefore = s.hp;
-    const ur = E.useAdvElixir(s, 'huichun');
-    t.ok(ur.ok, '服药失败: ' + (ur.msg || ''));
-    t.gt(s.hp, hpBefore, '服用回春丹后气血应提升');
-    // 再买一颗（未服用），离场后随身清空且不回库（本次秘境资源）
-    E.buyStock(s, { id: 'advd_huichun2', name: '回春丹', price: 55, advItem: { id: 'huichun', n: 1 } });
-    const invBefore = s.elixirs.huichun;
-    E.advEnd(s, 'done');
-    t.eq(s.adv.items.length, 0, '离场后随身丹药应清空');
-    t.eq(s.elixirs.huichun, invBefore, '未用完的丹药随此行消散，不得回流储物袋');
+    const bought = E.buyStock(s, { id: 'adv_heal', name: '回春丹', price: 40, adv: { hpPct: 0.40 } });
+    t.ok(bought.ok, '购买回春丹失败: ' + (bought.msg || ''));
+    t.gt(s.hp, hpBefore, '购买回春丹后气血应即时提升（当场服用）');
+    t.eq((s.adv.items || []).length, 0, '回春丹不应进入随身');
+    t.eq(s.elixirs.huichun, 3, '购买不应动储物袋库存');
+    // 当场生效的回复不应写进「本次收获」
+    const hasHpGain = (s.adv.gains || []).some(function (g) { return /^气血 \+/.test(g); });
+    t.ok(!hasHpGain, '本次收获不应包含当场生效的气血回复');
   });
 
   S.case('秘境节点类型解析：rest 正确返回', (t) => {

@@ -28,6 +28,12 @@ const Engine = (function () {
           delete m.reinc.extra_destiny;
           saveMeta(m);
         }
+        // 兼容：补齐缺失字段（旧档可能只有 reinc 而无 achievements/points/lives 等），
+        // 否则 openAchievements 里 `meta.achievements[id]` 会抛 TypeError，导致成就页（成就·轮回印记）整页空白。
+        const d = defaultMeta();
+        for (const k in d) if (m[k] === undefined) m[k] = d[k];
+        if (!m.reinc) m.reinc = {};
+        if (!m.achievements) m.achievements = {};
         return m;
       }
     } catch (e) {}

@@ -6598,7 +6598,7 @@
           S.inventory.push(instObj);
           Engine.refreshStats(S); Engine.saveState(S);
           log('你卸下了【' + it.name + '】。', 'dim');
-          renderCharEquip();
+          refresh(); renderCharAttr(); renderCharEquip();
         };
       } else {
         card.innerHTML = '<h5>' + EQUIP_SLOTS[slot].name + '</h5><div class="empty">未装备</div>';
@@ -6629,7 +6629,7 @@
       btns[0].onclick = function () {
         Engine.wearEquip(S, instObj);
         log('你换上了【' + it.name + '】。', 'good');
-        renderCharEquip();
+        refresh(); renderCharAttr(); renderCharEquip();
       };
       btns[1].onclick = function () {
         const g = Engine.sellEquip(S, instObj);
@@ -6676,14 +6676,14 @@
       card.querySelector('button').onclick = function () {
         Engine.unequipTreasure(S, v.id);
         log('你卸下了【' + v.name + '】。', 'dim');
-        renderCharTreasure();
+        refresh(); renderCharAttr(); renderCharTreasure();
       };
     } else if (kind === 'bag' && !locked) {
       card.querySelector('button').onclick = function () {
         Engine.equipTreasureAuto(S, v.id);
         Engine.refreshStats(S); Engine.saveState(S);
         log('你装备了【' + v.name + '】。', 'good');
-        renderCharTreasure();
+        refresh(); renderCharAttr(); renderCharTreasure();
       };
     }
     return card;
@@ -7426,7 +7426,9 @@
   }
   function sectDoShop() {
     const list = Engine.sectGoods(S);
-    let h = '<h3>宗门商人</h3><div class="ct-grid">';
+    let h = '<h3>宗门商人</h3>'
+      + '<p class="dim" style="margin:2px 0 10px">当前可用灵石：<b style="color:var(--gold)">' + (S.stone || 0) + '</b> 枚</p>'
+      + '<div class="ct-grid">';
     list.forEach(function (g) {
       let nm = g.ref;
       if (g.kind === 'art' && ARTIFACTS[g.ref]) nm = ARTIFACTS[g.ref].name;

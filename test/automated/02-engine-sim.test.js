@@ -174,6 +174,47 @@ module.exports = async function build() {
     checkInvariants(t, s, 'breakthrough');
   });
 
+  S.case('小境界突破吃「渡劫加成」且封顶 98%（2026-09-14 用户要求）', (t) => {
+    const s = E.startLife('小境界'); E.commitStart(s, TALENTS[0].id);
+    s.idx = 1; s.realm = '炼气'; s.elixirs = {};
+    s.talents = []; s.destinies = []; s.tribPct = 0; s.tribBonusExtra = 0; s.sect = null;
+    s.dao = 0; s.qi = E.requireNeed(s);
+    const base0 = E.breakInfo(s).base;
+    s.dao = 10;                                    // 道心 +10 → 渡劫加成 +10%
+    const base1 = E.breakInfo(s).base;
+    t.gt(base1, base0, '小境界突破必须吃「渡劫加成」——旧版只吃悟性，道心/灵根/命格完全无效');
+    t.inRange(base1 - base0, 0.09, 0.11, '道心 +10 应约等于成功率 +10%');
+    s.dao = 999;                                   // 极端加成 → 必须封顶 98%
+    t.eq(Math.round(E.breakInfo(s).base * 100), 98, '小境界成功率封顶应为 98%');
+    // 炼气圆满 → 筑基（同为概率突破、无天劫）也应吃加成
+    s.idx = 2; s.realm = '炼气'; s.dao = 0; s.qi = E.requireNeed(s);
+    const zb0 = E.breakInfo(s).base;
+    s.dao = 10;
+    const zb1 = E.breakInfo(s).base;
+    t.gt(zb1, zb0, '炼气圆满→筑基 也应吃渡劫加成');
+    t.note(`炼气中→后 base: ${(base0 * 100).toFixed(1)}% → 道心+10: ${(base1 * 100).toFixed(1)}%`);
+  });
+
+  S.case('突破连续失败 2 次后第 3 次必成（2026-09-14 保底）', (t) => {
+    const s = E.startLife('保底'); E.commitStart(s, TALENTS[0].id);
+    s.idx = 1; s.realm = '炼气'; s.elixirs = {};
+    s.talents = []; s.destinies = []; s.tribPct = 0; s.tribBonusExtra = 0; s.sect = null;
+    s.dao = -200;                                  // 使 base<0 → 掷骰必然失败（仅用于确定性验证计数）
+    s.breakFails = 0;
+    s.qi = E.requireNeed(s);
+    E.normalBreakthrough(s, null);
+    t.eq(s.breakFails, 1, '第 1 次失败后，连续失败计数应为 1');
+    s.qi = E.requireNeed(s);
+    E.normalBreakthrough(s, null);
+    t.eq(s.breakFails, 2, '第 2 次失败后，连续失败计数应为 2');
+    s.qi = E.requireNeed(s);
+    const r = E.normalBreakthrough(s, null);
+    t.ok(r.win === true, '连续失败 2 次后，第 3 次突破必须因保底而成功');
+    t.eq(s.breakFails, 0, '保底成功后连续失败计数应清零');
+    t.eq(s.idx, 2, '保底突破应推进一个小境界');
+    t.note('保底链路验证：fail→1、fail→2、第 3 次 guaranteed win');
+  });
+
   /* ---------- 战斗 ---------- */
   S.case('战斗可正常终止且数值不越界', (t) => {
     const s = E.startLife('己'); E.commitStart(s, TALENTS[0].id);

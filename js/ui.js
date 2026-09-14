@@ -223,9 +223,14 @@
     $('btn-break').disabled = S.dead || !canB;
     $('btn-break').classList.toggle('ready', canB && !S.dead);
     const info = canB ? Engine.breakInfo(S) : null;
-    $('btn-break-label').textContent = canB
-      ? (info.trib ? '渡劫·' + info.trib + '劫' : '破境突破')
-      : '突破（修为未满）';
+    // 按钮文案：小境界此前只写「破境突破」、不显示概率，玩家无从判断成功率。
+    //   2026-09-14：补上成功率，并在「连续失败 2 次」保底生效时提示「下次必成」。
+    let breakLabel;
+    if (!canB) breakLabel = '突破（修为未满）';
+    else if (info.trib) breakLabel = '渡劫·' + info.trib + '劫';
+    else breakLabel = '破境突破 ' + Math.round(info.base * 100) + '%';
+    if (canB && info && !info.trib && (S.breakFails || 0) >= 2) breakLabel += ' · 下次必成';
+    $('btn-break-label').textContent = breakLabel;
   }
   function bar(id, pct, color) {
     const el = $(id);

@@ -880,7 +880,7 @@ const Engine = (function () {
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
-      sect: null, broken: 0, tribPassed: 0, actionsLeft: 3,
+      sect: null, broken: 0, tribPassed: 0, breakFails: 0, actionsLeft: 3,
       gongye: 0, gongyeEarned: 0, sectRank: null,
       craft: { liandan: { lv: 1, exp: 0 }, lianqi: { lv: 1, exp: 0 }, zhenfa: { lv: 1, exp: 0 } },
       array: { juling: { level: 0, paid: false }, wuxing: { fire: false, metal: false, water: false, wood: false, earth: false } },
@@ -3800,8 +3800,11 @@ const Engine = (function () {
       base = Math.min(0.45 + tribBonus, TRIB_CAP);
       desc = '元婴圆满，天劫将至——成则羽化登仙，败则身死道消！';
     } else if (nxt.realm === '筑基') {
-      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015;
-      base = Math.min(base, 0.9);
+      // 炼气圆满 → 筑基：无天劫的概率突破。
+      // 2026-09-14 用户要求「渡劫的属性提供给小境界，封顶 98%」——与其他突破口径统一：
+      //   渡劫加成（道心 / 灵根 / 命格 / 事件 / 丹药汇总）同样生效，成功封顶 98%（原为 0.9）。
+      mode = 'small'; base = 0.72 + (s.wu - 5) * 0.015 + tribBonus;
+      base = Math.min(base, TRIB_CAP);
       desc = '筑基无天劫，唯需破开尘障。你凝神静气，尝试以灵力重铸凡躯……';
     } else if (nxt.realm !== st.realm) {
       mode = 'trib'; trib = nxt.realm;
@@ -3811,7 +3814,11 @@ const Engine = (function () {
       base = Math.min(base, TRIB_CAP);
       desc += '天地灵气涌聚，劫云自九天垂落……';
     } else {
-      base = Math.min(base, 0.97);
+      // 同大境界的小境界晋升（如 炼气中期 → 后期）。
+      // 2026-09-14 用户要求「渡劫的属性提供给小境界，封顶 98%」——
+      //   旧版此处只吃悟性、且封顶 0.97，导致「渡劫加成」对小境界完全无效（新档渡劫属性白堆）。
+      //   现与渡劫口径统一：加 tribBonus，封顶 TRIB_CAP(0.98)。
+      base = Math.min(base + tribBonus, TRIB_CAP);
       desc = '灵台清明，水到渠成。';
     }
     return { mode: mode, trib: trib, base: base, desc: desc, st: st, nxt: nxt };
@@ -3878,8 +3885,14 @@ const Engine = (function () {
   }
   // 执行突破
   function doBreakthrough(s, info, isPerfect) {
-    const pass = isPerfect || Math.random() < info.base;
+    // 连续失败保底（2026-09-14 用户要求「连续失败 2 次则第 3 次必然成功」）：
+    //   同一世内累计连续失败次数 s.breakFails；达到 2 时，下一次掷骰直接判定成功。
+    //   仅作用于「掷骰式」概率突破（小境界 / 炼气圆满→筑基，以及极少走的直掷渡劫）；
+    //   大境界渡劫走「劫境序列」实战胜负（dujieTrialFlow），不由本保底覆盖。
+    const pity = (s.breakFails || 0) >= 2;
+    const pass = isPerfect || pity || Math.random() < info.base;
     if (pass) {
+      s.breakFails = 0; // 成功即清零连续失败计数
       s.qi = 0;
       let tech = null;
       if (!info.nxt) {
@@ -3911,15 +3924,18 @@ const Engine = (function () {
     }
     if (!info.nxt) return tribFail(s, info, '飞升', true);
     if (info.mode === 'trib') return tribFail(s, info, info.trib, false);
+    // 概率突破失败：累计连续失败次数（供「第三次必成」保底）。失败一次 +1，成功后清零。
+    s.breakFails = (s.breakFails || 0) + 1;
+    const pityHint = s.breakFails >= 2 ? '（已连续失败 ' + s.breakFails + ' 次，下一次突破必定成功）' : '';
     if (info.nxt.realm === '筑基') {
       s.qi = Math.round(s.qi * 0.6);
       s.hp = Math.max(1, Math.round(s.hpMax * 0.8));
       refreshStats(s); saveState(s);
-      return { ok: true, win: false, mode: 'small', line: '尘障如铁，你冲击数次仍被拒之门外，灵力折损四成，还伤了些元气。看来还需沉淀些时日。' };
+      return { ok: true, win: false, mode: 'small', line: '尘障如铁，你冲击数次仍被拒之门外，灵力折损四成，还伤了些元气。看来还需沉淀些时日。' + pityHint };
     }
     s.qi = Math.round(s.qi * 0.7);
     refreshStats(s); saveState(s);
-    return { ok: true, win: false, mode: 'small', line: '瓶颈如铁，任你如何冲击都纹丝不动。你散去凝起的灵力，修为折损三成，看来还需时日。' };
+    return { ok: true, win: false, mode: 'small', line: '瓶颈如铁，任你如何冲击都纹丝不动。你散去凝起的灵力，修为折损三成，看来还需时日。' + pityHint };
   }
   function tribFail(s, info, trib, isFly) {
     const deathChance = isFly ? 1 : (trib === '元婴' ? 0.25 : (trib === '金丹' ? 0.15 : 0));

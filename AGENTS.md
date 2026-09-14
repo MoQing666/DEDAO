@@ -781,4 +781,20 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - **测试手法教训（重要）**：`11` 套件的「眩晕」用例原本用宿主 Node 的 `Math.random` 打桩，但引擎跑在 `vm` 沙箱、用的是**沙箱自己的 `Math`** → 该桩从未生效，此前「通过」纯属巧合。现改为 `G.get('Math')` 取沙箱 Math 再覆盖。另：新增用例若污染共享沙箱 RNG 会连带打挂后续用例——需要独立 RNG 的用例请自建 `createGameContext({seed})`。
     - **测试稳定性（新增 `waitUntil` 助手）**：`03` 套件的 jsdom 用例此前用固定 `setTimeout(250)` 等 UI 响应，慢机器上「假红」——同一份代码主仓库曾在 230/231 之间波动（`h-stone` 未及时刷新，实 80→80，而章节层文案断言已通过，证明 effect 已结算、只是顶栏晚一拍）。新增 `waitUntil(fn, ms)` 轮询助手并用于该断言，连跑 3 轮稳定。
     - **图鉴总览计数修正（「仙命卷」引入的重复统计）**：「仙命」是 `DESTINIES` 金阶子集，**不是独立收藏集**。`renderCodex` 原本对 `CODEX_TABS` 全量累加 → 那 10 条被算两次（既在「命格 47」内、又在「仙命 10」内）：分母虚高 10（**274 → 真实唯一项 264**），玩家抽到金阶命格后分子也重复 +1。修法：新增 `TALLY_SKIP = { xianming: 1 }`，**只把它排除出全局总览**；tab 上的「🌟 仙命 10/10」徽标保留（那是「本卷展示条数」，本身就该满额）。守卫 `03`「图鉴计数：分母不得因「仙命卷」重复统计金阶命格」（断言 `分母 === 各卷之和 − 仙命卷`）。
+    - **负属性安全地图（`effAttr` 全消费点审计，2026-09-14）**：引入负属性时必须按「**负值会不会把收益翻转成相反效果**」逐个判，而不是无脑加 `Math.max` —— 因为【九天玄体】的 `-1` **本来就该真的扣血扣防**，任何在 `effAttr` 层面统一夹紧的做法都会把惩罚抹掉。审计结论（13 个消费点）：
+
+      | 消费点 | 负值情形 | 判定 |
+      |---|---|---|
+      | `calcHpMax`（`80 + ti×50`） | `hpMax ≤ 0` → 进场即死、存档不可玩 | ❌ **曾炸** → 已收口 `Math.max(1, m)` |
+      | `getRecoverPct`（`ti×0.01`） | 负回复 → `Math.round(dmg×recover)` 吸血变**自残** | ❌ **曾炸** → 已收口 `Math.max(0, …)` |
+      | `getDefense`（绝对减伤） | 负防御 | ✅ 消费点早已守卫 `if (defAbs > 0) x = Math.max(1, x - defAbs)`，不翻转；`defToAtk`（棘鳞甲）同受影响但同一守卫覆盖 |
+      | `getExtraAtkChance` | 负攻速 | ✅ 消费点早已守卫 `if (extraChance > 0 && …)` |
+      | `getDodgeRate` / `getCounterRate` | 负闪避 / 负反击 | ✅ `Math.random() < rate` 为假 → 永不触发，无翻转 |
+      | `getCritRate` | 负暴击 | ✅ `Math.floor` 后 `if (critCount > 0)` 拦住，无翻转 |
+      | `mpMax`（`ling`） | 负灵力 | ✅ 公式自带 `20 + Math.max(0, ling - 1) × 20` |
+      | `firstStrike`（`dun`） | 负先手 | ✅ 消费点守卫 `if (b.firstStrike > 0)` |
+      | `calcAtk`（`shen`/`ling`） | 负攻击 | ✅ 伤害端有地板（普攻 `Math.max(1, …)`、法术 `Math.max(2, …)`），无翻转 |
+      | `tribBonus`（`dao`） | 负渡劫率 | ✅ 当前不可达（各项均为非负相加）；仅 `Math.min(…, TRIB_CAP)` 无下界，**将来若出现减道心来源需补地板** |
+
+      **结论**：真正会「收益翻转」的只有 `hpMax` 与 `recoverPct` 两处，均已修复；其余要么已被下游守卫拦住、要么退化为「永不触发」，**不需要再加夹紧**。以后新增「减六维」内容时，按上表只复查标 ❌ 的两格 + `tribBonus`。本项为文档审计、无代码变更，故**不 bump 缓存版本**（AGENTS.md 不在浏览器可缓存资源内）。
     - 缓存 **v127/dedao-v165**。测试 **236/236**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致），`tools/pool-audit.js` 0 错 0 警。

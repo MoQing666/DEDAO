@@ -131,7 +131,7 @@ button:disabled { opacity: .4; cursor: default; }
   padding: 30px 10px;
   margin: 0 20px 24px;
   box-shadow: 8px 8px 0 rgba(120,90,50,.08), inset 0 0 60px rgba(232,193,90,.06);
-  background: linear-gradient(180deg, var(--panel2) 0%, var(--panel) 100%);
+  background: #ffffff;
 }
 .logo-cn { font-size: 64px; color: var(--gold); text-shadow: 0 0 24px rgba(232,193,90,.35); letter-spacing: 14px; }
 .logo-en { color: var(--dim); letter-spacing: 8px; margin-top: 6px; font-size: 13px; }
@@ -195,7 +195,7 @@ button:disabled { opacity: .4; cursor: default; }
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #4ec9a0, #5ac8fa);
-  color: #3a3020; font-size: 18px; font-weight: 700;
+  color: #1a1a1a; font-size: 18px; font-weight: 700;
   border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(120,90,50,.06);
 }
 .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
@@ -304,7 +304,7 @@ button:disabled { opacity: .4; cursor: default; }
   min-height: 64px;
 }
 .gear-slot h5 { color: var(--dim); font-size: 13px; letter-spacing: 2px; margin-bottom: 4px; }
-.gear-slot .empty { color: var(--line); font-size: 13px; }
+.gear-slot .empty { color: var(--dim); font-size: 13px; }
 .gear-slot .item-name { font-size: 14px; }
 .gear-slot .item-stat { font-size: 12px; color: var(--dim); margin-top: 2px; }
 .gear-inv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; }
@@ -361,7 +361,7 @@ button:disabled { opacity: .4; cursor: default; }
 .combatants { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
 .fighter { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .fighter.enemy { /* 敌方位居右，立绘朝左由美术决定；布局对称即可 */ }
-.fighter .fname { margin: 4px 0 2px; font-size: 13px; color: #e6d9ff; letter-spacing: 2px; text-align: center; }
+.fighter .fname { margin: 4px 0 2px; font-size: 13px; color: var(--text); letter-spacing: 2px; text-align: center; }
 .fighter .hp-row { width: 100%; }
 .portrait {
   position: relative; width: 92px; height: 120px; flex: none;
@@ -379,7 +379,7 @@ button:disabled { opacity: .4; cursor: default; }
    黑白或方块（图标方案风险 #1），显式指定后至少能命中系统 Emoji 字体。
    注：方案原拟的「窄屏隐藏 .btxt」未采纳 —— 本实现把层数/回合并进了 `.bf-tx`（如「灼烧 2 层」），
    隐藏它会连数值一起丢掉，与「图标 + 名称 + 层数」的展示口径冲突。 */
-.buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid var(--purple); border-radius: 3px; color: #ffd27a; background: rgba(120,90,50,.06); }
+.buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid var(--purple); border-radius: 3px; color: var(--text); background: rgba(120,90,50,.06); }
 .buff .bf-ic { font-style: normal; font-size: 13px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "EmojiOne Color", sans-serif; }
 .buff .bf-tx { font-weight: 400; }
 .buff.bad { color: #ff8a7a; border-color: #8a4a4a; background: rgba(74,10,10,.42); }
@@ -495,12 +495,12 @@ button:disabled { opacity: .4; cursor: default; }
 .log-line.good { color: var(--good); }
 .log-line.bad { color: var(--bad); }
 .log-line.gold { color: var(--gold); }
-.log-line.sect { color: #9adcff; }
+.log-line.sect { color: var(--text); }
 .log-line.year { color: var(--dim); }
-.log-line.evtitle { color: #d9a6ff; margin-top: 4px; }
-.log-line.choice { color: #7ad1ff; font-size: 13px; }
+.log-line.evtitle { color: var(--text); margin-top: 4px; }
+.log-line.choice { color: var(--text); font-size: 13px; }
 /* 噩兆玉符：识海黑字（死劫倒计时） */
-.log-line.omen { color: #b06cff; text-shadow: 0 0 6px rgba(120, 40, 200, 0.55); letter-spacing: 0.5px; }
+.log-line.omen { color: #7a3ea8; text-shadow: 0 0 6px rgba(120, 40, 200, 0.55); letter-spacing: 0.5px; }
 .gear-text { font-size: 12px; line-height: 1.5; word-break: break-all; }
 
 /* ---------------- 行动按钮 ---------------- */
@@ -545,12 +545,12 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- 状态栏（已合并到属性区） ---------------- */
 .arts-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
-.arts-tabs .tab { flex: 1; padding: 7px 4px; border: 1px solid #e3d6b8; background: rgba(120,90,50,.04); color: #b7a9d9; border-radius: 6px; font-size: 14px; cursor: pointer; }
+.arts-tabs .tab { flex: 1; padding: 7px 4px; border: 1px solid #e3d6b8; background: rgba(120,90,50,.04); color: var(--text); border-radius: 6px; font-size: 14px; cursor: pointer; }
 .arts-tabs .tab.on { background: var(--purple); color: #ffe9b0; border-color: #7d5cff; }
 .arts-tabs .tab:hover { border-color: #7d5cff; }
 .gear-footer { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
 .gear-footer .btn-main { flex: 1; max-width: 220px; }
-.hp-num { min-width: 58px; text-align: right; font-size: 12px; color: #b7a9d9; flex: none; }
+.hp-num { min-width: 58px; text-align: right; font-size: 12px; color: var(--text); flex: none; }
 .crafts-body { margin-top: 4px; }
 .act { padding: 10px 4px; font-size: 13px; }
 .act.disabled, .act:disabled { opacity: .38; }
@@ -652,7 +652,7 @@ button:disabled { opacity: .4; cursor: default; }
   width: 100%;
   font-family: inherit;
   font-size: 20px;
-  background: #3a3020;
+  background: #ffffff;
   color: var(--gold);
   border: 2px solid var(--line);
   padding: 12px;
@@ -819,8 +819,8 @@ button:disabled { opacity: .4; cursor: default; }
 .settle-section h4 { color: var(--gold); font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
 .settle-event { font-size: 13px; margin: 5px 0; padding: 3px 0; }
 .settle-event.gold { color: var(--gold); }
-.settle-event.realm { color: #b8a9f0; }
-.settle-event.sect { color: #8ac4e8; }
+.settle-event.realm { color: var(--text); }
+.settle-event.sect { color: var(--text); }
 .settle-row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
 .settle-total { display: flex; justify-content: space-between; font-size: 15px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-weight: bold; }
 
@@ -839,7 +839,7 @@ button:disabled { opacity: .4; cursor: default; }
   justify-content: space-evenly;
   gap: 6px;
   align-items: stretch;
-  background: rgba(60,40,20,.4);
+  background: var(--panel);
   border-top: 1px solid var(--line);
   padding: 8px 10px;
   z-index: 50;
@@ -946,7 +946,7 @@ button:disabled { opacity: .4; cursor: default; }
   padding: 8px 4px;
   border: 1px solid #e3d6b8;
   background: rgba(120,90,50,.04);
-  color: #7a3ea8;
+  color: var(--text);
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
@@ -1015,7 +1015,7 @@ button:disabled { opacity: .4; cursor: default; }
   letter-spacing: 1px;
 }
 .equip-slot .empty, .treasure-slot .empty {
-  color: var(--line);
+  color: var(--dim);
   font-size: 13px;
 }
 .equip-slot .item-name, .treasure-slot .item-name {
@@ -1248,7 +1248,7 @@ button:disabled { opacity: .4; cursor: default; }
 .adv-map::-webkit-scrollbar { width: 0; height: 0; display: none; }
 /* 秘境入口卡片上的「剩余法宝 N」一行（口径同 advArtRemain：灵物豁免上限，单独计 1 件） */
 .adv-art-remain {
-  font-size: 12px; color: #c9a86a; margin-top: 4px;
+  font-size: 12px; color: #8a5f14; margin-top: 4px;
   padding-top: 4px; border-top: 1px dashed rgba(201,168,106,.22);
 }
 .adv-canvas { position: relative; width: 100%; }
@@ -1369,19 +1369,19 @@ button:disabled { opacity: .4; cursor: default; }
 .ct-card-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
 .ct-card-h b { font-size: 15px; font-weight: 400; color: var(--gold); }
 .ct-tier { font-size: 11px; font-weight: 400; color: var(--dim); border: 1px solid var(--line); padding: 1px 6px; border-radius: 4px; }
-.ct-sub { font-size: 13px; font-weight: 400; color: #b0a8c0; margin: 2px 0; }
+.ct-sub { font-size: 13px; font-weight: 400; color: var(--dim); margin: 2px 0; }
 .ct-desc { font-size: 13px; font-weight: 400; color: var(--dim); line-height: 1.4; }
 .ct-cost { font-size: 12px; color: var(--gold); margin-top: 4px; }
 .ct-point { font-size: 12px; font-weight: 400; color: var(--gold); white-space: nowrap; }
 /* 负点数（开荒 · 三 经历【早夭】= -3 点）：选它反而**增加**预算，用收益色区分 */
 .ct-point.good { color: var(--good); }
-.ct-bonus { font-size: 13px; font-weight: 400; color: #b9aee0; line-height: 1.4; margin-top: 1px; }
+.ct-bonus { font-size: 13px; font-weight: 400; color: var(--dim); line-height: 1.4; margin-top: 1px; }
 .ct-story { display: inline-block; font-size: 13px; font-weight: 400; color: var(--dim); line-height: 1.55; margin: 2px 0 4px; font-style: normal; }
 .ct-grid2 { gap: 6px; }
 .ct-grid2 .ct-card { padding: 6px 8px; }
 .ct-grid2 .ct-card-h { margin-bottom: 1px; }
 .ct-grid2 .ct-card-h b { font-size: 13px; }
-.ct-grid2 .ct-bonus { font-size: 11px; margin-top: 0; color: #b9aee0; }
+.ct-grid2 .ct-bonus { font-size: 11px; margin-top: 0; color: var(--dim); }
 .ct-scroll3 { max-height: 152px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-right: 2px; }
 .ct-points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .pt-row { display: flex; align-items: center; gap: 10px; background: rgba(120,90,50,.04); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
@@ -1520,7 +1520,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .ach-toast {
   display: flex; align-items: center; gap: 10px;
-  background: linear-gradient(135deg, #6a5a3a, var(--panel));
+  background: #ffffff;
   border: 2px solid var(--gold); border-radius: 10px;
   padding: 10px 14px; min-width: 220px;
   box-shadow: 0 6px 20px rgba(120,90,50,.08), 0 0 0 1px rgba(232,193,90,.25);
@@ -1664,8 +1664,8 @@ button:disabled { opacity: .4; cursor: default; }
    原「深墨底浅字」作用域作废（归途/迷雾等弹层回退底色时会棕底浅字翻车）
    ============================================================ */
 .chapter-overlay {
-  --text: #3a3020;
-  --dim: #76684c;
+  --text: #1a1a1a;
+  --dim: #4a4a4a;
   --gold: #a8792a;
   --gold-l: #a8792a;
   --line: rgba(168,121,42,.42);
@@ -1683,12 +1683,12 @@ button:disabled { opacity: .4; cursor: default; }
 /* （2026-09-15c 原 #adv-screen/.adv-light 亮版覆盖块已并入 .chapter-overlay 默认值，删除） */
 /* 秘境地图节点：亮面板底 + 墨字节点名（原半透暗底浅字已废） */
 #adv-screen .adv-node { background: rgba(255,253,246,.93); border-color: rgba(168,121,42,.45); }
-#adv-screen .adv-node .n-name { color: #3a3020; font-weight: 600; }
+#adv-screen .adv-node .n-name { color: var(--text); font-weight: 600; }
 #adv-screen .adv-node.locked { opacity: .55; filter: grayscale(.4); }
 #adv-screen .adv-node.selectable { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
 /* 节点图标走全局亮版深色，不再单独提亮 */
 /* 秘境 HUD 墨字 */
-#adv-screen .adv-vital .who { color: #3a3020; }
+#adv-screen .adv-vital .who { color: var(--text); }
 #adv-screen .adv-art-remain { color: #8a5f14; border-top-color: rgba(168,121,42,.35); }
 #adv-screen .adv-link { stroke: rgba(120,90,50,.4); }
 #adv-screen .adv-item-chip { color: #8a5f14; border-color: var(--gold); }

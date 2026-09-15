@@ -1399,3 +1399,31 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   service-worker 缓存，dist 同步留待你过目主题后一并执行（届时缓存顺推到下一版本）。
   源已提交、缓存号已预留，主题过目后一条 `sync_dist` 即可全量上线。
 - **测试**：**263/263**（仅主仓库跑；dist 两份因未同步不参与本轮复跑）。
+
+### #66 — 主题过目反馈：字统一改黑色（2026-09-15 晚）
+
+- **用户过目 #64 明亮主题后拍板**：「字统一改黑色！除了区分装备/法宝/命格的颜色适配外，统一改为黑色；
+  需要金色的部分，金色外的方框出白色（参考标题页 DEDAO 方框）」。
+- **落地（css/style.css）**：
+  1. 基础墨字 token 改黑：`--text #3a3020→#1a1a1a`、`--dim #76684c→#4a4a4a`（保留次级深灰层级，仍单色非彩）；
+     并同步覆盖 `.chapter-overlay` 作用域（该作用域原重定义 `--text/--dim`，会让秘境/章节层仍走棕字）。
+  2. 亮底上的浅色/彩色阅读文字全部转黑/深：hud-mini、realm-badge、util-btn、arts-tabs/codex 标签、hp-num、
+     chap-npc、buff（浅金 `#ffd27a`→黑 `var(--text)`，按阅读文字处理；紫边保留）、travel-msg 三态、ct-sub/ct-bonus、age-kv（深蓝底→亮底黑字）、
+     settle/log 浅紫浅蓝分类色（→深紫/深蓝仍可辨类）、empty 占位、VS、char-tab 非选中、adv 节点名/血蓝标签等。
+     （注：hud-mini / realm-badge / util-btn / chap-npc / travel-msg / age-kv / VS 等已由并行会话 #64/#65 在亮版中改黑；
+      本轮补齐的遗漏项为：arts-tabs 标签、hp-num、.buff、log-line.sect/evtitle/choice（→黑）、
+      log-line.omen（浅紫→深紫 `#7a3ea8` 保留语义且可见）、settle-event.realm/sect（→黑）、
+      char-tab 非选中（紫→黑）、ct-sub/ct-bonus（→`var(--dim)`）、fighter .fname（→黑）、
+      avatar-circle（→黑）、.gear-slot/.equip-slot/.treasure-slot 的 empty 占位（浅 tan→`var(--dim)`）、
+      #adv-screen .adv-node .n-name / .adv-vital .who（→黑）、.adv-art-remain 基础版浅金（→`#8a5f14` 对齐 #adv-screen 深金）。）
+  3. 修黑字回落导致的暗底翻车：底部导航栏 `rgba(60,40,20,.4)`→亮面板 `var(--panel)`（黑字可读）；成就 toast 深棕渐变→纯白；
+     弹窗起名输入框深底金字→白底【金字保留，方框转白】；徽章/锁等边角仍按语义保留。
+  4. 金色标题外框转白（参考标题页 DEDAO 方框）：`.logo-frame` 渐变→纯白 `#fff`（金边、`.logo-cn` 金字保留）；
+     `ach-toast` 深棕渐变→纯白（金边、金字保留）；起名弹窗 `.name-input` 深底→白底（金字保留、方框转白）。
+- **保留（用户豁免项）**：① 装备/法宝/命格品阶区分色（`.g-*` 黄玄地天仙、`.destiny-tag.grade-*`、`.grade-*` 命格卡、节点图标色）；
+  ② 金色标题/数值（`.logo-cn`、各 section 标题、`.gold`/`.big-gold`、命格名、部分数值强调）—— 暂视为「需要金色的部分」留金。
+- **判断点（已告知用户）**：战斗/血量/状态色（float-dmg、buff.bad、combat-stats 红绿、HP 提示）按「功能性区分色」保留，未强制作黑；
+  小型金色数值（`.kv b`/`.stone-val`/`.attr-val`/道具名）暂留金，待用户定夺是否更彻底黑化。
+- **交付**：改源码 `css/style.css` + `sw.js`（`CACHE='dedao-v182'`）+ `index.html`/`index_pc.html`（`?v=144`）+ 本日志；
+  **dist 未同步**（沿用 #64/#65「测试版等过目」策略，待你本地过目主题后一条 `sync_dist` 全量上线）。
+- **验证**：纯 CSS 改色不涉及字位，`font_coverage` 无需重跑；视觉待用户本地 `python -m http.server` 过目。

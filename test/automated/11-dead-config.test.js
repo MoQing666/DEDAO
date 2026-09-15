@@ -955,5 +955,47 @@ module.exports = async function build() {
     t.eq(b.disasterStacks, 2, '解毒不得清掉伐灾层数');
   });
 
+  /* 2026-09-15：天榜 / 云存档整体下线，改走纯本地。
+     退役项必须连「消费点」一起摘干净 —— 只摘数据定义会留下有字段无来源的死配置。
+     此用例按源码文本做守卫，避免后续任何一次改动把云端调用悄悄带回来。 */
+  S.case('天榜/云存档退役：源码零残留，且旧身份键有清理者', (t) => {
+    const fs = require('fs');
+    const path = require('path');
+    const R = (p) => path.join(__dirname, '..', '..', p);
+
+    // ① 后端模块文件必须已删除
+    t.ok(!fs.existsSync(R('js/backend-api.js')), 'js/backend-api.js 必须已删除');
+
+    // ② 任何源码都不得残留云端调用标识（.js 先剥注释，注释里提旧文件名属正常留痕）
+    const IDENT = ['DedaoAPI', 'backend-api', 'fetchLeaderboard', 'fetchMyRank',
+      'submitScore', 'uploadSave', 'downloadSave', 'reportToCloud',
+      'appendLeaderboardSection', 'DEDAO_API_BASE'];
+    const strip = (f, txt) => f.endsWith('.js')
+      ? txt.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ')
+      : txt;
+    ['js/ui.js', 'js/engine.js', 'js/data.js', 'index.html', 'index_pc.html', 'sw.js']
+      .forEach((f) => {
+        const txt = strip(f, fs.readFileSync(R(f), 'utf8'));
+        IDENT.forEach((k) => {
+          t.ok(txt.indexOf(k) < 0, f + ' 不得残留云端标识 ' + k);
+        });
+      });
+
+    // ③ 玩家可见的云端文案也一并摘净（用 UI 原文串，避免误命中注释里的「天榜」二字）
+    const ui = fs.readFileSync(R('js/ui.js'), 'utf8');
+    ['万道争锋', '叩问天榜', '上传云端', '从云端恢复', '自云端归来'].forEach((s) => {
+      t.ok(ui.indexOf(s) < 0, '不得残留云端 UI 文案「' + s + '」');
+    });
+
+    // ④ 结算页结构不得再有天榜区块（应只剩：此生大事 / 轮回点明细 / 劫轮回）
+    const secCount = (ui.match(/className = 'settle-section'/g) || []).length;
+    t.ok(secCount <= 4, '结算页 settle-section 数量应已回落，实际 ' + secCount);
+
+    // ⑤ 旧版写入的 dedao_api_identity 必须有人清（含道号与 api_key，属个人数据残留）
+    t.ok(ui.indexOf('dedao_api_identity') >= 0, '开机必须清理旧版 dedao_api_identity');
+    t.ok(/function\s+purgeLegacyCloudKeys/.test(ui), '应有 purgeLegacyCloudKeys()');
+    t.ok(/purgeLegacyCloudKeys\(\);/.test(ui), 'purgeLegacyCloudKeys 必须被调用');
+  });
+
   return S;
 };

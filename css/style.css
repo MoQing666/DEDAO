@@ -5,7 +5,7 @@
    ⚠ 切勿再次子集化！2026-09-15 曾因线上文件被裁到 2352 码位，导致 381 个用字
    回退 SimSun/宋体（同屏两套字形）。现为完整字库 7046 码位 / 839KB。
    新增内容后请跑：python tools/font_coverage.py --check
-   来源与重制方法见 AGENTS.md 变更日志 #51。 */
+   来源与重制方法见 AGENTS.md 变更日志 #53。 */
 @font-face {
   font-family: 'YuYang';
   src: url('../assets/fonts/TsangerYuYangT-W05.woff2') format('woff2');

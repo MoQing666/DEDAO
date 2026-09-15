@@ -1,6 +1,6 @@
 # DEDAO 得道 — Agent 指南（项目宪法）
 
-> 最后更新：2026-09-15（变更日志 #52）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
+> 最后更新：2026-09-15（变更日志 #53）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 > **体例**：§一~§十八为「稳定规则」，改完直接改正文；§十九为「变更日志」，只追加不重写。
 
 ## 零、文件导航（去哪找什么）
@@ -932,3 +932,33 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - **⑦ 文档同步**：`DEDAO_法术效果全等级大表.md`（状态头 → ?v=133/252；第一节机制口径表补黄阶四列 + 免控公式；第二节档位表填上黄阶 5 格「—」+ 新增「黄阶机制档位」说明；第三节黄阶表补机制；第四节机制覆盖自黄阶起；**顺带校正 `cost` 列 41 行过期值** —— 文档 15/13/14… vs `data.js` 40/35/35…，约 2.5× 系统性偏差，`data.js` 为唯一真源）；`DEDAO_法术新机制方案.md`（机制线由「五机制 × 三阶（15）」注明扩为「× 四阶（20，含黄）」）；`DEDAO_黄阶法术特殊效果_方案.md`（状态头改「已实装」+ 记录 3 条实装偏差）。
       **`DEDAO_秘境功法法术池映射.md` 无需改动**（不新增法术 id，黄级秘境池不变）。
     - 缓存 **v134/dedao-v172**。测试 **252/252**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。
+
+53. **「字体不统一」根因定位并修复（线上字体被二次子集化）+ 天榜/云存档整体下线走纯本地（2026-09-15，用户需求「当前字体不统一，检测问题，天榜可以删除相关机制走纯本地」）**：
+    - **① 根因：`assets/fonts/TsangerYuYangT-W05.woff2` 被二次子集化，不是字体栈 / 授权问题**。线上文件只有 **2352 个 cmap 码位**，而游戏可见文案用了 **2488 个字**，其中 **381 字不在该文件内、累计出现 1446 次** ⇒ 这些字静默回退到字体栈第二位的 `SimSun`/`宋体`。表现就是「同一屏两套字形」：老文案是渔阳体、新加内容（黄阶法术、轮回塔、开荒页几轮新增）是宋体。**不是版权问题**（仓耳字库官方声明免费商用），也不是 CSS 写错。
+    - **② 度量与选型（先量后改）**：用 `fontTools` 拆包核对，线上文件的 family/version/UPM/weight 与官方发行版**完全一致** ⇒ 确认是**同一字体被裁过**而非换了字体。随后从 npm 包 `@fontpkg/tsanger-yu-yang-t`（5 字重，W05 = 1,553,124 B / 7018 字形 / 7049 码位）重制三个候选：
+
+      | 方案 | 取字范围 | 码位 | 体积 |
+      |---|---|---|---|
+      | A | 仅游戏用字 | 2611 | 291.7 KB |
+      | B | 游戏用字 ∪ GB2312-80 | 6985 | 837.7 KB |
+      | **C ✅ 采纳** | 完整字库 | 7046 | 839.4 KB |
+      | （对照）线上旧文件 | — | 2352 | 261.6 KB |
+
+      **选 C 而不是 A 的理由**：C 比 B 只多 **1.7 KB**，比 A 多 548 KB 但换来「以后新增任何 GB2312 内文字都不会再回退」——A 方案只要下次加词就又破功，属于**会复发的修法**。包体 11.18 → 11.73 MB，仍远低于 TapTap 20 MB 上限。
+    - **③ 结果**：可见文案缺字 **381 → 7**，且这 7 个是**渔阳体本身就没有的字**（`槃 誰 輪 窸 窣 啰 炁`，共 8 处），**改文案可归零，处置见 `tools/font_allowlist.txt` §三**。其余 71 个「缺字」是 emoji / 几何 / 数学符号，任何中文字体都没有，走系统字体渲染**属正确行为**，已写进豁免表。
+    - **④ 防复发（本轮真正的产出）**：
+      - `tools/font_coverage.py`——**只看玩家可见文字**的覆盖率守卫。`.js` 先剥 `/*…*/` 与 `//` 注释再只取 `'…'`/`"…"`/`` `…` `` 字面量内容；`.html` 剥 `<script>`/`<style>` 后取文本节点 + `title|placeholder|alt|aria-label|content` 属性；`.css` 只取 `content:` 值。**报告模式**看缺字，**`--check` 模式**遇未豁免缺字即 `exit 1`。
+      - `tools/font_charset.txt`——字体 cmap 导出成纯文本（7017 字，一行），**让守卫不依赖 fontTools**，任何机器 clone 下来就能跑。
+      - `tools/font_allowlist.txt`——96 行豁免表，分「emoji / 符号形态 / 待裁定汉字」三组，每行都写了豁免理由。
+      - `css/style.css` 的 `@font-face` 上方写了**维护警告注释**：切勿再次子集化 + 新增内容后必须跑 `--check`。
+      - 当前基线：可见文字 2488 字、缺 78、**豁免 78、未豁免 0 ⇒ 守卫通过**。
+    - **⑤ 天榜 / 云存档整体下线（改走纯本地）**：用户明确授权删除。摘除范围按「**退役项必须连消费点一起摘**」的既有约定做全量清理，而不是只删数据定义：
+      - `js/backend-api.js` 整文件 `git rm`（198 行，原提供 `window.DedaoAPI` 的 `register/submitScore/fetchLeaderboard/fetchMyRank/uploadSave/downloadSave`）。
+      - `js/ui.js` 六处：`endLifeFlow()` 里的 `reportToCloud()` 调用；整块 `reportToCloud()` + `appendLeaderboardSection()` 定义；`renderSettlement()` 里的 `appendLeaderboardSection(wrap)`；`doUploadToCloud()` / `doRestoreFromCloud()`；存档弹窗的「云存档」按钮行；以及**新增 `purgeLegacyCloudKeys()` 并在 `boot()` 调用**，清掉旧版写进 localStorage 的 `dedao_api_identity`（内含道号与 api_key，**属个人数据残留，不清就是隐私披露义务**）。
+      - `index.html` / `index_pc.html` 移除 `backend-api.js` 的 `<script>`，并加了字体 `preload`（`<link rel="preload" as="font" type="font/woff2" crossorigin>`）避免 FOUT 抖动。
+      - `sw.js` 的 `ASSETS` **本来就没收录** `backend-api.js`，所以只需 bump 缓存号，无需改清单。
+      - **顺带纠正一条既有判断**：`BASE_URL = window.DEDAO_API_BASE || ''` ⇒ 线上其实是**同域请求**，容器里没有后端，`fetchLeaderboard` 恒返回 `null`，天榜**从来就只显示**「天榜寂寥，尚无人留名。（无法连接云端）」。也就是说这套东西在线上**一直是死交互**，删掉没有任何体验损失——这也让「不收集个人信息、数据仅存本地」的最简隐私政策成立。
+    - **⑥ 防回归**：`test/automated/11-dead-config.test.js` 新增用例「天榜/云存档退役：源码零残留，且旧身份键有清理者」，五重断言：`js/backend-api.js` 必须不存在；`js/ui.js|engine.js|data.js|index.html|index_pc.html|sw.js` 剥注释后不得含 `DedaoAPI|backend-api|fetchLeaderboard|fetchMyRank|submitScore|uploadSave|downloadSave|reportToCloud|appendLeaderboardSection|DEDAO_API_BASE`；UI 文案「万道争锋/叩问天榜/上传云端/从云端恢复/自云端归来」不得残留；结算页 `settle-section` 计数 ≤4；`purgeLegacyCloudKeys` 存在且被调用。
+      **踩坑**：守卫第一次是**红的** —— `js/ui.js` 里我自己写的说明注释提到了 `backend-api` 这个旧文件名。修法是**在测试里先剥 JS 注释再扫标识符**，这样既保住人看得懂的留痕注释，又能真的抓代码残留。
+    - **⑦ 双版本序列**：`?v=134 → 135`、`dedao-v172 → v173`（两条序列独立递增，本次同时 bump）。两份 dist 与 taptap zip 三处已核验一致。
+    - 测试 **252/252** + `11` 模块 **36/36**；字体守卫 `--check` 通过。commit `d7ca755`。

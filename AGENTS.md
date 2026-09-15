@@ -1353,3 +1353,27 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **另注**：`DEDAO_玩家全量测试报告.md` 的数字**早于本轮就已落后于工具**
   （报告元婴 1489 vs 工具实测 1741，Sep 12 后未同步）。本轮未手工对齐整份报告，
   留作专项：以 `SIM_SEED=42 node tools/player_sim.js` 重新出数并整份刷新。
+### #64 — 明亮主题第二轮：暗底页修复 + 云纹角饰（测试版待用户过目，2026-09-15）
+
+- **起因**：用户实测亮版 v141 两页翻车 —— ①角色页战斗属性格淡红标签在暖底上看不清；
+  ②秘境页整页棕绿难看、节点中文与「迷雾事件」正文全灭（亮版把 `--gold/--dim/--text`
+  全局改深，而秘境层 `#adv-screen` 是暖墨棕暗底 `#3a3020` → 暗底配深字）。
+- **根因**：**`.chapter-overlay`（秘境层+迷雾事件层）底色是深墨 `#3a3020`，
+  `.chapter-inner` 同为深墨** —— 亮版只改了全局 token，没覆盖暗底页作用域。
+- **修法（最终方向：暗底页不再保留暗底，整体并入亮版）**：
+  1. `#adv-screen` 与 `.chapter-overlay` 作用域覆盖回**宣纸亮底 + 墨字**：`--text/--dim/--gold/`
+     `--panel/--panel2` 局部还原亮版值；`.chapter-inner` 实底 `#fffdf6`。
+  2. `ui.js resetAdvBackground`：秘境背景图不再压深墨棕遮罩，改**宣纸亮遮罩**
+     `rgba(242,234,216,.88→.94)` 淡显轮廓；无图兜底也改宣纸渐变。
+  3. 角色页：`.attr-combat-cell`/`.stat-grid.combat-stats .kv` 半透明暗底 → **实底 `#fffdf6`
+     + 墨字标签 `#5a4a30` + 深色数值**；`ui.js` 内联 `#ff9080→#c23a22`、`#ffb84d→#b8791e`。
+  4. **云纹角饰**：`.screen::after` + `.chapter-overlay::after` 用双层 radial-gradient +
+     conic 画四角云纹（左上/右上/右下/左下），金棕 `rgba(168,121,42,.18)`，`pointer-events:none`；
+     `.screen > *` 抬 `z-index:1` 防压字。
+- **教训**：**换肤必须按「页面作用域」排查，不能只改全局 token** —— 秘境层/章节层/迷雾层
+  都是自带底色的 overlay，全局深字色在暗底 overlay 上必翻车。下次新增 overlay 先问底色。
+- **自检**：无头 Edge 截图 `_probe/shot_char.png`/`shot_adv.png`（504×896 CSS 视口）确认
+  角色页白底黑字清晰、秘境节点中文/迷雾事件可见、四角云纹在位。
+- **交付**：bump `?v=142` / `dedao-v180`；**测试版，dist 未同步**，等用户过目再全实装
+  （联动亮化 9 件商店物料 + 玄秘境暗图 AI 重生成）。
+- **测试**：**263/263**（并发会话新增法术对账用例后全过）。

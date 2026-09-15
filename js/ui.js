@@ -705,18 +705,23 @@
     // 秘境层独立背景：覆盖整个 overlay，不再改写主界面 screen-game，
     // 从而避免与洞府等其他界面的背景“串味”。（bg_mijing_* 美术图若缺失，暗色渐变仍保证不透明不漏底）
     if (url) {
-      ov.style.background = 'linear-gradient(180deg, rgba(120,90,50,.05), rgba(120,90,50,.10)), url(' + url + ')';
+      // 宣纸亮遮罩：背景图只淡显轮廓（压平原图棕绿杂色），整页转明亮版（2026-09-15b）
+      ov.classList.add('adv-light');
+      chap.classList.add('adv-light');
+      ov.style.background = 'linear-gradient(180deg, rgba(242,234,216,.88), rgba(238,229,206,.94)), url(' + url + ')';
       ov.style.backgroundSize = 'cover';
       ov.style.backgroundPosition = 'center';
-      chap.style.background = 'linear-gradient(180deg, rgba(120,90,50,.05), rgba(120,90,50,.10)), url(' + url + ')';
+      chap.style.background = 'linear-gradient(180deg, rgba(242,234,216,.88), rgba(238,229,206,.94)), url(' + url + ')';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
     } else {
-      // 无对应美术图（如试炼路线）时，使用亮色宣纸渐变兜底，保证不透明不漏底
-      ov.style.background = 'linear-gradient(180deg, #f2ead8, #ece0c6)';
+      // 无对应美术图（如试炼路线）时，宣纸渐变兜底
+      ov.classList.add('adv-light');
+      chap.classList.add('adv-light');
+      ov.style.background = 'linear-gradient(180deg, #f2ead8, #e9ddc2)';
       ov.style.backgroundSize = 'cover';
       ov.style.backgroundPosition = 'center';
-      chap.style.background = 'linear-gradient(180deg, #f2ead8, #ece0c6)';
+      chap.style.background = 'linear-gradient(180deg, #f2ead8, #e9ddc2)';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
     }
@@ -725,6 +730,8 @@
     const ov = $('adv-screen');
     const chap = $('chapter');
     const game = $('screen-game');
+    ov.classList.remove('adv-light');
+    chap.classList.remove('adv-light');
     ov.style.background = '';
     ov.style.backgroundSize = '';
     ov.style.backgroundPosition = '';
@@ -751,8 +758,8 @@
 
     const bi = Engine.bigIdxOf(S);
     const advConfigs = [
-      { key: 'huang', name: '匪徒营寨', grade: '黄', color: '#a8792a', realmReq: 0, realmName: '炼气', desc: '炼气期秘境，匪徒盘踞之地。', drops: '黄级功法、黄级装备、黄级灵材' },
-      { key: 'xuan', name: '大黑山', grade: '玄', color: '#1d7a55', realmReq: 1, realmName: '筑基', desc: '筑基期秘境，妖兽横行之地。', drops: '玄级功法、玄级装备、玄级灵材' },
+      { key: 'huang', name: '匪徒营寨', grade: '黄', color: '#e0c27a', realmReq: 0, realmName: '炼气', desc: '炼气期秘境，匪徒盘踞之地。', drops: '黄级功法、黄级装备、黄级灵材' },
+      { key: 'xuan', name: '大黑山', grade: '玄', color: '#4ec9a0', realmReq: 1, realmName: '筑基', desc: '筑基期秘境，妖兽横行之地。', drops: '玄级功法、玄级装备、玄级灵材' },
       { key: 'di', name: '洞天福地', grade: '地', color: '#a06ac9', realmReq: 2, realmName: '金丹', desc: '金丹期秘境，上古洞天遗迹。', drops: '地级功法、地级装备、地级灵材' },
       { key: 'tian', name: '魔道祖地', grade: '天', color: '#c0395f', realmReq: 3, realmName: '元婴', desc: '元婴期秘境，魔道势力盘踞之地。', drops: '天级功法、天级装备、天级灵材' }
     ];
@@ -2640,7 +2647,7 @@
     head.className = 'settle-head';
     head.innerHTML = '<h2 style="color:' + (isWin ? '#a8792a' : '#c8c8c8') + '">' + title + '</h2>' +
       '<p>这一世画上句号，<b>' + esc(S.name) + '</b>活到了 ' + S.age + ' 岁。</p>' +
-      '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b></p>' +
+      '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b>，一生渡劫 ' + (S.tribPassed || 0) + ' 次</p>' +
       '<p>' + (S.flags.daoLu ? '你已感悟【道】之真意。' : '你终究未能悟道。') + '</p>';
     wrap.appendChild(head);
     const achLines = res.ach.filter(function (a) { return a.new; });
@@ -3538,11 +3545,11 @@
 
     // 战斗属性 4×2（8 词条，上下对齐）
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#c0402a', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
       { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
       { name: '暴击', val: critBase + '%', color: '#a8792a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
-      { name: '血量', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80 + 体魄×50 + 境界 + 装备血量上限%' },
-      { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×1% + 装备：几率额外攻击一次' },
+      { name: '血量', val: S.hp + ' / ' + S.hpMax, color: '#c0402a', desc: '80 + 体魄×50 + 境界 + 装备血量上限%' },
+      { name: '攻速', val: extraAtkBase + '%', color: '#8a5f14', desc: '遁速×1% + 装备：几率额外攻击一次' },
       { name: '回复', val: recoverBase + '%', color: '#1d7a55', desc: '体魄×1% + 装备：造成伤害的吸血比例' },
       { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
       { name: '灵量', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '灵力上限（灵力×20）+ 装备灵力上限%' }
@@ -6406,12 +6413,12 @@
     const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
+      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#c0402a', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
       { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
-      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80+体魄×50+境界' },
+      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#c0402a', desc: '80+体魄×50+境界' },
       { name: '暴击', val: critBase + '%', color: '#a8792a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
-      { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×1% + 装备：几率额外攻击一次' },
+      { name: '攻速', val: extraAtkBase + '%', color: '#8a5f14', desc: '遁速×1% + 装备：几率额外攻击一次' },
       { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
       { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#2f7fb0', desc: '修炼积累，满则突破' },
       { name: '修炼', val: '+' + cultR.gain, color: '#1d7a55', desc: '(60+悟性×10)×境界' }

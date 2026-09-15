@@ -123,5 +123,70 @@ module.exports = async function build() {
     t.eq(Object.keys(d).length, ids.length, '判定项数应与成就表一致');
   });
 
+  /* ============================================================
+     回归 2026-09-15：成就文案里的**总数**必须与数据表一致
+     实锤两处玩家可见的错文案（改了数据、忘了改文案）：
+       · fabao_da「拥有全部四十四件法宝」—— ARTIFACTS 实为 47 件
+       · mingbo  「集齐全部四十七个命格」—— DESTINIES  实为 46 个
+     修法不是「把数字改对」就完事 —— 那样加一件法宝又会漂移。
+     这里把「文案中的中文数字」与「数据表实际条目数」**动态**比对，
+     以后加/删法宝、命格，文案不跟着改就必红。
+     ============================================================ */
+  S.case('成就文案「总数」与数据表动态一致（防加/删条目后文案漂移）', (t) => {
+    const ART = G.get('ARTIFACTS');
+    const DEST = G.get('DESTINIES');
+    const ADV = G.get('ADVENTURE_CONFIG');
+
+    const artIds = Object.keys(ART);
+    const xianCount = artIds.filter(id => ART[id].grade === '仙').length;
+    const spiritCount = artIds.filter(id => ART[id].spirit).length;
+    // 秘境：ADVENTURE_CONFIG 里的 trial 是「劫境」不是秘境，不计入
+    const advKeys = Object.keys(ADV).filter(k => k !== 'trial');
+    const normalAdv = advKeys.filter(k => k !== 'xian').length;   // 常规 = 黄/玄/地/天
+
+    const CN = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+    function cn2int(s) {
+      if (!s) return null;
+      if (s === '十') return 10;
+      if (s.indexOf('十') >= 0) {
+        const p = s.split('十');
+        return (p[0] ? CN[p[0]] : 1) * 10 + (p[1] ? CN[p[1]] : 0);
+      }
+      let n = 0;
+      for (const ch of s) { if (!(ch in CN)) return null; n = n * 10 + CN[ch]; }
+      return n;
+    }
+
+    /* 文案里出现「全部/集齐/所有 + 中文数字 + 量词」的成就 → 期望值来源 */
+    const EXPECT = {
+      fabao_da:   [artIds.length, '件'],            // 全部法宝
+      xianqi_man: [xianCount, '件'],                // 仙阶法宝
+      wanmei:     [spiritCount, '件'],              // 灵物（秘藏专属法宝）
+      mingbo:     [Object.keys(DEST).length, '个'],  // 命格
+      quanjing:   [advKeys.length, '种'],           // 全部秘境（含遗世仙踪）
+      shou_cang:  [normalAdv, '种'],                // 常规秘境（黄/玄/地/天）
+    };
+
+    t.note('数据口径：法宝 ' + artIds.length + '（仙 ' + xianCount + ' / 灵物 ' + spiritCount + '）· 命格 ' +
+      Object.keys(DEST).length + ' · 秘境 ' + advKeys.length + '（常规 ' + normalAdv + '）');
+
+    const TOT = /(?:全部|集齐|所有)\s*([一二三四五六七八九十]+)\s*(件|个|种|位)/;
+    let checked = 0;
+    Object.keys(EXPECT).forEach(function (id) {
+      const a = ACHIEVEMENTS[id];
+      t.ok(!!a, '成就表缺少 ' + id);
+      if (!a) return;
+      const m = String(a.desc).match(TOT);
+      t.ok(!!m, id + ' 的文案应含「全部/集齐 + 数字 + 量词」，实为「' + a.desc + '」');
+      if (!m) return;
+      checked++;
+      t.eq(m[2], EXPECT[id][1], id + ' 量词应为「' + EXPECT[id][1] + '」，实为「' + m[2] + '」');
+      t.eq(cn2int(m[1]), EXPECT[id][0],
+        id + ' 文案「' + m[1] + m[2] + '」与数据表不符（实际 ' + EXPECT[id][0] + ' ' + EXPECT[id][1] +
+        '）—— 改了数据就必须同步文案');
+    });
+    t.ok(checked >= 6, '应至少核对 6 条含总数的成就文案，实为 ' + checked);
+  });
+
   return S;
 };

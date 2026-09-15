@@ -2924,10 +2924,13 @@ const ACHIEVEMENTS = {
   shiming:     { cat:'收集', name:'十命加身',  desc:'曾拥有过十个命格。', pts:2 },
   sanshiming:  { cat:'收集', name:'三十命格',  desc:'曾拥有过三十个命格。', pts:5 },
   jinse:       { cat:'收集', name:'金色传说',  desc:'获得任意金色（仙命）命格。', pts:5 },
-  mingbo:      { cat:'收集', name:'命格博览',  desc:'集齐全部四十七个命格。', pts:15 },
+  mingbo:      { cat:'收集', name:'命格博览',  desc:'集齐全部四十六个命格。', pts:15 },
   chu_fabao:   { cat:'收集', name:'初得法宝',  desc:'拥有第一件法宝。', pts:1 },
   fabao_cang:  { cat:'收集', name:'法宝收藏',  desc:'拥有十五件法宝。', pts:3 },
-  fabao_da:    { cat:'收集', name:'法宝大成',  desc:'拥有全部四十四件法宝。', pts:10 },
+  // ⚠ 文案里的「四十七 / 四十六 / 四 / 五 / 四」等**总数**必须与数据表一致 ——
+  //   ARTIFACTS 47 件（其中仙阶 4、灵物 4）、DESTINIES 46 个、秘境 5 处（常规 4）。
+  //   由 test/09-achievements.test.js「成就文案总数一致」用例动态守卫，改数据后文案必须同步。
+  fabao_da:    { cat:'收集', name:'法宝大成',  desc:'拥有全部四十七件法宝。', pts:10 },
   xianqi:      { cat:'收集', name:'仙器临世',  desc:'拥有任一件仙阶法宝。', pts:3 },
   xianqi_man:  { cat:'收集', name:'仙器满堂',  desc:'拥有全部四件仙阶法宝。', pts:6 },
   chu_dao:     { cat:'收集', name:'初习道法',  desc:'习得第一部功法（心法/术法/遁术）。', pts:1 },

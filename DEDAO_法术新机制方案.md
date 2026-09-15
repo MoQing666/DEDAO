@@ -7,7 +7,10 @@
 > 　　　　　同时伐灾免控门槛由固定 3 层改为 `min(3, b.disasterCap)`（黄 1 / 玄 2 由「不可达」变可达）。
 > 　　　　　详见 `DEDAO_黄阶法术特殊效果_方案.md` 与 `DEDAO_法术效果全等级大表.md` 第二节。
 > 实装说明：第一~七节（治愈减半 / 五机制 / 15 个新法术 / 删旧固定冻结 / 三剑法转无属性 / dmg 对齐 / DoT 叠层）**均已完成**；
-> 　　　　　第八节「BOSS 属性倾向与 BOSS 法术实装」为**后续 PLAN、未实装**，但双向字段（`pStunNext / pDotBurn / pDotPoison` + `applyPlayerControl`）已预留就绪。
+> 　　　　　第八节「BOSS 属性倾向与 BOSS 法术实装」**已实装**（2026-09-13 起，见 `DEDAO_BOSS五行与法术适配方案.md`
+> 　　　　　与 `test/automated/12-boss-element.test.js`：17 个 BOSS 均有元素与施法概率，双向字段
+> 　　　　　`pStunNext / pDotBurn / pDotPoison` + `applyPlayerControl` 全链路打通）。
+> 　　　　　（原注「后续 PLAN、未实装」已过期，2026-09-15 更正。）
 > 配套旧文档：`DEDAO_法术效果全等级大表.md`（黄阶已实装）、`DEDAO_秘境功法法术池映射.md`
 
 ---

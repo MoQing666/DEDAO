@@ -5034,7 +5034,11 @@
     $('pause').style.display = 'none';
   }
 
-  /* ---------------- 锻体系统UI（未实装） ---------------- */
+  /* ---------------- 百艺 UI（灵田种植 / 炼丹 / 炼器 / 阵法） ----------------
+     2026-09-15 注释更正：此处原写作「锻体系统UI（未实装）」，两处都错 ——
+     ① 本块是百艺（灵田/炼丹/炼器/阵法），锻体页在下方 `renderDuantiPage()`（约 L2024）另成一节；
+     ② 锻体**早已实装**（`S.flags.duanti` 解锁、《锻体诀》页面、`Engine.duantiInfo`、
+        `03-ui` 用例「锻体：解锁后进入页面，淬炼生效且计入次数」在守）。 */
   function showPlantSelect(fieldIdx) {
     const ov = $('modal');
     const box = $('modal-body');

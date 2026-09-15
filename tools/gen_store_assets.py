@@ -650,7 +650,7 @@ def make_promo_16x9():
     glow_orb(bg, 600, 460, 560, GOLD, 40)
 
     # 唯一文字：游戏名
-    paste_text(bg, (600, 420), '得道飞升模拟器', F(132), anchor='mm', optical=True,
+    paste_wordmark(bg, (600, 420), '得道飞升模拟器', F(132), anchor='mm', optical=True,
                grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
                glow=GOLD + (46,), glow_blur=24, shadow=INK, shadow_off=(0, 7), shadow_blur=13)
 
@@ -684,7 +684,7 @@ def make_promo_1x1():
     bg.alpha_composite(hero, (S // 2 - hero.width // 2, 650))
 
     # 唯一文字：游戏名
-    paste_text(bg, (S / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
+    paste_wordmark(bg, (S / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
                grad=(GOLD_L, GOLD_D), stroke=3, stroke_fill=(50, 36, 8),
                glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
@@ -720,7 +720,7 @@ def make_vertical_cover():
     bg.alpha_composite(card, (W // 2 - card.width // 2, 690))
 
     # 唯一文字：游戏名
-    paste_text(bg, (W / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
+    paste_wordmark(bg, (W / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
                grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
                glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
@@ -756,7 +756,7 @@ def make_horizontal_cover():
     bg.alpha_composite(hero, (W - hero.width - 128, 176))
 
     # 唯一文字：游戏名
-    paste_text(bg, (600, 400), '得道飞升模拟器', F(132), anchor='mm', optical=True,
+    paste_wordmark(bg, (600, 400), '得道飞升模拟器', F(132), anchor='mm', optical=True,
                grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
                glow=GOLD + (42,), glow_blur=20, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
@@ -845,7 +845,7 @@ def make_video_cover():
     d.polygon([(cx - 25, cy - 37), (cx + 41, cy), (cx - 25, cy + 37)], fill=GOLD_L + (255,))
 
     # 唯一文字：游戏名
-    paste_text(bg, (W / 2, H - 88), '得道飞升模拟器', F(72), anchor='mm', optical=True,
+    paste_wordmark(bg, (W / 2, H - 88), '得道飞升模拟器', F(72), anchor='mm', optical=True,
                grad=(GOLD_L, GOLD_D), stroke=3, stroke_fill=(50, 36, 8),
                glow=GOLD + (40,), glow_blur=18, shadow=INK, shadow_off=(0, 5), shadow_blur=10)
 

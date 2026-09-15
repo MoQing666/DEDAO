@@ -106,7 +106,7 @@ const TECHNIQUES = {
   baihu:     { name: '白虎诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '金', desc: '白虎主杀，金气冲霄。' },
   qinglong:  { name: '青龙诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '木', desc: '青龙盘踞，万木回春。' },
   xuanwu:    { name: '玄武诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '水', desc: '玄武镇北，水火不侵。' },
-  zhuque:    { name: '朱雀诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '火', desc: '朱雀涅槃，浴火重生。' },
+  zhuque:    { name: '朱雀诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '火', desc: '朱雀焚身，浴火重生。' },
   qilin:     { name: '麒麟诀',   cls: 'xinfa', grade: '天', mult: 2.30, element: '土', desc: '麒麟踏云，厚德无疆。' },
   // --- 仙级心法 ---
   kaitian:   { name: '开天篇',   cls: 'xinfa', grade: '仙', mult: 3.00, desc: '盘古遗篇，一斧开天。' },
@@ -209,7 +209,7 @@ const TECHNIQUES = {
   dx_dun1:   { name: '火遁术',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'dpxia', desc: '借火遁形，烟消云散。' },
   dx_dun2:   { name: '烟火遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'dpxia', desc: '烟雾弥漫，遁入无形。' },
   dx_dun3:   { name: '丹火遁',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'dpxia', desc: '丹火护体，浴火而遁。' },
-  dx_dun4:   { name: '浴火遁',   cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'dpxia', desc: '浴火重生，凤凰涅槃。' },
+  dx_dun4:   { name: '浴火遁',   cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'dpxia', desc: '浴火重生，焚身遁形。' },
   // --- 玄天门遁术 ---
   xt_dun1:   { name: '土遁术',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'xuantian', desc: '借土遁形，遁地无形。' },
   xt_dun2:   { name: '石壁遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'xuantian', desc: '石壁护身，固若金汤。' },
@@ -1252,7 +1252,7 @@ const DEATH_EVENTS = [
       taunt: [
         '「你来早了。或者说——你来得正好。」',
         '「前几个，都死在了这里。你比他们多走了一步。」',
-        '「你身上那块玉符……是誰给你的？」'
+        '「你身上那块玉符……是谁给你的？」'
       ],
       mechanic: 'lifesteal'
     },
@@ -1270,7 +1270,7 @@ const DEATH_EVENTS = [
 const HIDDEN_BOSS = {
   id: 'hidden', year: 0, title: '轮回之外 · 魔祖仙帝', chapter: true,
   lines: [
-    '玉符彻底碎了。碎片落在掌心，每一片上都刻着同一个字：輪。',
+    '玉符彻底碎了。碎片落在掌心，每一片上都刻着同一个字：轮。',
     '你把碎片拼起来，拼出来的却不是玉符，而是一扇门。',
     '门后没有天，没有地，没有九州。只有一个坐在白骨王座上的东西，正在等你。',
     '它抬起头：「第六次了。你总算走到了这一步。」'
@@ -1957,7 +1957,7 @@ E('mijing', {
   id: 'wu_valley', title: '青云雾谷', chapter: true, weight: 8, min: 0, max: 2, needRealm: '炼气',
   lines: [
     '青云山深处的雾谷终年不散。传闻谷中灵草遍地，也传闻谷中有妖。',
-    '你踏进浓雾，脚下腐叶发出窸窣声。一株泛着青光的灵草就在十步开外。'
+    '你踏进浓雾，脚下腐叶发出沙沙声。一株泛着青光的灵草就在十步开外。'
   ],
   choices: [
     { t: '弯腰去采', fight: { name: '青纹狼', atk: 30, hp: 120, loot: { herb: 4, stone: 30 } }, resultWin: '青纹狼伏诛，你采下灵草满载而归。', resultLose: '你被青纹狼狠狠抓了一爪，仓皇逃出雾谷。（气血受损）' },
@@ -3324,7 +3324,7 @@ const ADV_SETTINGS_HUANG = [
   '破败的山寨前，篝火映着几张凶狠的面孔。',
   '山道上横七竖八躺着醉倒的匪徒，酒气冲天。',
   '暗哨里有人低声交谈，你屏息靠近。',
-  '粮仓外堆满劫来的货物，几个小喽啰在分赃。',
+  '粮仓外堆满劫来的货物，几个小喽罗在分赃。',
   '寨主的大帐灯火通明，隐约传来争吵声。'
 ];
 // 玄级秘境：大黑山（筑基期，妖兽）
@@ -3835,7 +3835,7 @@ E('shejiao', {
 });
 E('shejiao', {
   id: 'chashi_tingshu', title: '茶肆听书', chapter: false, weight: 4, min: 0, max: 14,
-  lines: ['茶楼说书人正讲到上古仙人斗法，眉飞色舞。你听得入神，竟悟得一丝运炁之法。'],
+  lines: ['茶楼说书人正讲到上古仙人斗法，眉飞色舞。你听得入神，竟悟得一丝引气之法。'],
   effect: { wu: 0.3, qi: 10 },
   result: '（悟性+0.3，修为+10）'
 });

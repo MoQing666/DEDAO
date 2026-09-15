@@ -1,21 +1,68 @@
 /* ============================================================
    DEDAO 数值模型 · 平衡模拟器 (balance_sim.js)
-   忠实复刻 engine.js / data.js 的核心公式，用于"调偏"验证。
-   本轮新增：真实玩家战力模型（宗门练灵→MP、切高级法术、高级装备+法宝）
+   用于"调偏"验证：真实玩家战力模型（练灵→MP、切高级法术、高级装备+法宝）。
    运行: node balance_sim.js
+
+   ⚠ 2026-09-15 大改（AGENTS.md #63）：本文件原先「忠实复刻」的手抄常量**已全部漂移**，
+     实测结论失效：
+     · 法术耗蓝手抄 黄15/玄25/地45/天70 → 真值 40/65/115/175（低估约 2.5 倍）
+       →「可连续施放次数」翻倍，据此得出的「耗蓝够用、批量下调已驳回」结论整个站不住。
+     · 心法 mult 手抄 玄1.40/地1.70/天2.10 → 真值 1.5/1.8/2.3（那次"下调"其实没落地）
+     · MP 用 `20+灵×25` → 引擎实为 `20+(灵-1)×20`，前者从未在代码里存在过
+     · 秘境敌人用 v3 旧公式（挂钩玩家攻/血）→ 引擎已判定为设计失误并移除
+     · 死劫按 14 劫（year 10~140）→ 实为 5 劫（18/36/49/64/81）
+   现改为「能直读就直读、不能直读就调 _engine_loader」，与 player_sim.js 同一处方。
+   ⚠⚠ 2026-09-15 判定：**本工具的「玩家战力模型」已失准，结论不再可信 —— 请以 `player_sim.js` 为准。**
+     除上面五条常量漂移外，更根本的问题是 `PLAYER_TABLE` / `GEAR` / `TREASURE` 这套手写曲线本身：
+     它算出的元婴玩家是 **264 攻 / 1665 血**，而 `data.js` 的 `ENEMY_REALM_BASE` 元婴档是
+     **502 / 2629**，且其注释明写「该境界正常发育玩家的参考攻/血，见 tools/player_sim.js 实测」——
+     即敌人基准是按 `player_sim.js` 校准的。`player_sim.js` 的元婴正常玩家为 727 / 3327。
+     本工具比校准基准低了近一倍，于是"打不过"是模型的错，不是数值的错。
+     → 秘境 / 死劫 结论一律以 `player_sim.js` 为准；本文件仅保留 [A2]/[C] 两项数据查询参考。
+     仍属**设计假设**（非引擎真值，故保留手写并明确标注）：
+     PLAYER_TABLE 的成长曲线、GEAR / TREASURE / LING_BY_REALM 的代表性配置。
    ============================================================ */
+require('./_engine_loader').load();   // 仅为触发真引擎可用性校验
+const ENGL = require('./_engine_loader');
+const ENG = ENGL.load().Engine;
 
-/* ---------- 1. 全局常量（与游戏对齐） ---------- */
-const ADVENTURE_GRADE = { huang:0, xuan:1, di:2, tian:3, xian:3 };
-const JIE_DIFF = [1.0,1.15,1.30,1.50,1.75,2.00,2.40,2.80,3.30,4.00];
-const NEED = [500,800,1200, 1200,1600,2100, 3800,4800,6200, 12000,15000,19000];
+/* ---------- 1. 常量：一律直读 data.js，不再手抄 ---------- */
+const fs = require('fs');
+const path = require('path');
+const dataText = fs.readFileSync(path.join(__dirname, '..', 'js', 'data.js'), 'utf8');
+const NAMES = ['ADVENTURE_GRADE', 'JIE_DATA', 'NEED', 'TECHNIQUES', 'DEATH_SCALES',
+  'DEATH_REALM_BASE', 'DEATH_IDX_REALM', 'DEATH_EVENTS'];
+const D = new Function(dataText + '\n; return {' + NAMES.map(n => n + ':' + n).join(',') + '};')();
+const { ADVENTURE_GRADE, JIE_DATA, TECHNIQUES, DEATH_SCALES, DEATH_REALM_BASE, DEATH_IDX_REALM, DEATH_EVENTS } = D;
+const JIE_DIFF = JIE_DATA.map(j => j.diff);
 
-// 法术 dmg / cost 取 data.js 真实值（用户已驳回"耗蓝批量下调"，故用原值）
-const SPELL_DMG  = { 黄:2.0, 玄:3.0, 地:4.0, 天:4.5 };
-const SPELL_COST = { 黄:15, 玄:25, 地:45, 天:70 };
+/* 法术 dmg / cost：各品级取 dmg 最高的那条，并**用同一条的 cost**（必须成对，不能各取极值） */
+const SPELL_PICK = (function () {
+  const best = {};
+  Object.keys(TECHNIQUES).forEach(function (id) {
+    const t = TECHNIQUES[id];
+    if (!t || t.cls !== 'shufa' || !(t.dmg > 0)) return;
+    const cur = best[t.grade];
+    if (!cur || t.dmg > cur.dmg) best[t.grade] = { id: id, name: t.name, dmg: t.dmg, cost: t.cost || 0 };
+  });
+  return best;
+})();
+const SPELL_DMG = {}, SPELL_COST = {};
+['黄', '玄', '地', '天'].forEach(g => {
+  const s = SPELL_PICK[g];
+  SPELL_DMG[g] = s ? s.dmg : 0;
+  SPELL_COST[g] = s ? s.cost : 0;
+});
 
-// 心法 mult（修炼倍率，仅影响修炼速度，不影响战斗 atk）—— 本轮按用户同意下调为 1.15/1.40/1.70/2.10
-const XINFA_MULT = { 黄:1.15, 玄:1.40, 地:1.70, 天:2.10, 仙:3.00 };
+/* 心法 mult：各品级取实际值（同品级一致，取首条即可） */
+const XINFA_MULT = (function () {
+  const m = {};
+  Object.keys(TECHNIQUES).forEach(function (id) {
+    const t = TECHNIQUES[id];
+    if (t && t.cls === 'xinfa' && t.mult && m[t.grade] === undefined) m[t.grade] = t.mult;
+  });
+  return m;
+})();
 
 /* ---------- 1.1 真实玩家战力模型 ----------
    旧基线只用了"属性公式产出 + 宽松固定MP"，漏算了三块真实增益：
@@ -70,7 +117,8 @@ function realPlayer(year) {
     realm: b.realm, year, spell: b.spell,
     atk: Math.round(b.atk + g.atk + t.atk),
     hp:  Math.round(b.hp  + g.hp  + t.hp),
-    mp: 20 + ling * 25,
+    // MP 用引擎真公式：20 + (灵-1)×20（旧版写 20+灵×25，那是份从未落地的提案）
+    mp: 20 + Math.max(0, ling - 1) * 20,
     ling, atkPct: t.atkPct
   };
 }
@@ -80,39 +128,26 @@ function weakPlayer(year) {
   return { realm: b.realm, year, spell: '黄', atk: Math.round(b.atk*0.4), hp: b.hp, mp: 95, ling: 4, atkPct: 0 };
 }
 
-/* ---------- 2.5 秘境敌人生成（engine.js enemyGen 复刻） ---------- */
+// 秘境敌人：直接调真引擎 enemyGen（v4 固定境界基数 × 深度系数，不再挂钩玩家攻/血）
 function advEnemy(p, tier, depth, boss, elite, jie) {
-  const bi = ADVENTURE_GRADE[tier];
-  const jieDiff = JIE_DIFF[jie] || 1;
-  const hits = (elite ? 5.0 : 4.0) + depth * 0.5;
-  const hp = Math.round(p.atk * hits * (boss ? 2.0 : 1) * jieDiff);
-  const atk = Math.max(1, Math.round(p.hp / (boss ? 9 : (5 + depth * 0.4)) * (elite ? 1.3 : 1) * jieDiff));
-  return { hp, atk, hits };
+  const st = { jie: jie || 0, advType: tier };
+  const tag = boss ? 'boss' : (elite ? 'elite' : 'normal');
+  const e = ENG.enemyGen(st, tag, depth, tier);
+  return { hp: e.hp, atk: e.atk };
 }
 
-/* ---------- 3. 死劫敌人 ---------- */
-// 当前静态（DEATH_EVENTS，全部不可战胜）
-const DEATH_STATIC = [
-  { year:10,  atk:60,   hp:600  }, { year:20,  atk:120,  hp:1200 },
-  { year:30,  atk:200,  hp:1800 }, { year:40,  atk:300,  hp:2700 },
-  { year:50,  atk:400,  hp:3600 }, { year:60,  atk:500,  hp:4500 },
-  { year:70,  atk:600,  hp:5400 }, { year:80,  atk:700,  hp:6300 },
-  { year:90,  atk:800,  hp:7500 }, { year:100, atk:1000, hp:9000 },
-  { year:110, atk:1200, hp:10500 }, { year:120, atk:1400, hp:12000 },
-  { year:130, atk:1600, hp:15000 }, { year:140, atk:2000, hp:22500 },
-];
-// 动态缩放（DEATH_SCALES），已落地 engine.js
-const DEATH_DYN = [
-  { atkMul:0.7, hpMul:2.0 }, { atkMul:0.85, hpMul:2.4 }, { atkMul:0.95, hpMul:2.8 },
-  { atkMul:1.05, hpMul:3.2 }, { atkMul:1.15, hpMul:3.6 }, { atkMul:1.25, hpMul:4.0 },
-  { atkMul:1.35, hpMul:4.4 }, { atkMul:1.45, hpMul:4.8 }, { atkMul:1.55, hpMul:5.2 },
-  { atkMul:1.65, hpMul:5.6 }, { atkMul:1.75, hpMul:6.0 }, { atkMul:1.85, hpMul:6.4 },
-  { atkMul:1.95, hpMul:6.8 }, { atkMul:2.05, hpMul:7.2 },
-];
+/* ---------- 3. 死劫 ---------- */
+// ⚠ 旧版按 14 劫（year 10~140）建模，那是 v6 之前的设计；现游戏为 **5 劫**。
+//   年份与各劫锚定境界一律取自 data.js 的 DEATH_EVENTS / DEATH_IDX_REALM，不再手抄。
+const DEATH_YEAR = (DEATH_EVENTS || []).map(e => e.year);
 function deathEnemyDynamic(p, idx, jieDiff) {
-  const sc = DEATH_DYN[idx] || DEATH_DYN[DEATH_DYN.length - 1];
+  const sc = (DEATH_SCALES && DEATH_SCALES[idx]) ? DEATH_SCALES[idx] : { atkMul: 1, hpMul: 1 };
+  const base = (DEATH_REALM_BASE && DEATH_REALM_BASE[DEATH_IDX_REALM[idx]]) ? DEATH_REALM_BASE[DEATH_IDX_REALM[idx]] : { atk: 10, hp: 180 };
   const jd = jieDiff || 1;
-  return { atk: Math.round(p.atk * sc.atkMul * jd), hp: Math.round(p.hp * sc.hpMul * jd) };
+  return {
+    atk: Math.max(1, Math.round(base.atk * sc.atkMul * jd)),
+    hp: Math.max(1, Math.round(base.hp * sc.hpMul * jd))
+  };
 }
 
 /* ---------- 4. 战斗模拟（玩家先手，每轮：玩家出招→敌未死则反击；暴击×2） ---------- */
@@ -144,6 +179,7 @@ function spellCasts(p) {
 }
 
 /* ---------- 5. 跑表 ---------- */
+console.log('\n⚠⚠ 本工具的玩家战力模型已失准（见文件头）：秘境/死劫结论请以 player_sim.js 为准。\n');
 console.log('===== DEDAO 数值平衡模拟（含真实玩家战力）=====\n');
 const crit = 0.10;
 const tierByRealm = { '炼气':'huang', '筑基':'xuan', '金丹':'di', '元婴':'tian' };
@@ -165,7 +201,7 @@ console.log('秘境 | 境界(year) | 真实·d5boss | 真实·d9boss | 真实·d
   );
 });
 
-/* --- [A2] 高品法术可持续施放：证明"耗蓝批量下调"不必要 --- */
+/* --- [A2] 高品法术可持续施放（cost 已改用 data.js 真值，见文件头） --- */
 console.log('\n--- [A2] 高级法术可持续施放（满 MP 连续施放次数，真实玩家）---');
 console.log('境界 | 灵力(ling) | MP上限 | 法术(品级/cost) | 可连续施放 | 单发伤害');
 [10, 20, 40, 80].forEach(y => {
@@ -180,36 +216,41 @@ console.log('境界 | 灵力(ling) | MP上限 | 法术(品级/cost) | 可连续�
   );
 });
 
-/* --- [B] 死劫胜率：静态(坏) vs 动态(已准备) + 叠劫难度(JIE_DIFF) --- */
-console.log('\n--- [B] 死劫胜率：动态已准备，叠劫难度 jie=0 / 3 / 6 ---');
-console.log('死劫 | year | 玩家(atk/hp/MP) | 静态 | 动态jie0 | 动态jie3(1.5×) | 动态jie6(2.4×)');
-DEATH_STATIC.forEach((d, i) => {
-  const p = realPlayer(d.year);
-  const st = simulate(p, { atk:d.atk, hp:d.hp }, crit);
+/* --- [B] 死劫胜率：动态 + 叠劫难度(JIE_DIFF) ---
+   ⚠ 旧版这里有一列「静态」，用的是手抄的 14 劫固定属性表（year 10~140）。
+     v6 起游戏只有 5 劫（18/36/49/64/81），且敌人改为「固定境界基数 × DEATH_SCALES × 叠劫」，
+     静态表已不存在（DEATH_EVENTS 里只有剧情与 fight 引用，没有 atk/hp），故该列一并去掉。 */
+console.log('\n--- [B] 死劫胜率：动态，叠劫难度 jie=0 / 3 / 6 ---');
+console.log('死劫 | year | 玩家(atk/hp/MP) | 动态jie0 | 动态jie3(1.5×) | 动态jie6(2.4×)');
+DEATH_YEAR.forEach((year, i) => {
+  const p = realPlayer(year);
   const dy0 = simulate(p, deathEnemyDynamic(p, i, 1.0), crit);
   const dy3 = simulate(p, deathEnemyDynamic(p, i, 1.5), crit);
   const dy6 = simulate(p, deathEnemyDynamic(p, i, 2.4), crit);
   const pct = x => (x.win*100).toFixed(0).padStart(3)+'%';
   console.log(
-    ('死劫'+(i+1)).padEnd(4) + ' | ' + String(d.year).padEnd(4) + ' | ' +
+    ('死劫'+(i+1)).padEnd(4) + ' | ' + String(year).padEnd(4) + ' | ' +
     (p.realm+' '+p.atk+'/'+p.hp+'/'+p.mp).padEnd(15) + ' | ' +
-    pct(st) + ' | ' + pct(dy0) + ' | ' + pct(dy3) + ' | ' + pct(dy6)
+    pct(dy0) + ' | ' + pct(dy3) + ' | ' + pct(dy6)
   );
 });
 
-/* --- [C] 心法 mult 下调对修炼速度的影响（仅影响速度，不影响战斗） --- */
-console.log('\n--- [C] 心法 mult 下调 → 修炼速度（仅速度，不影响战斗）---');
+/* --- [C] 心法 mult 对修炼速度的影响（仅影响速度，不影响战斗） ---
+   ⚠ 旧版这里对比「旧 mult 1.20/1.50/1.80/2.30 → 新 1.15/1.40/1.70/2.10」，
+     但那次"下调"**从未落地**（`git log -S "mult: 1.40"` 为空，data.js 实测仍是 1.5/1.8/2.3）。
+     故本表改为直接展示 data.js 的**当前实际值**，不再对比一个不存在的"新值"。 */
+console.log('\n--- [C] 心法 mult → 修炼速度（data.js 当前实际值，仅速度不影响战斗）---');
 const CULT_REALM = [0,1,5,6];
 function cultGainPer(wu, bigIdx, xinfaMul) {
   return Math.round((60 + wu*10) * (1 + 0.3*CULT_REALM[bigIdx]) * xinfaMul);
 }
-console.log('心法品级 | 旧mult | 新mult | 炼气每次修为 | 筑基每次修为');
-[['黄',1.20,1.15],['玄',1.50,1.40],['地',1.80,1.70],['天',2.30,2.10]].forEach(([g,old,now]) => {
-  const g1 = cultGainPer(5,0,now), g2 = cultGainPer(5,1,now);
-  const old1 = cultGainPer(5,0,old);
+console.log('心法品级 | 当前mult(data.js) | 炼气每次修为 | 筑基每次修为');
+['黄','玄','地','天'].forEach(g => {
+  const now = XINFA_MULT[g];
+  if (now === undefined) return;
   console.log(
-    g.padEnd(6) + ' | ' + String(old).padStart(5) + ' | ' + String(now).padStart(5) + ' | ' +
-    String(g1).padStart(8) + ' (旧'+old1+') | ' + String(g2).padStart(8)
+    g.padEnd(6) + ' | ' + String(now).padStart(15) + ' | ' +
+    String(cultGainPer(5,0,now)).padStart(8) + ' | ' + String(cultGainPer(5,1,now)).padStart(8)
   );
 });
 

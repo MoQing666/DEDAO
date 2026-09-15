@@ -23,17 +23,59 @@ const { BIG_REALMS, BIG_IDX, EQUIPS, ARTIFACTS, SECTS, JULING_ARRAY, WUXING_ARRA
         DEATH_EVENTS, ENEMY_REALM_BASE, JIE_DATA } = D;
 const GRADE_ORDER = D.GRADE_ORDER || ['黄','玄','地','天','仙'];
 
+/* 法术 dmg / cost：由 data.js 的 TECHNIQUES 推导，不再手抄。
+   ⚠ 旧手抄值 `cost: 黄15 / 玄25 / 地45 / 天70` 已漂移约 2.5 倍（真值 40/65/115/175）。
+     dmg 旧值恰好等于各品级上限，所以一直"看起来对"；cost 却把「可持续施放次数」
+     高估了 2 倍多 —— 而"耗蓝是否够用"正是这张表要回答的问题，等于结论整个失效。
+   取法：各品级取 **dmg 最高的那条法术**，并**用同一条的 cost**。
+   （dmg 与 cost 必须成对取自同一条，不能各取极值 —— 否则等于凭空造出一条不存在的法术。） */
+const SPELL_PICK = (function () {
+  const best = {};
+  Object.keys(TECHNIQUES).forEach(function (id) {
+    const t = TECHNIQUES[id];
+    if (!t || t.cls !== 'shufa' || !(t.dmg > 0)) return;
+    const cur = best[t.grade];
+    if (!cur || t.dmg > cur.dmg) best[t.grade] = { id: id, name: t.name, dmg: t.dmg, cost: t.cost || 0 };
+  });
+  return best;
+})();
+const SPELL_DMG = {}, SPELL_COST = {};
+['黄','玄','地','天'].forEach(function (g) {
+  const s = SPELL_PICK[g];
+  SPELL_DMG[g] = s ? s.dmg : 0;
+  SPELL_COST[g] = s ? s.cost : 0;
+});
+
 /* 可选：确定性随机（设 SIM_SEED 环境变量即启用），让输出快照可复现。
-   例：SIM_SEED=42 node tools/player_sim.js */
+   例：SIM_SEED=42 node tools/player_sim.js
+
+   ⚠ 随机流必须**按档案复位**（2026-09-15 加）：
+     原先是全局单流 —— A 档案的战斗抽签会消耗随机数，进而改变 B 档案抽到的命格。
+     后果：改动任何一个战斗公式，所有档案的命格/属性都会跟着变，快照差异**无法归因**
+     （实测：只改法术 cost，「单发法术伤害」却从 3123 变成 3191 ——
+       变的其实是抽到的命格，不是公式，极容易误判）。
+     现改为每个档案用 FNV-1a(SEED + 档案标签) 独立复位，档案之间互不污染。 */
+let _rngState = 0, _rngSeeded = false, _rngBase = 0;
 if (process.env.SIM_SEED) {
-  let _s = (parseInt(process.env.SIM_SEED, 10) || 1) >>> 0;
-  Math.random = function () { _s = (_s * 1664525 + 1013904223) >>> 0; return _s / 4294967296; };
+  _rngSeeded = true;
+  _rngBase = (parseInt(process.env.SIM_SEED, 10) || 1) >>> 0;
+  _rngState = _rngBase;
+  Math.random = function () { _rngState = (_rngState * 1664525 + 1013904223) >>> 0; return _rngState / 4294967296; };
+}
+function resetRng(tag) {
+  if (!_rngSeeded) return;
+  let h = 2166136261;
+  const s = String(tag);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  _rngState = ((h ^ _rngBase) >>> 0) || 1;
 }
 
 console.log('✓ 已加载真实数据表：EQUIPS=' + Object.keys(EQUIPS.weapon).length + '武器/' +
   Object.keys(EQUIPS.head).length + '头/' + Object.keys(EQUIPS.body).length + '身/' +
   Object.keys(EQUIPS.accessory).length + '饰/' + Object.keys(EQUIPS.treasure).length + '宝物; ARTIFACTS=' +
   Object.keys(ARTIFACTS).length + '; 轮回天赋=' + REINCARNATION.length + '项');
+console.log('✓ 法术常量取自 TECHNIQUES（各品级 dmg 最高者）：' +
+  ['黄','玄','地','天'].map(g => g + '=' + (SPELL_PICK[g] ? SPELL_PICK[g].name + ' dmg' + SPELL_PICK[g].dmg + '/cost' + SPELL_PICK[g].cost : '—')).join(' · '));
 
 /* ---------- 2. 真加载引擎，不再手抄公式 ----------
  * 2026-09-15 改版（AGENTS.md #60「第四大 bug 类」的收尾）：
@@ -157,7 +199,11 @@ function pickEquip(slot, maxTier, n) {
 function pickArtifact(s, list) { return list.filter(id => ARTIFACTS[id]); }
 
 /* ---------- 5. 构建玩家状态 ---------- */
-function buildProfile(kind, realm) {
+function buildProfile(kind, realm, rngTag) {
+  // 档案独立随机流：本档案抽什么命格，不受其它档案战斗抽签影响。
+  // ⚠ 蒙特卡洛段必须传 rngTag（带样本序号）：否则 400 个样本共用同一个流，
+  //    会抽出 400 份**完全相同**的命格 —— 3 仙命占比直接塌成 0% 或 100%。
+  resetRng(rngTag || (kind + '/' + realm));
   const bi = bigIdxOf(realm);
   const s = {
     // ⚠ idx 必须是**阶位索引**（炼气前期 0 / 筑基前期 3 / 金丹前期 6 / 元婴前期 9），不能拿大境序号 bi 顶替。
@@ -238,8 +284,6 @@ function buildProfile(kind, realm) {
 }
 
 /* ---------- 6. 战斗模拟（玩家先手，含暴击/闪避/防御；与 balance_sim 同源） ---------- */
-const SPELL_DMG = { 黄: 2.0, 玄: 3.0, 地: 4.0, 天: 4.5 };
-const SPELL_COST = { 黄: 15, 玄: 25, 地: 45, 天: 70 };
 const SPELL_BY_REALM = { '炼气': '黄', '筑基': '玄', '金丹': '地', '元婴': '天' };
 function combatSim(p, enemy, trials = 3000) {
   const spell = SPELL_BY_REALM[p.realm], dm = SPELL_DMG[spell], cost = SPELL_COST[spell];
@@ -288,15 +332,20 @@ function genEnemyStats(tier, atkMul, hpMul, jieDiff, opts) {
     hp: Math.max(1, Math.round(hBase * hpMul * jd))
   };
 }
-// 秘境敌人（enemyGen 复刻：固定境界基线 × depth 递增 × 叠劫）
+// 秘境敌人（enemyGen 复刻：固定境界基线 × 深度系数 × 精英/Boss 系数 × 叠劫）
+// ⚠ 2026-09-15 修正：旧版还在用已被引擎移除的 v3 公式
+//     （hits=4+depth×0.5 / atkMul=(elite?1.3:1)÷(boss?9:(5+depth×0.4))，且 atkRef/hpRef 互换）。
+//   engine.js enemyGen 现为「固定境界基数 × 深度系数」，注释明确写着
+//     旧版「atk←玩家hpMax / hp←玩家atk」被判定为设计失误，已移除。
+//   深度 9 Boss 对比：旧式 atk=128/hp=2907，现式 atk=214/hp=1379 —— 差得不是一点半点。
 function advEnemy(p, tier, depth, boss, elite, jie) {
   const jieDiff = (JIE_DATA[jie] && JIE_DATA[jie].diff) ? JIE_DATA[jie].diff : 1;
-  const realmTier = (tier === 'tian' || tier === 'xian') ? 3 : (tier === 'di' ? 2 : (tier === 'xuan' ? 1 : 0));
-  const hits = (elite ? 5.0 : 4.0) + depth * 0.5;
-  const hpMul = hits * (boss ? 2.0 : 1);                                   // 旧: s.atk * hits * (boss?2:1)
-  const atkMul = (elite ? 1.3 : 1) / (boss ? 9 : (5 + depth * 0.4));       // 旧: s.hpMax / denom * elite
-  const st = genEnemyStats(realmTier, atkMul, hpMul, jieDiff, { atkRef: 'hp', hpRef: 'atk' });
-  return { hp: st.hp, atk: st.atk, hits };
+  const bi = ADVENTURE_GRADE[tier] != null ? ADVENTURE_GRADE[tier] : 0;
+  // 有效深度封顶 20 层（与引擎一致：更深处只加产出、不加数值压力）
+  const ed = Math.min(Math.max(depth || 1, 1), 20);
+  const depthFactor = 0.25 + (ed - 1) * 0.04;
+  const mul = depthFactor * (elite ? 1.4 : 1) * (boss ? 2.2 : 1);
+  return genEnemyStats(bi, mul, mul, jieDiff);
 }
 // 死劫动态（deathEnemyDynamic 复刻 engine.js v4：固定境界基准 × 递增系数 × 叠劫，不再随玩家自身攻/血缩放）
 // 死劫年份直接取自 data.js 的 DEATH_EVENTS（v6 起为 5 劫：18/36/49/64/81），
@@ -388,7 +437,7 @@ function classifyDest(dests) {
   const jie = kind === 'hardcore' ? 3 : 0;
   const buckets = {};
   for (let i = 0; i < MC_N; i++) {
-    const s = buildProfile(kind, r);
+    const s = buildProfile(kind, r, kind + '/' + r + '/#' + i);   // 带样本序号 → 每个样本一道独立随机流
     const cls = classifyDest(s.destinies);
     if (!buckets[cls]) buckets[cls] = { n: 0, atk: 0, hp: 0, bossWin: 0, deathWin: 0 };
     const b = buckets[cls]; b.n++;

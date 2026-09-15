@@ -1,0 +1,51 @@
+const CACHE = 'dedao-v188';
+const ASSETS = [
+  './',
+  './index.html',
+  './css/style.css',
+  './js/data.js',
+  './js/engine.js',
+  './js/audio.js',
+  './js/ui.js',
+  './js/tutorial.js',
+  './manifest.json',
+  './assets/fonts/TsangerYuYangT-W05.woff2',
+  './assets/audio/bgm/bgm_main.mp3',
+  './assets/audio/bgm/bgm_battle.mp3'
+];
+
+self.addEventListener('install', function (e) {
+  e.waitUntil(
+    caches.open(CACHE).then(function (cache) {
+      return cache.addAll(ASSETS);
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (e) {
+  e.waitUntil(
+    caches.keys().then(function (names) {
+      return Promise.all(
+        names.filter(function (n) { return n !== CACHE; }).map(function (n) { return caches.delete(n); })
+      );
+    }).then(function () {
+      return self.clients.matchAll().then(function (clients) {
+        clients.forEach(function (client) {
+          client.postMessage({ type: 'UPDATE_AVAILABLE' });
+        });
+      });
+    })
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', function (e) {
+  e.respondWith(
+    fetch(e.request).then(function (response) {
+      return response;
+    }).catch(function () {
+      return caches.match(e.request);
+    })
+  );
+});

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280, initial-scale=1.0">
+  <meta name="theme-color" content="#12101a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <title>得道飞升模拟器 · PC测试版（异世轮回录式）</title>
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/TsangerYuYangT-W05.woff2">
+  <link rel="stylesheet" href="css/style.css?v=154">
+  <link rel="stylesheet" href="css/style_pc.css?v=154">
+  <script>
+    // 暂时禁用SW，调试后恢复
+    // if ('serviceWorker' in navigator) {
+    //   navigator.serviceWorker.register('./sw.js');
+    // }
+  </script>
+  <script>
+    // WebView 兼容（抖音/TAPTAP 内嵌浏览器）：部分环境下 localStorage 访问会抛异常，
+    // 若直接裸用会导致开局白屏。检测到不可用时降级为内存存储，保证游戏可运行。
+    (function () {
+      try {
+        var t = '__dedao_ls_probe__';
+        window.localStorage.setItem(t, t);
+        window.localStorage.removeItem(t);
+      } catch (e) {
+        var mem = {};
+        var memLS = {
+          getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+          setItem: function (k, v) { mem[k] = String(v); },
+          removeItem: function (k) { delete mem[k]; },
+          clear: function () { mem = {}; },
+          key: function (i) { return Object.keys(mem)[i] || null; },
+          get length() { return Object.keys(mem).length; }
+        };
+        try {
+          Object.defineProperty(window, 'localStorage', { value: memLS, configurable: true, writable: true });
+        } catch (e2) {
+          try { window.localStorage = memLS; } catch (e3) {}
+        }
+      }
+    })();
+  </script>
+</head>
+<body class="pc">
+
+  <!-- ============ 标题 ============ -->
+  <div class="screen" id="screen-title" data-bg="assets/img/bg/bg_title_yunhai.png">
+    <div class="title-wrap">
+      <div class="logo-frame">
+        <div class="logo-cn"><span class="gold">得道</span>飞升</div>
+        <div class="logo-en">D E D A O</div>
+        <div class="logo-sub">凡尘一梦 · 轮回修仙</div>
+      </div>
+      <p id="t-points" class="title-points"></p>
+      <div class="title-btns">
+        <button id="t-new" class="btn-main">开始轮回</button>
+        <button id="t-continue" class="btn-main ghost">继续征途</button>
+        <button id="t-load" class="btn-main ghost">存档 · 读档</button>
+        <button id="t-rebirth" class="btn-main ghost">轮回塔（天赋）</button>
+        <button id="t-settings" class="btn-main ghost">设置</button>
+        <button id="t-tutorial" class="btn-main ghost">新手引导</button>
+      </div>
+      <p class="title-tip">文字修仙 · 人生模拟 · 一世又一世</p>
+    </div>
+  </div>
+
+  <!-- ============ 进入页面（命格抽取+轮回选择） ============ -->
+  <div class="screen" id="screen-enter" style="display:none">
+    <div class="enter-wrap">
+      <div class="enter-header">
+        <h2 class="tower-title">天命抉择</h2>
+      </div>
+
+      <!-- 轮回选择 -->
+      <div class="enter-section" id="enter-rebirth-section">
+        <h4 class="enter-section-title">轮回</h4>
+        <div class="rebirth-selector">
+          <button id="enter-jie-minus" class="btn-small">-</button>
+          <div class="rebirth-info">
+            <div class="rebirth-name" id="enter-jie-name">凡尘</div>
+            <div class="rebirth-status" id="enter-jie-status"></div>
+            <div class="rebirth-reward" id="enter-jie-reward"></div>
+          </div>
+          <button id="enter-jie-plus" class="btn-small">+</button>
+        </div>
+      </div>
+
+      <!-- 起名（上移） -->
+      <div class="enter-section">
+        <h4 class="enter-section-title">你的姓名</h4>
+        <div class="name-input-row">
+          <input type="text" id="enter-name-input" class="name-input" placeholder="输入名字..." maxlength="6">
+          <button id="enter-name-random" class="btn-small">随机</button>
+        </div>
+        <div class="name-hint" id="enter-name-hint"></div>
+      </div>
+
+      <!-- 命格抽取 -->
+      <div class="enter-section">
+        <h4 class="enter-section-title" id="enter-destiny-title">3选1</h4>
+        <div class="destiny-pool-wrap">
+          <div class="destiny-pool" id="enter-destiny-pool"></div>
+        </div>
+        <div class="destiny-actions">
+          <button id="enter-reroll" class="btn-small">重新抽取</button>
+          <button id="enter-xianming" class="btn-small" style="display:none">命格觉醒·仙命</button>
+        </div>
+      </div>
+
+      <!-- 开始按钮 -->
+      <div class="enter-footer">
+        <button id="enter-back" class="btn-main">返回山门</button>
+        <button id="enter-start" class="btn-main">开始这一世</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 游戏主界面 ============ -->
+  <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <header class="hud">
+      <div class="hud-top">
+        <div class="hud-name">
+          <span id="h-name" class="name">修行者</span>
+          <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
+        </div>
+        <div class="hud-actions">
+          <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
+          <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">50</b></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="stats panel">
+      <!-- 六维：独占整行，3 列 × 2 行，单元格加宽以容纳小数 -->
+      <div class="stat-grid six-dim">
+        <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
+        <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
+        <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
+        <div class="kv"><label>神识</label><b id="st-shen">0</b></div>
+        <div class="kv"><label>道心</label><b id="st-dao">0</b></div>
+        <div class="kv"><label>灵力</label><b id="st-ling">0</b></div>
+      </div>
+      <!-- 战斗属性：整行，4 列 × 2 行，紧凑以免过宽 -->
+      <div class="stat-grid combat-stats combat-full">
+        <div class="kv"><label>攻击</label><b id="st-atk">10</b></div>
+        <div class="kv"><label>防御</label><b id="st-def">0</b></div>
+        <div class="kv"><label>气血</label><b id="st-hp">100</b></div>
+        <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
+        <div class="kv"><label>暴击</label><b id="st-crit">1%</b></div>
+        <div class="kv"><label>闪避</label><b id="st-dodge">1%</b></div>
+        <div class="kv"><label>灵力</label><b id="st-mo">0</b></div>
+        <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
+      </div>
+      <div class="stat-row">
+        <label>境界</label><span id="h-realm-main" class="realm-val">Ⅰ 炼气 前期</span>
+      </div>
+    </section>
+
+    <section class="log panel" id="log"></section>
+
+    <footer class="actions">
+      <div class="act-grid">
+        <button id="btn-cult" class="act"><span id="btn-cult-label">修炼</span></button>
+        <button id="btn-explore" class="act"><span>秘境</span></button>
+        <button id="btn-sect" class="act"><span>宗门</span></button>
+        <button id="btn-arts" class="act"><span id="btn-arts-label">锻体</span></button>
+        <button id="btn-social" class="act"><span id="btn-social-label">游历</span></button>
+        <button id="btn-baiyi" class="act" disabled><span id="btn-baiyi-label">百艺（未解锁）</span></button>
+      </div>
+      <div class="year-row">
+        <button id="btn-break" class="btn-break"><span id="btn-break-label">突破（修为未满）</span></button>
+        <button id="btn-year" class="btn-year">下一年</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============ 开荒初始化 ============ -->
+  <div class="screen" id="screen-create" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel create-panel">
+      <div class="screen-head"><h2 id="create-title">开荒 · 命数自定</h2></div>
+      <div class="screen-body" id="create-body"></div>
+    </div>
+    <div class="ct-footer" id="create-footer"></div>
+  </div>
+
+  <!-- ============ 洞府 ============ -->
+  <div class="screen" id="screen-cultivate" style="display:none" data-bg="assets/img/bg/bg_dongfu.png">
+    <div class="panel">
+      <div class="screen-head"><h2>洞府 · 修行</h2><button class="btn-small ghost" id="cultivate-back">返回</button></div>
+      <div class="screen-body" id="cultivate-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 宗门 ============ -->
+  <div class="screen" id="screen-sect" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel">
+      <div class="screen-head"><h2>宗门</h2><button class="btn-small ghost" id="sect-back">返回</button></div>
+      <div class="screen-body" id="sect-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 游历地图 ============ -->
+  <div class="screen" id="screen-travel" style="display:none" data-bg="assets/img/bg/bg_title_yunhai.png">
+    <div class="panel">
+      <div class="screen-head"><h2>游历 · 山河图</h2><button class="btn-small ghost" id="travel-back">返回</button></div>
+      <div class="screen-body" id="travel-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 仙缘 NPC ============ -->
+  <div class="screen" id="screen-npc" style="display:none" data-bg="assets/img/bg/bg_main.png">
+    <div class="panel">
+      <div class="screen-head"><h2>仙缘 · 众生相</h2><button class="btn-small ghost" id="npc-back">返回</button></div>
+      <div class="screen-body" id="npc-body"></div>
+    </div>
+  </div>
+
+  <!-- 底部栏 -->
+  <nav class="bottom-bar" id="bottom-bar" style="display:none">
+    <button id="btn-char-bottom" class="bottom-btn">
+      <span class="bottom-icon">👤</span>
+      <span class="bottom-text">角色</span>
+    </button>
+    <button id="btn-bag-bottom" class="bottom-btn">
+      <span class="bottom-icon">📦</span>
+      <span class="bottom-text">储物袋</span>
+    </button>
+    <button id="btn-npc-bottom" class="bottom-btn">
+      <span class="bottom-icon">🐾</span>
+      <span class="bottom-text">仙缘</span>
+    </button>
+    <button id="btn-settings-bottom" class="bottom-btn">
+      <span class="bottom-icon">⚙️</span>
+      <span class="bottom-text">设置</span>
+    </button>
+    <!-- 以下按钮在 PC 端由右上角文字入口代理触发（见 js/ui_pc.js），此处仅保留可点击靶点 -->
+    <button id="btn-ach-bottom" class="bottom-btn" style="display:none">
+      <span class="bottom-icon">🏆</span>
+      <span class="bottom-text">成就</span>
+    </button>
+    <button id="btn-codex-bottom" class="bottom-btn" style="display:none">
+      <span class="bottom-icon">📖</span>
+      <span class="bottom-text">图鉴</span>
+    </button>
+    <button id="btn-omen-bottom" class="bottom-btn" style="display:none">
+      <span class="bottom-icon">🧿</span>
+      <span class="bottom-text">玉符</span>
+    </button>
+  </nav>
+
+  <!-- ============ 角色页 ============ -->
+  <div class="screen" id="screen-char" style="display:none">
+    <div class="panel char-head">
+      <div class="char-header">
+        <div class="char-info">
+          <h2 class="tower-title" id="char-name">修行者</h2>
+          <p class="dim" id="char-realm">Ⅰ 炼气 前期</p>
+          <p class="dim" id="char-age">16岁 / 70寿</p>
+        </div>
+        <div class="char-destiny">
+          <label>命格</label>
+          <span id="char-destiny-list" class="destiny-list">无</span>
+        </div>
+      </div>
+      <div class="char-tabs">
+        <button class="char-tab" data-tab="attr">属性</button>
+        <button class="char-tab active" data-tab="equip">装备</button>
+        <button class="char-tab" data-tab="treasure">法宝</button>
+        <button class="char-tab" data-tab="tech">功法</button>
+      </div>
+    </div>
+    <div class="char-body" id="char-body">
+      <div class="char-tab-content" id="tab-attr">
+        <div id="char-attr-content"></div>
+      </div>
+      <div class="char-tab-content active" id="tab-equip">
+        <div class="equip-slots" id="char-equip-slots"></div>
+        <h4 style="color:var(--text);margin:12px 0 8px">储物袋装备</h4>
+        <div id="char-equip-inv"></div>
+      </div>
+      <div class="char-tab-content" id="tab-treasure">
+        <div class="treasure-slots" id="char-treasure-slots"></div>
+      </div>
+      <div class="char-tab-content" id="tab-tech">
+        <div class="tech-list" id="char-tech-list"></div>
+      </div>
+    </div>
+    <div class="gear-footer">
+      <button id="char-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 轮回塔 ============ -->
+  <div class="screen" id="screen-rebirth" style="display:none">
+    <div class="panel tower-head">
+      <h2 class="tower-title">轮回塔</h2>
+      <p class="dim">一世一劫，一劫一悟。用轮回点换取下一世的起始优势。</p>
+      <p class="tower-points">轮回点 <b id="rb-points">0</b></p>
+    </div>
+    <div id="rb-list" class="rb-list"></div>
+    <button id="rb-back" class="btn-main">回到山门</button>
+  </div>
+
+  <!-- ============ 储物袋页 ============ -->
+  <div class="screen" id="screen-bag" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">储物袋</h2>
+      <p class="dim">灵材、丹药、装备——囊中之物，一览无余。</p>
+    </div>
+    <div class="panel bag-body" id="bag-body"></div>
+    <div class="gear-footer">
+      <button id="bag-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 装备页 ============ -->
+  <div class="screen" id="screen-gear" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">装备</h2>
+      <p class="dim">头饰、躯干、腿部、宝物——四门类各一件，已装备与袋中同屏一览。</p>
+    </div>
+    <div class="gear-slots" id="gear-slots"></div>
+    <div class="panel" id="gear-inv-wrap">
+      <h4>储物袋中的装备（点击穿戴，与已装备对照抉择）</h4>
+      <div id="gear-inv" class="gear-inv"></div>
+      <div class="gear-materials">
+        <p class="dim">材料出售：</p>
+        <button id="sell-herb" class="btn-small">灵草 5株 → 20灵石</button>
+        <button id="sell-iron" class="btn-small">灵铁 5块 → 30灵石</button>
+      </div>
+    </div>
+    <div class="gear-footer">
+      <button id="gear-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 功法页 ============ -->
+  <div class="screen" id="screen-tech" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">功法</h2>
+      <p class="dim">心法、法术、遁术——万法归宗，择一而修。</p>
+    </div>
+    <div class="panel tech-body" id="tech-body"></div>
+    <div class="gear-footer">
+      <button id="tech-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 结缘页 ============ -->
+  <div class="screen" id="screen-favor" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">结缘</h2>
+      <p class="dim">道侣、灵宠——修行路上，有缘相伴。</p>
+    </div>
+    <div class="panel favor-body" id="favor-body"></div>
+    <div class="gear-footer">
+      <button id="favor-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 百艺页 ============ -->
+  <div class="screen" id="screen-crafts" style="display:none" data-bg="assets/img/bg/bg_baiyi.png">
+    <div class="panel gear-head">
+      <h2 class="tower-title">修仙百艺</h2>
+      <p class="dim">炼丹、炼器、灵田、灵矿——万般皆是道，百艺可通玄。</p>
+    </div>
+    <div class="panel">
+      <div id="crafts-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="crafts-gear" class="btn-main ghost">装备</button>
+      <button id="crafts-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 锻体页 ============ -->
+  <div class="screen" id="screen-duanti" style="display:none" data-bg="assets/img/bg/bg_duanti.png">
+    <div class="panel gear-head">
+      <h2 class="tower-title">锻体</h2>
+      <p class="dim">以身为炉，以痛为火——法体两全，方为大道。</p>
+    </div>
+    <div class="panel">
+      <div id="duanti-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="duanti-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 结局 ============ -->
+  <div class="screen" id="screen-ending" style="display:none">
+    <div class="panel title2">
+      <h2 id="end-title">身死道消</h2>
+      <div id="end-detail" class="end-detail"></div>
+      <button id="btn-reborn" class="btn-main wide">重入轮回</button>
+      <button id="btn-end-title" class="btn-main ghost wide">回山门</button>
+    </div>
+  </div>
+
+  <!-- ============ 结算轮回 ============ -->
+  <div class="screen" id="screen-settlement" style="display:none">
+    <div class="panel settle-panel">
+      <div id="settle-body" class="settle-body"></div>
+    </div>
+  </div>
+
+  <!-- ============ 起名弹窗 ============ -->
+  <div class="modal" id="name-modal" style="display:none">
+    <div class="modal-inner panel">
+      <div class="modal-head"><span></span></div>
+      <h3>此世，你叫什么名字？</h3>
+      <input id="name-input" class="name-input" maxlength="8" placeholder="输入道号…">
+      <p class="dim">听说，有些名字藏着宿缘。</p>
+      <div class="name-btns">
+        <button id="name-random" class="btn-main ghost">天机赐名</button>
+        <button id="name-ok" class="btn-main">踏入凡尘</button>
+        <button id="name-cancel" class="btn-small">算了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 章节叙事层 ============ -->
+  <div class="chapter-overlay" id="chapter" style="display:none">
+    <div class="chapter-inner">
+      <div class="chapter-head">
+        <div id="chapter-sub" class="chapter-sub"></div>
+        <div id="chapter-title" class="chapter-title">第 一 章</div>
+      </div>
+      <div id="chapter-body" class="chapter-body"></div>
+      <div id="chapter-choices" class="chapter-choices"></div>
+      <div class="chapter-foot">
+        <button id="chapter-actions" class="btn-main">继续</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 战斗层（回合制） ============ -->
+  <div class="chapter-overlay" id="battle" style="display:none">
+    <div class="chapter-inner">
+      <div class="chapter-head">
+        <div id="battle-sub" class="chapter-sub"></div>
+        <div id="battle-title" class="chapter-title">遭遇战</div>
+      </div>
+      <div class="chapter-body">
+        <div id="battle-board" class="battle-board">
+          <div class="combatants">
+            <div class="fighter me">
+              <div class="portrait" id="b-me-portrait">
+                <img id="b-me-img" alt="主角">
+                <div class="ph-fallback" id="b-me-ph">道</div>
+              </div>
+              <div class="fname" id="b-me-name">『修行者』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-me-bar" style="width:100%;background:#e8443e"></i></span><span class="hp-num" id="b-me-num"></span></div>
+              <div class="hp-row"><span class="who">灵</span><span class="hp-bar"><i id="b-me-mp-bar" style="width:100%;background:#3a86d6"></i></span><span class="hp-num" id="b-me-mp-num"></span></div>
+              <div class="buffs" id="b-me-buffs"></div>
+            </div>
+            <div class="vs">⚔</div>
+            <div class="fighter enemy">
+              <div class="portrait" id="b-enemy-portrait">
+                <img id="b-enemy-img" alt="敌人">
+                <div class="ph-fallback" id="b-enemy-ph">敌</div>
+              </div>
+              <div class="fname" id="b-enemy-name">『敌人』</div>
+              <div class="hp-row"><span class="who">血</span><span class="hp-bar"><i id="b-enemy-bar" style="width:100%;background:#e0604a"></i></span><span class="hp-num" id="b-enemy-num"></span></div>
+              <div class="buffs" id="b-enemy-buffs"></div>
+            </div>
+          </div>
+          <div class="fx-layer" id="b-fx"></div>
+        </div>
+        <div id="battle-log" class="battle-log"></div>
+      </div>
+      <div class="battle-btns">
+        <button id="b-atk" class="btn-main ghost">攻击</button>
+        <button id="b-spell" class="btn-main ghost">法术</button>
+        <button id="b-guard" class="btn-main ghost" title="本回合受到的伤害降低 65%">防御</button>
+        <button id="b-flee" class="btn-main ghost">逃跑</button>
+        <button id="b-elixir" class="btn-main ghost" style="display:none">服药</button>
+        <button id="b-order" class="btn-main ghost">编排</button>
+      </div>
+      <div id="b-spellbar" class="b-spellbar" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ============ 秘境地图层（横版路径，参考杀戮尖塔） ============ -->
+  <div class="chapter-overlay" id="adv-screen" style="display:none">
+    <div class="chapter-inner adv-inner">
+      <div class="chapter-head">
+        <div id="adv-sub" class="chapter-sub"></div>
+        <div id="adv-title" class="chapter-title">秘境 · 探幽</div>
+      </div>
+      <div class="adv-hud">
+        <div class="adv-hud-row">
+          <div class="adv-vitals">
+            <div class="adv-vital vital-hp">
+              <span class="who"><i class="vd vd-hp"></i>气血</span>
+              <span class="hp-bar adv-bar"><i id="adv-hp-bar" style="width:100%;background:#e8443e"></i></span>
+              <span class="hp-num" id="adv-hp-num"></span>
+            </div>
+            <div class="adv-vital vital-mp">
+              <span class="who"><i class="vd vd-mp"></i>灵力</span>
+              <span class="hp-bar adv-bar"><i id="adv-mp-bar" style="width:100%;background:#3a86d6"></i></span>
+              <span class="hp-num" id="adv-mp-num"></span>
+            </div>
+          </div>
+          <div class="adv-right">
+            <div class="adv-vital vital-stamina">
+              <span class="who">体力</span>
+              <span class="hp-bar adv-bar"><i id="adv-stamina-bar" style="width:100%;background:#8a6bff"></i></span>
+              <span class="hp-num" id="adv-stamina-num"></span>
+            </div>
+            <div class="adv-vital vital-explore">
+              <span class="who">探索</span>
+              <span class="hp-bar adv-bar"><i id="adv-explore-bar" style="width:0%;background:#4ec9a0"></i></span>
+              <span class="hp-num" id="adv-explore-num"></span>
+            </div>
+          </div>
+        </div>
+        <div class="adv-items" id="adv-items"></div>
+      </div>
+      <div id="adv-map" class="adv-map"></div>
+      <div class="adv-foot">
+        <button id="adv-info" class="btn-small ghost adv-info-btn">说明</button>
+        <span id="adv-hint" class="dim"></span>
+        <button id="adv-retreat" class="btn-small ghost adv-retreat">强行撤离（失五成收获）</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 暂停层 ============ -->
+  <div class="modal" id="pause" style="display:none">
+    <div class="modal-inner panel">
+      <div class="modal-head"><span></span></div>
+      <h3>修行暂停</h3>
+      <p class="dim" id="pause-info">岁月停驻于此。</p>
+      <div class="set-actions">
+        <button id="pause-resume" class="btn-main">继续修行</button>
+        <button id="pause-exit" class="btn-main ghost">保存并退出到主页</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 成就页（2026-09-13 补：PC 版此前缺这两屏，boot 绑定 ach-back 直接抛错、角落「成就/图鉴」点了白屏） ============ -->
+  <div class="screen" id="screen-achievements" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">成就 · 轮回印记</h2>
+      <p class="dim" id="ach-summary">道途漫漫，印记渐丰。</p>
+    </div>
+    <div class="panel ach-body" id="ach-body"></div>
+    <div class="gear-footer">
+      <button id="ach-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 图鉴页 ============ -->
+  <div class="screen" id="screen-codex" style="display:none">
+    <div class="panel gear-head">
+      <h2 class="tower-title">图鉴 · 万象录</h2>
+      <p class="dim" id="codex-summary">天地万象，遇者录之。</p>
+    </div>
+    <div class="codex-tabs" id="codex-tabs"></div>
+    <div class="panel codex-body" id="codex-body"></div>
+    <div class="gear-footer">
+      <button id="codex-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 弹窗（炼丹/炼器/储物袋/功法/设置/存档） ============ -->
+  <div class="modal" id="modal" style="display:none">
+    <div class="modal-inner panel">
+      <div class="modal-head">
+        <span></span>
+        <button id="modal-close" class="btn-small">关闭</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js?v=154"></script>
+  <script src="js/engine.js?v=154"></script>
+  <script src="js/audio.js?v=154"></script>
+  <script src="js/ui.js?v=154"></script>
+  <script src="js/tutorial.js?v=154"></script>
+  <script src="js/ui_pc.js?v=154"></script>
+</body>
+</html>

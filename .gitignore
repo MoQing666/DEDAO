@@ -1,0 +1,27 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+f4out.txt
+dist/
+assets/img/_src/
+
+# 测试运行生成报告（自动产物）
+test/reports/
+
+# 仿真输出（自动产物）
+tools/player_sim_output.txt
+
+# 内部 AI 工作区（非游戏代码，不公开）
+.workbuddy/
+
+# Python 字节码
+__pycache__/
+*.pyc
+
+# 临时复现脚本（调试用，非项目代码）
+test/automated/_repro_*.js
+
+# 临时探测脚本（调试用，非项目代码）
+_probe*
+_gen_probe*

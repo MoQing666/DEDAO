@@ -551,5 +551,59 @@ module.exports = async function build() {
     t.note('模块表合计用例数应为 ' + total + '（可对照 run.js 报告的总计）');
   });
 
+  /* === 回归 2026-09-15：DEDAO_项目简介.md（对外简历附件）的数量口径 ===
+     为什么单独守这一份：它是**唯一对外可见**且逐条列举「当前总量」的文档（发给 HR 的附件），
+     数字错了直接对外失实。2026-09-15 实测本文档内有 4 处漂移，其中 2 处是上一轮修文档时自己写错的：
+       · 「28 个轮回天赋」—— 28 其实是**旧「开局命格」表 `TALENTS`** 的条数，
+         现行轮回天赋是 `REINCARNATION`（14）；且 `TALENTS` 与「天赋」无关（引擎注释即写「旧命格」）
+       · 「99 个游历奇遇事件」—— 99 是全部随机事件，游历口径只有 68（jiyuan 30 + shejiao 38）
+       · 三处「255」（用例数），实际已达 258
+     为什么**不做**全仓库文档裸扫：实测正则法在两个方向上都不成立 ——
+       · 漏报：`47 件可收集法宝`（量词与实体间有修饰词）匹配不到
+       · 误报：`### 4.3 命格池` 被当成「命格 3 个」，69 处告警里几乎没有真的
+     故本类守卫一律**定向**：选定「宣称当前总量」的那一句，逐项与数据表对比。
+     锚定仓库根（dist 副本不含此文档），找不到则跳过。 */
+  S.case('DEDAO_项目简介.md（对外简历附件）的数量口径与数据表一致', (t) => {
+    const REPO = path.join(__dirname, '..', '..');
+    const docPath = path.join(REPO, 'DEDAO_项目简介.md');
+    if (!fs.existsSync(docPath)) { t.note('未找到 DEDAO_项目简介.md（dist 副本无此文件），跳过'); return; }
+    const doc = fs.readFileSync(docPath, 'utf8');
+
+    const G = createGameContext({ seed: 1 });
+    const cnt = function (name) {
+      const tb = G.get(name);
+      if (!tb) return 0;
+      return Array.isArray(tb) ? tb.length : Object.keys(tb).length;
+    };
+    const EVENTS = G.get('EVENTS') || {};
+    const evAll = Object.keys(EVENTS).reduce((a, k) => a + (Array.isArray(EVENTS[k]) ? EVENTS[k].length : 0), 0);
+    const evTravel = ((EVENTS.jiyuan || []).length) + ((EVENTS.shejiao || []).length);
+    const ADV = G.get('ADVENTURE_CONFIG') || {};
+    const advN = Object.keys(ADV).filter(k => k !== 'trial').length;   // trial 是「劫境」，不是秘境
+    // 用例总数（与上一条用例同一算法，避免两处口径分叉）
+    const tdir = path.join(REPO, 'test', 'automated');
+    const total = fs.readdirSync(tdir).filter(f => /^\d\d-.*\.test\.js$/.test(f))
+      .reduce((a, f) => a + (fs.readFileSync(path.join(tdir, f), 'utf8').match(/S\.case\(/g) || []).length, 0);
+
+    const CLAIMS = [
+      [evAll + ' 个随机事件',                '随机事件（EVENTS 各组合计）'],
+      ['游历奇遇 ' + evTravel,               '游历奇遇（jiyuan + shejiao）'],
+      [cnt('ARTIFACTS') + ' 件可收集法宝',    'ARTIFACTS'],
+      [cnt('DESTINIES') + ' 个命格',         'DESTINIES（现行命格表）'],
+      [cnt('TECHNIQUES') + ' 部功法',        'TECHNIQUES'],
+      [cnt('REINCARNATION') + ' 项轮回天赋',  'REINCARNATION'],
+      [cnt('FORMULAS') + ' 条炼制配方',       'FORMULAS'],
+      [advN + ' 处秘境',                     'ADVENTURE_CONFIG（不含 trial 劫境）'],
+      [cnt('ACHIEVEMENTS') + ' 个成就',      'ACHIEVEMENTS'],
+      [total + ' 项用例',                    '测试用例总数'],
+      [total + '/' + total + ' 通过',         '测试通过数'],
+    ];
+    CLAIMS.forEach(function (c) {
+      t.ok(doc.indexOf(c[0]) >= 0,
+        '文档里找不到「' + c[0] + '」（应等于 ' + c[1] + '）—— 数据增删或用例数变化后必须同步本文档');
+    });
+    t.note('已核 ' + CLAIMS.length + ' 项：' + CLAIMS.map(c => c[0]).join(' · '));
+  });
+
   return S;
 };

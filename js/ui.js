@@ -3910,7 +3910,7 @@
     stars.style.cssText = 'display:flex;gap:4px;margin:8px 0;';
     for (let i = 0; i < target.maxFavor; i++) {
       const star = document.createElement('span');
-      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? 'var(--text)' : '#3a3450');
+      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? '#a8792a' : '#3a3450');
       star.textContent = '★';
       stars.appendChild(star);
     }
@@ -4197,7 +4197,7 @@
       if (id) {
         const v = Engine.treasureItem(id);
         if (v) {
-          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--text)')
+          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
                              : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
           const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
           const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
@@ -4261,7 +4261,7 @@
       artInv2.forEach(function (id) {
         const v = Engine.treasureItem(id);
         if (!v) return;
-        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--text)')
+        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
                            : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
         const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
         const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
@@ -4358,7 +4358,7 @@
       if (id) {
         const v = Engine.treasureItem(id);
         if (v) {
-          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--text)')
+          const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
                              : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
           const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
           const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
@@ -4466,7 +4466,7 @@
       artInv.forEach(function (id) {
         const v = Engine.treasureItem(id);
         if (!v) return;
-        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--text)')
+        const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
                            : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
         const tierTxt = v.isArt ? v.grade : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].name) || v.tier);
         const statTxt = v.isArt ? artEffectText(id) : equipStatStr(v.item);
@@ -6635,7 +6635,7 @@
   function treasureCard(v, kind, locked) {
     const card = document.createElement('div');
     card.className = 'treasure-slot' + (locked ? ' locked' : '');
-    const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--text)')
+    const tc = v.isArt ? ((GRADE_COLOR && GRADE_COLOR[v.grade]) || 'var(--gold)')
                        : ((EQUIP_TIERS[v.tier] && EQUIP_TIERS[v.tier].color) || 'var(--gold)');
     // 灵物类法宝：让玩家一眼看出它的本质是灵物（grade 后带「·灵物」，卡片标题也改写）
     const isSpiritArt = v.isArt && v.item && v.item.spirit;
@@ -7836,7 +7836,7 @@
         const fav = Engine.favorOf(S, id);
         const tier = Engine.favorTier(n, fav);
         let stars = '';
-        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? 'var(--text)' : '#3a3450') + '">★</span>';
+        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? '#a8792a' : '#3a3450') + '">★</span>';
         h += '<div class="npc-favor">' + stars + ' <span class="npc-grade">(' + fav + '/' + n.maxFavor + ') ' + tier.grade + '·' + tier.note + '</span></div>';
         h += '<div class="npc-tiers">';
         n.tiers.forEach(function (t) {

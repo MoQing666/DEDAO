@@ -1427,3 +1427,10 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **交付**：改源码 `css/style.css` + `sw.js`（`CACHE='dedao-v182'`）+ `index.html`/`index_pc.html`（`?v=144`）+ 本日志；
   **dist 未同步**（沿用 #64/#65「测试版等过目」策略，待你本地过目主题后一条 `sync_dist` 全量上线）。
 - **验证**：纯 CSS 改色不涉及字位，`font_coverage` 无需重跑；视觉待用户本地 `python -m http.server` 过目。
+
+### #67 — 角色页：默认切装备 + 四选项卡加粗高亮（v145/v183，2026-09-15）
+
+- 字符页四个 tab（属性/装备/法宝/功法）统一 `font-weight:700` 加粗；非选中态描边 `#c9a86a`、浅金底 `rgba(168,121,42,.06)`、字色 `#5a4a2a`，更突出；active 紫底白字 + 阴影高亮保留。
+- 默认打开从「属性」改为「装备」：index.html / index_pc.html 的 `.char-tab` 与 `.char-tab-content` 的 `active` 类移至 `equip`（静态默认；`renderCharPage` 只绑 onclick 不重置 active，重开仍保留上次切换）。
+- 交付：改 `css/style.css` + `index.html`/`index_pc.html`（?v=145）+ `sw.js`（`dedao-v183`）+ 本日志；dist 未同步（沿用测试版等过目策略）。
+- 验证：测试 263/263；字体守卫通过。

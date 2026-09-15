@@ -1,7 +1,10 @@
-# DEDAO 战斗 BUFF / DEBUFF 图标 · 方案（PLAN · 待执行）
+# DEDAO 战斗 BUFF / DEBUFF 图标 · 方案（PLAN · **已实装**）
 
-> 状态：**已定稿待执行**（2026-09-14 PLAN 轮）。三项决策已由用户拍板，见第 2 节。
+> 状态：**已实装**（2026-09-14 图标落地 / **2026-09-15 §8 三项收尾全部补齐**，?v=138 / dedao-v176，
+> 主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑 255/255 全绿）。
+> 三项决策已由用户拍板，见第 2 节。
 > 上一轮 PLAN：`DEDAO_黄阶法术特殊效果_方案.md`（两者都改 `applyPlayerControl`，执行顺序见第 11 节）。
+> **成果文档**：`DEDAO_战斗状态图标对照表.md`（15 枚徽章的图标/文案/tip 单一事实来源）。
 
 ---
 
@@ -258,23 +261,34 @@ renderBuffs('b-enemy-buffs', fx.foe);
 
 ---
 
-## 8. 测试计划
+## 8. 测试计划（**全部已落地**，2026-09-15 收尾）
 
-| 套件 | 用例 | 断言要点 |
-|---|---|---|
-| `11-dead-config` | 新增：派生列表分类正确 | 挂 `fxAtkUp` → 出现在 `me` 且 `bad=false`；挂 `fxAtkDown` → 出现在 `foe`；`me` 与 `foe` 不可互相污染 |
-| | 新增：图标与文案对照 | 灼烧 → `ico==='🔥'`、`label==='灼烧'`、`unit==='层'`；伐灾 → `✨`；五种 DoT/控制逐一校验 |
-| | 新增：眩晕 / 冻结 图标区分 | stub 沙箱 `Math.random=0` → 落石术(土) 命中 → `stunKind==='stun'`、`ico==='💫'`；凝霜诀(水) → `'freeze'`、`❄️` |
-| | 新增：**解毒丹真解负面** | 挂 `pDotBurn/pDotPoison/pStunNext` → `useAdvElixir('jiedu')` → 三字段全清、`battleFxList().me` 不再含 bad 项。**旧实现下此例必红** |
-| `03-ui` | 新增：端到端徽章渲染 | 进战斗 → 施放岩甲术/火球术 → `#b-me-buffs .buff` 数量 > 0 且含 `.bico`（emoji 非空） |
-| | 新增：敌我两行**不相同** | 只给我方挂状态 → `#b-me-buffs` 有内容、`#b-enemy-buffs` 为空（防回退成共用同一数组） |
-| `12-boss-element` | 新增：敌方施控记来源 | `b.spells=[{id:'shuang_han'}]` stub → `pStunKind==='freeze'`，`me` 侧图标 ❄️ |
+| 套件 | 用例 | 断言要点 | 状态 |
+|---|---|---|---|
+| `11-dead-config` | 新增：派生列表分类正确 | 挂 `fxAtkUp` → 出现在 `me` 且 `bad=false`；挂 `fxAtkDown` → 出现在 `foe`；`me` 与 `foe` 不可互相污染 | ✅ 已实装 |
+| | 新增：图标与文案对照 | 灼烧 → `ico==='🔥'`、`label==='灼烧'`、`unit==='层'`；伐灾 → `✨`；五种 DoT/控制逐一校验 | ✅ 已实装 |
+| | 新增：眩晕 / 冻结 图标区分 | stub 沙箱 `Math.random=0` → 落石术(土) 命中 → `stunKind==='stun'`、`ico==='💫'`；凝霜诀(水) → `'freeze'`、`❄️` | ✅ 已实装 |
+| | 新增：**解毒丹真解负面** | 挂 `pDotBurn/pDotPoison/pStunNext` → `useAdvElixir('jiedu')` → 三字段全清、`battleFxList().me` 不再含 bad 项。**旧实现下此例必红** | ✅ 已实装 |
+| `03-ui` | 新增：端到端徽章渲染 | 进战斗 → 施放岩甲术/火球术 → `#b-me-buffs .buff` 数量 > 0 且含 `.bf-ic`（emoji 非空） | ✅ **2026-09-15 补实装**（原为遗留项） |
+| | 新增：敌我两行**不相同** | 只给我方挂状态 → `#b-me-buffs` 有内容、`#b-enemy-buffs` 为空（防回退成共用同一数组） | ✅ **2026-09-15 补实装**（原为遗留项） |
+| `12-boss-element` | 新增：敌方施控记来源 | `b.spells=[{id:'shuang_han'}]` stub → `pStunKind==='freeze'`，`me` 侧图标 ❄️ | ✅ 已实装 |
+
+> **`03-ui` 落地备注**：徽章只能在战斗覆盖层渲染，而战斗层只能由秘境战斗节点（或渡劫/主线）进入；
+> 且**秘境不能用存档续**（`js/ui.js` 读档时把 `adv.status === 'running'` 置 `'done'`），
+> 故用例必须在同一次会话里走完 `btn-explore → 入秘境 → 章节层 → .adv-node.selectable` 的真实点击链。
+> 另：`advGenLayer` 首层约三成抽不到 `combat`，用例在点「入秘境」前把 `win.Math.random` 换成固定 LCG 来锁定。
+> 详见 `AGENTS.md` 变更日志 #55。
 
 ### 非空转验证（必做）
 
 1. 把 6.2 改回 `renderBuffs('b-enemy-buffs', bb.buffs)`（空数组）→ 「端到端徽章渲染 / 敌我不同」应转红。
 2. 把 5.3 解毒改回 `filter(bf => !bf.bad)` → 「解毒丹真解负面」应转红。
 3. 去掉 `stunKind` 写入 → 「眩晕冻结区分」应转红。
+
+**执行记录（2026-09-15）**：第 1 条已跑，且用了更贴近历史 bug 的变异
+（`renderBuffs('b-enemy-buffs', fxl.foe)` → `fxl.me`）→ **42/44，两条用例共 5 条断言同时红**；
+另加一条变异 `ic.textContent = x.icon` 置空 → **42/44**，两条用例的「图标不得为空」各红 1 条。
+变异均已还原。第 2、3 条此前（#51）已分别验证过。
 
 ---
 
@@ -283,21 +297,23 @@ renderBuffs('b-enemy-buffs', fx.foe);
 ### 文档同步
 
 | 文档 | 改动 |
-|---|---|
-| 新建 `DEDAO_战斗状态图标对照表.md` | 第 3 节三类对照表 + 「不进徽章的状态」清单 + Emoji 字体兜底说明 |
-| `DEDAO_法术效果全等级大表.md` | 加一行链接指向图标对照表 |
-| `AGENTS.md` | 变更日志条目（第 51 条），记录「徽章列表恒空 / 敌我共用对象 / 解毒丹假实现」三个既有缺陷 |
+| 文档 | 改动 | 状态 |
+|---|---|---|
+| 新建 `DEDAO_战斗状态图标对照表.md` | 15 枚徽章的图标/文案/`tip` 逐字取自 `Engine.battleFxList`（四组：我方增益5 / 我方减益4 / 敌方减益4 / 敌方增益2）+ 「不进徽章的状态」黑名单 + 眩晕冻结区分口径 + Emoji 字体兜底 + 防回退守卫表 | ✅ **2026-09-15 已建** |
+| `DEDAO_法术效果全等级大表.md` | 加一行链接指向图标对照表 | ✅ 已完成 |
+| `css/style.css` | `.buff .bf-ic` 补 Emoji 字体链（风险 #1 的兜底措施） | ✅ **2026-09-15 已补** |
+| `AGENTS.md` | 变更日志条目（第 51 条），记录「徽章列表恒空 / 敌我共用对象 / 解毒丹假实现」三个既有缺陷；**第 55 条**记录本轮三项收尾 | ✅ 已完成 |
 
 ### 交付清单（执行时按序）
 
-1. `js/engine.js`（`stunKind` 字段 + `battleFxList` + 解毒真修 + 导出）、`js/ui.js`、`css/style.css`。
-2. 测试新增（第 8 节），先跑主仓库全量。
-3. 非空转验证（回退 → 确认转红 → 还原）。
-4. 文档与 `AGENTS.md`。
-5. bump `index.html` / `index_pc.html` 的 `?v=`、`sw.js` 的 `CACHE`。
-6. 同步两份 dist（`git show HEAD:<file>` 取**已提交版**，避免带入并发会话在途改动）。
-7. 主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑测试。
-8. commit / push（并发会话在场时按 hunk 精准暂存；必要时用独立 worktree 验证 HEAD）。
+1. `js/engine.js`（`stunKind` 字段 + `battleFxList` + 解毒真修 + 导出）、`js/ui.js`、`css/style.css`。✅
+2. 测试新增（第 8 节），先跑主仓库全量。✅
+3. 非空转验证（回退 → 确认转红 → 还原）。✅
+4. 文档与 `AGENTS.md`。✅
+5. bump `index.html` / `index_pc.html` 的 `?v=`、`sw.js` 的 `CACHE`。✅
+6. 同步两份 dist（`git show HEAD:<file>` 取**已提交版**，避免带入并发会话在途改动）。✅
+7. 主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑测试。✅ **255/255 三跑一致**
+8. commit / push（并发会话在场时按 hunk 精准暂存；必要时用独立 worktree 验证 HEAD）。✅ `d27348f` / `ed65515`
 
 ---
 
@@ -305,8 +321,8 @@ renderBuffs('b-enemy-buffs', fx.foe);
 
 | # | 风险 | 说明 | 备选 |
 |---|---|---|---|
-| 1 | Emoji 跨端渲染差异 | 少数安卓 WebView / 老 iOS 可能显示为黑白或方块 | 已在 CSS 里加 Emoji 字体链兜底；仍不行则退为「图标用 CSS 绘制 + 文字保留」 |
-| 2 | 徽章撑高战斗板 | 我方最多 5 枚 + 敌方最多 5 枚，窄屏换行后战斗板变高，可能挤压立绘 | `.buffs` 已 `flex-wrap`；备选：窄屏隐藏 `.btxt`（只留图标+数值） |
+| 1 | Emoji 跨端渲染差异 | 少数安卓 WebView / 老 iOS 可能显示为黑白或方块 | **已采用**：CSS 里加了 Emoji 字体链兜底（`Apple Color Emoji` / `Segoe UI Emoji` / `Noto Color Emoji` / `Twemoji Mozilla` / `EmojiOne Color`）；仍不行则退为「图标用 CSS 绘制 + 文字保留」 |
+| 2 | 徽章撑高战斗板 | 我方最多 5 枚 + 敌方最多 5 枚，窄屏换行后战斗板变高，可能挤压立绘 | `.buffs` 已 `flex-wrap`；备选「窄屏隐藏 `.btxt`（只留图标+数值）」**未采纳** —— 本实现把层数/回合并进了 `.bf-tx`（「灼烧 2 层」），隐藏它会连数值一起丢，理由写在 `css/style.css` 的注释里 |
 | 3 | `enraged` / `guarded` 展示窗口短 | 狂暴是持续状态（OK）；防御姿态仅当回合（可接受，玩家主动触发） | 若嫌闪，可把 `guarded` 移出徽章 |
 | 4 | 新增 `stunKind` / `pStunKind` 字段影响旧存档 | 缺失回落 `''` → 图标退为 💫，不影响战斗逻辑 | 已在 `ensureBattleFx` 补默认值 |
 | 5 | 与上一轮 PLAN 撞同一函数 | 黄阶 PLAN 也要改 `applyPlayerControl`（免控按阶取小），且其日志文案硬编码 `DISASTER_IMMUNE_COST` | 见第 11 节：先做黄阶，再做图标 |

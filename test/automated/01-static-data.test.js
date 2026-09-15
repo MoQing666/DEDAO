@@ -530,7 +530,7 @@ module.exports = async function build() {
     const agents = fs.readFileSync(agentsPath, 'utf8');
     const dir = path.join(REPO, 'test', 'automated');
     const files = fs.readdirSync(dir).filter(f => /^\d\d-.*\.test\.js$/.test(f)).sort();
-    t.gte(files.length, 12, '应至少扫到 12 个测试模块');
+    t.gte(files.length, 13, '应至少扫到 13 个测试模块');
 
     let total = 0, checked = 0;
     files.forEach(function (f) {
@@ -547,7 +547,7 @@ module.exports = async function build() {
       t.eq(parseInt(m[1], 10), n,
         f + ' 模块表写的用例数与实际不符（实际 ' + n + ' 条）—— 改了测试就必须同步 AGENTS.md 模块表');
     });
-    t.ok(checked >= 12, '应至少核对 12 行模块表，实为 ' + checked);
+    t.ok(checked >= 13, '应至少核对 13 行模块表，实为 ' + checked);
     t.note('模块表合计用例数应为 ' + total + '（可对照 run.js 报告的总计）');
   });
 

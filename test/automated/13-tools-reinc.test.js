@@ -54,5 +54,55 @@ module.exports = async function build() {
     t.note(last);
   });
 
+  /* ---------------------------------------------------------------
+     第二道：静态扫描 —— tools/ 下不得再出现「已知会漂移的写法」。
+     为什么要有这一条：脚本能"跑通"不代表口径对（旧 reinc_points.js 就跑得通、
+     只是整列算错）。下面三条是 2026-09-15 实锤过的具体错法，逐条钉死。
+     --------------------------------------------------------------- */
+  S.case('tools/ 不得再手抄引擎公式/数据表（已知陈旧写法黑名单 + 必须走 _engine_loader）', (t) => {
+    const REPO = path.join(__dirname, '..', '..');
+    const dir = path.join(REPO, 'tools');
+    if (!fs.existsSync(dir)) { t.note('未找到 tools/ 目录，跳过'); return; }
+
+    /* 必须经 _engine_loader 加载真引擎的脚本（不许自带公式/数据表副本） */
+    const MUST_USE_LOADER = ['reinc_validate.js', 'reinc_sim.js', 'reinc_points.js'];
+
+    /* 已知会漂移的写法 → 说明 */
+    const FORBID = [
+      [/Math\.floor\(\s*[A-Za-z_$][\w$]*\.broken\s*\/\s*3\s*\)/, '渡劫分误用 `s.broken/3`（应为 `s.tribPassed*3`；broken 是突破次数）'],
+      [/[+)]\s*[A-Za-z_$][\w$]*\s*\*\s*2\s*;?\s*$/m, '残留 `jie×2` 平加（已删除，现为 `round(base×jie×0.05)`）'],
+      [/\b1406\b/, '过期的「全天赋拉满 1406」（实为 1296）'],
+    ];
+
+    /* 去掉注释再扫 —— 注释里会引用这些错法作为"前车之鉴"，不应误报 */
+    function stripComments(src) {
+      return src
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/[;)}\]]\s*\/\/[^\n]*/g, '');
+    }
+
+    const files = fs.readdirSync(dir).filter(f => /\.js$/.test(f) && f !== '_engine_loader.js').sort();
+    t.gte(files.length, 5, 'tools/ 下应至少扫到 5 个 js 脚本，实为 ' + files.length);
+
+    let checked = 0;
+    files.forEach(function (f) {
+      const raw = fs.readFileSync(path.join(dir, f), 'utf8');
+      const code = stripComments(raw);
+      checked++;
+
+      if (MUST_USE_LOADER.indexOf(f) >= 0) {
+        t.ok(/require\(\s*'\.\/_engine_loader'\s*\)/.test(code),
+          f + ' 必须经 `_engine_loader` 加载真引擎（不得再手抄公式/数据表）');
+      }
+      FORBID.forEach(function (pair) {
+        const m = code.match(pair[0]);
+        t.ok(!m, f + ' 出现陈旧写法：' + pair[1] +
+          (m ? '  → 命中「' + String(m[0]).trim().slice(0, 60) + '」' : ''));
+      });
+    });
+    t.note('已扫 ' + checked + ' 个脚本：' + files.join(' · '));
+  });
+
   return S;
 };

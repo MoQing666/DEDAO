@@ -1,6 +1,6 @@
 # DEDAO 得道 — Agent 指南（项目宪法）
 
-> 最后更新：2026-09-15（变更日志 #59）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
+> 最后更新：2026-09-15（变更日志 #60）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 > **体例**：§一~§十八为「稳定规则」，改完直接改正文；§十九为「变更日志」，只追加不重写。
 
 ## 零、文件导航（去哪找什么）
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~13，当前 260/260 全过
+node test/automated/run.js     # 依次跑 01~13，当前 261/261 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -106,7 +106,7 @@ node test/automated/run.js     # 依次跑 01~13，当前 260/260 全过
 | `10-year-end.test.js` | 4 | 年末结算（气血与灵力回满 / 岁增 / 行动点重置） |
 | `11-dead-config.test.js` | 36 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费） |
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
-| `13-tools-reinc.test.js` | 1 | **镜像工具回归**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
+| `13-tools-reinc.test.js` | 2 | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
@@ -1194,3 +1194,41 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
     - **给下次的判据**：① `tools/*.js` 里出现与 `js/engine.js` 同源的**数值常量/阈值/公式** → 疑似镜像，优先纳入 run.js；
       ② 脚本里 `check('... = 常量', x === 常量)` 形式的断言就是"手抄数字"，**改数据后必然过期**；
       ③ 文档写「由 `xx.js` 实跑得」→ **去跑一次**，别信（本次就是跑了一次才发现整列错的）。
+
+60. **承接 #59：把 `tools/` 的镜像彻底拆掉 —— 改用「真加载引擎」，`tools/` 现零公式镜像（2026-09-15）**：
+
+    - **起因**：#59 只修了 `reinc_validate.js` 一个脚本。按它自己写下的判据回头扫一遍 `tools/`，
+      **同类分叉不止一个**，而且是同一套错法在三个脚本里各抄了一遍：
+
+      | 脚本 | 分叉内容 | 后果 |
+      |---|---|---|
+      | `reinc_points.js` | 手抄 earnPoints：`floor(s.broken/3)` + **残留 jie×2 平加** + 漏 `deathPts`/`advPts`/`endMul`；手抄 `REINC_TALENT` 成本 `0/10/20/40/80`（真值 `0/6/12/18/24`） | 「本世合计」整列不可用；100 点红利算出的开荒池也错 |
+      | `reinc_sim.js` | 手抄 `REINCARNATION`，六维 **`max:5`**（真值 9）；`floor(state.broken/3)`；SCEN 用 `broken:0/1/3/5/9` 当渡劫次数 | `sixTotal` 算成 **360**（真值 1080）、`allTotal` 也错 → 加满局数整表错 |
+      | `player_sim.js` | 文案/标签写「全天赋 **1406**」（真值 1296） | 报告标题印错数（计算本身读 data.js，故只错在字面量） |
+
+      另核 `balance_sim.js` 的 `NEED` / `JIE_DIFF` 与引擎一致（当前未漂移，但仍是硬编码副本）。
+
+    - **正解：不要再镜像，去真加载引擎。** 新增 **`tools/_engine_loader.js`** —— 在 vm 沙箱里
+      把 `js/data.js` + `js/engine.js` **拼成一个脚本**加载，直接拿到真 `Engine` 与全部数据表
+      （兼容 `DEDAO_ROOT`）。关键坑：**必须拼成一个脚本再跑** —— `js/*.js` 都是顶层 `const`，
+      `const` 不挂 `window`，分两次 `runInContext` 第二次取不到上一次的 `const`。
+      （该模式本项目已有先例：`detect_sanxianming.js` / `build_battle_preview.js` 各自内联实现过一份。）
+    - **三个脚本全部改版**：`reinc_validate.js` / `reinc_sim.js` / `reinc_points.js` 改为数据表直读、
+      公式直调 `Engine.settlePoints` / `Engine.earnPoints`。改完 **`tools/` 里零公式镜像**。
+      复现"文档口径"（给定成就分 2/4/9/14/48）的办法：**预置 meta** 把其余已达成成就标记为早先已得，
+      只留指定几条 → 引擎只把这几条算作"本世新增"，而公式仍出自引擎。
+    - **产出交叉印证**：改完的 `reinc_sim.js`（引擎驱动）与 `reinc_validate.js` 各自**独立**算出
+      同一组 `jie0 = 6/18/37/61/164`，与方案文档三表一致 —— 两条独立实现互证。
+    - **顺带产出一个平衡结论**：同进度下由 `Engine.achDefs` **实际会发的全部成就**（6/11/22/37/63）
+      高于文档表用的保守成就集（2/4/9/14/48），故 `jie0` 实为 **10/25/50/84/182**。
+      即 **文档 §7.2/§九 两张表属"保守估计"**，飞升实得约 **182** 而非 164。两栏已在 `reinc_sim.js` 并列输出。
+    - **第三层守卫（补"跑得通 ≠ 口径对"）**：`13` 套件新增第 2 条用例 —— **静态扫描 `tools/*.js`**：
+      ① `reinc_validate/reinc_sim/reinc_points` 三个脚本**必须** `require('./_engine_loader')`；
+      ② 命中「已知陈旧写法黑名单」即红：`Math.floor(x.broken/3)`、行尾 `+ jie * 2`、字面量 `1406`。
+      ⚠ **扫前必须去注释**（`/*...*/` + 整行 `//` + 行尾 `//`）—— `reinc_validate.js` 的注释里就写着
+      `Math.floor(s.broken/3)` 作为"前车之鉴"，不去注释会自己撞自己。
+      变异验证三连（均实测变红）：注释掉 loader 引用 / 注入 `1406` / 注入 `Math.floor(state.broken/3)`。
+    - **测试**：**261/261**（`13` 模块 1→2 条）。**只改 `tools/` + `test/` + `*.md`** → 不 bump、不同步 dist。
+    - **留给下次**：`balance_sim.js` 的 `NEED` / `JIE_DIFF` 仍是硬编码副本（当前值对，会随平衡调整漂移）；
+      `player_sim.js` 自带 `equipStats`/`calcAtk`/`calcHpMax` 等一整套公式副本，体量大，尚未迁到 `_engine_loader`。
+      两者适用同一处方：能直读就直读，不能直读就改成 `_engine_loader` 的调用。

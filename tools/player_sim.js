@@ -1,7 +1,7 @@
 /* ============================================================
    DEDAO · 玩家全量测试模拟器 (player_sim.js)
    加载真实 data.js 数据表 + 复刻 engine.js 核心公式，
-   建模「正常玩家(轮回阁~600点)」与「死忠玩家(六维满9/全天赋1406)」，
+   建模「正常玩家(轮回阁~600点)」与「死忠玩家(六维满9/全天赋1296)」，
    全量叠加：聚灵阵 / 五行阵 / 丹 / 器 / 秘境产出 / 游历机缘 / 练体练神 / 宗门 / 灵根 / 命格，
    输出各境界最终战力、修炼速度、秘境BOSS与死劫通关率。
    运行: node tools/player_sim.js
@@ -295,7 +295,7 @@ function applyReinc(s, inv) {
 }
 // 正常玩家：六维停在5（死忠才叠到9），其余天赋拉满到~600点预算（旧版上限）
 const NORMAL_INV = { wu: 5, ti: 5, dun: 5, shen: 5, dao: 5, ling: 5, alchemy: 3, forge: 3, extraField: 3, destinySlot: 1, cult: 5, lvling_bottle: 3 };
-// 死忠玩家：全部天赋拉满（1406点，六维满9）
+// 死忠玩家：全部天赋拉满（1296 点，六维满9）—— 点数由 totalReincCost(HARDCORE_INV) 现算，见下方 label
 const HARDCORE_INV = {}; REINCARNATION.forEach(r => HARDCORE_INV[r.id] = r.max);
 
 /* ---------- 4. 装备/法宝/练体练神 选择器 ---------- */
@@ -462,7 +462,9 @@ console.log('\n================= 玩家全量数值测试 =================\n');
 
 // 7.1 各境界最终战力
 ['normal', 'hardcore'].forEach(kind => {
-  const label = kind === 'normal' ? '正常玩家(轮回阁~600点)' : '死忠玩家(六维满9/全天赋1406)';
+  const label = kind === 'normal'
+    ? '正常玩家(轮回阁~' + totalReincCost(NORMAL_INV) + '点)'
+    : '死忠玩家(六维满9/全天赋' + totalReincCost(HARDCORE_INV) + '点)';
   console.log('──── ' + label + ' ────');
   console.log('境界 | 轮回阁花费 | 攻(atk) | 血(hp) | 灵力(mp) | 修炼/次 | 暴击% | 闪避% | 防御');
   realms.forEach(r => {

@@ -1,21 +1,40 @@
-/* DEDAO 轮回结算重做 —— 断言式校验脚本（直读 data.js 真实配置）
+/* DEDAO 轮回结算重做 —— 断言式校验脚本
  * 运行：node tools/reinc_validate.js
+ *
+ * 2026-09-15 改版：**不再手抄公式 / 数据表**，经 `_engine_loader` 真加载
+ *   `js/data.js` + `js/engine.js`，直调 `Engine.settlePoints` / `Engine.earnPoints`。
+ *
+ * 改版原因（AGENTS.md #59「第四大 bug 类」）—— 旧版本三处分叉同时存在，整列算错：
+ *   ① 渡劫分写 `Math.floor(s.broken/3)`。`s.broken` 是「突破次数」（每次小阶提升 +1），
+ *      引擎用的是 `s.tribPassed*3`（渡劫次数：金丹劫/元婴劫/飞升劫，至多 3 次）。
+ *      引擎里有同源前车之鉴（成就 `sanjie` 曾误用 s.broken，engine.js:4801 注释）。
+ *   ② 漏结局乘子 `endMul`：飞升/仙 1.2、打破轮回 1.5（engine.js:4740）。
+ *   ③ 漏秘境分里的 `exploreKills*0.05`（engine.js:4696）。
+ *   净效应：脚本输出的 jie0 列 6/18/34/55/129 整列偏低（正确 6/18/37/61/164），
+ *   而方案文档四张表全部照抄它。且脚本自己那条「全部天赋全满 = 1406」断言（实测 1296）
+ *   一直报 ❌ 却因不在 run.js 视野里而无人看见 —— 故另有 `test/automated/13-tools-reinc.test.js` 守它。
+ *
+ * 成就分口径：文档表用的是**保守成就集**（2/4/9/14/48）。本脚本用「预置 meta」把
+ *   其余已达成成就标记为『早先已得』，让引擎只把指定几条算作本世新增 → 复现文档数字，
+ *   且公式完全出自引擎（零镜像）。
  */
+'use strict';
 const fs = require('fs');
 const path = require('path');
+const { load } = require('./_engine_loader');
 
-const DATA = fs.readFileSync(path.join(__dirname, '..', 'js', 'data.js'), 'utf8');
+const G = load();
+const ENG = G.Engine;
+const REINC = G.REINCARNATION;
+
 let pass = 0, fail = 0;
 function check(name, cond, extra) {
   if (cond) { pass++; console.log('  ✅ ' + name + (extra ? '  → ' + extra : '')); }
   else { fail++; console.log('  ❌ ' + name + (extra ? '  → ' + extra : '')); }
 }
 
-/* ---------- 1. 直读 REINCARNATION 计算真实加满成本（max 已改 9） ---------- */
-console.log('\n=== 测试1：六维 max=9 加满成本（直读 data.js）===');
-const m = DATA.match(/const REINCARNATION = (\[[\s\S]*?\n\];)/);
-if (!m) { console.log('  ❌ 未找到 REINCARNATION'); process.exit(1); }
-const REINC = eval('(' + m[1].replace(/;\s*$/, '') + ')');
+/* ---------- 1. 直读 data.js / 引擎的 REINCARNATION，算真实加满成本 ---------- */
+console.log('\n=== 测试1：六维 max=9 加满成本（数据表直读）===');
 const costOf = r => r.cost * r.max * (r.max + 1) / 2; // 第 n 级 = cost×n
 const sixIds = ['wu', 'ti', 'dun', 'shen', 'dao', 'ling'];
 let sixTotal = 0, allTotal = 0;
@@ -27,84 +46,77 @@ REINC.forEach(r => {
 });
 check('六维核心全满 = 1080', sixTotal === 1080, sixTotal);
 check('全部天赋全满 = 1296', allTotal === 1296, allTotal);
-check('道心(dao)+悟性(wu) = 540（单维各270）', (costOf(REINC.find(x=>x.id==='dao')) + costOf(REINC.find(x=>x.id==='wu'))) === 540);
+check('道心(dao)+悟性(wu) = 540（单维各270）',
+  (costOf(REINC.find(x => x.id === 'dao')) + costOf(REINC.find(x => x.id === 'wu'))) === 540);
 
-/* ---------- 2. 复刻最终 earnPoints 公式（逐项对齐 js/engine.js:4727 earnPoints） ----------
- * ⚠ 2026-09-15 修正三处与引擎的分叉 —— 此前本脚本算出的 jie0 列**整列都是错的**：
- *   ① 渡劫分曾用 `floor(s.broken/3)`。`s.broken` 是「突破次数」（每次小阶提升都 +1），
- *      引擎用的是 `s.tribPassed*3`（渡劫次数：金丹劫 / 元婴劫 / 飞升劫，至多 3 次）。
- *      引擎里已有同源前车之鉴（成就 `sanjie` 曾误用 s.broken，见 engine.js:4801 注释）。
- *   ② 缺结局乘子 `endMul`：飞升 / 仙 1.2、打破轮回 1.5，其余 1.0（engine.js:4740）。
- *   ③ 秘境分漏了 `exploreKills*0.05`（engine.js:4696）。
- *   修正后 jie0 = 6 / 18 / 37 / 61 / 164（旧值 6/18/34/55/129 系错误镜像的产物）。 */
-console.log('\n=== 测试2：最终结算公式（五类求和 × endMul × (1+jie×0.2) + round(base×jie×0.05)）===');
-const TIER = { '炼气': 2, '筑基': 4, '金丹': 7, '元婴': 11, '仙': 25 };
-const TIER_PTS = { huang: 2, xuan: 4, di: 7, tian: 11, xian: 15 };
-const ORDER = ['huang', 'xuan', 'di', 'tian', 'xian'];
-function advPoints(realm, advCleared, exploreKills) {
-  const cleared = ORDER.filter(k => advCleared.indexOf(k) >= 0);
-  let pts = 0; cleared.forEach(k => pts += TIER_PTS[k]);
-  const n = cleared.length;
-  if (n >= 4) pts += 8; else if (n >= 3) pts += 4; else if (n >= 2) pts += 2;
-  const cap = (TIER[realm] || 2) * 2;
-  pts = Math.min(pts, cap);
-  pts += Math.round((exploreKills || 0) * 0.05);
-  return pts;
+/* ---------- 2. 引擎公式入口 ---------- */
+console.log('\n=== 测试2：结算走 Engine.settlePoints / earnPoints（零镜像）===');
+check('Engine.settlePoints 已导出', typeof ENG.settlePoints === 'function');
+check('Engine.earnPoints 已导出', typeof ENG.earnPoints === 'function');
+
+function blankMeta() { return { lives: 1, earnedTotal: 0, achievements: {}, reinc: {}, destinySeen: {} }; }
+function mkState(tag, realm, idx, trib, death, cleared, endReason) {
+  const s = ENG.startLife(tag);
+  s.realm = realm; s.idx = idx;
+  s.tribPassed = trib; s.deathPassed = death;
+  s.flags = s.flags || {};
+  const ac = {}; cleared.forEach(k => { ac[k] = 1; }); s.flags.advClear = ac;
+  s.endReason = endReason; s.jie = 0;
+  return s;
 }
-function endMul(s) {
-  if (s.endReason === '打破轮回' || s.hiddenWin) return 1.5;
-  if (s.endReason === '飞升' || s.idx >= 15 || s.realm === '仙') return 1.2;
-  return 1.0;
-}
-function earn(s) {
-  const realmPts = TIER[s.realm] || 2;
-  const tribPts = Math.min(10, (s.tribPassed || 0) * 3);   // ⚠ tribPassed，不是 broken
-  const deathPts = (s.deathPassed || 0) * 2;
-  const advPts = advPoints(s.realm, s.adv || [], s.exploreKills);
-  const achPts = s.achPts || 0;
-  const base = realmPts + tribPts + deathPts + advPts + achPts;
-  const jie = s.jie || 0;
-  const K = 0.05;
-  return Math.round(base * endMul(s) * (1 + jie * 0.2)) + Math.round(base * jie * K);
+/* 只让 keep 里的成就算作"本世新增"，其余已达成的一律预置为早先已得 → 复现文档的保守成就分 */
+function settleKeep(s, keep) {
+  const meta = blankMeta();
+  const satisfied = ENG.achDefs(s, meta) || {};
+  Object.keys(satisfied).forEach(id => { if (satisfied[id] && keep.indexOf(id) < 0) meta.achievements[id] = 1; });
+  return ENG.settlePoints(s, meta);
 }
 
-/* 典型可达场景（含秘境探索 + 新成就，max 努力）
-   tribPassed 口径：金丹陨已过金丹劫=1 / 元婴陨=2 / 飞升=3；筑基及以下尚未面对天劫=0 */
+/* 典型可达场景（含秘境探索；成就分为文档口径的保守值） */
 const SCEN = [
-  { tag: '炼气初陨', realm: '炼气', tribPassed: 0, deathPassed: 0, adv: ['huang'],                            achPts: 2,  jie: 0 },
-  { tag: '筑基陨',   realm: '筑基', tribPassed: 0, deathPassed: 1, adv: ['huang','xuan'],                     achPts: 4,  jie: 0 },
-  { tag: '金丹陨',   realm: '金丹', tribPassed: 1, deathPassed: 2, adv: ['huang','xuan','di'],                achPts: 9,  jie: 0 },
-  { tag: '元婴陨',   realm: '元婴', tribPassed: 2, deathPassed: 4, adv: ['huang','xuan','di','tian'],         achPts: 14, jie: 0 },
-  { tag: '飞升',     realm: '仙',   tribPassed: 3, deathPassed: 4, adv: ['huang','xuan','di','tian','xian'], achPts: 48, jie: 0, endReason: '飞升' }
+  { tag: '炼气初陨', realm: '炼气', idx: 0,  trib: 0, death: 0, cleared: ['huang'],                                end: '寿元耗尽', keep: ['chu_tan', 'shou_zhong'] },
+  { tag: '筑基陨',   realm: '筑基', idx: 3,  trib: 0, death: 1, cleared: ['huang', 'xuan'],                      end: '寿元耗尽', keep: ['shou_zhuji', 'chu_tan', 'shou_zhong'] },
+  { tag: '金丹陨',   realm: '金丹', idx: 6,  trib: 1, death: 2, cleared: ['huang', 'xuan', 'di'],                 end: '寿元耗尽', keep: ['shou_zhuji', 'shou_jiejin', 'dongtian'] },
+  { tag: '元婴陨',   realm: '元婴', idx: 9,  trib: 2, death: 4, cleared: ['huang', 'xuan', 'di', 'tian'],          end: '寿元耗尽', keep: ['shou_zhuji', 'shou_jiejin', 'shou_yuanying', 'moya'] },
+  { tag: '飞升',     realm: '仙',   idx: 15, trib: 3, death: 4, cleared: ['huang', 'xuan', 'di', 'tian', 'xian'], end: '飞升',     keep: ['shou_zhuji', 'shou_jiejin', 'shou_yuanying', 'feisheng', 'sanjie', 'chu_tan', 'feizhai', 'daheishan', 'dongtian', 'quanjing', 'chu_dao', 'churu', 'san_xiu'] },
 ];
+
+function settleAt(row, jie) {
+  const s = mkState(row.tag, row.realm, row.idx, row.trib, row.death, row.cleared, row.end);
+  s.jie = jie || 0;
+  return settleKeep(s, row.keep);
+}
 
 console.log('\n=== 测试3：逐场景单局收益（K=0.05，删 jie×2）===');
 console.log('场景'.padEnd(10) + '| jie0'.padStart(5) + ' | jie3'.padStart(5) + ' | jie6'.padStart(5) + ' | jie9'.padStart(5));
 let worst = 0, worstTag = '';
-SCEN.forEach(s => {
-  const e0 = earn(s), e3 = earn({ ...s, jie: 3 }), e6 = earn({ ...s, jie: 6 }), e9 = earn({ ...s, jie: 9 });
-  console.log(s.tag.padEnd(8) + ' | ' + String(e0).padStart(5) + ' | ' + String(e3).padStart(5) + ' | ' + String(e6).padStart(5) + ' | ' + String(e9).padStart(5));
-  check(s.tag + ' 单调递增(jie0≤3≤6≤9)', e0 <= e3 && e3 <= e6 && e6 <= e9);
-  check(s.tag + ' 全部 > 0', e0 > 0 && e9 > 0);
-  const r = e9 / e0;
-  if (r > worst) { worst = r; worstTag = s.tag; }
+const JIE0 = {};
+SCEN.forEach(row => {
+  const v = [0, 3, 6, 9].map(j => settleAt(row, j).total);
+  JIE0[row.tag] = v[0];
+  console.log(row.tag.padEnd(8) + ' | ' + v.map(x => String(x).padStart(5)).join(' | '));
+  check(row.tag + ' 单调递增(jie0≤3≤6≤9)', v[0] <= v[1] && v[1] <= v[2] && v[2] <= v[3]);
+  check(row.tag + ' 全部 > 0', v[0] > 0 && v[3] > 0);
+  const r = v[3] / v[0];
+  if (r > worst) { worst = r; worstTag = row.tag; }
 });
 
 console.log('\n=== 测试4：高劫膨胀收敛性（K=0.05，删 jie×2）===');
 check('最坏倍数 ≤ 4x（原 flat jie×5 为 13x）', worst <= 4, worstTag + ' ' + worst.toFixed(2) + 'x');
 
 console.log('\n=== 测试5：死劫计数贡献生效 ===');
-const base = { realm: '元婴', tribPassed: 2, deathPassed: 0, adv: ['huang','xuan','di','tian'], achPts: 14, jie: 0 };
-const withDeath = earn({ ...base, deathPassed: 3 });
-check('多通过3次死劫 → +6 点（元婴 jie0）', withDeath - earn(base) === 6, '+' + (withDeath - earn(base)));
+const rowD = { tag: '死劫校验', realm: '元婴', idx: 9, trib: 2, death: 0, cleared: ['huang', 'xuan', 'di', 'tian'], end: '寿元耗尽', keep: ['shou_zhuji', 'shou_jiejin', 'shou_yuanying', 'moya'] };
+const withDeath = settleAt(Object.assign({}, rowD, { death: 3 }), 0).total;
+const noDeath = settleAt(rowD, 0).total;
+check('多通过3次死劫 → +6 点（元婴 jie0）', withDeath - noDeath === 6, '+' + (withDeath - noDeath));
 
-console.log('\n=== 测试6：秘境探索分计入且受封顶 ===');
-const a1 = advPoints('炼气', ['huang']);               // 2, cap4 → 2
-const a2 = advPoints('筑基', ['huang','xuan']);         // 6+广度2=8, cap8 → 8
-const a3 = advPoints('炼气', ['huang','xuan','di','tian']); // 24+广度8, cap4 → 4 (低境界封顶)
-check('炼气首通黄 = 2（封顶4）', a1 === 2, a1);
-check('筑基通关黄+玄 = 8（2+4+广度2，封顶8）', a2 === 8, a2);
-check('炼气越级刷4秘境被封顶到 4', a3 === 4, a3);
+console.log('\n=== 测试6：秘境探索分计入且受封顶（引擎 breakdown.explore）===');
+const e1 = settleAt({ tag: 't', realm: '炼气', idx: 0, trib: 0, death: 0, cleared: ['huang'], end: '寿元耗尽', keep: [] }, 0).breakdown.explore;
+const e2 = settleAt({ tag: 't', realm: '筑基', idx: 3, trib: 0, death: 0, cleared: ['huang', 'xuan'], end: '寿元耗尽', keep: [] }, 0).breakdown.explore;
+const e3 = settleAt({ tag: 't', realm: '炼气', idx: 0, trib: 0, death: 0, cleared: ['huang', 'xuan', 'di', 'tian'], end: '寿元耗尽', keep: [] }, 0).breakdown.explore;
+check('炼气首通黄 = 2（封顶4）', e1 === 2, e1);
+check('筑基通关黄+玄 = 8（2+4+广度2，封顶8）', e2 === 8, e2);
+check('炼气越级刷4秘境被封顶到 4', e3 === 4, e3);
 
 /* ---------- 7. 与方案文档对账：DEDAO_轮回结算重做_方案.md 的两张数字表 ---------- */
 console.log('\n=== 测试7：方案文档数字与实算对账（定向，防再次分叉）===');
@@ -113,7 +125,6 @@ if (!fs.existsSync(DOC)) {
   console.log('  ⏭  非仓库根（dist 副本无此文档），跳过');
 } else {
   const docTxt = fs.readFileSync(DOC, 'utf8');
-  // §9 表每行形如： | 飞升 | 25 | 1（3渡劫） | 8（4死劫） | 47（五秘境+广度8，封顶50） | 48 | 129 |
   const rowRe = new RegExp('^\\|\\s*(' + SCEN.map(s => s.tag).join('|') + ')\\s*\\|.*\\|\\s*(\\d+)\\s*\\|\\s*$', 'm');
   const docJie0 = {};
   docTxt.split('\n').forEach(function (ln) {
@@ -121,16 +132,14 @@ if (!fs.existsSync(DOC)) {
     if (mm) docJie0[mm[1]] = Number(mm[2]);
   });
   SCEN.forEach(function (s) {
-    const want = earn(s);
+    const want = JIE0[s.tag];
     check('§九 平衡表「' + s.tag + '」jie0 = ' + want,
       docJie0[s.tag] === want,
       '文档写 ' + (docJie0[s.tag] === undefined ? '(缺行)' : docJie0[s.tag]) + '，实算 ' + want);
   });
-  // 成本口径
   const flat = docTxt.replace(/\s/g, '');
   check('§7.1「六维核心全满 = 1080」', /六维核心全满=[^小]*1080/.test(flat));
   check('§7.1「全部天赋拉满 = 1296」', flat.indexOf('全部天赋拉满=1296') >= 0);
-  // §九 结论行必须与新口径一致（旧值 6/18/34/55/129 不得再作为"与表一致"出现）
   check('§九 结论行已更新为 6 / 18 / 37 / 61 / 164',
     /6\s*\/\s*18\s*\/\s*37\s*\/\s*61\s*\/\s*164/.test(docTxt));
   check('§7.2 飞升 jie9 = 522', /^\|\s*飞升\s*\|\s*164\s*\|\s*284\s*\|\s*403\s*\|\s*522\s*\|/m.test(docTxt));

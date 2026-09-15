@@ -315,6 +315,50 @@ def seal(base, xy, text, size=52, color=CINNABAR, radius=6):
     base.paste(Image.new('RGBA', (W, H), _rgba(WHITE)), (0, 0), m)
 
 
+def divider(base, cy, x0, x1, color=GOLD, alpha=180, width=3, diamond=13, gap=11):
+    """
+    中式双线分隔符（**纯几何，不含任何文字**）。
+
+    存在的理由：审核细则 2.7.1 要求宣传图上「不得出现游戏名以外的文字」，
+    原先用来做视觉层次的 slogan 全部违规，层次感只能改由图形承担。
+    """
+    W, H = base.size
+    layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    c = _rgba(color, alpha)
+    cx = (x0 + x1) / 2
+    for dy in (-gap / 2, gap / 2):
+        d.line((x0, cy + dy, cx - diamond - 26, cy + dy), fill=c, width=width)
+        d.line((cx + diamond + 26, cy + dy, x1, cy + dy), fill=c, width=width)
+    d.polygon([(cx, cy - diamond), (cx + diamond, cy),
+               (cx, cy + diamond), (cx - diamond, cy)], outline=c)
+    base.alpha_composite(layer)
+
+
+def cloud_band(base, cy, x0, x1, n=3, r=52, color=GOLD, alpha=115, width=3):
+    """云头纹装饰带（纯几何圆弧）。中式气质靠它体现，不靠文字。"""
+    W, H = base.size
+    layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    c = _rgba(color, alpha)
+    span = x1 - x0
+    for i in range(n):
+        cx = x0 + span * (i + 0.5) / n
+        d.arc((cx - r, cy - r, cx + r, cy + r), 200, 340, fill=c, width=width)
+    base.alpha_composite(layer)
+
+
+def glow_orb(base, cx, cy, r, color=GOLD, alpha=70):
+    """柔光光晕（纯图形）。去掉文案后用来撑住画面重心的亮点。"""
+    W, H = base.size
+    m = Image.new('L', (W, H), 0)
+    ImageDraw.Draw(m).ellipse((cx - r, cy - r, cx + r, cy + r), fill=alpha)
+    m = m.filter(ImageFilter.GaussianBlur(max(8.0, r / 2.2)))
+    orb = Image.new('RGBA', (W, H), _rgba(color))
+    orb.putalpha(m)
+    base.alpha_composite(orb)
+
+
 # ───────────────────────────────── 各物料 ─────────────────────────────────
 
 def make_icon():
@@ -349,27 +393,29 @@ def make_icon():
 
 
 def make_logo():
-    """LOGO PNG，透明底，横版。TapTap 要求宽≥1280 或 高≥720。"""
+    """
+    游戏 LOGO 2048×768，**透明底**。
+
+    官方：尺寸需满足「1280px 宽」或「720px 高」其一，格式 png，≤4MB；
+          「非设计元素以外的空间皆用透明度处理」。
+
+    ⚠ 2026-09-15 修正：移除原先的英文行「D E D A O · S I N C E 2 0 2 5」。
+      LOGO 与封面/宣传图是同一套视觉资产，细则 2.7.1 与封面规则都要求
+      「不得出现游戏名以外的文字」，统一收紧避免连带驳回。
+      可读内容只剩游戏名「得道飞升模拟器」（两行排版）。
+    """
     W, H = 2048, 768
     base = Image.new('RGBA', (W, H), (0, 0, 0, 0))
 
-    paste_text(base, (W / 2, 322), '得道飞升', F(360), anchor='mm',
-               grad=(GOLD_L, GOLD), stroke=4, stroke_fill=(54, 38, 8),
-               glow=GOLD + (44,), glow_blur=22)
+    # 光晕：透明底上唯一能撑重心的元素
+    glow_orb(base, W / 2, 320, 560, GOLD, 46)
 
-    # 副标题 + 左右短分隔线
-    paste_text(base, (W / 2, 566), '模拟器', F(120), anchor='mm', fill=LILAC,
+    paste_text(base, (W / 2, 300), '得道飞升', F(340), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), glow=GOLD + (52,), glow_blur=28)
+    paste_text(base, (W / 2, 596), '模 拟 器', F(120), anchor='mm', optical=True, fill=LILAC,
                stroke=2, stroke_fill=(48, 34, 12))
-    d = ImageDraw.Draw(base)
-    y = 566
-    d.line((W / 2 - 470, y, W / 2 - 250, y), fill=GOLD + (150,), width=3)
-    d.line((W / 2 + 250, y, W / 2 + 470, y), fill=GOLD + (150,), width=3)
-    for sx in (-1, 1):
-        cx = W / 2 + sx * 520
-        d.polygon([(cx, y - 12), (cx + 12 * sx, y), (cx, y + 12)], fill=GOLD + (170,))
 
-    paste_text(base, (W / 2, 686), 'D E D A O   ·   S I N C E   2 0 2 5', F(40), anchor='mm',
-               fill=MUTED + (215,))
+    divider(base, 478, 470, W - 470, gap=10, diamond=14)
 
     out = os.path.join(OUT_DIR, 'LOGO_2048x768.png')
     base.save(out)
@@ -389,7 +435,16 @@ def _hero_portrait(target_h, feather_px=None):
 
 
 def make_hero_banner():
-    """详情页顶部图 1920×1080。安全区 1760×920（四周各留 80），文字全部落在安全区内。"""
+    """
+    详情页顶部图 1920×1080。安全区 1760×920（四周各留 80），文字全部落在安全区内。
+
+    ⚠ 审核约束（官方物料页原文）：详情页顶部图
+       "Do not include text other than the game title."
+       ⇒ 本图**只允许出现游戏名**。
+       2026-09-15 修正：原先的「一命一轮回 · 百世证长生」
+       「修仙文字模拟 · 五行法术 · 轮回转世 · 随机命格」与「仙」朱印全部移除，
+       改用双线分隔符 + 云头纹 + 光晕承担视觉层次。
+    """
     W, H = 1920, 1080
     bg = load_src('title.png')
     bg = fit_cover(bg, W, H, ax=0.34, ay=0.5).convert('RGBA')
@@ -404,27 +459,21 @@ def make_hero_banner():
     bg.paste(Image.new('RGBA', (W, H), _rgba(INK_2)), (0, 0), dark)
     bg.alpha_composite(vgrad_alpha((W, H), INK, 150, 215))
 
+    glow_orb(bg, 620, 480, 580, GOLD, 38)
+
     # 主角立绘（右侧，略微出血到安全区外，属装饰不算信息）
-    hero = _hero_portrait(780, feather_px=120)
-    hx = W - hero.width - 150
+    # 尺寸与 x 要让开左侧游戏名 —— 游戏名单行 F(140) 宽约 980，165+980=1145 < 1253
+    hero = _hero_portrait(700, feather_px=110)
+    hx = W - hero.width - 130
     bg.alpha_composite(hero, (hx, H - hero.height + 60))
 
-    paste_text(bg, (150, 352), '得道飞升', F(196), anchor='lm',
-               grad=(GOLD_L, GOLD), stroke=4, stroke_fill=(50, 36, 8),
-               glow=GOLD + (40,), glow_blur=20, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
-    paste_text(bg, (150, 500), '模 拟 器', F(96), anchor='lm', fill=LILAC,
-               stroke=2, stroke_fill=(48, 34, 12), shadow=INK, shadow_off=(0, 4), shadow_blur=8)
+    # 唯一文字：游戏名
+    paste_text(bg, (165, 470), '得道飞升模拟器', F(140), anchor='lm',
+               grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
+               glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 7), shadow_blur=13)
 
-    d = ImageDraw.Draw(bg)
-    d.line((150, 592, 610, 592), fill=GOLD + (170,), width=3)
-
-    paste_text(bg, (150, 668), '一命一轮回 · 百世证长生', F(64), anchor='lm',
-               fill=(240, 232, 214) + (255,), shadow=INK, shadow_off=(0, 4), shadow_blur=8)
-    paste_text(bg, (150, 748), '修仙文字模拟 · 五行法术 · 轮回转世 · 随机命格', F(40), anchor='lm',
-               fill=MUTED + (255,))
-
-    # 右下小标签
-    seal(bg, (W - 250, H - 150), '仙', size=68)
+    divider(bg, 624, 172, 980, gap=12, diamond=15)
+    cloud_band(bg, 742, 230, 880, n=3, r=46, alpha=105)
 
     hairline_frame(bg, inset=80, alpha=60, corner=96)
     out = os.path.join(OUT_DIR, '顶部图_1920x1080.png')
@@ -446,76 +495,73 @@ def _screenshot_card(path, height, radius=10, border=GOLD):
 
 
 def make_promo_16x9():
-    """宣传图 16:9，1920×1080。左侧卖点、右侧实机截图立牌。"""
+    """
+    宣传图 16:9，1920×1080。
+
+    ⚠ 审核约束（《TapTap 游戏审核规范细则》2.7）：
+       2.7.1 宣传图需含有游戏名，**且请勿出现游戏名以外的文字**
+       2.7.2 不得直接使用未经排版的游戏截图
+       2.7.3 **不得使用多图拼接、平铺的素材**
+       2.7.4 不得出现游戏 ICON 图标素材
+       2.7.7 不得出现实物手机
+
+    ⇒ 2026-09-15 整段重做。原版是「左侧 4 条卖点 + 右侧 3 张截图立牌」，
+      **同时踩了 2.7.1（卖点文案）与 2.7.3（多图拼接）两条红线**。
+      现改为「单一实景主体 + 游戏名 + 纯几何装饰」。
+    """
     W, H = 1920, 1080
     bg = load_src('Vast_sea_of_clouds_with_floati_2026-09-06T08-52-45.png')
     bg = fit_cover(bg, W, H, ax=0.5, ay=0.40).convert('RGBA')
-    bg = darken(bg, 0.46)
-    bg.alpha_composite(vgrad_alpha((W, H), INK, 110, 200))
-    bg.alpha_composite(hgrad_stops((W, H), INK_2, [(0, 180), (0.45, 0), (1, 90)]))
+    bg = darken(bg, 0.44)
+    bg.alpha_composite(vgrad_alpha((W, H), INK, 120, 205))
 
-    shots = os.path.join(ROOT, 'dist', 'taptap', 'screenshots')
-    back = _screenshot_card(os.path.join(shots, '09_开荒命数自定.png'), 620, border=MUTED)
-    front = _screenshot_card(os.path.join(shots, '02_战斗_五行法术.png'), 700, border=GOLD)
-    mid = _screenshot_card(os.path.join(shots, '04_角色属性.png'), 560, border=MUTED)
+    # 单一主体：主角立绘（不是截图拼接，2.7.3 不适用）
+    hero = _hero_portrait(640, feather_px=118)
+    bg.alpha_composite(hero, (W - hero.width - 200, H - hero.height + 30))
 
-    # 投影：卡片整体做一层模糊黑影再贴，避免「浮空贴纸」感
-    for card, pos in ((back, (1148, 250)), (mid, (1652, 330)), (front, (1360, 236))):
-        sh = Image.new('RGBA', bg.size, (0, 0, 0, 0))
-        sh.paste(Image.new('RGBA', card.size, (0, 0, 0, 150)), pos, card.getchannel('A'))
-        bg.alpha_composite(sh.filter(ImageFilter.GaussianBlur(22)))
-    for card, pos in ((back, (1148, 250)), (mid, (1652, 330)), (front, (1360, 236))):
-        bg.alpha_composite(card, pos)
+    glow_orb(bg, 600, 460, 560, GOLD, 40)
 
-    paste_text(bg, (120, 268), '修 仙', F(150), anchor='lm',
-               grad=(GOLD_L, GOLD), stroke=4, stroke_fill=(50, 36, 8), glow=_rgba(GOLD, 34), glow_blur=18)
-    paste_text(bg, (120, 418), '一世一劫 · 百世飞升', F(92), anchor='lm', fill=WHITE,
-               shadow=INK, shadow_off=(0, 5), shadow_blur=10)
+    # 唯一文字：游戏名
+    paste_text(bg, (600, 420), '得道飞升模拟器', F(132), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
+               glow=GOLD + (46,), glow_blur=24, shadow=INK, shadow_off=(0, 7), shadow_blur=13)
 
-    d = ImageDraw.Draw(bg)
-    d.line((120, 502, 700, 502), fill=_rgba(GOLD, 190), width=4)
+    divider(bg, 556, 200, 1000, gap=13, diamond=16)
+    cloud_band(bg, 676, 260, 940, n=3, r=46, alpha=105)
 
-    feats = ['▸ 上千条随机事件 · 每一次开局都不一样',
-             '▸ 五行生克 · 黄玄地天四阶法术',
-             '▸ 轮回塔天赋 · 死亡不是终点',
-             '▸ 纯单机 · 无内购 · 无广告']
-    y = 592
-    for t in feats:
-        paste_text(bg, (124, y), t, F(48), anchor='lm', fill=(228, 220, 242))
-        y += 78
-
-    paste_text(bg, (W - 120, H - 92), 'DEDAO · 得道飞升模拟器', F(38), anchor='rm', fill=MUTED)
     hairline_frame(bg, inset=44, alpha=70, corner=84)
-
     out = os.path.join(OUT_DIR, '宣传图_16x9_1920x1080.png')
     bg.convert('RGB').save(out)
     return out
 
 
 def make_promo_1x1():
-    """1:1 宣传图，1440×1440。"""
+    """
+    1:1 宣传图，1440×1440。
+
+    ⚠ 审核约束见 make_promo_16x9。2026-09-15 修正：移除「一世一劫 · 百世飞升」
+      「纯单机 · 无内购 · 无广告」「修仙文字模拟 · 五行法术 · 轮回转世」三行
+      —— 既踩 2.7.1（非游戏名文字），其中「无内购无广告」还属商业化宣传用语
+      （细则 2.9.2 对本类用语有明确限制）。只保留游戏名。
+    """
     S = 1440
     bg = load_src('tian.png')
     bg = fit_cover(bg, S, S, ax=0.5, ay=0.42).convert('RGBA')
     bg = darken(bg, 0.44)
-    bg.alpha_composite(vgrad_alpha((S, S), INK_2, 150, 210))
+    bg.alpha_composite(vgrad_alpha((S, S), INK_2, 150, 215))
 
-    hero = _hero_frame(_hero_portrait(700), border=GOLD)
-    sh = Image.new('RGBA', bg.size, (0, 0, 0, 0))
-    sh.paste(Image.new('RGBA', hero.size, (0, 0, 0, 170)), (S // 2 - hero.width // 2, 300), hero.getchannel('A'))
-    bg.alpha_composite(sh.filter(ImageFilter.GaussianBlur(26)))
-    bg.alpha_composite(hero, (S // 2 - hero.width // 2, 300))
+    glow_orb(bg, S / 2, 320, 520, GOLD, 40)
 
-    paste_text(bg, (S / 2, 156), '得道飞升模拟器', F(104), anchor='mm', optical=True,
-               grad=(GOLD_L, GOLD), stroke=3, stroke_fill=(50, 36, 8), glow=_rgba(GOLD, 40), glow_blur=18)
+    hero = _hero_portrait(560, feather_px=105)
+    bg.alpha_composite(hero, (S // 2 - hero.width // 2, 650))
 
-    d = ImageDraw.Draw(bg)
-    d.line((300, 242, S - 300, 242), fill=_rgba(GOLD, 175), width=3)
+    # 唯一文字：游戏名
+    paste_text(bg, (S / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), stroke=3, stroke_fill=(50, 36, 8),
+               glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
-    paste_text(bg, (S / 2, 1188), '一世一劫 · 百世飞升', F(88), anchor='mm', fill=WHITE,
-               shadow=INK, shadow_off=(0, 5), shadow_blur=10)
-    paste_text(bg, (S / 2, 1288), '纯单机 · 无内购 · 无广告', F(50), anchor='mm', fill=LILAC)
-    paste_text(bg, (S / 2, 1372), '修仙文字模拟 · 五行法术 · 轮回转世', F(42), anchor='mm', fill=MUTED)
+    divider(bg, 372, 330, S - 330, gap=12, diamond=15)
+    cloud_band(bg, 470, 470, S - 470, n=2, r=44, alpha=100)
 
     hairline_frame(bg, inset=52, alpha=70, corner=96)
     out = os.path.join(OUT_DIR, '宣传图_1x1_1440x1440.png')
@@ -524,7 +570,14 @@ def make_promo_1x1():
 
 
 def make_vertical_cover():
-    """竖版封面 ≥600×900，出 1200×1800。"""
+    """
+    竖版封面 ≥600×900，出 1200×1800。
+
+    ⚠ 审核约束（官方物料页）：游戏封面「**必须带有游戏 LOGO、游戏标题，且不得
+      出现游戏标题以外的宣传性文字**」。
+      2026-09-15 修正：原先 3 行副标题与底部一行副标题全部移除，只留游戏名。
+      封面内保留 1 张实机截图 —— 这属「游戏内容展示」，非「宣传性文字」，规则未禁止。
+    """
     W, H = 1200, 1800
     bg = load_src('Cloud_ruins_of_an_ancient_immo_2026-09-06T08-52-48.png')
     bg = fit_cover(bg, W, H, ax=0.5, ay=0.38).convert('RGBA')
@@ -532,35 +585,41 @@ def make_vertical_cover():
     bg.alpha_composite(vgrad_alpha((W, H), INK_2, 205, 120))
     bg.alpha_composite(vgrad_alpha((W, H), INK, 60, 215))
 
+    glow_orb(bg, W / 2, 300, 460, GOLD, 38)
+
     card = _screenshot_card(os.path.join(ROOT, 'dist', 'taptap', 'screenshots',
                                          '01_主界面_修行.png'), 900)
-    bg.alpha_composite(card, (W // 2 - card.width // 2, 700))
+    bg.alpha_composite(card, (W // 2 - card.width // 2, 690))
 
-    paste_text(bg, (W / 2, 236), '得道飞升', F(190), anchor='mm',
-               grad=(GOLD_L, GOLD), stroke=4, stroke_fill=(50, 36, 8), glow=GOLD + (44,), glow_blur=20)
-    paste_text(bg, (W / 2, 378), '模 拟 器', F(84), anchor='mm', fill=LILAC + (255,))
+    # 唯一文字：游戏名
+    paste_text(bg, (W / 2, 250), '得道飞升模拟器', F(118), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
+               glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
-    d = ImageDraw.Draw(bg)
-    d.line((170, 466, W - 170, 466), fill=GOLD + (170,), width=3)
+    divider(bg, 374, 200, W - 200, gap=12, diamond=15)
+    cloud_band(bg, 472, 380, W - 380, n=2, r=44, alpha=100)
 
-    paste_text(bg, (W / 2, 546), '一世一劫 · 百世飞升', F(66), anchor='mm', fill=WHITE + (255,))
-    paste_text(bg, (W / 2, 626), '修仙文字模拟 · 纯单机 · 无内购', F(42), anchor='mm', fill=MUTED + (255,))
-
-    paste_text(bg, (W / 2, H - 96), '一命一轮回 · 每一世都是新故事', F(46), anchor='mm', fill=LILAC + (255,))
     hairline_frame(bg, inset=42, alpha=70, corner=90)
-
     out = os.path.join(OUT_DIR, '竖版封面_1200x1800.png')
     bg.convert('RGB').save(out)
     return out
 
 
 def make_horizontal_cover():
-    """横版封面 ≥460×215，出 1920×900。"""
+    """
+    横版封面 ≥460×215，出 1920×900。
+
+    ⚠ 审核约束同 make_vertical_cover：不得出现游戏标题以外的宣传性文字。
+      2026-09-15 修正：移除「一世一劫 · 百世飞升」与「修仙文字模拟 · 五行法术 ·
+      轮回转世 · 无内购无广告」两行。
+    """
     W, H = 1920, 900
     bg = load_src('xian.png')
     bg = fit_cover(bg, W, H, ax=0.5, ay=0.44).convert('RGBA')
     bg = darken(bg, 0.48)
     bg.alpha_composite(vgrad_alpha((W, H), INK_2, 120, 205))
+
+    glow_orb(bg, 620, 420, 540, GOLD, 40)
 
     hero = _hero_frame(_hero_portrait(560), border=GOLD)
     sh = Image.new('RGBA', bg.size, (0, 0, 0, 0))
@@ -568,15 +627,13 @@ def make_horizontal_cover():
     bg.alpha_composite(sh.filter(ImageFilter.GaussianBlur(26)))
     bg.alpha_composite(hero, (W - hero.width - 128, 176))
 
-    paste_text(bg, (140, 300), '得道飞升模拟器', F(132), anchor='lm',
-               grad=(GOLD_L, GOLD), stroke=4, stroke_fill=(50, 36, 8), glow=GOLD + (38,), glow_blur=18)
-    paste_text(bg, (140, 440), '一世一劫 · 百世飞升', F(66), anchor='lm', fill=WHITE + (255,),
-               shadow=INK, shadow_off=(0, 4), shadow_blur=8)
-    paste_text(bg, (140, 540), '修仙文字模拟 · 五行法术 · 轮回转世 · 无内购无广告', F(40), anchor='lm',
-               fill=MUTED + (255,))
+    # 唯一文字：游戏名
+    paste_text(bg, (600, 400), '得道飞升模拟器', F(132), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
+               glow=GOLD + (42,), glow_blur=20, shadow=INK, shadow_off=(0, 6), shadow_blur=12)
 
-    d = ImageDraw.Draw(bg)
-    d.line((140, 388, 700, 388), fill=GOLD + (170,), width=3)
+    divider(bg, 540, 200, 1000, gap=13, diamond=16)
+    cloud_band(bg, 660, 260, 940, n=3, r=46, alpha=105)
 
     hairline_frame(bg, inset=40, alpha=70, corner=80)
     out = os.path.join(OUT_DIR, '横版封面_1920x900.png')
@@ -638,23 +695,31 @@ def make_wallpaper():
 
 
 def make_video_cover():
-    """实机视频封面 1256×706。"""
+    """
+    实机视频封面 1256×706。
+
+    ⚠ 2026-09-15 修正：移除「实机演示」与副标题「一世一劫 百世飞升」。
+      规则对视频封面文字未单独列举，但与本套物料口径保持一致 ——
+      除游戏名外不放其他文字，避免连带驳回。
+    """
     W, H = 1256, 706
     bg = load_src('dujie.png')
     bg = fit_cover(bg, W, H, ax=0.5, ay=0.42).convert('RGBA')
     bg = darken(bg, 0.40)
     bg.alpha_composite(vgrad_alpha((W, H), INK, 90, 190))
 
-    # 播放按钮
-    cx, cy, r = W / 2, H / 2, 84
+    glow_orb(bg, W / 2, H / 2, 300, GOLD, 34)
+
+    # 播放按钮（标准视频封面语汇，非文字）
+    cx, cy, r = W / 2, H / 2 - 20, 82
     d = ImageDraw.Draw(bg)
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=INK + (150,), outline=GOLD + (235,), width=4)
-    d.polygon([(cx - 26, cy - 38), (cx + 42, cy), (cx - 26, cy + 38)], fill=GOLD_L + (255,))
+    d.polygon([(cx - 25, cy - 37), (cx + 41, cy), (cx - 25, cy + 37)], fill=GOLD_L + (255,))
 
-    paste_text(bg, (W / 2, 92), '实机演示', F(64), anchor='mm',
-               grad=(GOLD_L, GOLD), stroke=3, stroke_fill=(50, 36, 8), glow=GOLD + (36,), glow_blur=16)
-    paste_text(bg, (W / 2, H - 84), '得道飞升模拟器 · 一世一劫 百世飞升', F(38), anchor='mm',
-               fill=WHITE + (255,), shadow=INK, shadow_off=(0, 4), shadow_blur=8)
+    # 唯一文字：游戏名
+    paste_text(bg, (W / 2, H - 88), '得道飞升模拟器', F(72), anchor='mm', optical=True,
+               grad=(GOLD_L, GOLD_D), stroke=3, stroke_fill=(50, 36, 8),
+               glow=GOLD + (40,), glow_blur=18, shadow=INK, shadow_off=(0, 5), shadow_blur=10)
 
     hairline_frame(bg, inset=26, alpha=70, corner=58)
     out = os.path.join(OUT_DIR, '视频封面_1256x706.png')

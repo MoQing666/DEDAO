@@ -26,6 +26,7 @@ const MODULES = [
   ['11-dead-config.test.js', '死配置实装（命格/心法/法术）'],
   ['12-boss-element.test.js', 'BOSS 五行属性与法术适配（生克/施法/免控）'],
   ['13-tools-reinc.test.js', '镜像工具回归（tools/reinc_validate.js 口径一致）'],
+  ['14-tutorial.test.js', '新手引导系统（聚光灯/可跳过/完整介绍）'],
 ];
 
 function bar(pass, fail) {

@@ -1,4 +1,4 @@
-const CACHE = 'dedao-v185';
+const CACHE = 'dedao-v186';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './js/engine.js',
   './js/audio.js',
   './js/ui.js',
+  './js/tutorial.js',
   './manifest.json',
   './assets/fonts/TsangerYuYangT-W05.woff2',
   './assets/audio/bgm/bgm_main.mp3',

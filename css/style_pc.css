@@ -67,7 +67,7 @@ body.pc .pc-portrait {
 }
 body.pc .pc-portrait:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,193,90,.35), 0 6px 14px rgba(0,0,0,.55); }
 body.pc .pc-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
-body.pc .pc-portrait-fb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--gold); }
+body.pc .pc-portrait-fb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; color: var(--text); }
 /* 信息列：头像右侧表格化填满 */
 body.pc .pc-info-col {
   flex: 1 1 auto; min-width: 0;
@@ -117,7 +117,7 @@ body.pc #screen-game .hud .stats .kv {
 body.pc #screen-game .hud .stats .stat-grid.six-dim .kv { border-left-color: #4ec9a0; }
 body.pc #screen-game .hud .stats .stat-grid.combat-stats .kv { border-left-color: #e0604a; }
 body.pc #screen-game .hud .stats .kv label { color: var(--dim); font-size: 11px; flex-shrink: 0; }
-body.pc #screen-game .hud .stats .kv b { color: var(--gold); text-align: right; white-space: nowrap; }
+body.pc #screen-game .hud .stats .kv b { color: var(--text); text-align: right; white-space: nowrap; }
 body.pc #screen-game .hud .stats .stat-row {
   display: flex; align-items: center; gap: 6px;
   background: #252138; border: 1px solid #3b3552; border-radius: 5px;
@@ -145,7 +145,7 @@ body.pc .pc-corner {
   flex-wrap: nowrap; justify-content: flex-end;
 }
 body.pc .pc-corner-btn {
-  background: transparent; border: 1px solid var(--gold); color: var(--gold);
+  background: transparent; border: 1px solid var(--gold); color: var(--text);
   border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer;
   white-space: nowrap;
 }
@@ -203,7 +203,7 @@ body.pc .pc-node-ico { font-size: 15px; line-height: 1; filter: saturate(.9); }
 body.pc .pc-node-label { text-shadow: 0 1px 2px #000; }
 body.pc #screen-game .pc-node:hover {
   transform: translate(-50%, -54%);
-  border-color: var(--gold);
+  border-color: var(--text);
   background: rgba(232,193,90,.16);
   box-shadow: 0 0 0 2px rgba(232,193,90,.28), 0 8px 16px rgba(0,0,0,.55);
 }

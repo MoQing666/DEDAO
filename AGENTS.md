@@ -1,6 +1,6 @@
 # DEDAO 得道 — Agent 指南（项目宪法）
 
-> 最后更新：2026-09-15（变更日志 #63）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
+> 最后更新：2026-09-15（变更日志 #71）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 > **体例**：§一~§十八为「稳定规则」，改完直接改正文；§十九为「变更日志」，只追加不重写。
 
 ## 零、文件导航（去哪找什么）
@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~12-*.test.js` | 自动套件（222 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~14-*.test.js` | 自动套件（269 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 引擎公式的**手工镜像**，改公式必须同步它 |
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~13，当前 263/263 全过
+node test/automated/run.js     # 依次跑 01~14，当前 269/269 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -106,7 +106,8 @@ node test/automated/run.js     # 依次跑 01~13，当前 263/263 全过
 | `10-year-end.test.js` | 4 | 年末结算（气血与灵力回满 / 岁增 / 行动点重置） |
 | `11-dead-config.test.js` | 36 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费） |
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
-| `13-tools-reinc.test.js` | 2 | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
+| `13-tools-reinc.test.js` | 2 |
+| `14-tutorial.test.js` | 6 | 新手引导系统（聚光灯分步高亮 / 可跳过 / 完整介绍；步骤数据完整性 / 标题组 5 步 / 游戏组 30 步 / 上下步 / 跳过写标记 / 新玩家 autoIfNew / 设置重看 replay） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
@@ -1462,3 +1463,26 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **交付**：改 `css/style.css` + `js/ui.js`(5 处境界色) + `index.html`/`index_pc.html`(?v=146→147) + `sw.js`(→v185) + 本日志；dist 未同步。
 - **提交策略**：工作区同时含并发会话新手引导 WIP(`tutorial`)，用「备份工作区→`git checkout HEAD` 还原纯净 #68→只重做本提交改动→add→再还原工作区」的精确暂存法，避免裹挟并发 WIP。
 - **验证**：测试 263/263；字体守卫通过；css 括号 686/686 平衡。
+
+### #70 — 新手引导系统：聚光灯分步高亮 / 可跳过 / 完整介绍（v146/v185，2026-09-15）
+
+- **需求**：新玩家不知"什么按键在哪里怎么用"。新增新手引导：聚光灯分步高亮每个按键并解说"这是什么 / 在哪 / 怎么用"，覆盖完整且可随时跳过。
+- **形式（已与用户确认）**：聚光灯分步高亮——半透明遮罩 + 目标元素金色高亮环 + 解说卡（上一步 / 下一步 / 跳过全部）。
+- **触发（已确认）**：① 新游戏首次自动——`initGame()` 调 `Tutorial.autoIfNew()`，读完或跳过后写 `localStorage('dedao_tutorial_v1_done')` 不再自动弹；② 设置面板「新手引导」按钮重看（`replay`，游戏组）；③ 标题页「新手引导」按钮看标题页按键（`title` 组）。
+- **内容模型**：`js/tutorial.js` 的 `TUTORIAL_STEPS[]`（数据/逻辑分离），共 35 步——标题组 5 步（开始轮回 / 继续 / 读档 / 轮回塔 / 设置）+ 游戏组 30 步（HUD 成就图鉴 / 行动栏 8 键 / 角色页 4 tab+返回 / 背包 卖灵草灵铁+装备+返回 / 战斗 6 键 / 秘境说明+撤离 / 设置·暂停整屏说明）。
+- **导航**：目标不在当前屏时经 `window.DedaoNav`（`js/ui.js` 末尾导出：char / bag / settings / omen / battle / adv / title / game）切到对应屏再高亮；战斗/秘境屏用 `showScreen` 揭示（不改游戏状态）。
+- **可跳过**：每步「跳过引导」→ 隐藏遮罩 + 写标记；`prev`/`next` 可前后翻；标题组/游戏组进度独立计数。
+- **文件**：新增 `js/tutorial.js`；改 `js/ui.js`（导出 DedaoNav + initGame 自动触发 + 设置加按钮 + 标题按钮绑定）、`index.html`/`index_pc.html`（标题按钮 + 加载脚本 ?v=147）、`css/style.css`（聚光灯/卡片样式）、`sw.js`（→v185 预缓存 `./js/tutorial.js`）；新增测试 `test/automated/14-tutorial.test.js`（6 例）。
+- **文档同步**：AGENTS.md 模块表加 14-tutorial(6 例)、运行行 01~14 / 269 例；`DEDAO_项目简介.md` 口径 269 项用例 / 269·269 通过（满足 01 模块表对账与简介对外口径对账两守卫）。
+- **验证**：全量 269/269 通过；14-tutorial 套件 6/6（步骤完整性[全部 target 存在于 index.html]、标题组启动、上下步、跳过写标记、autoIfNew、replay）。
+- **注意**：`tutorial.js` 对 `window.DedaoNav` 缺失有降级（仅不高亮具体元素、居中解说卡），故不加载 ui.js 也能单测。
+
+### #71 — 主题：金色字体全转黑（保留命格/装备品阶金），匪徒营寨转黑（v147/v185，2026-09-15）
+
+- **需求（用户原话）**：「除了命格和装备之外的所有金色字体都先改为黑色字体！！！！！」；并点名「黄级秘境·匪徒营寨也统一用黑色字体」。
+- **范围**：全局金色 **FONT** 颜色 → 黑（`--text`），仅保留两类金：① 命格品阶金——`.destiny-tag.grade-gold`、`.grade-gold .destiny-grade`、`.g-仙,.g-金` 及 ui.js 命格 `gradeColor` 映射 `'金':'#a8792a'`（4 处）；② 装备品阶金——ui.js `EQUIP_TIERS[v.tier].color)||'var(--gold)'` 分支（5 处）。
+- **顺带处理**：① 黄级秘境·匪徒营寨 realm 名 `#e0c27a` → `var(--text)`；② 储物袋装备 h4 被并发 #70 教程改动误回退为金，已还原 `var(--text)`；③ 法宝（isArt 分支 `GRADE_COLOR[v.grade]||'var(--gold)'`）无「金」档、属通用金 → 转黑（与 ② 装备品阶金区分）。
+- **未动（非字体金，用户指令仅针对「字体」）**：金色边框/高亮环/阴影/底色——`.ap-dot`、`.adv-node` 选中描边、`.ct-sec` 左边框、`.dabi-node` 指示、装备选中边框、好感星、法宝选中边框等。
+- **文件**：改 `css/style.css`（71 处 `color:var(--gold)`→`color:var(--text)`，保留 3 条命格金规则）、`css/style_pc.css`（4 处）、`js/ui.js`（56 处：章节标题/境界/秘境旗/灵石数/法宝 fallback 等）、`index.html`/`index_pc.html`（储物袋装备 h4 转黑）；与并发 #70 教程改动同处共享文件，故合并提交、不再单独 bump（沿用 ?v=147 / sw v185）。
+- **验证**：全量 269/269 通过；命格金/装备金/边框/好感星均保金；匪徒营寨与法宝转黑。
+- **部署**：dist 未同步，等用户本地过目主题。

@@ -164,6 +164,84 @@ async function waitUntil(fn, ms = 1500, step = 40) {
   }
 }
 
+/* ============================================================
+   战斗状态徽章「端到端」用例的共用前置（2026-09-15 新增）
+   徽章只在战斗覆盖层渲染，而战斗层只能由秘境的战斗节点（或渡劫/主线）进入；
+   秘境地图**不能**用存档续（读档时 ui.js 会把 running 的 adv 置为 done），
+   所以必须在同一次会话里「进秘境 → 点战斗节点」。下面这组 helper 走通该链路。
+   ============================================================ */
+
+/* 取一份「学会了 玄阶·岩甲术 / 黄阶·火球术 且灵力够放」的存档，供后续 boot 直接续档。
+   只生成一次（jsdom 启动昂贵），后续用例复用同一个 Promise。 */
+let _battleSaveP = null;
+function battleSave() {
+  if (_battleSaveP) return _battleSaveP;
+  _battleSaveP = (async () => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '徽章');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) throw new Error('未取得存档');
+    // techEquip.shufa 会被 ensureTechEquip 按 s.techs 过滤，故两边都要写
+    raw.techs = (raw.techs || []).concat(['yanjia', 'huoqiu']).filter((v, i, arr) => arr.indexOf(v) === i);
+    raw.techEquip = Object.assign({}, raw.techEquip, { shufa: ['yanjia', 'huoqiu'] });
+    raw.ling = 15;   // 灵力 15 → mpMax ≈ 300，够放「岩甲术 50 灵 + 火球术 35 灵」
+    raw.mp = 300;
+    return raw;
+  })();
+  return _battleSaveP;
+}
+
+/* 固定随机源（LCG）。秘境首层节点类型由 shuffle 决定，有约三成概率抽不到战斗节点；
+   在点「入秘境」之前替换 win.Math.random，即可让首层稳定含 combat（启动顺序无关）。 */
+function seedRng(win, seed) {
+  let s = seed >>> 0;
+  win.Math.random = function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+/* 续档 → 进秘境 → 点首层战斗节点 → 返回战斗层上下文（失败时返回 { err }） */
+async function enterAdvBattle(seed) {
+  const raw = await battleSave();
+  const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+  click(win, 't-continue');
+  await new Promise(r => setTimeout(r, 220));
+  await advanceChapters(win, doc);
+  await new Promise(r => setTimeout(r, 180));
+
+  click(win, 'btn-explore');
+  await new Promise(r => setTimeout(r, 220));
+  if (visible(doc, 'modal') !== true) return { err: '秘境选择弹窗未出现' };
+  seedRng(win, seed);
+  const enter = [...doc.querySelectorAll('#modal-body .btn-main')].find(b => /入秘境/.test(b.textContent));
+  if (!enter) return { err: '未找到「入秘境」按钮' };
+  enter.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+  await new Promise(r => setTimeout(r, 280));
+  // 秘境开场章节 → 连点继续，直到地图出现可选节点
+  for (let i = 0; i < 12; i++) {
+    if (doc.querySelectorAll('#adv-map .adv-node.selectable').length) break;
+    click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 150));
+  }
+  await new Promise(r => setTimeout(r, 220));
+  const combat = [...doc.querySelectorAll('#adv-map .adv-node.selectable')].find(n => n.classList.contains('combat'));
+  if (!combat) return { err: '秘境首层未抽到战斗节点' };
+  combat.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+  await new Promise(r => setTimeout(r, 400));
+  if (visible(doc, 'battle') !== true) return { err: '未进入战斗层' };
+  return { win, doc, errors };
+}
+
+/* 打开法术栏并施放指定法术。法术栏只在点「法术」时才渲染，故每次都要先点开。 */
+async function castSpell(win, doc, nameRe) {
+  click(win, 'b-spell');
+  await new Promise(r => setTimeout(r, 200));
+  const btn = [...doc.querySelectorAll('#b-spellbar .btn-small')].find(b => nameRe.test(b.textContent));
+  if (!btn || btn.disabled) return false;
+  btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+  await new Promise(r => setTimeout(r, 350));
+  return true;
+}
+const badges = (doc, id) => [...doc.querySelectorAll('#' + id + ' .buff')];
+
 module.exports = async function build() {
   const S = new Suite('03 UI / DOM 层（jsdom）');
 
@@ -1562,6 +1640,59 @@ module.exports = async function build() {
     t.ok(/\.hud-side\s*\{[^}]*grid-row:\s*1\s*\/\s*span\s*2/.test(css), '右侧功能列应跨两行（成就在上/设置在下方）');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('HUD 渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* ============================================================
+     回归 2026-09-15：战斗状态徽章「端到端」渲染（图标方案 §8 待办项）
+     这一组补上自动化测试的最后一环：以往只测了 Engine.battleFxList 的**纯派生输出**
+     （11-suite），没有任何用例真的把徽章渲染进 DOM。徽章唯一的真源是
+     Engine.battleFxList(s, b) 的 { me, foe }；旧版两行都读 bb.buffs（bb === S.battle），
+     而 s.battle.buffs 全仓库从未被写入 → 徽章恒为空。下面两条用例锁死这条链路。
+     ============================================================ */
+  S.case('战斗徽章端到端：施放岩甲术 → 我方出徽章、敌方为空', async (t) => {
+    const ctx = await enterAdvBattle(1);
+    if (ctx.err) { t.fail('未能进入战斗层：' + ctx.err); return; }
+    const { win, doc, errors } = ctx;
+    t.eq(visible(doc, 'battle'), true, '应已进入战斗层');
+    // 开战无状态 → 两行都应为空（证明徽章不是「恒亮」的假象）
+    t.eq(badges(doc, 'b-me-buffs').length, 0, '开战时我方不应有徽章');
+    t.eq(badges(doc, 'b-enemy-buffs').length, 0, '开战时敌方不应有徽章');
+
+    t.ok(await castSpell(win, doc, /岩甲术/), '法术栏中未找到可施放的岩甲术');
+    const me = badges(doc, 'b-me-buffs');
+    t.ok(me.length > 0, '施放岩甲术后我方应出现徽章（实为 ' + me.length + ' 枚）');
+    if (!me.length) return;
+    const ic = me[0].querySelector('.bf-ic');
+    t.ok(!!ic && !!(ic.textContent || '').trim(), '徽章应含非空 .bf-ic 图标（emoji）');
+    t.ok(/减伤 40%/.test(me[0].textContent || ''), '岩甲术应挂「减伤 40%」徽章，实为「' + (me[0].textContent || '') + '」');
+    t.ok(!!me[0].title, '徽章应带 title 说明（悬浮可见数值与剩余回合）');
+    t.ok(!me[0].classList.contains('bad'), '岩甲术是增益，不应带 bad 类（暗红）');
+    // 关键防回退：只给我方挂状态时敌方行必须为空（旧版两行同源，会一起亮起来）
+    t.eq(badges(doc, 'b-enemy-buffs').length, 0, '只给我方挂状态时，敌方行必须为空（防回退成共用同一数组）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('徽章渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('战斗徽章：法术同时挂敌我 → 两行各取各的（增益/减益分明）', async (t) => {
+    const ctx = await enterAdvBattle(1);
+    if (ctx.err) { t.fail('未能进入战斗层：' + ctx.err); return; }
+    const { win, doc } = ctx;
+    t.ok(await castSpell(win, doc, /火球术/), '法术栏中未找到可施放的火球术');
+    const me = badges(doc, 'b-me-buffs');
+    const foe = badges(doc, 'b-enemy-buffs');
+    const meTx = me.map(e => e.textContent).join('|');
+    const foeTx = foe.map(e => e.textContent).join('|');
+    t.note('我方=' + meTx + ' ／ 敌方=' + foeTx);
+    // 火球术：自身「攻击 +12%」+ 敌方「灼烧 1 层」——一次施法同时点亮两行
+    t.ok(/攻击 \+12%/.test(meTx), '我方应挂「攻击 +12%」（火球术增益）');
+    t.ok(!/灼烧/.test(meTx), '敌方的灼烧不应串进我方行');
+    t.ok(/灼烧 1 层/.test(foeTx), '敌方应挂「灼烧 1 层」（火球术灼烧）');
+    t.ok(!/攻击 \+12%/.test(foeTx), '我方的攻击增益不应串进敌方行');
+    t.ok(meTx !== foeTx && meTx && foeTx, '敌我两行内容必须不同（防回退成同一份数据源）');
+    // 减益→暗红（bad）、增益→金黄；敌方 dot 必须是减益
+    t.ok(foe.every(e => e.classList.contains('bad')), '敌方减益徽章应带 bad 类');
+    t.ok(me.every(e => !e.classList.contains('bad')), '我方增益徽章不应带 bad 类');
+    t.ok(foe.every(e => { const i = e.querySelector('.bf-ic'); return i && (i.textContent || '').trim(); }), '敌方徽章图标不得为空');
   });
 
   return S;

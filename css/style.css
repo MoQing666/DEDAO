@@ -366,9 +366,13 @@ button:disabled { opacity: .4; cursor: default; }
 .ph-fallback { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 44px; color: #cdb9ff; font-family: 'YuYang', 'SimSun', '宋体', serif; }
 .vs { align-self: center; color: #8a7ab0; font-size: 18px; font-family: 'YuYang', 'SimSun', '宋体', serif; flex: none; }
 .buffs { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 16px; margin-top: 3px; }
-/* 2026-09-14：战斗状态徽章 = 图标 + 名称（+ 层数/回合）。增益金黄 / 减益暗红（底色一并区分）。 */
+/* 2026-09-14：战斗状态徽章 = 图标 + 名称（+ 层数/回合）。增益金黄 / 减益暗红（底色一并区分）。
+   2026-09-15：`.bf-ic` 补 Emoji 字体链兜底 —— 部分安卓 WebView / 老 iOS 缺彩色 Emoji 字体会渲染成
+   黑白或方块（图标方案风险 #1），显式指定后至少能命中系统 Emoji 字体。
+   注：方案原拟的「窄屏隐藏 .btxt」未采纳 —— 本实现把层数/回合并进了 `.bf-tx`（如「灼烧 2 层」），
+   隐藏它会连数值一起丢掉，与「图标 + 名称 + 层数」的展示口径冲突。 */
 .buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid #6a5a90; border-radius: 3px; color: #ffd27a; background: rgba(0,0,0,.3); }
-.buff .bf-ic { font-style: normal; font-size: 13px; line-height: 1; }
+.buff .bf-ic { font-style: normal; font-size: 13px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "EmojiOne Color", sans-serif; }
 .buff .bf-tx { font-weight: 400; }
 .buff.bad { color: #ff8a7a; border-color: #8a4a4a; background: rgba(74,10,10,.42); }
 .fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }

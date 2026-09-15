@@ -1452,3 +1452,13 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **测试联动**：`test/automated/03-ui.test.js` 两处断言随玉符删除改写（标题页按钮清单去掉 `btn-omen-title`；原「玉符应仍在标题页」→「标题页玉符入口应已删除」，并移除点开玉符的步骤）。其余 261 用例不受影响。
 - **交付**：改 `index.html`/`index_pc.html`（?v=145→?v=146）+ `css/style.css` + `js/ui.js` + `sw.js`（v183→v184）+ `test/automated/03-ui.test.js` + 本日志；dist 未同步。
 - **验证**：测试 **263/263**（全绿，含改写后的 03 用例）；字体守卫通过。视觉待用户本地过目。
+
+### #69 — 全局带框文字容器统一白底 + 境界字色转黑（v147/v185，2026-09-15）
+
+- **全局带框文字容器白底**：所有亮底页面内容框背景 `rgba(120,90,50,.04/.06/.08)` 淡暖棕 → 纯白 `#fff`（批量 sed）。覆盖：开荒 `.ct-card`/`.ct-craft-row`/`.pt-row`、储物袋 `.bag-item`、键值 `.kv`/`.age-kv`、`.buff`(紫边保留)、`.chip`、`.realm-badge`、属性页 `.attr-realm-bar`、旅行 `.travel-node`、HUD 信息小框 `.action-info-item` 等。**边框全部保留**（金棕 `--line`/`#e3d6b8`/功能色紫蓝绿），只把底变白。
+- **保留非白底**：选中态 `.ct-card.selected`(金底高亮)、底部导航栏暗底 `rgba(60,40,20,.4)`、导航 tab（`.char-tab` #67 金棕底 / `.arts-tabs .tab`）、`.panel`(云纹亮面板) 不改。
+- **境界字色转黑**：HUD `.h-realm`、`#screen-char` 的 `.char-realm`、属性页 `.attr-realm-bar .realm-name`、结算页「最终境界」四处内联 `st.color`(各境界彩色) → `#1a1a1a` 纯黑；`.h-realm` 边框 `st.color` → 金棕 `var(--line)`。
+- **标题页玉符**：已由 #68 删除（本提交不涉及；实测 index.html 无「玉符」残留）。
+- **交付**：改 `css/style.css` + `js/ui.js`(5 处境界色) + `index.html`/`index_pc.html`(?v=146→147) + `sw.js`(→v185) + 本日志；dist 未同步。
+- **提交策略**：工作区同时含并发会话新手引导 WIP(`tutorial`)，用「备份工作区→`git checkout HEAD` 还原纯净 #68→只重做本提交改动→add→再还原工作区」的精确暂存法，避免裹挟并发 WIP。
+- **验证**：测试 263/263；字体守卫通过；css 括号 686/686 平衡。

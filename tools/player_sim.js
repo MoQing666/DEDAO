@@ -35,208 +35,51 @@ console.log('✓ 已加载真实数据表：EQUIPS=' + Object.keys(EQUIPS.weapon
   Object.keys(EQUIPS.accessory).length + '饰/' + Object.keys(EQUIPS.treasure).length + '宝物; ARTIFACTS=' +
   Object.keys(ARTIFACTS).length + '; 轮回天赋=' + REINCARNATION.length + '项');
 
-/* ---------- 2. 复刻 engine.js 核心计算（与游戏实码一致） ---------- */
-function bigIdxOf(s) { return D.BIG_IDX(typeof s === 'string' ? s : s.realm); }
-function getDestinyAttrBonus(s, attr) {
-  let b = 0; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.attr && x.attr[attr] != null) b += x.attr[attr]; }); return b;
-}
-function getDestinyAttrMult(s, attr) {
-  let m = 1; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.type === 'combat' && x.effect && x.effect[attr + 'Mul']) m *= (1 + x.effect[attr + 'Mul']); }); return m;
-}
-function getDestinyBonus(s, type) {
-  // 与 engine.js 一致：不再限定 type==='combat'（tribBonus 挂在属性类金命上）
-  let b = 0; (s.destinies || []).forEach(d => { const x = D.DESTINIES[d]; if (x && x.effect && typeof x.effect[type] === 'number') b += x.effect[type]; }); return b;
-}
-/* 旧命格 TALENTS.apply 汇总（与 engine.js talentApply 一致） */
-function talentApply(s, key) {
-  let v = 0;
-  (s.talents || []).forEach(tid => {
-    const t = D.TALENTS.filter(x => x.id === tid)[0];
-    if (t && t.apply && t.apply[key]) v += t.apply[key];
-  });
-  return v;
-}
-/* 命格「功法类型加成」（万剑归宗 techTypeBonus{xinfa}） */
-function getTechTypeBonus(s, cls) {
-  let v = 0;
-  (s.destinies || []).forEach(d => {
-    const x = D.DESTINIES[d];
-    const b = x && x.effect && x.effect.techTypeBonus;
-    if (b && b[cls]) v += b[cls];
-  });
-  return v;
-}
-// 装备槽已由 head/body/leg 演进为 weapon/head/body/accessory；
-// 属性由扁平字段改为 main{...} 容器 + 实例词条 aff[]（忠实复刻 engine.js 的 equipStats）。
-const EQUIP_SLOTS = ['weapon', 'head', 'body', 'accessory'];
-function equipInstOf(v) {
-  if (!v) return null;
-  if (typeof v === 'string') return { id: v, aff: [] };
-  if (typeof v === 'object' && v.id) return { id: v.id, aff: Array.isArray(v.aff) ? v.aff : [] };
-  return null;
-}
-function equipStats(s) {
-  const st = { hpMax: 0, atk: 0, def: 0, critPct: 0, atkSpd: 0, recover: 0, mpPct: 0, hpPct: 0, wu: 0, ti: 0, cult: 0 };
-  EQUIP_SLOTS.forEach(slot => {
-    const inst = equipInstOf(s.equip && s.equip[slot]); if (!inst) return;
-    const it = EQUIPS[slot] && EQUIPS[slot][inst.id]; if (!it) return;
-    if (it.main) {
-      st.atk += (it.main.atk || 0) + (it.main.atk2 || 0);   // 锤的 atk2 视作额外攻击
-      st.def += it.main.def || 0;
-      st.critPct += it.main.critPct || 0;
-      st.atkSpd += it.main.atkSpd || 0;
-      st.recover += it.main.recover || 0;
-      st.mpPct += it.main.mpPct || 0;
-      st.hpPct += it.main.hpPct || 0;
-    }
-    st.hpMax += it.hpMax || 0; st.atk += it.atk || 0; st.wu += it.wu || 0; st.ti += it.ti || 0; st.cult += it.cult || 0;
-    inst.aff.forEach(a => {
-      if (a.key === 'atk') st.atk += a.val;
-      else if (a.key === 'def') st.def += a.val;
-      else if (a.key === 'critPct') st.critPct += a.val;
-      else if (a.key === 'atkSpd') st.atkSpd += a.val;
-      else if (a.key === 'recover') st.recover += a.val;
-      else if (a.key === 'mpPct') st.mpPct += a.val;
-      else if (a.key === 'hpPct') st.hpPct += a.val;
-    });
-  });
-  if (Array.isArray(s.equip.treasure)) s.equip.treasure.forEach(id => {
-    const it = EQUIPS.treasure && EQUIPS.treasure[id]; if (!it) return;
-    st.hpMax += it.hpMax || 0; st.atk += it.atk || 0; st.wu += it.wu || 0; st.ti += it.ti || 0; st.cult += it.cult || 0;
-  });
-  return st;
-}
-function artifactStats(s) {
-  const A = ARTIFACTS;
-  const st = { wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0, atk: 0, hpMax: 0, def: 0, critPct: 0, dodgePct: 0, defPct: 0, atkPct: 0, atkSpd: 0, cult: 0, stealPct: 0, defToAtk: 0, tiHpBonus: 0, duantiEff: 0, duantiShenEff: 0, duantiMax: 0, craftEff: 0, farmEff: 0, mineEff: 0, stoneYearPct: 0, cultTwice: false, modeBonus: { normal: 0, focus: 0, seclusion: 0 }, craftKind: {} };
-  // 法宝现统一装备于宝物槽 s.equip.treasure（s.arts 库存不生效），忠实复刻 engine.js
-  ((s.equip && s.equip.treasure) || []).forEach(id => {
-    const a = A[id]; if (!a || !a.effect) return; const e = a.effect;
-    ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiShenEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct', 'atkSpd'].forEach(k => { if (e[k]) st[k] += e[k]; });
-    if (e.modeBonus) { st.modeBonus.normal += e.modeBonus.normal || 0; st.modeBonus.focus += e.modeBonus.focus || 0; st.modeBonus.seclusion += e.modeBonus.seclusion || 0; }
-    if (e.craftKind) { for (const k in e.craftKind) st.craftKind[k] = (st.craftKind[k] || 0) + e.craftKind[k]; }
-    if (e.cultTwice) st.cultTwice = true;
-    if (e.scale) { const sv = (e.scale.res === 'stone') ? (s.stone || 0) : 0; const per = e.scale.per || 100; const pp = e.scale.perPoint || 0.01; const cap = (e.scale.cap == null) ? 1 : e.scale.cap; const n = Math.min(Math.floor(sv / per) * pp, cap); if (e.scale.stat === 'atk') st.atkPct += n; else if (e.scale.stat === 'defPct') st.defPct += n; }
-    if (a.stack && a.stack.stat) { st[a.stack.stat] += Math.min((s.killCount || 0) * (a.stack.per || 1), a.stack.cap || 0); }
-    if (e.lowHpAtk) { const ratio = 1 - (s.hp || 0) / (s.hpMax || 1); st.atkPct += Math.min(ratio * e.lowHpAtk, e.lowCap || 0.40); }
-    if (e.daoAtkPct) { st.atkPct += Math.min((s.dao || 0) * e.daoAtkPct, e.daoCap || 0.30); }
-    // 棘鳞甲 defToAtk 移至 calcAtk 结算（依赖统一口径防御，需待 artDef 就绪）
-  });
-  return st;
-}
-function linggenTrait(s) { if (!s.linggen) return null; if (s.linggen.trait) return s.linggen.trait.effect || null; if (s.linggen.body) return s.linggen.body; return null; }
-function applyWuxing(s, attr, base) {
-  if (!s.array || !s.array.wuxing) return base;
-  const lv = (s.craft && s.craft.zhenfa && s.craft.zhenfa.lv) || 1;
-  let mul = 1;
-  WUXING_ORDER.forEach(key => {
-    if (!s.array.wuxing[key]) return;
-    const def = WUXING_ARRAY[key];
-    if (def.attr !== attr) return;
-    mul += def.pctByLv[Math.min(lv, 5)];
-  });
-  return base * mul;
-}
-function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k) + ((s.artAttr && s.artAttr[k]) || 0); }
-/* 当前「装备心法」本体 + 其附加效果（与 engine.js 同口径：只认已装备的那一本） */
-function xinfaCur(s) { return (s.techEquip && s.techEquip.xinfa && TECHNIQUES[s.techEquip.xinfa]) || null; }
-function getXinfaAtkMul(s) { const t = xinfaCur(s); return (t && t.atkMul) || 0; }
-function getXinfaSpellMul(s) { const t = xinfaCur(s); return (t && t.spellMul) || 0; }
-function getXinfaGuard(s) { const t = xinfaCur(s); return (t && t.guard) || 0; }
-function getXinfaHpMax(s) { const t = xinfaCur(s); return (t && t.hpMax) || 0; }
-function getXinfaReduceDmg(s) { const t = xinfaCur(s); return (t && t.reduceDmg) || 0; }
-function techMult(s) {
-  const bonus = 1 + getTechTypeBonus(s, 'xinfa');
-  const x = s.techEquip && s.techEquip.xinfa && TECHNIQUES[s.techEquip.xinfa];
-  if (x && x.mult) return x.mult * bonus;
-  if (!s.techs.length) return 1;
-  let m = 1; s.techs.forEach(t => { const y = TECHNIQUES[t]; if (y && y.mult > m) m = y.mult; }); return m > 1 ? m * bonus : m;
-}
-function calcHpMax(s) {
-  const tiCoeff = 50 * (1 + (artifactStats(s).tiHpBonus || 0)) * (talentApply(s, 'tiMul') || 1);
-  let m = 80 + effAttr(s, 'ti') * tiCoeff + bigIdxOf(s) * 80;
-  const eff = linggenTrait(s); if (eff && eff.hpMax) m += eff.hpMax;
-  if (s.sect && SECTS[s.sect] && SECTS[s.sect].effect.hpMax) m += SECTS[s.sect].effect.hpMax;
-  m += s.hpMaxBonus || 0;
-  m += equipStats(s).hpMax;
-  m += artifactStats(s).hpMax;
-  m += getXinfaHpMax(s);   // 玄天门系心法固定气血（护山心经+50/天罡心法+100/玄武真经+150）
-  m = Math.round(m * (1 + (equipStats(s).hpPct || 0) / 100));   // 装备「气血上限 %」
-  m = applyWuxing(s, 'hpMax', m);
-  return Math.round(m);
-}
-function calcAtk(s) {
-  let a = 10 + bigIdxOf(s) * 15;
-  a += effAttr(s, 'shen') * 5;
-  a += effAttr(s, 'ling') * 5;
-  if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
-  const eff = linggenTrait(s); if (eff && eff.atk) a += eff.atk;
-  if (s.sect && SECTS[s.sect] && SECTS[s.sect].effect.atkMul) a *= (1 + SECTS[s.sect].effect.atkMul);
-  let tAM = 0; s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.atkMul) tAM += t.apply.atkMul; }); if (tAM > 0) a *= (1 + tAM);
-  a *= getDestinyAttrMult(s, 'atk');
-  a *= (1 + getXinfaAtkMul(s));   // 宗门心法攻击加成（青云剑诀+5% … 太虚剑典+20%）
-  s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.allMul) a *= (1 + t.apply.allMul); });
-  a += s.extraAtk || 0;
-  a += equipStats(s).atk;
-  const art = artifactStats(s); a += art.atk;
-  if (art.defToAtk) a += Math.round(getDefense(s) * art.defToAtk);   // 棘鳞甲：防御值×N 转攻击（统一口径）
-  a = Math.round(a * (1 + art.atkPct));
-  a = applyWuxing(s, 'atk', a);
-  return Math.round(a);
-}
-function calcMpMax(s) {
-  let m = 20 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
-  const eff = linggenTrait(s); if (eff && eff.mpMax) m += eff.mpMax;
-  m = Math.round(m * (1 + (equipStats(s).mpPct || 0) / 100));   // 装备「灵力上限 %」
-  m = applyWuxing(s, 'mpMax', m);
-  return Math.round(m);
-}
-function cultGain(s) {
-  const CULT_REALM = [0, 1, 5, 6];
-  let g = (60 + s.wu * 10) * (1 + 0.3 * CULT_REALM[bigIdxOf(s)]);
-  if (s.wu >= 10) g *= 1.1;
-  g *= techMult(s);
-  if (s.linggen) g *= (s.linggen.qiMul || 1);
-  if (s.talents.indexOf('daoti') >= 0) g *= 1.1;
-  if (s.array && s.array.juling && s.array.juling.level > 0) { const jl = JULING_ARRAY[s.array.juling.level]; if (jl) g *= (1 + jl.pct); }
-  if (s.flags && s.flags.daoLu) g *= 1.1;
-  if (s.flags && s.flags.petGrown) g *= 1.15; else if (s.flags && s.flags.pet) g *= 1.05;
-  g *= 1 + ((s.reinc && s.reinc.cult) || 0) * 0.10;
-  // 舍生（s.reinc.shesheng）已于 2026-09-14 删除，模拟器同步下线该乘区
-  let tCM = 0; s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.cultMul) tCM += t.apply.cultMul; }); if (tCM > 0) g *= (1 + tCM);
-  s.talents.forEach(tid => { const t = D.TALENTS.filter(x => x.id === tid)[0]; if (t && t.apply && t.apply.allMul) g *= (1 + t.apply.allMul); });
-  g *= 1 + equipStats(s).cult;
-  if (s.sect && SECTS[s.sect] && SECTS[s.sect].effect.cultMul) g *= (1 + SECTS[s.sect].effect.cultMul);
-  g *= 1 + artifactStats(s).cult;
-  if ((s.elixirs && s.elixirs.juling || 0) > 0) { s.elixirs.juling--; if (s.elixirs.juling <= 0) delete s.elixirs.juling; g *= 1.2; }
-  return Math.round(g);
-}
-function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100; }
-function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
-/* 防御：唯一权威口径（与 engine.js getDefense/getDefensePct/getDefenseDiv 逐字一致） */
-function getDefense(s) {
-  const base = Math.round(Math.round(effAttr(s, 'ti') * 0.5) * getDestinyAttrMult(s, 'def'));
-  return base + (equipStats(s).def || 0) + (s.flatDef || 0) + (s.artDef || 0);
-}
-function getDefensePct(s) { return Math.min(0.9, (s.earthPct || 0) + (s.artDefPct || 0)); }
-function getDefenseDiv(s) { return s.jinylvDef || 0; }
+/* ---------- 2. 真加载引擎，不再手抄公式 ----------
+ * 2026-09-15 改版（AGENTS.md #60「第四大 bug 类」的收尾）：
+ *   本文件原先自带 equipStats / artifactStats / calcAtk / calcHpMax / calcMpMax / cultGain /
+ *   getCritRate / getDodgeRate / getDefense* / talentApply / effAttr / applyWuxing / techMult /
+ *   getXinfa* / getDestiny* / linggenTrait / refresh 一整套**引擎公式副本** —— 抄得再像也会漂。
+ *   已实锤的一处：镜像的 cultGain 漏掉引擎的 sectPassed() 门禁，而本文件从不设 s.sectRank，
+ *   于是它一直在给「还没通过入宗考验」的角色发宗门加成（血 / 攻 / 修炼三项）。
+ *   现在公式全部改调 Engine.*（经 tools/_engine_loader 真加载 js/data.js + js/engine.js）。
+ *
+ * 仍属「模拟模型」而非引擎副本的两块（本次不改）：
+ *   · combatSim —— 蒙特卡洛对战模型。减伤流程虽与引擎同序（护盾→百分比→绝对→除算），
+ *     但它是抽样模拟，不对应某个引擎函数。
+ *   · advEnemy / genEnemyStats / deathEnemyDynamic —— 复刻引擎的 enemyStats / deathEnemyGen，
+ *     但这俩**没有从 Engine 导出**（声明在 IIFE 内部，loader 取不到）。
+ *     要消掉得先给引擎加导出 —— 那会动 js/，要走 bump + 同步 dist，另开一轮。
+ * 数据表仍直读 js/data.js（第 1 节）—— 那是「直读」，不是「镜像」。
+ */
+const ENG = require('./_engine_loader').load().Engine;
+
+const getCritRate = ENG.getCritRate;
+const getDodgeRate = ENG.getDodgeRate;
+const getDefense = ENG.getDefense;
+const getDefensePct = ENG.getDefensePct;
+const getDefenseDiv = ENG.getDefenseDiv;
+const getXinfaGuard = ENG.getXinfaGuard;
+const getXinfaReduceDmg = ENG.getXinfaReduceDmg;
+const getXinfaSpellMul = ENG.getXinfaSpellMul;
+const getDestinyBonus = ENG.getDestinyBonus;
+
+/* ⚠ 别直接用 ENG.bigIdxOf：它定义在 data.js，签名是 bigIdxOf(s) —— 只吃「状态对象」
+   （内部走 safeStage(s.idx).bigRealm）。传境界名字符串进去会走 fallback 恒返回 0，
+   四个境界会被算成同一个大境（攻击/气血整列雷同）。
+   本文件要按「境界名」取大境序号 → 用 data.js 的 BIG_IDX(realm)，并兼容传状态。 */
+const bigIdxOf = function (s) { return D.BIG_IDX(typeof s === 'string' ? s : s.realm); };
+
+/* 引擎的 cultGain 返回 { gain, note }，且会顺带消耗一颗聚气丹；这里只要点数 */
+function cultGain(s) { return ENG.cultGain(s).gain; }
+
+/* 刷新：直接用引擎的 refreshStats —— 它内部会依次算
+   recalcLinggenBonus（灵根/五行阵的暴击·闪避·渡劫·防御）→ artifactStats → hpMax → atk → mpMax → 金缕衣。
+   calcAtk / calcHpMax 未单独导出，但 refreshStats 会把结果写回 s.atk / s.hpMax / s.mpMax。 */
 function refresh(s) {
-  const a = artifactStats(s);
-  s.artAttr = { wu: a.wu, ti: a.ti, dun: a.dun, shen: a.shen, dao: a.dao, ling: a.ling };
-  const eff = linggenTrait(s);
-  let critPct = (eff && eff.critPct) ? eff.critPct / 100 : 0;
-  let dodgePct = (eff && eff.dodgePct) ? eff.dodgePct / 100 : 0;
-  let tribPct = (eff && eff.tribPct) ? eff.tribPct / 100 : 0;
-  let flatDef = (eff && eff.def) ? eff.def : 0;
-  let earthPct = 0;
-  if (s.array && s.array.wuxing) { const lv = (s.craft && s.craft.zhenfa && s.craft.zhenfa.lv) || 1; WUXING_ORDER.forEach(key => { if (!s.array.wuxing[key]) return; const def = WUXING_ARRAY[key]; if (def.attr === 'critPct') critPct += def.pctByLv[Math.min(lv, 5)]; if (def.attr === 'dodgePct') dodgePct += def.pctByLv[Math.min(lv, 5)]; if (def.attr === 'tribPct') tribPct += def.pctByLv[Math.min(lv, 5)]; if (def.attr === 'def') earthPct += def.pctByLv[Math.min(lv, 5)]; }); }
-  s.critPct = critPct; s.dodgePct = dodgePct; s.tribPct = tribPct; s.flatDef = flatDef; s.earthPct = earthPct;
-  s.artDef = a.def; s.artDefPct = a.defPct; s.cultMax = a.cultTwice ? 2 : 1;
-  s.hpMax = calcHpMax(s); s.atk = calcAtk(s);
+  ENG.refreshStats(s);
   if (s.hp === undefined || s.hp > s.hpMax) s.hp = s.hpMax;
-  s.mpMax = calcMpMax(s);
   if (s.mp === undefined || s.mp > s.mpMax) s.mp = s.mpMax;
-  if (s.equip && Array.isArray(s.equip.treasure) && s.equip.treasure.indexOf('jinylv') >= 0) s.jinylvDef = Math.min(3.0, Math.floor((s.stone || 0) / 100) * 0.01); else s.jinylvDef = 0;
 }
 
 /* ---------- 2.5 命格抽取（2命格/3命格/3仙命机制，与游戏进入页一致） ---------- */
@@ -317,7 +160,10 @@ function pickArtifact(s, list) { return list.filter(id => ARTIFACTS[id]); }
 function buildProfile(kind, realm) {
   const bi = bigIdxOf(realm);
   const s = {
-    realm, idx: bigIdxOf(realm), year: 0, wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0,
+    // ⚠ idx 必须是**阶位索引**（炼气前期 0 / 筑基前期 3 / 金丹前期 6 / 元婴前期 9），不能拿大境序号 bi 顶替。
+    //   旧镜像的 bigIdxOf 读 s.realm，所以这个错一直没暴露；引擎的 bigIdxOf(s) 读的是 s.idx
+    //   （data.js: safeStage(s).bigRealm），写错会让 calcHpMax / calcAtk / cultGain 全按低境界算。
+    realm, idx: bi * 3, year: 0, wu: 0, ti: 0, dun: 0, shen: 0, dao: 0, ling: 0,
     hp: undefined, mp: undefined, stone: 0, lifeMax: 150, elixirs: {}, arts: [],
     equip: { weapon: null, head: null, body: null, accessory: null, treasure: [] }, techs: [], techEquip: {},
     linggen: null, sect: null, talents: [], destinies: [], array: { juling: { level: 0 }, wuxing: {} },
@@ -340,12 +186,23 @@ function buildProfile(kind, realm) {
 
   // 宗门
   s.sect = kind === 'hardcore' ? 'qingyunjian' : 'xuantian';
+  // ⚠ 必须给 sectRank：引擎的宗门加成（hpMax / atkMul / cultMul）由 sectPassed(s) 把关，
+  //   要求 sectRank 非空且非「杂役」。旧镜像没有这道门（无条件发宗门加成），
+  //   迁到真引擎后若仍不设 sectRank，三项宗门加成会被静默吞掉 → 整表偏低。
+  //   这里按境界映射一个「已通过入宗考验」的正式品阶（与 SECT_RANKS 的境界门槛一致）。
+  s.sectRank = ({ '炼气': '外门', '筑基': '内门', '金丹': '真传', '元婴': '核心' })[realm] || '外门';
 
   // 命格（TALENTS）：死忠 kejian(攻×1.2)+daoti(修×1.1)+cult(修+10%)；正常仅 cult
   s.talents = kind === 'hardcore' ? ['kejian', 'daoti', 'cult'] : ['cult'];
 
-  // 心法（techMult 仅影响修炼速度）
-  s.techEquip.xinfa = kind === 'hardcore' ? 'kaitian' : 'xt_xinfa2';
+  // 心法（techMult 影响修炼速度，getXinfaHpMax 影响血量上限）
+  // ⚠ 必须同时写进 s.techs：引擎 ensureTechEquip() 会校验「已装备的心法是否在持有列表里」，
+  //   不在就清空 s.techEquip.xinfa（engine.js:243）。只写 techEquip 而不写 techs，
+  //   心法会被静默卸掉 → getXinfaHpMax 归 0、techMult 退回 1，血量与修炼速度双双偏低。
+  //   真实存档里「已学会」与「已装备」是两件事，此处补上持有关系即可。
+  const XINFA = kind === 'hardcore' ? 'kaitian' : 'xt_xinfa2';
+  s.techs = [XINFA];
+  s.techEquip.xinfa = XINFA;
 
   // 装备品级随境界：炼气tier2 / 筑基3 / 金丹4 / 元婴5
   const mt = bi + 2;
@@ -472,7 +329,9 @@ console.log('\n================= 玩家全量数值测试 =================\n');
     const cg = cultGain(s);
     console.log(
       r.padEnd(4) + ' | ' + String(s.spent).padStart(6) + ' | ' +
-      String(s.atk).padStart(6) + ' | ' + String(s.hpMax).padStart(6) + ' | ' + String(s.mpMax).padStart(6) + ' | ' +
+      // ⚠ 血量只在**显示层**取整：引擎 calcHpMax 末尾不取整（return Math.max(1, m)），
+      //   五行阵百分比会算出 1219.9000000000001 这类小数。战斗模拟仍用引擎原值，不覆盖 s.hpMax。
+      String(s.atk).padStart(6) + ' | ' + String(Math.round(s.hpMax)).padStart(6) + ' | ' + String(s.mpMax).padStart(6) + ' | ' +
       String(cg).padStart(6) + ' | ' + (getCritRate(s) * 100).toFixed(0).padStart(5) + ' | ' +
       (getDodgeRate(s) * 100).toFixed(0).padStart(5) + ' | ' +
       String(getDefense(s)).padStart(4));

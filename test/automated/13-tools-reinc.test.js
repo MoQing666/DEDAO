@@ -65,7 +65,9 @@ module.exports = async function build() {
     if (!fs.existsSync(dir)) { t.note('未找到 tools/ 目录，跳过'); return; }
 
     /* 必须经 _engine_loader 加载真引擎的脚本（不许自带公式/数据表副本） */
-    const MUST_USE_LOADER = ['reinc_validate.js', 'reinc_sim.js', 'reinc_points.js'];
+    // player_sim.js：2026-09-15 已把 22 个手抄公式函数（equipStats/calcAtk/calcHpMax/…）
+    // 换成真引擎调用，输出与迁移前基线逐字节一致（见 AGENTS.md 变更日志 #62）。
+    const MUST_USE_LOADER = ['reinc_validate.js', 'reinc_sim.js', 'reinc_points.js', 'player_sim.js'];
 
     /* 已知会漂移的写法 → 说明 */
     const FORBID = [

@@ -1,6 +1,6 @@
 # DEDAO 得道 — Agent 指南（项目宪法）
 
-> 最后更新：2026-09-15（变更日志 #61）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
+> 最后更新：2026-09-15（变更日志 #62）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 > **体例**：§一~§十八为「稳定规则」，改完直接改正文；§十九为「变更日志」，只追加不重写。
 
 ## 零、文件导航（去哪找什么）
@@ -1271,3 +1271,35 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   **代码未动**。
 - **交付**：改了 `js/` → bump 到 `dedao-v178` / `?v=140`，`_probe/sync_dist.py` 同步两份 `dist/`，三份复跑全绿。
 - **测试**：**262/262**（`01` 模块 25→26 条）。
+
+### #62 — `tools/player_sim.js` 手抄公式迁移到真引擎（2026-09-15）
+
+- **背景**：#60 留下的尾项。本文件自带 `equipStats` / `artifactStats` / `calcAtk` / `calcHpMax` /
+  `calcMpMax` / `cultGain` / `getCritRate` / `getDodgeRate` / `getDefense*` / `talentApply` /
+  `effAttr` / `applyWuxing` / `techMult` / `getXinfa*` / `getDestiny*` / `linggenTrait` / `refresh`
+  共 22 个引擎公式副本 —— 抄得再像也会漂。本次**全部换成 `Engine.*` 调用**。
+- **改动量**：203 行副本 → 41 行调用（`62 增 / 203 删`，净 −141 行）。
+- **迁移中实锤的四个坑**（都在**状态构造**侧，公式本身没错）：
+  | 坑 | 现象 | 根因 | 修法 |
+  |---|---|---|---|
+  | ① `ENG.bigIdxOf` 签名 | 四境界 `atk` 全雷同、血量为小数 | `bigIdxOf` 定义在 **data.js:3072**，签名是 `bigIdxOf(s)`（吃**状态对象**、读 `s.idx`），不是境界名 | 改用 `D.BIG_IDX(typeof s === 'string' ? s : s.realm)` |
+  | ② `idx` 填成大境序号 | 全表系统性偏低 | 引擎要的是**阶位索引**（炼气前 0 / 筑基前 3 / 金丹前 6 / 元婴前 9），旧镜像的 `bigIdxOf` 读 `s.realm` 所以这个错**一直没暴露** | `idx: bi * 3` |
+  | ③ 缺 `s.sectRank` | 血/攻/修炼三项偏低 | 引擎宗门加成由 `sectPassed(s)` 把关（要求非空且非「杂役」），旧镜像**无门**、本文件又从不设 `sectRank` | 按境界映射正式品阶（炼气外门 / 筑基内门 / 金丹真传 / 元婴核心） |
+  | ④ 心法只写 `techEquip` 不写 `techs` | `hp` 低 5.7%、`cultGain` 低 1/3 | `ensureTechEquip()`（engine.js:243）会校验「已装备心法是否在**持有列表**里」，不在就清空 `s.techEquip.xinfa` → `getXinfaHpMax` 归 0、`techMult` 退回 1 | `s.techs = [XINFA]` 与 `s.techEquip.xinfa` **同时写** |
+  > ④ 是最后一次残留差异，逐项对拍定位到 `xinfaHpMax 新=0 旧=50` 才破案。
+  > **教训：迁移不是"换函数"，是"换状态契约"** —— 引擎比镜像多了三道门（`sectPassed`、
+  > `ensureTechEquip` 持有校验、`idx` 语义），镜像全靠"自己造的宽松环境"活着。
+- **A/B 验证方法**（可复用）：迁移前文件另存为对照模块 → 确认它**逐字节复现原基线** →
+  再逐项对拍。这样任何差异都能归因到"公式"还是"状态"，不会在两头乱猜。
+- **唯一残留差异（已判定为引擎真值，非 bug）**：引擎 `calcHpMax` 末尾**不取整**
+  （`return Math.max(1, m)`），五行阵百分比会算出 `1219.9000000000001`；
+  旧镜像多了一次 `Math.round`。已改为**只在显示层取整**，不覆盖 `s.hpMax`，战斗模拟仍用引擎原值。
+- **结果**：`SIM_SEED=42 node tools/player_sim.js` 输出与迁移前基线**逐字节一致**。
+- **仍属"模拟模型"、本轮不动**（写在文件头注释里，避免后人误判为遗漏）：
+  - `combatSim` —— 蒙特卡洛抽样，不对应任何引擎函数；
+  - `advEnemy` / `genEnemyStats` / `deathEnemyDynamic` —— 复刻引擎的 `enemyStats` / `deathEnemyGen`，
+    但这两个**没从 Engine 导出**（声明在 IIFE 内）。要消掉须先加导出 = 动 `js/` = bump + 同步 dist → 另开一轮。
+  - 数据表仍**直读** `js/data.js`（第 1 节）—— 直读 ≠ 镜像。
+- **配套守卫**：`13` 模块 `MUST_USE_LOADER` 增加 `player_sim.js`，强制它必须 `require('./_engine_loader')`。
+- **交付**：只改 `tools/` + `test/` + `*.md` → **不 bump、不同步 dist**。
+- **测试**：**262/262**（`13` 模块扫描项从 3 个脚本扩到 4 个，用例数不变）。

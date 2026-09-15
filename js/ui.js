@@ -183,7 +183,7 @@
     const need = requireNeed(S);
     const qiPct = Math.max(0, Math.min(100, S.qi / need * 100));
     $('qi-val').textContent = S.qi + ' / ' + need;
-    bar('bar-qi', qiPct, '#4ec9a0');
+    bar('bar-qi', qiPct, '#1d7a55');
 
     // 六维属性（含基础+命格+法宝+装备，与角色面板口径一致）
     $('st-wu').textContent = Engine.effAttr(S, 'wu') + (Engine.equipStats(S).wu || 0);
@@ -705,18 +705,18 @@
     // 秘境层独立背景：覆盖整个 overlay，不再改写主界面 screen-game，
     // 从而避免与洞府等其他界面的背景“串味”。（bg_mijing_* 美术图若缺失，暗色渐变仍保证不透明不漏底）
     if (url) {
-      ov.style.background = 'linear-gradient(180deg, rgba(10,8,16,.84), rgba(18,13,28,.90)), url(' + url + ')';
+      ov.style.background = 'linear-gradient(180deg, rgba(120,90,50,.05), rgba(120,90,50,.10)), url(' + url + ')';
       ov.style.backgroundSize = 'cover';
       ov.style.backgroundPosition = 'center';
-      chap.style.background = 'linear-gradient(180deg, rgba(10,8,16,.82), rgba(20,15,30,.90)), url(' + url + ')';
+      chap.style.background = 'linear-gradient(180deg, rgba(120,90,50,.05), rgba(120,90,50,.10)), url(' + url + ')';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
     } else {
-      // 无对应美术图（如试炼路线）时，使用暗色渐变兜底，保证不透明不漏底
-      ov.style.background = 'linear-gradient(180deg, rgba(10,8,16,.92), rgba(18,13,28,.96))';
+      // 无对应美术图（如试炼路线）时，使用亮色宣纸渐变兜底，保证不透明不漏底
+      ov.style.background = 'linear-gradient(180deg, #f2ead8, #ece0c6)';
       ov.style.backgroundSize = 'cover';
       ov.style.backgroundPosition = 'center';
-      chap.style.background = 'linear-gradient(180deg, rgba(10,8,16,.90), rgba(20,15,30,.95))';
+      chap.style.background = 'linear-gradient(180deg, #f2ead8, #ece0c6)';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
     }
@@ -751,10 +751,10 @@
 
     const bi = Engine.bigIdxOf(S);
     const advConfigs = [
-      { key: 'huang', name: '匪徒营寨', grade: '黄', color: '#c9a86a', realmReq: 0, realmName: '炼气', desc: '炼气期秘境，匪徒盘踞之地。', drops: '黄级功法、黄级装备、黄级灵材' },
-      { key: 'xuan', name: '大黑山', grade: '玄', color: '#6ab8c9', realmReq: 1, realmName: '筑基', desc: '筑基期秘境，妖兽横行之地。', drops: '玄级功法、玄级装备、玄级灵材' },
+      { key: 'huang', name: '匪徒营寨', grade: '黄', color: '#a8792a', realmReq: 0, realmName: '炼气', desc: '炼气期秘境，匪徒盘踞之地。', drops: '黄级功法、黄级装备、黄级灵材' },
+      { key: 'xuan', name: '大黑山', grade: '玄', color: '#1d7a55', realmReq: 1, realmName: '筑基', desc: '筑基期秘境，妖兽横行之地。', drops: '玄级功法、玄级装备、玄级灵材' },
       { key: 'di', name: '洞天福地', grade: '地', color: '#a06ac9', realmReq: 2, realmName: '金丹', desc: '金丹期秘境，上古洞天遗迹。', drops: '地级功法、地级装备、地级灵材' },
-      { key: 'tian', name: '魔道祖地', grade: '天', color: '#e05a7a', realmReq: 3, realmName: '元婴', desc: '元婴期秘境，魔道势力盘踞之地。', drops: '天级功法、天级装备、天级灵材' }
+      { key: 'tian', name: '魔道祖地', grade: '天', color: '#c0395f', realmReq: 3, realmName: '元婴', desc: '元婴期秘境，魔道势力盘踞之地。', drops: '天级功法、天级装备、天级灵材' }
     ];
     // 遗世仙踪每10年出现一次
     if (Engine.isXianAdventureAvailable(S)) {
@@ -778,7 +778,7 @@
       let lockTxt = '';
       if (!canEnter) {
         const prevName = ({ xuan: '匪徒营寨', di: '大黑山', tian: '洞天福地', xian: '魔道祖地' })[adv.key] || '';
-        lockTxt = '<b style="color:#e05a7a;"> 需' + adv.realmName + '以上，或通关【' + prevName + '】</b>';
+        lockTxt = '<b style="color:#c0395f;"> 需' + adv.realmName + '以上，或通关【' + prevName + '】</b>';
       }
       // 「剩余法宝 N」：本阶位还能产出几件（灵物豁免上限，永远单独计 1 件）
       let artLine = '';
@@ -895,7 +895,7 @@
     fillBar('adv-stamina-bar', 'adv-stamina-num', a.stamina / a.staminaMax * 100, a.stamina + ' / ' + a.staminaMax, '#8a6bff');
     // 探索度：满 100% 方可直面秘境之主
     const exNow = a.trial ? 100 : Math.min(100, a.explore || 0);
-    fillBar('adv-explore-bar', 'adv-explore-num', exNow / (a.exploreMax || 100) * 100, exNow + '%', exNow >= 100 ? '#4ec9a0' : '#8a6bff');
+    fillBar('adv-explore-bar', 'adv-explore-num', exNow / (a.exploreMax || 100) * 100, exNow + '%', exNow >= 100 ? '#1d7a55' : '#8a6bff');
     const itemsEl = $('adv-items');
     itemsEl.innerHTML = '';
     if (a.items && a.items.length) {
@@ -1502,7 +1502,7 @@
       if (!hint) {
         hint = document.createElement('p');
         hint.className = 'adv-enter-hint';
-        hint.style.cssText = 'color:#e05a7a;text-align:center;margin-top:10px;font-size:13px;';
+        hint.style.cssText = 'color:#c0395f;text-align:center;margin-top:10px;font-size:13px;';
         box.appendChild(hint);
       }
       hint.textContent = res.msg || '行动点不足';
@@ -1964,7 +1964,7 @@
       p.style.cssText = 'font-size:13px;color:#8a8a9a;margin:0;';
       p.textContent = ev.desc || (ev.lines && ev.lines[0]) || '未知的际遇。';
       card.appendChild(head); card.appendChild(p);
-      card.onmouseenter = function () { card.style.borderColor = '#6ab8c9'; };
+      card.onmouseenter = function () { card.style.borderColor = '#1d7a55'; };
       card.onmouseleave = function () { card.style.borderColor = '#2e2942'; };
       card.onclick = function () {
         ov.style.display = 'none';
@@ -2065,7 +2065,7 @@
 
   /* ---------------- 突破 / 渡劫（人劫 · 天劫） ---------------- */
   function statSheet(s) {
-    const st = STAGES[s.idx] || { realm: '仙', sub: '', color: '#e8c15a', sym: 'Ⅵ', bigRealm: 4 };
+    const st = STAGES[s.idx] || { realm: '仙', sub: '', color: '#a8792a', sym: 'Ⅵ', bigRealm: 4 };
     return { realm: st.realm, sub: st.sub, lifeMax: s.lifeMax, hpMax: s.hpMax, atk: s.atk, ap: Engine.actionPoints(s) };
   }
   function diffLines(from, s) {
@@ -2190,8 +2190,8 @@
     // 丹药突破选项
     if (result.hasElixir) {
       const elixirCard = document.createElement('div');
-      elixirCard.style.cssText = 'border:1px solid #6ab8c9;background:rgba(106,184,201,0.1);padding:12px;margin-bottom:12px;border-radius:8px;';
-      elixirCard.innerHTML = '<h4 style="color:#6ab8c9;">普通突破 · 使用丹药</h4>' +
+      elixirCard.style.cssText = 'border:1px solid #1d7a55;background:rgba(106,184,201,0.1);padding:12px;margin-bottom:12px;border-radius:8px;';
+      elixirCard.innerHTML = '<h4 style="color:#1d7a55;">普通突破 · 使用丹药</h4>' +
         '<p class="desc">消耗一枚丹药，增加气血上限（黄级+50，玄级+100，地级+300，天级+500）</p>' +
         '<p class="desc">' + passLine + '</p>';
       // 列出可用丹药
@@ -2621,7 +2621,7 @@
   }
 
   function renderSettlement(res) {
-    const st = STAGES[S.idx] || { realm: '仙', sub: '', color: '#e8c15a', sym: 'Ⅵ', bigRealm: 4 };
+    const st = STAGES[S.idx] || { realm: '仙', sub: '', color: '#a8792a', sym: 'Ⅵ', bigRealm: 4 };
     const sp = Engine.settlePoints(S, M);
     const bd = sp.breakdown;
     const isWin = S.endReason === '飞升' || S.endReason === '镇魔渊' || S.endReason === '打破轮回';
@@ -2638,7 +2638,7 @@
     const endLabel = endMul === 1.5 ? '打破轮回' : (endMul === 1.2 ? '羽化登仙' : '');
     const head = document.createElement('div');
     head.className = 'settle-head';
-    head.innerHTML = '<h2 style="color:' + (isWin ? '#e8c15a' : '#c8c8c8') + '">' + title + '</h2>' +
+    head.innerHTML = '<h2 style="color:' + (isWin ? '#a8792a' : '#c8c8c8') + '">' + title + '</h2>' +
       '<p>这一世画上句号，<b>' + esc(S.name) + '</b>活到了 ' + S.age + ' 岁。</p>' +
       '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b></p>' +
       '<p>' + (S.flags.daoLu ? '你已感悟【道】之真意。' : '你终究未能悟道。') + '</p>';
@@ -2812,7 +2812,7 @@
           row.className = 'rb-card' + (isSelected ? ' selected' : '');
           row.style.cursor = 'pointer';
           row.style.marginBottom = '6px';
-          const gradeColor = { '白': '#b0b0bc', '绿': '#4ec9a0', '蓝': '#5ac8fa', '紫': '#b26de0', '金': '#e8c15a' }[dest.grade] || '#b0b0bc';
+          const gradeColor = { '白': '#b0b0bc', '绿': '#1d7a55', '蓝': '#2f7fb0', '紫': '#7a3ea8', '金': '#a8792a' }[dest.grade] || '#b0b0bc';
           let detailHtml = '';
           if (dest.attr) {
             const attrParts = [];
@@ -2822,7 +2822,7 @@
             if (dest.attr.shen) attrParts.push('神识+' + dest.attr.shen);
             if (dest.attr.dao) attrParts.push('道心+' + dest.attr.dao);
             if (dest.attr.ling) attrParts.push('灵力+' + dest.attr.ling);
-            if (attrParts.length) detailHtml += '<div style="color:#4ec9a0;font-size:12px;">属性：' + attrParts.join('、') + '</div>';
+            if (attrParts.length) detailHtml += '<div style="color:#1d7a55;font-size:12px;">属性：' + attrParts.join('、') + '</div>';
           }
           if (dest.effect) {
             const effParts = [];
@@ -2833,7 +2833,7 @@
             if (dest.effect.lifesteal) effParts.push('吸血+' + Math.round(dest.effect.lifesteal * 100) + '%');
             if (dest.effect.thorns) effParts.push('反伤+' + Math.round(dest.effect.thorns * 100) + '%');
             if (dest.effect.stonePerYear) effParts.push('每年灵石+' + dest.effect.stonePerYear);
-            if (effParts.length) detailHtml += '<div style="color:#5ac8fa;font-size:12px;">特效：' + effParts.join('、') + '</div>';
+            if (effParts.length) detailHtml += '<div style="color:#2f7fb0;font-size:12px;">特效：' + effParts.join('、') + '</div>';
           }
           row.innerHTML = '<h4 style="color:' + gradeColor + '">【' + dest.grade + '】' + dest.name + '</h4>' +
             '<div class="desc">' + dest.desc + '</div>' +
@@ -3056,7 +3056,7 @@
       const isSelected = selected.indexOf(k) >= 0;
       const isLocked = locked.indexOf(idx) >= 0;
       const gradeClass = { '白': 'grade-white', '绿': 'grade-green', '蓝': 'grade-blue', '紫': 'grade-purple', '金': 'grade-gold' }[dest.grade] || 'grade-white';
-      const gradeColor = { '白': '#aaa', '绿': '#4ec9a0', '蓝': '#5ac8fa', '紫': '#9b59b6', '金': '#e8c15a' }[dest.grade] || '#aaa';
+      const gradeColor = { '白': '#aaa', '绿': '#1d7a55', '蓝': '#2f7fb0', '紫': '#9b59b6', '金': '#a8792a' }[dest.grade] || '#aaa';
       const gradeName = gradeNameMap[dest.grade] || '凡命';
 
       const card = document.createElement('div');
@@ -3212,7 +3212,7 @@
       if (hint) {
         hint.textContent = '还有 ' + left + ' 个命格可选（已选 ' + selCount + '/' + enterState.slotCount
           + '）。确认不再选，就再点一次「开始这一世」。';
-        hint.style.color = '#e8c15a';
+        hint.style.color = '#a8792a';
       }
       const startBtn = $('enter-start');
       if (startBtn) startBtn.textContent = '仍要开始（还剩 ' + left + ' 个未选）';
@@ -3265,7 +3265,7 @@
         const isLocked = locked.indexOf(idx) >= 0;
         const isSelected = selected.indexOf(idx) >= 0;
         const row = document.createElement('div');
-        row.style.cssText = 'padding:8px;margin:4px 0;border:1px solid ' + (isSelected ? '#e8c15a' : isLocked ? '#5ac8fa' : '#3a3450') + ';border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;';
+        row.style.cssText = 'padding:8px;margin:4px 0;border:1px solid ' + (isSelected ? '#a8792a' : isLocked ? '#2f7fb0' : '#3a3450') + ';border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;';
         if (isSelected) row.style.background = 'rgba(232,193,90,0.15)';
         if (isLocked) row.style.background = 'rgba(90,200,250,0.1)';
         const badge = document.createElement('span');
@@ -3283,7 +3283,7 @@
         row.appendChild(desc);
         if (isLocked) {
           const lk = document.createElement('span');
-          lk.style.cssText = 'margin-left:auto;color:#5ac8fa;font-size:11px;';
+          lk.style.cssText = 'margin-left:auto;color:#2f7fb0;font-size:11px;';
           lk.textContent = '[锁定]';
           row.appendChild(lk);
         }
@@ -3452,11 +3452,11 @@
     // 六维说明文案由引擎 attrGainText 统一给出：只说「一共加了多少战斗属性 / 修炼速度」，
     //   不写「（基础+命格）」、不写「每点+多少」、不写栏位解锁（用户 2026-09-13 定稿）。
     const sixDims = [
-      { key: 'wu', name: '悟性', icon: '📖', color: '#5ac8fa' },
+      { key: 'wu', name: '悟性', icon: '📖', color: '#2f7fb0' },
       { key: 'ti', name: '体魄', icon: '💪', color: '#e0604a' },
-      { key: 'dun', name: '遁速', icon: '💨', color: '#4ec9a0' },
-      { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a' },
-      { key: 'ling', name: '灵力', icon: '🔮', color: '#6ad1ff' },
+      { key: 'dun', name: '遁速', icon: '💨', color: '#1d7a55' },
+      { key: 'dao', name: '道心', icon: '☯', color: '#a8792a' },
+      { key: 'ling', name: '灵力', icon: '🔮', color: '#2f7fb0' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0' }
     ];
 
@@ -3483,8 +3483,8 @@
       if (cell.type === 'life') {
         const card = document.createElement('div');
         card.className = 'attr-six-card';
-        card.style.borderColor = '#e8c15a';
-        card.innerHTML = '<div class="attr-six-header"><span class="attr-six-icon">⏳</span><span class="attr-six-name" style="color:#e8c15a">寿元</span></div>' +
+        card.style.borderColor = '#a8792a';
+        card.innerHTML = '<div class="attr-six-header"><span class="attr-six-icon">⏳</span><span class="attr-six-name" style="color:#a8792a">寿元</span></div>' +
           '<div class="attr-six-val"><b>' + (S.lifeMax || 0) + '</b></div>' +
           '<div class="attr-six-affect dim">寿元上限，年龄达到即坐化</div>';
         sixGrid.appendChild(card);
@@ -3539,13 +3539,13 @@
     // 战斗属性 4×2（8 词条，上下对齐）
     const combatStats = [
       { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
-      { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
-      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
+      { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
+      { name: '暴击', val: critBase + '%', color: '#a8792a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
       { name: '血量', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80 + 体魄×50 + 境界 + 装备血量上限%' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×1% + 装备：几率额外攻击一次' },
-      { name: '回复', val: recoverBase + '%', color: '#4ec9a0', desc: '体魄×1% + 装备：造成伤害的吸血比例' },
-      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2% + 装备 + 命格' },
-      { name: '灵量', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '灵力上限（灵力×20）+ 装备灵力上限%' }
+      { name: '回复', val: recoverBase + '%', color: '#1d7a55', desc: '体魄×1% + 装备：造成伤害的吸血比例' },
+      { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
+      { name: '灵量', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '灵力上限（灵力×20）+ 装备灵力上限%' }
     ];
 
     combatStats.forEach(function (cs) {
@@ -3565,7 +3565,7 @@
     const lg = document.createElement('div');
     lg.className = 'attr-section';
     if (S.linggen) {
-      lg.innerHTML = '<b style="color:#e8c15a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
+      lg.innerHTML = '<b style="color:#a8792a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
       const parts = linggenEffectParts(S);
       if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">效果：' + parts.join('，') + '</span>';
     } else {
@@ -3584,7 +3584,7 @@
         if (!dest) return;
         const p = document.createElement('div');
         p.className = 'attr-destiny-card';
-        const gradeColor = { '白': '#b0b0bc', '绿': '#4ec9a0', '蓝': '#5ac8fa', '紫': '#b26de0', '金': '#e8c15a' }[dest.grade] || '#b0b0bc';
+        const gradeColor = { '白': '#b0b0bc', '绿': '#1d7a55', '蓝': '#2f7fb0', '紫': '#7a3ea8', '金': '#a8792a' }[dest.grade] || '#b0b0bc';
 
         // 属性加成
         const attrParts = [];
@@ -3645,7 +3645,7 @@
     sectDiv.className = 'attr-section';
     if (S.sect) {
       const sc = SECTS[S.sect];
-      sectDiv.innerHTML = '<b style="color:#e8c15a">' + sc.name + '</b><span class="dim"> — ' + sc.desc + '</span>';
+      sectDiv.innerHTML = '<b style="color:#a8792a">' + sc.name + '</b><span class="dim"> — ' + sc.desc + '</span>';
     } else {
       sectDiv.innerHTML = '<span class="dim">散修（未加入宗门）</span>';
     }
@@ -3831,7 +3831,7 @@
         return all.map(function (a) {
           if (!ARTIFACTS[a]) return '';
           var on = (S.equip.treasure || []).indexOf(a) >= 0;
-          return '<p><b>' + (ARTIFACTS[a].spirit ? '［灵物］' : '') + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#4ec9a0"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
+          return '<p><b>' + (ARTIFACTS[a].spirit ? '［灵物］' : '') + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#1d7a55"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
         }).join('');
       })();
     body.appendChild(gear);
@@ -3888,7 +3888,7 @@
     section.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px;';
 
     const header = document.createElement('h4');
-    header.style.color = '#e8c15a';
+    header.style.color = '#a8792a';
     header.textContent = target.name;
     section.appendChild(header);
 
@@ -3902,7 +3902,7 @@
     stars.style.cssText = 'display:flex;gap:4px;margin:8px 0;';
     for (let i = 0; i < target.maxFavor; i++) {
       const star = document.createElement('span');
-      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? '#e8c15a' : '#3a3450');
+      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? '#a8792a' : '#3a3450');
       star.textContent = '★';
       stars.appendChild(star);
     }
@@ -3914,7 +3914,7 @@
 
     // 赠送礼物
     const giftTitle = document.createElement('p');
-    giftTitle.style.cssText = 'margin-top:8px;color:#c9a86a;font-size:13px;';
+    giftTitle.style.cssText = 'margin-top:8px;color:#a8792a;font-size:13px;';
     giftTitle.textContent = '赠送礼物（每年一次）：';
     section.appendChild(giftTitle);
 
@@ -3957,7 +3957,7 @@
     if (S.craftQueue && S.craftQueue.length > 0) {
       const queueDiv = document.createElement('div');
       queueDiv.style.cssText = 'background:rgba(232,193,90,0.08);border:1px solid rgba(232,193,90,0.3);border-radius:8px;padding:12px;margin-bottom:12px;';
-      queueDiv.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">炼制队列</h4>';
+      queueDiv.innerHTML = '<h4 style="color:#a8792a;margin-bottom:8px;">炼制队列</h4>';
       S.craftQueue.forEach(function(craft, index) {
         const formula = FORMULAS.find(function(f) { return f.id === craft.formulaId; });
         const item = document.createElement('div');
@@ -3989,7 +3989,7 @@
 
     // 炼丹部分
     const alchemyTitle = document.createElement('h4');
-    alchemyTitle.style.cssText = 'color:#4ec9a0;margin-top:16px;margin-bottom:8px;';
+    alchemyTitle.style.cssText = 'color:#1d7a55;margin-top:16px;margin-bottom:8px;';
     alchemyTitle.textContent = '── 炼丹 ──';
     box.appendChild(alchemyTitle);
 
@@ -4011,7 +4011,7 @@
         const actualYears = Math.max(0, formula.years - timeReduce);
         const yearsText = actualYears <= 0 ? '瞬间成丹' : '需' + actualYears + '年';
         card.innerHTML = '<h4>' + elixir.name + '</h4>' +
-          '<p class="desc" style="color:#4ec9a0;">' + elixir.desc + '</p>' +
+          '<p class="desc" style="color:#1d7a55;">' + elixir.desc + '</p>' +
           '<p class="desc">' + formula.grade + '级 · ' + yearsText + (timeReduce > 0 ? '（丹心-' + timeReduce + '年）' : '') + '</p>' +
           '<p class="desc">材料：' + costStr + '</p>';
         const craftBtn = document.createElement('button');
@@ -4034,7 +4034,7 @@
 
     // 炼器部分
     const forgeTitle = document.createElement('h4');
-    forgeTitle.style.cssText = 'color:#b26de0;margin-top:16px;margin-bottom:8px;';
+    forgeTitle.style.cssText = 'color:#7a3ea8;margin-top:16px;margin-bottom:8px;';
     forgeTitle.textContent = '── 炼器 ──';
     box.appendChild(forgeTitle);
 
@@ -4056,7 +4056,7 @@
         const actualYears = Math.max(0, formula.years - forgeTimeReduce);
         const yearsText = actualYears <= 0 ? '瞬间成器' : '需' + actualYears + '年';
         card.innerHTML = '<h4>' + artifact.name + '</h4>' +
-          '<p class="desc" style="color:#b26de0;">' + artifact.desc + '</p>' +
+          '<p class="desc" style="color:#7a3ea8;">' + artifact.desc + '</p>' +
           '<p class="desc">效果：' + artifact.effect + '</p>' +
           '<p class="desc">' + formula.grade + '级 · ' + yearsText + (forgeTimeReduce > 0 ? '（器魂-' + forgeTimeReduce + '年）' : '') + '</p>' +
           '<p class="desc">材料：' + costStr + '</p>';
@@ -4400,7 +4400,7 @@
       if (!items || !items.length) return;
       items.sort(function (a, b) { return (b.it.tier || 0) - (a.it.tier || 0); });
       var head = document.createElement('h5');
-      head.style.cssText = 'margin:10px 0 4px;color:#c9a86a;letter-spacing:2px;';
+      head.style.cssText = 'margin:10px 0 4px;color:#a8792a;letter-spacing:2px;';
       head.textContent = '── ' + INV_SLOT_META[slot].name + '（' + items.length + '）──';
       inv.appendChild(head);
       // 同名合并显示：×n
@@ -4450,7 +4450,7 @@
     });
     if (artInv.length) {
       var ahead = document.createElement('h5');
-      ahead.style.cssText = 'margin:10px 0 4px;color:#c9a86a;letter-spacing:2px;';
+      ahead.style.cssText = 'margin:10px 0 4px;color:#a8792a;letter-spacing:2px;';
       ahead.textContent = '── 法宝（' + artInv.length + '，装备后生效）──';
       inv.appendChild(ahead);
       var maxT2 = Engine.maxTreasure(S);
@@ -4756,7 +4756,7 @@
           return all.map(function (a) {
             if (!ARTIFACTS[a]) return '';
             var on = (S.equip.treasure || []).indexOf(a) >= 0;
-            return '<p><b>' + (ARTIFACTS[a].spirit ? '［灵物］' : '') + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#4ec9a0"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
+            return '<p><b>' + (ARTIFACTS[a].spirit ? '［灵物］' : '') + ARTIFACTS[a].name + '</b>' + (on ? '<span style="color:#1d7a55"> · 已装备</span>' : '<span class="dim"> · 未装备</span>') + '<span class="dim"> · ' + artEffectText(a) + '</span></p>';
           }).join('');
         })();
       box.appendChild(gear);
@@ -4888,7 +4888,7 @@
         const unlockDiv = document.createElement('div');
         unlockDiv.style.cssText = 'margin: 12px 0; padding: 8px; background: rgba(232,193,90,0.1); border: 1px solid rgba(232,193,90,0.3); border-radius: 4px;';
         var unlockCost = plots.length === 0 ? 100 : 200;
-        unlockDiv.innerHTML = '<span style="color: #e8c15a;">解锁新灵田</span> <span class="dim">（' + unlockCost + ' 灵石）</span>';
+        unlockDiv.innerHTML = '<span style="color: #a8792a;">解锁新灵田</span> <span class="dim">（' + unlockCost + ' 灵石）</span>';
         const unlockBtn = document.createElement('button');
         unlockBtn.className = 'btn-small';
         unlockBtn.textContent = '解锁';
@@ -5059,9 +5059,9 @@
       const fb = Engine.fieldPlantable(S, id);
       const card = document.createElement('div');
       card.style.cssText = 'background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;';
-      card.innerHTML = '<h4 style="color:#90e8b0;">' + sd.name + '</h4>' +
+      card.innerHTML = '<h4 style="color:#1d7a55;">' + sd.name + '</h4>' +
         '<p class="desc">' + sd.desc + '</p>' +
-        '<p class="desc">' + (fb.canBuy ? '' : '<span style="color:#e05a7a;">灵石买苗需' + fb.buyMsg + '以上　</span>') +
+        '<p class="desc">' + (fb.canBuy ? '' : '<span style="color:#c0395f;">灵石买苗需' + fb.buyMsg + '以上　</span>') +
         '自备' + fb.herbName + '×' + sd.herb + '/株可下种</p>';
       const QS = [1, 3, 6];
       const row = document.createElement('div');
@@ -5120,7 +5120,7 @@
     if (S.craftQueue && S.craftQueue.length > 0) {
       const queueDiv = document.createElement('div');
       queueDiv.style.cssText = 'background:rgba(232,193,90,0.08);border:1px solid rgba(232,193,90,0.3);border-radius:8px;padding:12px;margin-bottom:12px;';
-      queueDiv.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">炼制队列</h4>';
+      queueDiv.innerHTML = '<h4 style="color:#a8792a;margin-bottom:8px;">炼制队列</h4>';
       S.craftQueue.forEach(function(craft, index) {
         const formula = FORMULAS.find(function(f) { return f.id === craft.formulaId; });
         const item = document.createElement('div');
@@ -5191,7 +5191,7 @@
       if (kinds.length) {
         const sec = document.createElement('div');
         sec.style.cssText = 'margin-top:18px;';
-        sec.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">' + kinds[0].name + '研习（耗 1 行动点提升等级）</h4>';
+        sec.innerHTML = '<h4 style="color:#a8792a;margin-bottom:8px;">' + kinds[0].name + '研习（耗 1 行动点提升等级）</h4>';
         body.appendChild(sec);
         renderCraftStudyRows(sec, kinds, function () { renderBaiyiTab(kind, body); });
       }
@@ -5219,7 +5219,7 @@
   /* —— 炼丹板块：以灵草成丹（立即炼，成功率 悟性+丹心） —— */
   function renderBaiyiAlchemy(body) {
     const h = document.createElement('h4');
-    h.style.color = '#4ec9a0';
+    h.style.color = '#1d7a55';
     h.textContent = '鼎炉 · 以灵草成丹';
     body.appendChild(h);
     const list = Engine.alchemyChoices(S);
@@ -5255,7 +5255,7 @@
   /* —— 炼器板块：以灵铁炼器（立即炼，品质随炼器等级波动） —— */
   function renderBaiyiForge(body) {
     const h = document.createElement('h4');
-    h.style.color = '#b26de0';
+    h.style.color = '#7a3ea8';
     h.textContent = '铸炉 · 以灵铁炼器';
     body.appendChild(h);
     const list = Engine.forgeChoices(S);
@@ -5295,7 +5295,7 @@
     const usedFields = plots.filter(function(p) { return p !== null; }).length;
     const maxFields = Engine.getMaxFields(S);
     const h = document.createElement('h4');
-    h.style.color = '#90e8b0';
+    h.style.color = '#1d7a55';
     h.textContent = '灵田 · 已用 ' + usedFields + '/' + maxFields + ' 亩';
     body.appendChild(h);
 
@@ -5334,7 +5334,7 @@
       const unlockCost = plots.length === 0 ? 100 : 200;
       const uRow = document.createElement('div');
       uRow.style.cssText = 'background:rgba(232,193,90,0.1);border:1px solid rgba(232,193,90,0.3);border-radius:4px;padding:8px 12px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;';
-      uRow.innerHTML = '<span style="color:#e8c15a;">解锁新灵田</span><span class="dim">（' + unlockCost + ' 灵石）</span>';
+      uRow.innerHTML = '<span style="color:#a8792a;">解锁新灵田</span><span class="dim">（' + unlockCost + ' 灵石）</span>';
       const ub = document.createElement('button');
       ub.className = 'btn-small';
       ub.textContent = '解锁';
@@ -5398,7 +5398,7 @@
     body.innerHTML = '';   // 关键：重渲染前先清空，否则每次点击会把整段重复 append（页面越点越长、往下弹出重复内容）
     const zhenfaLv = (S.craft && S.craft.zhenfa && S.craft.zhenfa.lv) || 1;
     const sec = document.createElement('div');
-    sec.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">五行阵（战斗光环，随阵法等级缩放）</h4>'
+    sec.innerHTML = '<h4 style="color:#a8792a;margin-bottom:8px;">五行阵（战斗光环，随阵法等级缩放）</h4>'
       + '<p class="dim" style="margin:0 0 8px;">阵法 Lv' + zhenfaLv + '。开启后于战斗中持续生效。</p>';
     const wg = document.createElement('div'); wg.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
     WUXING_ORDER.forEach(function (key) {
@@ -5421,7 +5421,7 @@
     // 阵法研习（炼丹 / 炼器的研习已各自归入对应板块）
     const sec2 = document.createElement('div');
     sec2.style.cssText = 'margin-top:18px;';
-    sec2.innerHTML = '<h4 style="color:#e8c15a;margin-bottom:8px;">阵法研习（耗 1 行动点提升等级）</h4>';
+    sec2.innerHTML = '<h4 style="color:#a8792a;margin-bottom:8px;">阵法研习（耗 1 行动点提升等级）</h4>';
     body.appendChild(sec2);
     renderCraftStudyRows(sec2, CRAFT_KINDS.filter(function (k) { return k.id === 'zhenfa'; }),
       function () { renderBaiyiStudy(body); });
@@ -5464,8 +5464,8 @@
     if (currentXinfa) {
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
-      currentRow.style.borderColor = '#e8c15a';
-      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
+      currentRow.style.borderColor = '#a8792a';
+      currentRow.innerHTML = '<div><b style="color:#a8792a">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
         '<br><span class="dim">' + esc(currentXinfa.desc) + '</span></div>';
       wrap.appendChild(currentRow);
     } else {
@@ -5510,8 +5510,8 @@
         const x = TECHNIQUES[t];
         const row = document.createElement('div');
         row.className = 'formula-row';
-        row.style.borderColor = '#e8c15a';
-        row.innerHTML = '<div><b style="color:#e8c15a">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
+        row.style.borderColor = '#a8792a';
+        row.innerHTML = '<div><b style="color:#a8792a">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
           '<br><span class="dim">' + esc(x.desc) + '</span></div>';
         const b = mkBtn('卸下', 'btn-small', function () {
           Engine.toggleShufa(S, t);
@@ -5565,8 +5565,8 @@
     if (currentDunshu) {
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
-      currentRow.style.borderColor = '#e8c15a';
-      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
+      currentRow.style.borderColor = '#a8792a';
+      currentRow.innerHTML = '<div><b style="color:#a8792a">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
         '<br><span class="dim">' + esc(currentDunshu.desc) + '</span></div>';
       wrap.appendChild(currentRow);
     } else {
@@ -6355,12 +6355,12 @@
     // 六维说明文案由引擎 attrGainText 统一给出（只说「一共加了多少战斗属性 / 修炼速度」），
     //   不再展示「（基础+命格）」「每点+多少」「法宝栏解锁」——用户 2026-09-13 定稿。
     const sixDims = [
-      { key: 'wu', name: '悟性', icon: '📖', color: '#5ac8fa' },
+      { key: 'wu', name: '悟性', icon: '📖', color: '#2f7fb0' },
       { key: 'ti', name: '体魄', icon: '💪', color: '#e0604a' },
-      { key: 'dun', name: '遁速', icon: '💨', color: '#4ec9a0' },
+      { key: 'dun', name: '遁速', icon: '💨', color: '#1d7a55' },
       { key: 'shen', name: '神识', icon: '👁', color: '#c06ae0' },
-      { key: 'dao', name: '道心', icon: '☯', color: '#e8c15a' },
-      { key: 'ling', name: '灵力', icon: '🔮', color: '#6ad1ff' }
+      { key: 'dao', name: '道心', icon: '☯', color: '#a8792a' },
+      { key: 'ling', name: '灵力', icon: '🔮', color: '#2f7fb0' }
     ];
 
     sixDims.forEach(function (dim) {
@@ -6407,14 +6407,14 @@
 
     const combatStats = [
       { name: '攻击', val: Math.round(S.atk * atkMul), color: '#ff9080', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
-      { name: '防御', val: defTotal, color: '#90e8b0', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
+      { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
       { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#ff9080', desc: '80+体魄×50+境界' },
-      { name: '暴击', val: critBase + '%', color: '#e8c15a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
-      { name: '闪避', val: dodgeBase + '%', color: '#4ec9a0', desc: '遁速×2% + 装备 + 命格' },
+      { name: '暴击', val: critBase + '%', color: '#a8792a', desc: '神识×1% + 道心×2% + 装备 + 命格' },
+      { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#ffb84d', desc: '遁速×1% + 装备：几率额外攻击一次' },
-      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#6ad1ff', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
-      { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#5ac8fa', desc: '修炼积累，满则突破' },
-      { name: '修炼', val: '+' + cultR.gain, color: '#4ec9a0', desc: '(60+悟性×10)×境界' }
+      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
+      { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#2f7fb0', desc: '修炼积累，满则突破' },
+      { name: '修炼', val: '+' + cultR.gain, color: '#1d7a55', desc: '(60+悟性×10)×境界' }
     ];
 
     // 战斗属性：只留「名称 + 数值」，不再挂任何说明文字（用户 2026-09-13 定稿）
@@ -6435,7 +6435,7 @@
     const lg = document.createElement('div');
     lg.className = 'attr-section';
     if (S.linggen) {
-      lg.innerHTML = '<b style="color:#e8c15a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
+      lg.innerHTML = '<b style="color:#a8792a">' + S.linggen.name + '</b><span class="dim"> — ' + S.linggen.desc + '</span>';
       const parts = linggenEffectParts(S);
       if (parts.length) lg.innerHTML += '<br><span class="dim" style="margin-left:8px">效果：' + parts.join('，') + '</span>';
     } else {
@@ -6454,7 +6454,7 @@
         if (!dest) return;
         const p = document.createElement('div');
         p.className = 'attr-destiny-card';
-        const gradeColor = { '白': '#b0b0bc', '绿': '#4ec9a0', '蓝': '#5ac8fa', '紫': '#b26de0', '金': '#e8c15a' }[dest.grade] || '#b0b0bc';
+        const gradeColor = { '白': '#b0b0bc', '绿': '#1d7a55', '蓝': '#2f7fb0', '紫': '#7a3ea8', '金': '#a8792a' }[dest.grade] || '#b0b0bc';
 
         // 属性加成
         const attrParts = [];
@@ -6515,7 +6515,7 @@
     sectDiv.className = 'attr-section';
     if (S.sect) {
       const sc = SECTS[S.sect];
-      sectDiv.innerHTML = '<b style="color:#e8c15a">' + sc.name + '</b><span class="dim"> — ' + sc.desc + '</span>';
+      sectDiv.innerHTML = '<b style="color:#a8792a">' + sc.name + '</b><span class="dim"> — ' + sc.desc + '</span>';
     } else {
       sectDiv.innerHTML = '<span class="dim">散修（未加入宗门）</span>';
     }
@@ -6749,8 +6749,8 @@
     if (currentXinfa) {
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
-      currentRow.style.borderColor = '#e8c15a';
-      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
+      currentRow.style.borderColor = '#a8792a';
+      currentRow.innerHTML = '<div><b style="color:#a8792a">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
         '<br><span class="dim">' + esc(currentXinfa.desc) + '</span></div>';
       techList.appendChild(currentRow);
     } else {
@@ -6795,8 +6795,8 @@
         const x = TECHNIQUES[t];
         const row = document.createElement('div');
         row.className = 'formula-row';
-        row.style.borderColor = '#e8c15a';
-        row.innerHTML = '<div><b style="color:#e8c15a">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
+        row.style.borderColor = '#a8792a';
+        row.innerHTML = '<div><b style="color:#a8792a">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
           '<br><span class="dim">' + esc(x.desc) + '</span></div>';
         const b = mkBtn('卸下', 'btn-small', function () {
           Engine.toggleShufa(S, t);
@@ -6850,8 +6850,8 @@
     if (currentDunshu) {
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
-      currentRow.style.borderColor = '#e8c15a';
-      currentRow.innerHTML = '<div><b style="color:#e8c15a">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
+      currentRow.style.borderColor = '#a8792a';
+      currentRow.innerHTML = '<div><b style="color:#a8792a">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
         '<br><span class="dim">' + esc(currentDunshu.desc) + '</span></div>';
       techList.appendChild(currentRow);
     } else {
@@ -7134,10 +7134,10 @@
   }
   function renderSect() {
     const body = $('sect-body'); if (!body) return;
-    const st = STAGES[S.idx] || { sym: '', realm: S.realm || '炼气', sub: '', color: '#e8c15a' };
+    const st = STAGES[S.idx] || { sym: '', realm: S.realm || '炼气', sub: '', color: '#a8792a' };
     const realmText = (st.sym ? st.sym + ' ' : '') + st.realm + (st.sub ? ' · ' + st.sub : '');
     const rd = REALM_DESC[st.realm] || '';
-    const banner = '<div class="realm-note">境界：<b style="color:' + (st.color || '#e8c15a') + '">' + realmText + '</b>　<span class="dim">' + rd + '</span></div>';
+    const banner = '<div class="realm-note">境界：<b style="color:' + (st.color || '#a8792a') + '">' + realmText + '</b>　<span class="dim">' + rd + '</span></div>';
     // —— 态A：未正式入宗（散修 或 已择宗但未过考验 / 杂役）→ 仅「入宗考验」受限界面 ——
     if (!Engine.sectPassed(S)) {
       if (!S.sect) {
@@ -7819,7 +7819,7 @@
         const fav = Engine.favorOf(S, id);
         const tier = Engine.favorTier(n, fav);
         let stars = '';
-        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? '#e8c15a' : '#3a3450') + '">★</span>';
+        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? '#a8792a' : '#3a3450') + '">★</span>';
         h += '<div class="npc-favor">' + stars + ' <span class="npc-grade">(' + fav + '/' + n.maxFavor + ') ' + tier.grade + '·' + tier.note + '</span></div>';
         h += '<div class="npc-tiers">';
         n.tiers.forEach(function (t) {

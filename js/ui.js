@@ -2618,45 +2618,9 @@
     meta.points += S.earnedPoints || 0;
     Engine.saveMeta(meta);
     M = meta;
-    reportToCloud();
     renderSettlement({ meta: meta, ach: ach });
   }
 
-  /* ---------------- 云端：排行榜 / 云存档（失败静默，不影响结算） ---------------- */
-  function reportToCloud() {
-    if (!window.DedaoAPI) return;
-    try {
-      const api = window.DedaoAPI;
-      // 排行分 = 本世所得轮回点（与结算页合计一致）；按道号注册，已注册则复用身份
-      api.register(S.name || '无名道人').then(function (p) {
-        if (!p) return; // 后端不可用 → 静默跳过
-        api.submitScore(S.earnedPoints || 0, S.realm || '');
-        api.uploadSave(JSON.parse(JSON.stringify(S)), 'main'); // 顺势留一份云存档
-      });
-    } catch (e) { /* 云端异常绝不阻塞游戏 */ }
-  }
-  function appendLeaderboardSection(wrap) {
-    const sec = document.createElement('div');
-    sec.className = 'settle-section';
-    sec.innerHTML = '<h4>天榜 · 万道争锋</h4><div class="dim">正在叩问天榜……</div>';
-    wrap.appendChild(sec);
-    const tip = sec.querySelector('.dim');
-    if (!window.DedaoAPI) { tip.textContent = '（云端未接入）'; return; }
-    window.DedaoAPI.fetchLeaderboard(10).then(function (rows) {
-      if (!rows || !rows.length) { tip.textContent = '天榜寂寥，尚无人留名。（无法连接云端）'; return; }
-      tip.remove();
-      const myName = window.DedaoAPI.getPlayerName();
-      rows.forEach(function (r) {
-        const row = document.createElement('div');
-        row.className = 'settle-row';
-        const isMe = myName && r.name === myName;
-        row.innerHTML = '<span>' + r.rank + '. ' + esc(r.name) + (isMe ? '<b>（你）</b>' : '') +
-          ' · ' + esc(r.stage || '') + '</span><span class="gold">' + r.score + '</span>';
-        if (isMe) row.style.color = '#e8c15a';
-        sec.appendChild(row);
-      });
-    });
-  }
   function renderSettlement(res) {
     const st = STAGES[S.idx] || { realm: '仙', sub: '', color: '#e8c15a', sym: 'Ⅵ', bigRealm: 4 };
     const sp = Engine.settlePoints(S, M);
@@ -2731,7 +2695,6 @@
       '<div class="settle-row"><span>难度倍率</span><span>' + jieData.diff + 'x</span></div>' +
       '<div class="settle-row"><span>历史最高</span><span class="gold">' + maxJie + '劫</span></div>';
     wrap.appendChild(secJie);
-    appendLeaderboardSection(wrap);
     showScreen('settlement');
     const nextJie = Math.min(9, currentJie + 1);
     const nextJieData = JIE_DATA[nextJie];
@@ -5814,46 +5777,6 @@
       $('log').scrollTop = $('log').scrollHeight;
     }
   }
-  /* ---------------- 云端存档 ---------------- */
-  async function doUploadToCloud() {
-    if (!window.DedaoAPI) { log('云端存档未接入。', 'bad'); return; }
-    if (!S || !S.name) { log('尚无可以上传的存档。', 'bad'); return; }
-    const ok = await uiConfirm('将当前这一世上传到云端（覆盖云端主存档）？');
-    if (!ok) return;
-    log('正在上传云端……', 'dim');
-    const p = await DedaoAPI.register(S.name);
-    if (!p) { log('无法连接云端，上传失败。', 'bad'); return; }
-    const save = await DedaoAPI.uploadSave(JSON.parse(JSON.stringify(S)), 'main');
-    if (!save) { log('上传失败（无法连接云端）。', 'bad'); return; }
-    log('已上传至云端，他日可自云端归来。', 'good');
-    sfx('good');
-  }
-
-  async function doRestoreFromCloud() {
-    if (!window.DedaoAPI) { log('云端存档未接入。', 'bad'); return; }
-    if (S && S.name && !S.dead) {
-      const ok = await uiConfirm('从云端恢复将覆盖当前这一世，确定？');
-      if (!ok) return;
-    }
-    const save = await DedaoAPI.downloadSave('main');
-    if (!save || !save.data) { log('云端暂无可恢复的存档（或无法连接云端）。', 'bad'); return; }
-    const s = save.data;
-    if (!validSave(s)) { log('云端存档已失效。', 'bad'); return; }
-    S = s;
-    suspended = false;
-    Engine.ensureTechEquip(S);
-    Engine.saveState(S); // 落本地，避免下次还需联网
-    closeAllOverlays();
-    showScreen('game');
-    logSection('第 ' + S.year + ' 年 · ' + S.age + ' 岁');
-    log('你自云端归来，前缘未断，旧梦重温。');
-    refresh();
-    if (S.dead || S.endReason) {
-      log('—— 此生已终，道途已尽 ——', 'gold');
-      log('你可查看此生结算，或从此处重新开始。');
-    }
-  }
-
   /* ---------------- 自定义弹窗（替代原生 alert/confirm，避免 WebView 内嵌时阻塞宿主线程） ---------------- */
   let _dlgOv = null, _dlgCard = null;
   function ensureDialogOverlay() {
@@ -5953,24 +5876,6 @@
       }
       wrap.appendChild(row);
     }
-    // 云存档入口：主动上传 + 跨设备恢复（后端不可用时不报错，静默）
-    const cloudRow = document.createElement('div');
-    cloudRow.className = 'formula-row';
-    cloudRow.innerHTML = '<div><b>云存档</b><br><span class="dim">上传当前进度到云端，或换设备时恢复</span></div>';
-    const bUpload = document.createElement('button');
-    bUpload.className = 'btn-small';
-    bUpload.textContent = '上传云端';
-    bUpload.disabled = !window.DedaoAPI || !(S && S.name);
-    bUpload.title = (S && S.name) ? '' : '尚无可以上传的存档';
-    bUpload.onclick = function () { doUploadToCloud(); };
-    cloudRow.appendChild(bUpload);
-    const bCloud = document.createElement('button');
-    bCloud.className = 'btn-small';
-    bCloud.textContent = '从云端恢复';
-    bCloud.disabled = !window.DedaoAPI;
-    bCloud.onclick = function () { doRestoreFromCloud(); };
-    cloudRow.appendChild(bCloud);
-    wrap.appendChild(cloudRow);
     const tip = document.createElement('p');
     tip.className = 'dim';
     tip.textContent = '游戏会自动保存在【自动存档】位；手动存档位共三个，散落于修仙路的不同岔口。';
@@ -6163,8 +6068,17 @@
   }
 
   /* ---------------- 开机 ---------------- */
+  /* 已下线子系统的本地键清理：天榜 / 云存档于 2026-09-15 整体移除，改走纯本地。
+     旧版 backend-api.js 会在 localStorage 留下 dedao_api_identity（含道号与 api_key，
+     属个人数据残留）。此处一次性清除，避免旧玩家仍带着已无用途的身份键。 */
+  function purgeLegacyCloudKeys() {
+    try {
+      localStorage.removeItem('dedao_api_identity');
+    } catch (e) { /* 存储不可用时忽略 */ }
+  }
   function boot() {
     M = Engine.loadMeta();
+    purgeLegacyCloudKeys();
     // —— 旧版存档清理：新版本开机时清掉旧结构存档，强制以新版本重开 ——
     const clearedSaves = Engine.cleanupLegacySaves();
     if (clearedSaves > 0) showCleanupToast(clearedSaves);

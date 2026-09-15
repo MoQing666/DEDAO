@@ -67,7 +67,9 @@ module.exports = async function build() {
     /* 必须经 _engine_loader 加载真引擎的脚本（不许自带公式/数据表副本） */
     // player_sim.js：2026-09-15 已把 22 个手抄公式函数（equipStats/calcAtk/calcHpMax/…）
     // 换成真引擎调用，输出与迁移前基线逐字节一致（见 AGENTS.md 变更日志 #62）。
-    const MUST_USE_LOADER = ['reinc_validate.js', 'reinc_sim.js', 'reinc_points.js', 'player_sim.js'];
+    // balance_sim.js：2026-09-15 常量全量改为直读 data.js / 调 _engine_loader（AGENTS.md #63）。
+    //   （其玩家战力模型已判定失准、结论以 player_sim 为准，但常量不许再手抄。）
+    const MUST_USE_LOADER = ['reinc_validate.js', 'reinc_sim.js', 'reinc_points.js', 'player_sim.js', 'balance_sim.js'];
 
     /* 已知会漂移的写法 → 说明 */
     const FORBID = [

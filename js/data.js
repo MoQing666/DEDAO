@@ -3059,7 +3059,7 @@ const DESTINIES = {
   roushen:      { name:'肉身成圣',   grade:'金', type:'combat', effect:{ tiPerYear:1, tiPerYearCap:6, defMul:0.30 }, desc:'肉身成圣，万法不侵' },
   tianming2:    { name:'天命之子',   grade:'金', type:'attr',  attr:{ dao:3, ling:2 }, effect:{ tribBonus:0.15 }, desc:'天命所归，渡劫无忧' },
   wanfabuqin:   { name:'万法不侵',   grade:'金', type:'combat', attr:{ ti:3 }, effect:{ defMul:0.20, thorns:0.20, controlImmune:true }, desc:'万法不侵，反伤极致' },
-  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, desc:'先天道体，万法皆通' },
+  xiantiandao:  { name:'先天道体',   grade:'金', type:'attr',  attr:{ wu:1, ti:1, dun:1, shen:1, dao:1, ling:1 }, effect:{ stonePerYear:25 }, desc:'先天道体，万法皆通（每年灵石+25）' },
   zhanshen:     { name:'战神降世',   grade:'金', type:'combat', attr:{ shen:3 }, effect:{ atkMul:0.20, recoverPct:0.10 }, desc:'战神降世，天下无敌' },
   tiandao:      { name:'天道宠儿',   grade:'金', type:'attr',  attr:{ wu:2, ti:1, shen:1, ling:1 }, effect:{ tribBonus:0.15 }, desc:'天道眷顾，万事如意' },
   wanjian:      { name:'万剑归宗',   grade:'金', type:'combat', attr:{ shen:3 }, effect:{ noElemSpellMul:0.50, swordCritRate:0.50 }, desc:'万剑归宗，剑道巅峰' }

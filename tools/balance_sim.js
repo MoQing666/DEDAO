@@ -22,7 +22,6 @@
      仍属**设计假设**（非引擎真值，故保留手写并明确标注）：
      PLAYER_TABLE 的成长曲线、GEAR / TREASURE / LING_BY_REALM 的代表性配置。
    ============================================================ */
-require('./_engine_loader').load();   // 仅为触发真引擎可用性校验
 const ENGL = require('./_engine_loader');
 const ENG = ENGL.load().Engine;
 

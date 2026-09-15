@@ -645,5 +645,43 @@ module.exports = async function build() {
       '）+ tools/ ' + nTools + ' 个脚本（仓库根）');
   });
 
+  /* ---------- 法术大表：文档里的 dmg / cost 必须与 data.js 逐条一致 ---------- */
+  /* 为什么非加不可：这份文档的 cost 列**已经漂移过一次**——
+     原先整列抄成 15/13/14… 而 data.js 是 40/35/35…，约 2.5× 系统性偏差，41 行全错，
+     而且是靠人工翻文档才发现的（AGENTS.md #59 才校正）。
+     同一份漂移在 `tools/player_sim.js` 和 `balance_sim.js` 里也各藏着一份（#63 才挖出来），
+     并直接导致「法术耗蓝批量下调已驳回」这个结论建立在错误数据上。
+     文档是给人看的、没人会天天对账 → 必须让机器替我们对。 */
+  S.case('DEDAO_法术效果全等级大表.md 的 dmg / cost 与 data.js 逐条一致', (t) => {
+    const REPO = path.join(__dirname, '..', '..');
+    const docPath = path.join(REPO, 'DEDAO_法术效果全等级大表.md');
+    if (!fs.existsSync(docPath)) { t.note('未找到 DEDAO_法术效果全等级大表.md，跳过'); return; }
+    const TECH = get('TECHNIQUES') || {};
+    const lines = fs.readFileSync(docPath, 'utf8').split(/\r?\n/);
+
+    let n = 0; const bad = []; const seen = {};
+    lines.forEach(function (ln) {
+      // 形如： | 金刃术 | `jinren` | 金 | ×2.0 | 40 | … | ✅实装 |
+      // 治疗/护盾类 dmg 为 0，文档写「0」而非「×0」，故两态都要认。
+      const m = ln.match(/^\|\s*([^|]+?)\s*\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]*?)\s*\|\s*(?:×\s*)?([0-9.]+)\s*\|\s*([0-9]+)\s*\|/);
+      if (!m) return;
+      n++;
+      const name = m[1], id = m[2], dDoc = parseFloat(m[4]), cDoc = parseInt(m[5], 10);
+      seen[id] = 1;
+      const sp = TECH[id];
+      if (!sp) { bad.push(name + '（`' + id + '`）在 data.js 中不存在'); return; }
+      if (Math.abs(dDoc - sp.dmg) > 1e-9) bad.push(name + ' dmg 文档=' + dDoc + ' vs data.js=' + sp.dmg);
+      if (cDoc !== sp.cost) bad.push(name + ' cost 文档=' + cDoc + ' vs data.js=' + sp.cost);
+    });
+    t.gte(n, 30, '至少应核到 30 条法术，实为 ' + n + '（文档表格格式变了？正则需同步）');
+    t.ok(bad.length === 0, '法术大表与 data.js 不一致 ' + bad.length + ' 处：' + bad.join(' | '));
+
+    // 反向：data.js 里的法术若整条没在文档出现，同样要报（新增法术忘了补文档）
+    const missing = Object.keys(TECH).filter(id => TECH[id] && TECH[id].cls === 'shufa' && !seen[id]);
+    t.ok(missing.length === 0, 'data.js 有但文档未收录的法术 ' + missing.length + ' 条：' + missing.join(', '));
+    t.note('已核 ' + n + ' 条法术（data.js 共 ' +
+      Object.keys(TECH).filter(id => TECH[id].cls === 'shufa').length + ' 条 shufa）');
+  });
+
   return S;
 };

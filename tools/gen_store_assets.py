@@ -182,6 +182,110 @@ def paste_text(base, xy, text, font, fill=GOLD, anchor='mm',
         base.paste(Image.new('RGBA', (W, H), _rgba(stroke_fill)), (0, 0), ring)
 
 
+# ---------------- 手书「道」混合字标 ----------------
+# 「道」字改用用户手写草书真迹（assets/img/brand/dao_handwritten.png，版权 100% 用户），
+# 其余字仍用游戏字库。视觉与原字标一致（同渐变/描边/发光/投影）。
+
+_DAO_GLYPH = None
+
+
+def _dao_glyph():
+    global _DAO_GLYPH
+    if _DAO_GLYPH is None:
+        g = Image.open(os.path.join(ROOT, 'assets', 'img', 'brand',
+                                    'dao_handwritten.png')).convert('RGBA')
+        _DAO_GLYPH = g.crop(g.getbbox())
+    return _DAO_GLYPH
+
+
+def wordmark_mask(size, xy, text, font, anchor='mm', stroke=0, optical=False):
+    """
+    生成混合字标的 L 掩码：'道' 用手迹 alpha，其余字符用 font 绘制。
+    手迹按参考字（第一个非'道'字）的字面高度缩放、按其视觉中心对齐。
+    """
+    W, H = size
+    probe = ImageDraw.Draw(Image.new('L', (8, 8)))
+
+    # 参考字度量：字面 bbox（相对 lm 锚点）
+    ref_ch = next((c for c in text if c != '道'), text[0])
+    rb = probe.textbbox((0, 0), ref_ch, font=font, anchor='lm')
+    ref_h = rb[3] - rb[1]
+    ref_cy = (rb[1] + rb[3]) / 2          # 字面中心相对锚点 y 的偏移
+
+    # 手迹缩放到参考字字面高（略放大 4%，草书字面偏瘦）
+    g = _dao_glyph()
+    k = ref_h * 1.04 / g.height
+    gw, gh = max(1, int(g.width * k)), max(1, int(g.height * k))
+    glyph = g.resize((gw, gh), Image.LANCZOS)
+
+    # 逐字排布：字库字用 textlength，手迹用缩放宽 + 2% 字距
+    advs, xs = [], []
+    x = 0
+    for ch in text:
+        if ch == '道':
+            advs.append((ch, x, gw * 1.02))
+            x += gw * 1.02
+        else:
+            a = probe.textlength(ch, font=font)
+            advs.append((ch, x, a))
+            x += a
+    total = x
+
+    def build(dx, dy):
+        cx_offset = -total / 2 if anchor.startswith('m') else 0
+        m = Image.new('L', (W, H), 0)
+        dm = ImageDraw.Draw(m)
+        for ch, cx0, a in advs:
+            px = xy[0] + cx_offset + cx0 + dx
+            if ch == '道':
+                # 上提 5%：草书笔画重心偏下（长捺拖尾），视觉对齐字库字
+                m.paste(glyph.split()[3],
+                        (int(px), int(xy[1] + ref_cy - gh / 2 - 0.05 * gh + dy)),
+                        glyph.split()[3])
+            else:
+                dm.text((px, xy[1] + dy), ch, font=font, fill=255, anchor='lm')
+        return m
+
+    if optical:
+        m0 = build(0, 0)
+        bb = m0.getbbox()
+        if bb:
+            dx = xy[0] - (bb[0] + bb[2]) / 2
+            dy = xy[1] - (bb[1] + bb[3]) / 2
+            return build(dx, dy), (xy[0], xy[1])
+    return build(0, 0), (xy[0], xy[1])
+
+
+def paste_wordmark(base, xy, text, font, fill=GOLD, anchor='mm',
+                   grad=None, stroke=0, stroke_fill=INK,
+                   glow=None, glow_blur=14, shadow=None, shadow_off=(0, 4), shadow_blur=8,
+                   optical=False):
+    """paste_text 的混合字标版：'道' 为手迹真迹，效果栈与 paste_text 相同。"""
+    W, H = base.size
+    mask, xy2 = wordmark_mask((W, H), xy, text, font, anchor, stroke, optical)
+
+    if shadow:
+        sm = mask.transform((W, H), Image.AFFINE,
+                            (1, 0, -shadow_off[0], 0, 1, -shadow_off[1]))
+        sm = sm.filter(ImageFilter.GaussianBlur(shadow_blur))
+        base.paste(Image.new('RGBA', (W, H), _rgba(shadow)), (0, 0), sm)
+
+    if glow:
+        gm = mask.filter(ImageFilter.GaussianBlur(glow_blur))
+        base.paste(Image.new('RGBA', (W, H), _rgba(glow)), (0, 0), gm)
+
+    if grad:
+        src = gradient((W, H), grad[0], grad[1]).convert('RGBA')
+    else:
+        src = Image.new('RGBA', (W, H), _rgba(fill))
+    base.paste(src, (0, 0), mask)
+
+    if stroke and stroke_fill:
+        ring = ImageChops.subtract(
+            mask.filter(ImageFilter.MaxFilter(2 * stroke + 1)), mask)
+        base.paste(Image.new('RGBA', (W, H), _rgba(stroke_fill)), (0, 0), ring)
+
+
 def _rgba(c, a=255):
     """把 3 元组 / 4 元组统一成 RGBA。"""
     c = tuple(c)
@@ -363,29 +467,53 @@ def glow_orb(base, cx, cy, r, color=GOLD, alpha=70):
 
 def make_icon():
     """
-    图标 512×512。
+    图标 512×512 —— **宣纸墨迹版（定稿 2026-09-15）**。
+
     TapTap 硬约束：不得纯白/纯黑/透明背景、不得自行加圆角。
-    → 满幅云海底 + 竖向暗角 + 中心金字 + 双圈金环。主体收在中心 70% 内，
-      平台按圆角裁切也切不到字。
+    → 米白宣纸底（细颗粒 + 暗角）+ 用户手书草书「道」真迹（墨色原样）
+      + 右下「得道飞升」朱印（游戏字库白文）。主体收在中心 70% 内，
+      平台按圆角裁切也切不到主体。
+    历史：v1/v2 为「云海+金环+字库/AI 底图」方案，已否（AI 画汉字不可控，
+    用户提供手写真迹后全面改用手迹管线）。
     """
+    import random
     S = 512
-    bg = load_src('title.png')
-    bg = fit_cover(bg, S, S, ax=0.30, ay=0.40)
-    bg = darken(bg, 0.40)
-    bg = grain(bg, 7).convert('RGBA')
+    # 宣纸底：米白 + 细颗粒 + 椭圆暗角
+    im = Image.new('RGB', (S, S), (241, 235, 222))
+    rnd = random.Random(7)
+    px = im.load()
+    for y in range(S):
+        for x in range(S):
+            n = rnd.randint(-7, 7)
+            r, g, b = px[x, y]
+            px[x, y] = (r + n, g + n, b + n - 2)
+    vg = Image.new('L', (S, S), 0)
+    ImageDraw.Draw(vg).ellipse([-S * 0.35, -S * 0.35, S * 1.35, S * 1.35], fill=46)
+    vg = vg.filter(ImageFilter.GaussianBlur(90))
+    bg = Image.composite(im, Image.new('RGB', (S, S), (214, 205, 188)), vg).convert('RGBA')
 
-    # 竖向暗角（上略压、下重压），让中心自然亮出来 —— 比画椭圆更干净，不会露出亮斑边界
-    bg.alpha_composite(vgrad_alpha((S, S), INK_2, 120, 205))
-    bg.alpha_composite(hgrad_stops((S, S), INK_2, [(0, 165), (0.28, 0), (0.72, 0), (1, 165)]))
+    # 手迹「道」：墨色原样，居中偏上
+    g = _dao_glyph()
+    k = int(S * 0.66) / g.height
+    g = g.resize((int(g.width * k), int(S * 0.66)), Image.LANCZOS)
+    ax, ay = (S - g.width) // 2, int(S * 0.10)
+    sh = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    sh.paste(Image.new('RGBA', g.size, (60, 50, 40, 70)), (ax + 5, ay + 7), g)
+    bg = Image.alpha_composite(bg, sh.filter(ImageFilter.GaussianBlur(4)))
+    bg.alpha_composite(g, (ax, ay))
 
-    d = ImageDraw.Draw(bg)
-    ring(d, S / 2, S / 2, 208, GOLD, 4)
-    ring(d, S / 2, S / 2, 194, _rgba(GOLD, 70), 2)
-
-    paste_text(bg, (S / 2, S / 2), '道', F(262), anchor='mm', optical=True,
-               grad=(GOLD_L, GOLD_D), stroke=6, stroke_fill=(42, 30, 8),
-               glow=_rgba(GOLD, 46), glow_blur=30,
-               shadow=INK, shadow_off=(0, 7), shadow_blur=12)
+    # 朱印「得道飞升」2x2 白文
+    seal = Image.new('RGBA', (int(S * 0.16),) * 2, (0, 0, 0, 0))
+    sd = ImageDraw.Draw(seal)
+    m = int(S * 0.16 * 0.04)
+    sd.rounded_rectangle([0, 0, seal.width - 1, seal.height - 1],
+                         radius=int(seal.width * 0.10), fill=(166, 32, 28, 235))
+    fnt = F(int(seal.width * 0.40))
+    for t, cx, cy in [('得', 0, 0), ('道', 1, 0), ('飞', 0, 1), ('升', 1, 1)]:
+        cw = (seal.width - 2 * m) / 2
+        sd.text((m + cw * cx + cw / 2, m + cw * cy + cw / 2), t, font=fnt,
+                fill=(244, 238, 228, 255), anchor='mm')
+    bg.alpha_composite(seal, (int(S * 0.72), int(S * 0.76)))
 
     out = os.path.join(OUT_DIR, '图标_512x512.png')
     bg.convert('RGB').save(out)
@@ -410,8 +538,8 @@ def make_logo():
     # 光晕：透明底上唯一能撑重心的元素
     glow_orb(base, W / 2, 320, 560, GOLD, 46)
 
-    paste_text(base, (W / 2, 300), '得道飞升', F(340), anchor='mm', optical=True,
-               grad=(GOLD_L, GOLD_D), glow=GOLD + (52,), glow_blur=28)
+    paste_wordmark(base, (W / 2, 300), '得道飞升', F(340), anchor='mm', optical=True,
+                   grad=(GOLD_L, GOLD_D), glow=GOLD + (52,), glow_blur=28)
     paste_text(base, (W / 2, 596), '模 拟 器', F(120), anchor='mm', optical=True, fill=LILAC,
                stroke=2, stroke_fill=(48, 34, 12))
 
@@ -467,10 +595,10 @@ def make_hero_banner():
     hx = W - hero.width - 130
     bg.alpha_composite(hero, (hx, H - hero.height + 60))
 
-    # 唯一文字：游戏名
-    paste_text(bg, (165, 470), '得道飞升模拟器', F(140), anchor='lm',
-               grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
-               glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 7), shadow_blur=13)
+    # 唯一文字：游戏名（「道」为用户手迹真迹）
+    paste_wordmark(bg, (165, 470), '得道飞升模拟器', F(140), anchor='lm',
+                   grad=(GOLD_L, GOLD_D), stroke=4, stroke_fill=(50, 36, 8),
+                   glow=GOLD + (44,), glow_blur=22, shadow=INK, shadow_off=(0, 7), shadow_blur=13)
 
     divider(bg, 624, 172, 980, gap=12, diamond=15)
     cloud_band(bg, 742, 230, 880, n=3, r=46, alpha=105)

@@ -29,7 +29,7 @@ module.exports = async function build() {
     s.actionsLeft = 6;
     return s;
   }
-  function defs(s) { return E.achDefs(s, meta()); }
+  function defs(s, m) { return E.achDefs(s, m || meta()); }   // 传入自定义 meta 时用它（阈值夹逼用例需要改 lives/earnedTotal/destinySeen）
 
   S.case('境界成就按阶位索引判定：炼气期绝不点亮筑基成就', (t) => {
     const s = fresh();
@@ -131,11 +131,15 @@ module.exports = async function build() {
      修法不是「把数字改对」就完事 —— 那样加一件法宝又会漂移。
      这里把「文案中的中文数字」与「数据表实际条目数」**动态**比对，
      以后加/删法宝、命格，文案不跟着改就必红。
+
+     2026-09-15 下午扩行：初版只覆盖 6 条，普查发现成就表里共 9 处硬编码总数，
+     漏掉的 3 处恰是**另取数据源**的（秘境之主数 / 有缘人数），已补。
      ============================================================ */
   S.case('成就文案「总数」与数据表动态一致（防加/删条目后文案漂移）', (t) => {
     const ART = G.get('ARTIFACTS');
     const DEST = G.get('DESTINIES');
     const ADV = G.get('ADVENTURE_CONFIG');
+    const NPCS = G.get('NPCS');
 
     const artIds = Object.keys(ART);
     const xianCount = artIds.filter(id => ART[id].grade === '仙').length;
@@ -143,6 +147,9 @@ module.exports = async function build() {
     // 秘境：ADVENTURE_CONFIG 里的 trial 是「劫境」不是秘境，不计入
     const advKeys = Object.keys(ADV).filter(k => k !== 'trial');
     const normalAdv = advKeys.filter(k => k !== 'xian').length;   // 常规 = 黄/玄/地/天
+    // 「秘境之主」不是秘境数 —— 取真正带 boss 的秘境（当前两者恰好都是 5，但来源不同，不能互当）
+    const advBossCount = advKeys.filter(k => ADV[k] && ADV[k].boss).length;
+    const npcKeys = Object.keys(NPCS);
 
     const CN = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
     function cn2int(s) {
@@ -157,7 +164,8 @@ module.exports = async function build() {
       return n;
     }
 
-    /* 文案里出现「全部/集齐/所有 + 中文数字 + 量词」的成就 → 期望值来源 */
+    /* 文案里出现「全部/集齐/所有 + 中文数字 + 量词」的成就 → 期望值来源。
+       第 3 项可选：该条专用的匹配正则（默认 TOT）。 */
     const EXPECT = {
       fabao_da:   [artIds.length, '件'],            // 全部法宝
       xianqi_man: [xianCount, '件'],                // 仙阶法宝
@@ -165,10 +173,15 @@ module.exports = async function build() {
       mingbo:     [Object.keys(DEST).length, '个'],  // 命格
       quanjing:   [advKeys.length, '种'],           // 全部秘境（含遗世仙踪）
       shou_cang:  [normalAdv, '种'],                // 常规秘境（黄/玄/地/天）
+      wujie:      [advBossCount, '位'],             // 秘境之主（带 boss 的秘境数）
+      zhongsheng: [npcKeys.length, '位'],           // 有缘人
+      // 「四位有缘人好感皆达满级」文案没写「全部」，用专用正则（注意量词也要捕获，与 TOT 对齐）
+      yuanding:   [npcKeys.length, '位', /([一二三四五六七八九十]+)\s*(位)有缘人/],
     };
 
     t.note('数据口径：法宝 ' + artIds.length + '（仙 ' + xianCount + ' / 灵物 ' + spiritCount + '）· 命格 ' +
-      Object.keys(DEST).length + ' · 秘境 ' + advKeys.length + '（常规 ' + normalAdv + '）');
+      Object.keys(DEST).length + ' · 秘境 ' + advKeys.length + '（常规 ' + normalAdv + ' / 带 BOSS ' + advBossCount +
+      '）· 有缘人 ' + npcKeys.length);
 
     const TOT = /(?:全部|集齐|所有)\s*([一二三四五六七八九十]+)\s*(件|个|种|位)/;
     let checked = 0;
@@ -176,7 +189,7 @@ module.exports = async function build() {
       const a = ACHIEVEMENTS[id];
       t.ok(!!a, '成就表缺少 ' + id);
       if (!a) return;
-      const m = String(a.desc).match(TOT);
+      const m = String(a.desc).match(EXPECT[id][2] || TOT);
       t.ok(!!m, id + ' 的文案应含「全部/集齐 + 数字 + 量词」，实为「' + a.desc + '」');
       if (!m) return;
       checked++;
@@ -185,7 +198,119 @@ module.exports = async function build() {
         id + ' 文案「' + m[1] + m[2] + '」与数据表不符（实际 ' + EXPECT[id][0] + ' ' + EXPECT[id][1] +
         '）—— 改了数据就必须同步文案');
     });
-    t.ok(checked >= 6, '应至少核对 6 条含总数的成就文案，实为 ' + checked);
+    t.ok(checked >= 9, '应至少核对 9 条含总数的成就文案，实为 ' + checked);
+  });
+
+  /* ============================================================
+     回归 2026-09-15（下午）：成就文案里的**阈值**必须与引擎开关点一致
+
+     与上一条「总数」是不同的漂移源：
+       · 总数漂移 → 玩家看得见数字不对（44 vs 47）；
+       · **阈值漂移 → 更坏**：玩家照着文案刷到 15 部功法，引擎却要 16 部才点亮，
+         成就永远差一步，且没人会怀疑是文案的错。
+     文案与代码是两处独立数字：`js/data.js` 的 desc 和 `js/engine.js` 的 `achDefs` 比较常量。
+     这里用**双侧夹逼**把两者钉死：
+       ① 从 desc 里抽数字（中文数字与半角阿拉伯数字都要认），要求引擎实际阈值 N 在其中；
+       ② 构造存档使计数器 = N-1 → 必须 false；= N → 必须 true。
+     任一层不成立即红。两者同时被有意改大改小（策划调平衡）不会报错，正是我们想要的。
+     ============================================================ */
+  S.case('成就文案「阈值」与引擎开关点双侧夹逼（N-1 未点亮 / N 恰好点亮）', (t) => {
+    const TECHNIQUES = G.get('TECHNIQUES');
+    const ARTIFACTS = G.get('ARTIFACTS');
+    const DESTINIES = G.get('DESTINIES');
+
+    const techIds = Object.keys(TECHNIQUES);
+    const artIds = Object.keys(ARTIFACTS);
+    const destIds = Object.keys(DESTINIES);
+
+    /* 按 cls 分组 —— sanxiu_dao 除总数外还要求「心法/术法/遁术三类各有」 */
+    const techByCls = {};
+    techIds.forEach(function (id) { const c = TECHNIQUES[id].cls || '?'; (techByCls[c] = techByCls[c] || []).push(id); });
+    const clsOf = Object.keys(techByCls);
+    function techsSpanning(n) {
+      const out = [];
+      clsOf.forEach(function (c) { if (out.length < n) out.push(techByCls[c][0]); });
+      for (const id of techIds) { if (out.length >= n) break; if (out.indexOf(id) < 0) out.push(id); }
+      return out.slice(0, n);
+    }
+
+    const CN = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+    function cn2int(s) {
+      if (!s) return null;
+      if (s === '十') return 10;
+      if (s.indexOf('十') >= 0) {
+        const p = s.split('十');
+        return (p[0] ? CN[p[0]] : 1) * 10 + (p[1] ? CN[p[1]] : 0);
+      }
+      let n = 0;
+      for (const ch of s) { if (!(ch in CN)) return null; n = n * 10 + CN[ch]; }
+      return n;
+    }
+    /* 抽出 desc 里所有数字。半角数字（如「等级≥5」）也算 —— 它本身是体例不统一，
+       但解析器必须容忍，否则会漏判。 */
+    function numsIn(desc) {
+      const out = [];
+      const re = /[一二三四五六七八九十]+百?[一二三四五六七八九十]*|\d+/g;
+      let m;
+      while ((m = re.exec(desc))) {
+        const raw = m[0];
+        if (/^\d+$/.test(raw)) { out.push(parseInt(raw, 10)); continue; }
+        if (/百/.test(raw)) {
+          const p = raw.split('百');
+          out.push((p[0] ? (CN[p[0]] || 0) : 1) * 100 + (p[1] ? (cn2int(p[1]) || 0) : 0));
+        } else {
+          const v = cn2int(raw);
+          if (v != null) out.push(v);
+        }
+      }
+      return out;
+    }
+
+    /* [成就id, 期望阈值 N, 把计数器设成 n 的写法]
+       注意阈值 N 一律「从文案里抄」——它必须同时出现在 desc 的数字集合中，否则报错。 */
+    const ROWS = [
+      ['daofa_3k',     15, (s, m, n) => { s.techs = techIds.slice(0, n); }],
+      ['wanfa',        30, (s, m, n) => { s.techs = techIds.slice(0, n); }],
+      ['sanxiu_dao',    6, (s, m, n) => { s.techs = techsSpanning(n); }],
+      ['fabao_cang',   15, (s, m, n) => { s.equip.treasure = artIds.slice(0, n); }],
+      ['shiming',      10, (s, m, n) => { m.destinySeen = {}; destIds.slice(0, n).forEach(i => { m.destinySeen[i] = 1; }); }],
+      ['sanshiming',   30, (s, m, n) => { m.destinySeen = {}; destIds.slice(0, n).forEach(i => { m.destinySeen[i] = 1; }); }],
+      ['busi',         10, (s, m, n) => { s.advNoDmgCount = n; }],
+      ['pingjie',       5, (s, m, n) => { s.deathPassed = n; }],
+      ['shanhe',       50, (s, m, n) => { s.travelCount = n; }],
+      ['jingshi3',      3, (s, m, n) => { m.lives = n; }],
+      ['wangu',        10, (s, m, n) => { m.lives = n; }],
+      ['jishan',      100, (s, m, n) => { m.earnedTotal = n; }],
+      ['fujia',       500, (s, m, n) => { m.earnedTotal = n; }],
+      ['ai_renzi',    200, (s, m, n) => { s.age = n; }],
+      ['chang_sheng', 300, (s, m, n) => { s.age = n; }],
+      ['baiyi_tong',    5, (s, m, n) => { s.craft = { liandan: { lv: n } }; }],
+      ['lingtian',      5, (s, m, n) => { s.mine = { depth: n }; }],
+      ['sanjie',        3, (s, m, n) => { s.tribPassed = n; }],
+    ];
+
+    let checked = 0;
+    ROWS.forEach(function (row) {
+      const id = row[0], N = row[1], set = row[2];
+      const a = ACHIEVEMENTS[id];
+      t.ok(!!a, '成就表缺少 ' + id);
+      if (!a) return;
+      checked++;
+
+      // ① 文案 ↔ 数字：引擎阈值 N 必须出现在文案的数字集合里
+      const nums = numsIn(String(a.desc));
+      t.ok(nums.indexOf(N) >= 0,
+        id + ' 文案「' + a.desc + '」里找不到引擎实际阈值 ' + N + '（文案数字集 [' + nums.join(',') + ']）' +
+        '—— 文案与引擎已漂移，玩家照着文案刷也点不亮');
+
+      // ② 数字 ↔ 代码：N-1 不许点亮，N 必须恰好点亮
+      const lo = (function () { const s = fresh(); const m = meta(); set(s, m, N - 1); return !!defs(s, m)[id]; })();
+      const hi = (function () { const s = fresh(); const m = meta(); set(s, m, N); return !!defs(s, m)[id]; })();
+      t.eq(lo, false, id + ' 在计数器 = ' + (N - 1) + ' 时不应点亮（引擎阈值应恰为 ' + N + '）');
+      t.eq(hi, true, id + ' 在计数器 = ' + N + ' 时应点亮（文案承诺的阈值是 ' + N + '）');
+    });
+
+    t.ok(checked >= 18, '应至少夹逼 18 条阈值型成就，实为 ' + checked);
   });
 
   return S;

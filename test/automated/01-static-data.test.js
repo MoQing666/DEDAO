@@ -513,5 +513,43 @@ module.exports = async function build() {
     t.note('链路：Engine.battleFxList → renderBuffs → .buff/.bf-ic/.bf-tx');
   });
 
+  /* === 回归 2026-09-15：AGENTS.md 的「测试模块表」用例数是**手工维护的硬编码总数** ===
+     与成就文案里的「四十七件」是同一类漂移源，而且更误导 —— 这张表是 agent 判断
+     「哪个模块守住了什么」的依据，写小了会让人以为那里没有覆盖。
+     2026-09-15 实测：12 个模块里 **7 个**数字是错的（03 写 32 实为 44、11 写 24 实为 36、
+     09 写 6 实为 8 ……）。
+     修法不是「把数字改对」，而是让表与文件长期对账：数每个测试文件里 S\.case\( 的出现次数，
+     与 AGENTS.md 模块表该行写的数字比对，不一致即红。
+     注：AGENTS.md 只在仓库根（dist 副本不含），故锚定「测试代码所在仓库」而非 ROOT ——
+     这样主仓库 / 两份 dist 三种跑法都能校验同一份文档。 */
+  S.case('AGENTS.md 测试模块表用例数与实际一致（防手工维护的计数漂移）', (t) => {
+    const REPO = path.join(__dirname, '..', '..');   // 测试代码恒来自仓库，与 DEDAO_ROOT 无关
+    const agentsPath = path.join(REPO, 'AGENTS.md');
+    t.ok(fs.existsSync(agentsPath), '仓库根应存在 AGENTS.md');
+    if (!fs.existsSync(agentsPath)) return;
+    const agents = fs.readFileSync(agentsPath, 'utf8');
+    const dir = path.join(REPO, 'test', 'automated');
+    const files = fs.readdirSync(dir).filter(f => /^\d\d-.*\.test\.js$/.test(f)).sort();
+    t.gte(files.length, 12, '应至少扫到 12 个测试模块');
+
+    let total = 0, checked = 0;
+    files.forEach(function (f) {
+      const txt = fs.readFileSync(path.join(dir, f), 'utf8');
+      const n = (txt.match(/S\.case\(/g) || []).length;   // 每个 S\.case\( 即一条用例
+      total += n;
+      // 模块表行形如： | `01-static-data.test.js` | 21 | 说明 |
+      // 注意：本文件自身的注释里**不许出现未转义的字面量**，否则会被自己数进去（踩过）
+      const esc = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = agents.match(new RegExp('`' + esc + '`\\s*\\|\\s*(\\d+)'));
+      t.ok(!!m, 'AGENTS.md 测试模块表缺少 ' + f + ' 一行');
+      if (!m) return;
+      checked++;
+      t.eq(parseInt(m[1], 10), n,
+        f + ' 模块表写的用例数与实际不符（实际 ' + n + ' 条）—— 改了测试就必须同步 AGENTS.md 模块表');
+    });
+    t.ok(checked >= 12, '应至少核对 12 行模块表，实为 ' + checked);
+    t.note('模块表合计用例数应为 ' + total + '（可对照 run.js 报告的总计）');
+  });
+
   return S;
 };

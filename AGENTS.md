@@ -1552,3 +1552,12 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **小框白底 50% 透明**：全部内容框 `background:#fff` → `rgba(255,255,255,.5)`（28 处：.kv/.buff/.chip/.bag-item/.ct-card/.pt-row/.travel-node/.battle-board/.chap-npc/.gear-item 等）；**大框不动**——`.panel` 走 `var(--panel)`(#fffdf6) 未被波及；3 处 `#ffffff` 结构实底（标题大框/姓名输入/成就 toast）保留。
 - **bump**：`css/style.css ?v=151→152`（ui.js/data 未改不 bump）。
 - **未提交并发 WIP**（已排除）：`AGENTS.md` 测试计数 269→270 与 `DEDAO_项目简介.md`（AGENTS 采用「基线+仅本条目」精确暂存）。
+
+### #78 — 秘境/死劫/开局主线因果链关联文案 + 仙缘页【返回修行】按钮（v155/dedao-v189，2026-09-16）
+
+- **起因**：用户要求给不同秘境、死劫、开局设计彼此关联的主线文案（例：开局村庄遇袭=秘境一土匪），并令仙缘页返回按钮与储物袋/角色一致为【返回修行】。
+- **因果链（data.js）**：村庄危机(`ml_0_3`)改妖兽→**赤狼旗匪徒(独眼龙)**；黄级匪徒营寨 desc/boss 点名独眼龙即洗劫村庄者；死劫二黑风寨补「赤狼旗为黑风寨分舵」互文，构成**匪患线**。玄级大黑山 desc/黑风狼/boss 点名奉**血月狼谷赤瞳狼王**为祖，死劫一 resultWin 回扣大黑山狼群——**狼王线**。地级洞天福地 desc/洞天之主点名**城隍庙老乞丐**即从此洞天走出、与**沧溟水府**同源，死劫三 resultWin 回扣洞天云纹——**洞天/沧溟线**。天级魔道祖地 desc/魔祖化身点名**魔渊裂隙源头**，死劫五 resultWin 回扣祖地——**魔渊线**。仙级遗世仙踪 desc 点明**飞升门口**。
+- **仙缘页 UI 一致化（index.html/index_pc.html + ui.js）**：`screen-npc` 由 `screen-head` 内联 `btn-small ghost`「返回」重构为 **`gear-head`(标题+说明) + `gear-footer` + `btn-main`【返回修行】**，与储物袋/角色完全一致；`renderNpc` 去掉重复引导段（已上移页头）。`npc-back` id 与 `openNpc` 的 onclick 不变。
+- **守卫**：`tools/font_coverage.py --check` 通过（「喽啰」→「喽罗」规避缺字 啰）。`node --check` data.js/ui.js 通过。
+- **bump**：`index.html/index_pc.html ?v=154→155`、`sw.js dedao-v188→v189`（data/engine 未改随页面 bump）。
+- **提交**：`4496b2d`（6 文件；排除并发会话 WIP `test/automated/03-ui.test.js`）。

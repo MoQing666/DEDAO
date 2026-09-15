@@ -605,5 +605,45 @@ module.exports = async function build() {
     t.note('已核 ' + CLAIMS.length + ' 项：' + CLAIMS.map(c => c[0]).join(' · '));
   });
 
+  /* ---------- 已删除字段：不得复活 ---------- */
+  /* 「突破次数」字段（每次小阶提升 +1）已于 2026-09-15 全量删除（AGENTS.md 变更日志 #61）。
+     它历史上被误用过两次：成就 `sanjie` 拿它当渡劫次数、`tools/` 三个镜像脚本拿它算渡劫分。
+     它既不能当境界判据（境界看 s.idx）、也不能当渡劫判据（渡劫看 s.tribPassed），
+     留着只会招来第三次误用 —— 故加一道"不得复活"的守卫。
+     范围：`js/` 跟 DEDAO_ROOT 走（三份复跑各验各的那份）；`tools/` 只在仓库根有，找不到就跳过。
+     ⚠ 必须剥注释：历史教训本身写在注释里，不剥会自己撞自己。 */
+  S.case('已删除的「突破次数」字段不得复活（js/ 与 tools/ 代码里均无 .broken）', (t) => {
+    const REPO = path.join(__dirname, '..', '..');
+    function stripComments(src) {
+      return src
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/[;)}\]]\s*\/\/[^\n]*/g, '');
+    }
+    function scanDir(label, dir, must) {
+      if (!fs.existsSync(dir)) {
+        if (must) t.ok(false, label + ' 目录不存在：' + dir);
+        else t.note(label + ' 不存在（dist 副本不含该目录），跳过');
+        return 0;
+      }
+      let n = 0; const bad = [];
+      fs.readdirSync(dir).forEach(function (f) {
+        if (!/\.js$/.test(f)) return;
+        n++;
+        const code = stripComments(fs.readFileSync(path.join(dir, f), 'utf8'));
+        const m = code.match(/\b\w+\.broken\b/g);
+        if (m) bad.push(f + ' → ' + m.join(', '));
+      });
+      t.ok(bad.length === 0,
+        label + ' 出现已删字段的引用：' + bad.join(' | ') +
+        '（该字段 2026-09-15 已删；境界判据用 s.idx、渡劫判据用 s.tribPassed）');
+      return n;
+    }
+    const nJs = scanDir('js/', path.join(ROOT, 'js'), true);
+    const nTools = scanDir('tools/', path.join(REPO, 'tools'), false);
+    t.note('已扫 js/ ' + nJs + ' 个文件（ROOT=' + (process.env.DEDAO_ROOT ? 'dist 副本' : '仓库根') +
+      '）+ tools/ ' + nTools + ' 个脚本（仓库根）');
+  });
+
   return S;
 };

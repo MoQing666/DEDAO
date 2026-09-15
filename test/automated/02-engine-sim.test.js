@@ -160,7 +160,6 @@ module.exports = async function build() {
     let guard = 0, advanced = false;
     while (guard++ < 400) {
       s.qi = E.requireNeed(s);
-      s.broken = 0;
       const before = s.idx;
       // breakthrough 只返回突破方式选项，真正推进境界需调用 normalBreakthrough
       const choice = E.breakthrough(s);

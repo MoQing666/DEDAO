@@ -95,7 +95,7 @@ const npcKeys = Object.keys(NPCS);
 const npcStories = npcKeys.map((k) => NPCS[k].unlock && NPCS[k].unlock.story).filter(Boolean);
 
 const sC = baseState();
-sC.idx = 15; sC.tribPassed = 3; sC.broken = 3; sC.age = 320;
+sC.idx = 15; sC.tribPassed = 3; sC.age = 320;
 sC.flags = { advClear: { huang: 1, xuan: 1, di: 1, tian: 1, xian: 1 }, daoLu: true, ktPage: 1 };
 sC.bossKills = { huang: 1, xuan: 1, di: 1, tian: 1, xian: 1 };
 // 机制克星：五种 BOSS 机制各通关一次（bossMech 以 bossKey→mechanic 记录）

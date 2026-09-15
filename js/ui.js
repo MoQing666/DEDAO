@@ -2066,7 +2066,7 @@
   /* ---------------- 突破 / 渡劫（人劫 · 天劫） ---------------- */
   function statSheet(s) {
     const st = STAGES[s.idx] || { realm: '仙', sub: '', color: '#e8c15a', sym: 'Ⅵ', bigRealm: 4 };
-    return { realm: st.realm, sub: st.sub, lifeMax: s.lifeMax, hpMax: s.hpMax, atk: s.atk, ap: Engine.actionPoints(s), broken: s.broken };
+    return { realm: st.realm, sub: st.sub, lifeMax: s.lifeMax, hpMax: s.hpMax, atk: s.atk, ap: Engine.actionPoints(s) };
   }
   function diffLines(from, s) {
     const st = STAGES[s.idx];
@@ -2079,7 +2079,6 @@
     if (s.atk !== from.atk) f.push('攻击：' + from.atk + ' → ' + s.atk);
     const apNow = Engine.actionPoints(s);
     if (apNow !== from.ap) f.push('行动点：' + from.ap + ' → ' + apNow + '（突破不耗行动点）');
-    if (s.broken !== from.broken) f.push('生涯突破：' + from.broken + ' → ' + s.broken + ' 次');
     if (s.qi === 0) f.push('修为：全部化作瓶颈之下厚积的底蕴');
     return f;
   }
@@ -2641,7 +2640,7 @@
     head.className = 'settle-head';
     head.innerHTML = '<h2 style="color:' + (isWin ? '#e8c15a' : '#c8c8c8') + '">' + title + '</h2>' +
       '<p>这一世画上句号，<b>' + esc(S.name) + '</b>活到了 ' + S.age + ' 岁。</p>' +
-      '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b>，一生突破 ' + S.broken + ' 次</p>' +
+      '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b></p>' +
       '<p>' + (S.flags.daoLu ? '你已感悟【道】之真意。' : '你终究未能悟道。') + '</p>';
     wrap.appendChild(head);
     const achLines = res.ach.filter(function (a) { return a.new; });

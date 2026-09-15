@@ -46,7 +46,7 @@ console.log('========== 结算依据（直调 Engine.settlePoints / earnPoints�
 console.log('本世轮回点 = round( base × endMul × (1 + jie×0.2) ) + round( base × jie × K )，K=0.05');
 console.log('  base   = 境界档 + 渡劫分 + 死劫分 + 秘境探索分 + 本世新增成就分');
 console.log('  境界档 = 炼气2 / 筑基4 / 金丹7 / 元婴11 / 仙25');
-console.log('  渡劫分 = min(10, 渡劫次数×3)   ← s.tribPassed，不是 s.broken');
+console.log('  渡劫分 = min(10, 渡劫次数×3)   ← 取 s.tribPassed（渡劫次数），不是「突破次数」');
 console.log('  死劫分 = 当世通过死劫数 × 2');
 console.log('  endMul = 飞升/仙 1.2、打破轮回 1.5，其余 1.0\n');
 

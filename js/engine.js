@@ -895,7 +895,7 @@ const Engine = (function () {
       stone: 50, herb: 3, iron: 0,
       elixirs: {}, techs: ['tunai'], arts: [], extraAtk: 0,
       techEquip: { xinfa: 'tunai', shufa: [], dunshu: null },
-      sect: null, broken: 0, tribPassed: 0, breakFails: 0, actionsLeft: 3,
+      sect: null, tribPassed: 0, breakFails: 0, actionsLeft: 3,
       gongye: 0, gongyeEarned: 0, sectRank: null,
       craft: { liandan: { lv: 1, exp: 0 }, lianqi: { lv: 1, exp: 0 }, zhenfa: { lv: 1, exp: 0 } },
       array: { juling: { level: 0, paid: false }, wuxing: { fire: false, metal: false, water: false, wood: false, earth: false } },
@@ -3982,7 +3982,6 @@ const Engine = (function () {
         return { ok: true, win: true, mode: info.mode, trib: info.trib, tech: tech, perfect: isPerfect, line: '天门已开，你于万丈雷光中踏出最后一步。' };
       }
       s.idx += 1;
-      s.broken += 1;
       s.hp = calcHpMax(s);
       const oldLife = s.lifeMax;
       s.lifeMax = Math.max(oldLife, REALM_META[info.nxt.realm].life);
@@ -4072,7 +4071,6 @@ const Engine = (function () {
       s.idx = 15;
       s.realm = '仙';
       s.endReason = '飞升';
-      s.broken += 1;
       s.tribPassed = (s.tribPassed || 0) + 1; // 飞升天劫：这是第 3 次渡劫
       s.hp = calcHpMax(s);
       s.dunSpeed = 1 + bigIdxOf(s);
@@ -4081,7 +4079,6 @@ const Engine = (function () {
       return { ok: true, trib: info.trib, win: true, tech: null };
     }
     s.idx += 1;
-    s.broken += 1;
     s.tribPassed = (s.tribPassed || 0) + 1; // 渡过一次天劫（金丹劫 / 元婴劫）
     s.hp = calcHpMax(s);
     const oldLife = s.lifeMax;
@@ -4798,7 +4795,8 @@ const Engine = (function () {
     const d = {
       /* 修行 */
       // 境界类成就一律以「当前阶位索引 s.idx」判定（0 炼气前期 … 3 筑基前期 … 6 金丹前期 … 9 元婴前期 … 15 仙）。
-      // 曾误用 s.broken（突破次数，每次小阶提升都 +1）→ 炼气前期一破中期就点亮了「筑基」成就。
+      // 曾误用「突破次数」（每次小阶提升都 +1）当境界判据 → 炼气前期一破中期就点亮了「筑基」成就。
+      // 该字段已于 2026-09-15 全量删除（AGENTS.md 变更日志 #61）；境界类成就一律只看 s.idx，渡劫类只看 s.tribPassed。
       shou_zhuji: s.idx >= 3,
       shou_jiejin: s.idx >= 6,
       shou_yuanying: s.idx >= 9,
@@ -4866,7 +4864,7 @@ const Engine = (function () {
       ai_renzi: s.age >= 200,
       chang_sheng: s.age >= 300,
       san_xiu: !s.sect && s.idx >= 6,
-      dacheng: s.idx >= 15 && s.broken >= 3,
+      dacheng: s.idx >= 15,
       /* 隐藏 */
       xianren: !!(s.flags && s.flags.ktPage),
       heimao: (favorOf(s, 'heimao') || 0) >= 8 && seen[NPCS.heimao.event.id],

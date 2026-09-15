@@ -29,7 +29,7 @@
   --blue: #2f7fb0;
   --purple: #7a3ea8;
   --shadow: rgba(60,40,20,.18);
-  --tint: rgba(120,90,50,.06);  /* 暖棕极淡遮罩，替代原 rgba(0,0,0,*) 暗压 */
+  --tint: #fff;  /* 暖棕极淡遮罩，替代原 rgba(0,0,0,*) 暗压 */
 }
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
@@ -118,11 +118,11 @@ button {
   border: 2px solid var(--line);
   padding: 10px 14px;
   cursor: pointer;
-  box-shadow: 3px 3px 0 rgba(120,90,50,.08);
+  box-shadow: 3px 3px 0 #fff;
   transition: transform .05s, background .1s;
 }
 button:hover:not(:disabled) { background: #efe6d0; }
-button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(120,90,50,.08); }
+button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #fff; }
 button:disabled { opacity: .4; cursor: default; }
 .btn-main {
   display: block;
@@ -150,7 +150,7 @@ button:disabled { opacity: .4; cursor: default; }
   border: 4px solid var(--gold);
   padding: 30px 10px;
   margin: 0 20px 24px;
-  box-shadow: 8px 8px 0 rgba(120,90,50,.08), inset 0 0 60px rgba(232,193,90,.06);
+  box-shadow: 8px 8px 0 #fff, inset 0 0 60px rgba(232,193,90,.06);
   background: #ffffff;
 }
 .logo-cn { font-size: 64px; color: var(--gold); text-shadow: 0 0 24px rgba(232,193,90,.35); letter-spacing: 14px; }
@@ -161,7 +161,7 @@ button:disabled { opacity: .4; cursor: default; }
 .title-tip { color: var(--dim); margin-top: 22px; font-size: 12px; letter-spacing: 2px; }
 
 /* ---------------- HUD ---------------- */
-.hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 rgba(120,90,50,.08); }
+.hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 #fff; }
 /* HUD 顶栏 = 2 行 × 3 列 网格（2026-09-14 用户定稿，同日二次修订右侧功能列）
    ┌──────┬──────────────────────────┬──────────┐
    │      │ 道号 + 境界（第 1 行）    │  成就     │
@@ -191,7 +191,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .hud-mini {
   min-width: 46px; padding: 3px 8px;
-  background: rgba(120,90,50,.06); border: 1px solid var(--line); border-radius: 6px;
+  background: #fff; border: 1px solid var(--line); border-radius: 6px;
   color: var(--text); font-size: 12px; line-height: 1.5; letter-spacing: 1px;
   cursor: pointer; font-family: inherit; white-space: nowrap;
 }
@@ -216,7 +216,7 @@ button:disabled { opacity: .4; cursor: default; }
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #4ec9a0, #5ac8fa);
   color: #1a1a1a; font-size: 18px; font-weight: 700;
-  border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(120,90,50,.06);
+  border: 2px solid #fff; box-shadow: 0 0 0 2px #fff;
 }
 .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
 .avatar-fb { position: relative; z-index: 0; }
@@ -227,7 +227,7 @@ button:disabled { opacity: .4; cursor: default; }
   min-width: 0; margin-left: 0;
 }
 .hud-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.hud-actions .action-info-item { display: inline-flex; align-items: baseline; gap: 4px; background: rgba(120,90,50,.04); border: 1px solid #e3d6b8; padding: 2px 8px; border-radius: 4px; min-width: 0; }
+.hud-actions .action-info-item { display: inline-flex; align-items: baseline; gap: 4px; background: #fff; border: 1px solid #e3d6b8; padding: 2px 8px; border-radius: 4px; min-width: 0; }
 .name { font-size: 18px; color: var(--text); letter-spacing: 2px; }
 .realm-badge {
   display: inline-block;
@@ -235,7 +235,7 @@ button:disabled { opacity: .4; cursor: default; }
   border: 1px solid #b8b8c8;
   font-size: 12px;
   color: var(--text);
-  background: rgba(120,90,50,.06);
+  background: #fff;
   flex-shrink: 0;
 }
 .hud-destiny {
@@ -330,7 +330,7 @@ button:disabled { opacity: .4; cursor: default; }
 .gear-inv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; }
 .gear-item {
   border: 1px solid #e3d6b8;
-  background: rgba(120,90,50,.04);
+  background: #fff;
   padding: 6px 8px;
   font-size: 13px;
 }
@@ -343,18 +343,18 @@ button:disabled { opacity: .4; cursor: default; }
 .chap-npc {
   display: inline-block;
   border: 2px solid var(--purple);
-  background: rgba(120,90,50,.08);
+  background: #fff;
   padding: 6px 18px;
   margin: 6px 0;
   letter-spacing: 4px;
   color: var(--text);
   font-size: 16px;
-  box-shadow: 3px 3px 0 rgba(120,90,50,.08);
+  box-shadow: 3px 3px 0 #fff;
 }
 .chap-npc.small { font-size: 13px; padding: 3px 10px; letter-spacing: 2px; border-color: var(--line); }
 .battle-board {
   border: 2px solid var(--line);
-  background: rgba(120,90,50,.06);
+  background: #fff;
   padding: 10px 12px;
   margin: 8px 0;
 }
@@ -386,7 +386,7 @@ button:disabled { opacity: .4; cursor: default; }
 .portrait {
   position: relative; width: 92px; height: 120px; flex: none;
   border: 2px solid var(--purple); background: #3a3020; overflow: hidden;
-  box-shadow: 3px 3px 0 rgba(120,90,50,.08);
+  box-shadow: 3px 3px 0 #fff;
 }
 .portrait img { width: 100%; height: 100%; object-fit: cover; display: none; image-rendering: pixelated; }
 .portrait.has-img img { display: block; }
@@ -399,7 +399,7 @@ button:disabled { opacity: .4; cursor: default; }
    黑白或方块（图标方案风险 #1），显式指定后至少能命中系统 Emoji 字体。
    注：方案原拟的「窄屏隐藏 .btxt」未采纳 —— 本实现把层数/回合并进了 `.bf-tx`（如「灼烧 2 层」），
    隐藏它会连数值一起丢掉，与「图标 + 名称 + 层数」的展示口径冲突。 */
-.buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid var(--purple); border-radius: 3px; color: var(--text); background: rgba(120,90,50,.06); }
+.buff { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; line-height: 1.25; padding: 1px 5px; border: 1px solid var(--purple); border-radius: 3px; color: var(--text); background: #fff; }
 .buff .bf-ic { font-style: normal; font-size: 13px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", "EmojiOne Color", sans-serif; }
 .buff .bf-tx { font-weight: 400; }
 .buff.bad { color: #ff8a7a; border-color: #8a4a4a; background: rgba(74,10,10,.42); }
@@ -420,7 +420,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 /* 立绘受击/施法特效（纯 CSS，轻量） */
 .portrait.fx-hit { animation: fxShake .3s ease; }
-.portrait.fx-guard { box-shadow: 0 0 12px #5affa0, 3px 3px 0 rgba(120,90,50,.08); }
+.portrait.fx-guard { box-shadow: 0 0 12px #5affa0, 3px 3px 0 #fff; }
 @keyframes fxShake {
   0%,100% { transform: translateX(0); }
   25% { transform: translateX(-5px); }
@@ -448,7 +448,7 @@ button:disabled { opacity: .4; cursor: default; }
 .ap-dot { width: 12px; height: 12px; background: var(--line); border: 1px solid var(--line); transform: rotate(45deg); }
 .ap-dot.on { background: var(--gold); border-color: #f3d98a; }
 .res { margin-left: auto; display: inline-flex; gap: 8px; font-size: 13px; }
-.chip { background: rgba(120,90,50,.06); padding: 1px 6px; border: 1px solid var(--line); }
+.chip { background: #fff; padding: 1px 6px; border: 1px solid var(--line); }
 
 /* ---------------- 属性 ---------------- */
 .stats { flex: none; }
@@ -460,7 +460,7 @@ button:disabled { opacity: .4; cursor: default; }
 .action-info-col { display: flex; flex-direction: column; gap: 4px; justify-content: center; flex-shrink: 0; }
 .action-info-item {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(120,90,50,.04); border: 1px solid #e3d6b8;
+  background: #fff; border: 1px solid #e3d6b8;
   padding: 4px 8px; min-width: 90px;
 }
 .action-info-item label { color: var(--dim); font-size: 11px; flex: none; }
@@ -483,10 +483,10 @@ button:disabled { opacity: .4; cursor: default; }
 .stat-grid.combat-stats .kv.below-hp label { color: #1d7a55; }
 .stat-grid.combat-stats .kv.below-hp b { color: #136043; }
 .stat-grid.combat-full { margin-top: 0; }
-.age-kv { border-left-color: var(--blue) !important; background: rgba(120,90,50,.08) !important; }
+.age-kv { border-left-color: var(--blue) !important; background: #fff !important; }
 .age-kv label { color: var(--text) !important; }
 .age-val { color: var(--text) !important; font-size: 11px !important; }
-.kv { background: rgba(120,90,50,.04); border: 1px solid #e3d6b8; padding: 4px 6px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.kv { background: #fff; border: 1px solid #e3d6b8; padding: 4px 6px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .kv label { color: var(--dim); font-size: 12px; flex: none; }
 .kv b { font-size: 14px; color: var(--gold); }
 .kv b.small { font-size: 12px; color: var(--text); min-width: 0; word-break: break-all; }
@@ -529,7 +529,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------------- 状态栏（已合并到属性区） ---------------- */
 .arts-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
-.arts-tabs .tab { flex: 1; padding: 7px 4px; border: 1px solid #e3d6b8; background: rgba(120,90,50,.04); color: var(--text); border-radius: 6px; font-size: 14px; cursor: pointer; }
+.arts-tabs .tab { flex: 1; padding: 7px 4px; border: 1px solid #e3d6b8; background: #fff; color: var(--text); border-radius: 6px; font-size: 14px; cursor: pointer; }
 .arts-tabs .tab.on { background: var(--purple); color: #ffe9b0; border-color: #7d5cff; }
 .arts-tabs .tab:hover { border-color: #7d5cff; }
 .gear-footer { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
@@ -615,12 +615,12 @@ button:disabled { opacity: .4; cursor: default; }
 /* 中间内容面板半透明+毛玻璃，让背景大体可见 */
 .screen[data-bg] .panel,
 .screen[data-bg] .log {
-  background: rgba(120,90,50,.08);
+  background: #fff;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
 }
 .screen[data-bg] .hud {
-  background: rgba(120,90,50,.06);
+  background: #fff;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -650,12 +650,12 @@ button:disabled { opacity: .4; cursor: default; }
 .modal-head { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .formula-row {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  border: 1px solid #e3d6b8; background: rgba(120,90,50,.04);
+  border: 1px solid #e3d6b8; background: #fff;
   padding: 8px 10px; margin: 6px 0;
 }
 .formula-row button { flex: none; padding: 6px 8px; font-size: 12px; }
 .bag-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.bag-item { border: 1px solid #e3d6b8; background: rgba(120,90,50,.04); padding: 6px 8px; font-size: 13px; }
+.bag-item { border: 1px solid #e3d6b8; background: #fff; padding: 6px 8px; font-size: 13px; }
 .bag-item button { margin-top: 6px; padding: 4px 8px; font-size: 12px; }
 .modal-inner h3 { color: var(--gold); margin: 6px 0 10px; font-size: 15px; }
 .modal-inner h4 { color: var(--gold); margin: 12px 0 6px; font-size: 14px; }
@@ -671,13 +671,13 @@ button:disabled { opacity: .4; cursor: default; }
 .attr-panel { max-height: 70vh; overflow-y: auto; padding: 4px; }
 .attr-panel h4 { margin: 14px 0 6px; font-size: 14px; letter-spacing: 2px; }
 .attr-panel h4:first-child { margin-top: 0; }
-.attr-realm-bar { text-align: center; padding: 8px; background: rgba(120,90,50,.06); border: 1px solid #e3d6b8; border-radius: 6px; margin-bottom: 8px; }
+.attr-realm-bar { text-align: center; padding: 8px; background: #fff; border: 1px solid #e3d6b8; border-radius: 6px; margin-bottom: 8px; }
 .attr-realm-bar .realm-name { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
 
 /* 六维属性大格子 */
 .attr-six-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 4px; }
 .attr-six-card {
-  background: rgba(120,90,50,.06); border: 1px solid #e3d6b8; border-left: 3px solid #4ec9a0;
+  background: #fff; border: 1px solid #e3d6b8; border-left: 3px solid #4ec9a0;
   border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px;
 }
 .attr-six-header { display: flex; align-items: center; gap: 6px; }
@@ -699,7 +699,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* 命格卡片 */
 .attr-destiny-card {
-  background: rgba(120,90,50,.04); border: 1px solid #e3d6b8; border-radius: 6px;
+  background: #fff; border: 1px solid #e3d6b8; border-radius: 6px;
   padding: 8px 10px; margin-bottom: 6px;
 }
 .attr-destiny-header { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
@@ -1209,7 +1209,7 @@ button:disabled { opacity: .4; cursor: default; }
 .adv-vitals, .adv-right { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
 .adv-vital { display: flex; align-items: center; gap: 8px; }
 .adv-vital .who { display: inline-flex; align-items: center; gap: 4px; width: 46px; flex: none; font-size: 12px; color: var(--text); }
-.adv-vital .who .vd { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 4px rgba(120,90,50,.08); }
+.adv-vital .who .vd { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 4px #fff; }
 .adv-vital.vital-hp .who .vd { background: #e8443e; }
 .adv-vital.vital-mp .who .vd { background: #3a86d6; }
 .adv-bar { flex: 1; height: 12px; min-width: 0; }
@@ -1257,7 +1257,7 @@ button:disabled { opacity: .4; cursor: default; }
 .adv-node .n-badge.lock { background: #555f78; color: #cfd6e6; }
 .adv-node {
   border-radius: 10px; cursor: default;
-  border: 1px solid var(--line); background: rgba(120,90,50,.06);
+  border: 1px solid var(--line); background: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; padding: 6px 4px;
   /* 不做 transform 过渡：位移过渡会与滚动重绘打架，产生「滑动 + 虚影」 */
@@ -1349,7 +1349,7 @@ button:disabled { opacity: .4; cursor: default; }
    会把两列撑破容器宽度；配合 .ct-scroll3 的 overflow-y:auto（连带 overflow-x 计算成 auto），
    表现就是「右列被横向裁掉、又看不见滚动条」。用 minmax(0,1fr) 允许列收缩 + 文案换行。 */
 .ct-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.ct-card { background: rgba(120,90,50,.04); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color .15s, background .15s; }
+.ct-card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color .15s, background .15s; }
 .ct-card:hover { border-color: #6ab8c9; }
 .ct-card.selected { border-color: var(--gold); background: rgba(232,193,90,.12); }
 .ct-card-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
@@ -1370,12 +1370,12 @@ button:disabled { opacity: .4; cursor: default; }
 .ct-grid2 .ct-bonus { font-size: 11px; margin-top: 0; color: var(--dim); }
 .ct-scroll3 { max-height: 152px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-right: 2px; }
 .ct-points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.pt-row { display: flex; align-items: center; gap: 10px; background: rgba(120,90,50,.04); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
+.pt-row { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
 .pt-row span { flex: 1; font-size: 13px; }
 .pt-row b { min-width: 22px; text-align: center; color: var(--gold); }
 .pt-row button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--gold); font-size: 16px; cursor: pointer; }
 .ct-craft { display: flex; flex-direction: column; gap: 6px; }
-.ct-craft-row { display: flex; justify-content: space-between; align-items: center; background: rgba(120,90,50,.04); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.ct-craft-row { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
 .ct-lv-row { display: flex; gap: 4px; }
 .ct-lv { border: 1px solid var(--line); background: transparent; color: var(--dim); font-size: 12px; padding: 3px 8px; border-radius: 5px; cursor: pointer; }
 .ct-lv.on { border-color: var(--gold); color: var(--gold); background: rgba(232,193,90,.15); }
@@ -1401,7 +1401,7 @@ button:disabled { opacity: .4; cursor: default; }
 .trial-crit .tc-mark.no { color: var(--bad); }
 .sect-pick .ct-card { margin-bottom: 0; }
 .travel-map { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.travel-node { background: rgba(120,90,50,.04); border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; text-align: center; transition: border-color .15s; }
+.travel-node { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; text-align: center; transition: border-color .15s; }
 .travel-node:hover { border-color: #6ab8c9; }
 /* 游历：全页面透明 UI（透出游戏主界面） */
 /* 游历已改回独立页面：使用 data-bg 背景（bg_title_yunhai 云海山水立绘），不再透明覆盖游戏主界面 */
@@ -1419,7 +1419,7 @@ button:disabled { opacity: .4; cursor: default; }
   border: 1px solid var(--line);
   border-left: 3px solid var(--gold);
   border-radius: 6px;
-  background: rgba(120,90,50,.06);
+  background: #fff;
   color: var(--text);
   word-break: break-word;
 }
@@ -1509,7 +1509,7 @@ button:disabled { opacity: .4; cursor: default; }
   background: #ffffff;
   border: 2px solid var(--gold); border-radius: 10px;
   padding: 10px 14px; min-width: 220px;
-  box-shadow: 0 6px 20px rgba(120,90,50,.08), 0 0 0 1px rgba(232,193,90,.25);
+  box-shadow: 0 6px 20px #fff, 0 0 0 1px rgba(232,193,90,.25);
   opacity: 0; transform: translateX(40px);
   transition: opacity .3s ease, transform .3s ease;
 }

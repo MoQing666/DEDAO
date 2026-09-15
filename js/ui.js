@@ -142,8 +142,8 @@
       if (fb) fb.textContent = (S.name || '修').slice(0, 1);
     }
     $('h-realm').textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
-    $('h-realm').style.color = st.color;
-    $('h-realm').style.borderColor = st.color;
+    $('h-realm').style.color = '#1a1a1a';
+    $('h-realm').style.borderColor = 'var(--line)';
 
     // 行动/灵石显示
     if ($('h-stone')) $('h-stone').textContent = S.stone;
@@ -2647,7 +2647,7 @@
     head.className = 'settle-head';
     head.innerHTML = '<h2 style="color:' + (isWin ? '#a8792a' : '#c8c8c8') + '">' + title + '</h2>' +
       '<p>这一世画上句号，<b>' + esc(S.name) + '</b>活到了 ' + S.age + ' 岁。</p>' +
-      '<p>最终境界：<b style="color:' + st.color + '">' + st.realm + ' ' + st.sub + '</b>，一生渡劫 ' + (S.tribPassed || 0) + ' 次</p>' +
+      '<p>最终境界：<b style="color:#1a1a1a"' + st.realm + ' ' + st.sub + '</b>，一生渡劫 ' + (S.tribPassed || 0) + ' 次</p>' +
       '<p>' + (S.flags.daoLu ? '你已感悟【道】之真意。' : '你终究未能悟道。') + '</p>';
     wrap.appendChild(head);
     const achLines = res.ach.filter(function (a) { return a.new; });
@@ -3443,7 +3443,7 @@
     // === 境界信息条 ===
     const realmBar = document.createElement('div');
     realmBar.className = 'attr-realm-bar';
-    realmBar.innerHTML = '<span class="realm-name" style="color:' + st.color + '">' + st.sym + ' ' + st.realm + ' · ' + st.sub + '</span>' +
+    realmBar.innerHTML = '<span class="realm-name" style="color:#1a1a1a"' + st.sym + ' ' + st.realm + ' · ' + st.sub + '</span>' +
       '<span class="dim">（第' + S.idx + '阶）</span>';
     wrap.appendChild(realmBar);
 
@@ -6282,7 +6282,7 @@
     // 更新头部信息
     $('char-name').textContent = S.name;
     $('char-realm').textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
-    $('char-realm').style.color = st.color;
+    $('char-realm').style.color = '#1a1a1a';
     $('char-age').textContent = S.age + '岁 / ' + S.lifeMax + '寿';
     
     // 命格显示

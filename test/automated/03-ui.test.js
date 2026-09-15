@@ -258,7 +258,7 @@ module.exports = async function build() {
   S.case('标题页可见且主按钮齐备', async (t) => {
     const { doc } = await boot();
     t.eq(visible(doc, 'screen-title'), true, '标题页应可见');
-    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings', 'btn-omen-title']) {
+    for (const id of ['t-new', 't-continue', 't-load', 't-rebirth', 't-settings']) {
       t.ok(!!doc.getElementById(id), `标题页缺少按钮 #${id}`);
     }
     // 2026-09-14：成就/图鉴 已「挪」到主页面（成就→HUD 设置上方、图鉴→底部栏），标题页不再有
@@ -373,16 +373,12 @@ module.exports = async function build() {
       t.ok(kids.indexOf(ach) < kids.indexOf(codex), '成就应排在图鉴之前');
       t.ok(kids.indexOf(codex) < kids.indexOf(set), '图鉴应排在设置之前（两者相邻、同在设置附近）');
     }
-    // 标题页只保留玉符
-    t.ok(!!doc.querySelector('.title-util-row #btn-omen-title'), '玉符应仍在标题页');
+    // 标题页已无玉符入口（用户 2026-09-15 要求删除；PC 端仍由右上角 pc-omen 进入）
+    t.ok(!doc.querySelector('#btn-omen-title'), '标题页玉符入口应已删除');
     // 主页面行动区不应再挂这排入口
     t.ok(!doc.querySelector('.actions .util-row'), '主页面行动区不应再有资料页入口行');
-    // 未开局（局内无状态）也能从标题页开玉符
-    t.eq(visible(doc, 'screen-title'), true, '开局前应停在标题页');
-    click(win, 'btn-omen-title'); await new Promise(r => setTimeout(r, 250));
-    t.ok(!!doc.querySelector('.chapter-overlay'), '标题页点「玉符」未弹出玉符详情');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
-    if (real.length) t.fail('标题页资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
+    if (real.length) t.fail('资料页入口报错: ' + real.slice(0, 4).join(' ;; '));
   });
 
   S.case('HUD 成就 / 图鉴 / 设置：局内可点开且返回主界面', async (t) => {

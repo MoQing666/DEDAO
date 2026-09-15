@@ -6176,15 +6176,16 @@
     // 成就 / 图鉴「返回」：回到打开它的那个屏幕（标题页 or 主界面），而非一律回主界面
     if ($('ach-back')) $('ach-back').onclick = function () { sfx('click'); backFromPage(); };
     if ($('codex-back')) $('codex-back').onclick = function () { sfx('click'); backFromPage(); };
-    // 资料页入口：玉符 / 成就 / 图鉴 已从底部栏挪到标题页（*-title）。
+    // 资料页入口：成就 / 图鉴 已从底部栏挪到标题页（*-title）。
     // 标题页没有局内状态，open* 内部会用 pageState() 回落到存档，故此处不再拦截 !S。
     // 兼容保留 *-bottom 靶点 —— PC 版右上角文字入口（js/ui_pc.js）仍以隐藏按钮代理触发。
+    // 玉符：2026-09-15 按用户要求从【标题页】删除；其详情仍可由 PC 右上角 pc-omen 进入。
     function bindNav(ids, open) {
       ids.forEach(function (id) {
         if ($(id)) $(id).onclick = function () { sfx('click'); open(); };
       });
     }
-    bindNav(['btn-omen-title', 'btn-omen-bottom'], openOmen);
+    bindNav(['btn-omen-bottom'], openOmen);
     // 2026-09-14：成就 / 图鉴 的局内入口 = HUD 右侧功能列（btn-ach-hud / btn-codex-hud），
     //   与【设置】同簇（用户要求「成就和图鉴放回主页面、放在设置附近」）。
     //   两者在标题页的入口已撤（btn-ach-title / btn-codex-title 仅作 PC 代理靶点兼容）。

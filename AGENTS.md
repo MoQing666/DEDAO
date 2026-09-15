@@ -474,7 +474,7 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **行动栏**（主页中上部）：修炼 / 秘境 / 宗门 / 锻体 / 游历 / 百艺(未解锁置灰) / 突破 / 下一年。
 - **底部栏**：角色 / 储物袋 / 仙缘 / 图鉴（**4 项**，z-index 50）。2026-09-14 二次定稿：设置上移 HUD、成就上移 HUD 右侧功能列、图鉴落到此处（原 3 项 → 4 项）。
 - **HUD 右侧功能列**（`.hud-top` 第 3 列、跨两行 `.hud-side`）：**成就在上 / 设置在下方**（`#btn-ach-hud` / `#hud-settings`）。设置由 ⚙ 齿轮**还原为文字【设置】**。
-- **标题页资料入口**（`.title-util-row`）：仅剩 **玉符**（成就 / 图鉴 已迁至主页面）。
+- **标题页资料入口**：原 `.title-util-row` 曾放 玉符（成就/图鉴 已迁主页面）；**2026-09-15 玉符已从标题页删除**（PC 端右上角 `pc-omen` 仍可用）。
 - **Modal** z-index 250；**战斗层** z-index 9999（`!important`）。
 - **屏幕**：`overflow:hidden`，底部留 70px 给底部栏。**滚动适配**：内容可能超屏的页面必须有受约束滚动容器（`min-height:0` + `overflow-y:auto`），规则集中在 style.css 末尾「手机端滑动适配修复」段，守卫见 `01` 套件。
 - **角色页** `screen-char` 全屏，Tab：属性 / 装备 / 法宝 / 功法。
@@ -816,7 +816,7 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
       - **设置还原为文字**：HUD 的 `⚙` 齿轮（`.hud-gear`，仅第 2 行第 3 列）**退役**，改为第 3 列跨两行的右侧功能列 `.hud-side`，内含 **`#btn-ach-hud`（成就，在上）+ `#hud-settings`（设置，文字，在下）**。
       - **成就上 HUD**：`bindNav` 增加 `btn-ach-hud`（原局内无成入口，成就只能从标题页进）。
       - **图鉴下底栏**：`.bottom-bar` 新增第 4 项 `btn-codex-bottom`（📖 图鉴）——这个 ID 在 `ui.js` 里**早就 bindNav 了**，此前只是 HTML 里没有实体按钮（PC 用隐藏靶点代理），本次「实装」。
-      - **标题页减负**：`.title-util-row` 只留 **玉符**（成就/图鉴 撤除）；`.title-util-row` 由「固定 3 列等分」改为 `flex` + `justify-content:center` + 单枚 `max-width:132px`（剩 1 项时居中，回填也自动铺开）。
+      - **标题页减负**：成就/图鉴 撤除后 `.title-util-row` 仅留 玉符；**2026-09-15 玉符亦从标题页删除**，该入口整行与 `.title-util-row`/`.util-btn` 样式一并移除（PC 端 `pc-omen` 仍可用）。
       - **PC 兼容不变**：`index_pc.html` 的隐藏靶点 `btn-ach-bottom` / `btn-codex-bottom` / `btn-omen-bottom` / `btn-settings-bottom` **一律保留**（`ui_pc.js` 的 `pc-ach` / `pc-codex` 靠 `clickBtn` 代理触发）。
       - **回归改造**：`03` 「底部栏只保留 3 项…」→ **「底部栏 4 项（角色/储物袋/仙缘/图鉴），成就与设置已在 HUD」**；`03`「主页面 HUD…」用例的 CSS 守卫由 `.hud-gear` 改为 `.hud-side`（`grid-column:3` + `grid-row:1/span 2`）；`03`「标题页可见且主按钮齐备」删除 `btn-ach-title`/`btn-codex-title` 并反向断言已迁走；`03`「主角初始六维=1」→ **「0~2 劫为 1，3 劫及以上为 2」**（含 2 劫边界 + 3/5/9 劫 + 九天玄体最坏值守卫）；新增 `03`「HUD 成就 / 设置 与底部栏图鉴：局内可点开且返回主界面」。
     - 缓存 **v128/dedao-v166**。测试 **238/238**（主仓库 + `dist/DEDAO_release` + `dist/taptap/dedao` 三跑一致）。
@@ -1434,3 +1434,21 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - 默认打开从「属性」改为「装备」：index.html / index_pc.html 的 `.char-tab` 与 `.char-tab-content` 的 `active` 类移至 `equip`（静态默认；`renderCharPage` 只绑 onclick 不重置 active，重开仍保留上次切换）。
 - 交付：改 `css/style.css` + `index.html`/`index_pc.html`（?v=145）+ `sw.js`（`dedao-v183`）+ 本日志；dist 未同步（沿用测试版等过目策略）。
 - 验证：测试 263/263；字体守卫通过。
+
+### #68 — 标题页玉符删除 + 云纹包每个方框 + 主页面字转黑（v146/v184，2026-09-15）
+
+用户主题反馈（接续 #64/#65/#66/#67）：
+- **标题页玉符删除**：`index.html` 移除 `#btn-omen-title`（`.title-util-row` 整行，仅玉符一子）；`js/ui.js` 的 `bindNav` 数组去掉 `'btn-omen-title'`（保留 `'btn-omen-bottom'` 给 PC 代理）；
+  顺手删除仅玉符使用的死样式 `.title-util-row` / `.util-btn` / `.util-icon`（grep 确认源码无其他引用）。PC 端 `pc-omen`（右上角）仍保留，玉符详情可从 PC 进。
+  ⚠️ 移动端标题页现无玉符入口（功能入口收窄为用户要求）；若想移动端也能看玉符，可挪到角色页。
+- **主页面名字转黑**：`.name`（HUD 道号）由 `#fff` → `var(--text)`（此前在亮面板上是隐形白字）。
+- **云纹包每个方框（随盒缩放）**：新增 `.panel::after` 四角如意卷云（复用 #64 的 SVG 角饰），`background-size:22%`（百分比 = 随方框尺寸缩放）；
+  父级 `.panel{ position:relative; isolation:isolate }` + `::after{ z-index:-1 }` → 云纹落在面板底色之上、文字之下，不挡字。覆盖所有 `.panel`（属性/日志/角色/图鉴/成就/轮回塔/储物袋/装备…）。
+  HUD（`.hud`）**未**加云纹，避免压住右上角 成就/图鉴/设置 按钮——如要，可单独补 `.hud::after`。
+- **境界 / 成就 / 图鉴 / 设置 转黑**：`.realm-badge`、`.hud-mini`（成就/图鉴/设置 三枚）由 `var(--dim)`(灰) → `var(--text)`(黑)。
+  年龄寿元（`.age-kv`/`.age-val`）此前已是 `var(--text) !important`，无需改。
+- **背景未动**：`--tint` 遮罩、`data-bg` 背景图、屏级 `.screen::after` 云纹角饰 全部保持（用户「背景依然用之前的背景」）。
+- **豁免**：装备/法宝/命格品阶色、战斗/状态功能色、金色标题与数值 均保留（延续 #66 边界）。
+- **测试联动**：`test/automated/03-ui.test.js` 两处断言随玉符删除改写（标题页按钮清单去掉 `btn-omen-title`；原「玉符应仍在标题页」→「标题页玉符入口应已删除」，并移除点开玉符的步骤）。其余 261 用例不受影响。
+- **交付**：改 `index.html`/`index_pc.html`（?v=145→?v=146）+ `css/style.css` + `js/ui.js` + `sw.js`（v183→v184）+ `test/automated/03-ui.test.js` + 本日志；dist 未同步。
+- **验证**：测试 **263/263**（全绿，含改写后的 03 用例）；字体守卫通过。视觉待用户本地过目。

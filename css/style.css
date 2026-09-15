@@ -89,6 +89,26 @@ h1, h2, h3, h4, .tower-title, .chapter-title, .chapter-sub, .settle-head h2,
   box-shadow: 4px 4px 0 var(--shadow);
   padding: 10px 12px;
   margin-bottom: 10px;
+  position: relative;
+  isolation: isolate;
+}
+/* 云纹包边：每个方框（属性/日志/角色/图鉴/成就…）四角如意卷云，
+   随方框尺寸缩放（background-size 用百分比 = 随盒缩放）。
+   2026-09-15 用户：「用云纹包的是每个方框（所以具体也要随着缩放），如属性方框，日志方框」。
+   z-index:-1 + 父级 isolation:isolate → 云纹落在面板底色之上、文字之下，不挡字。 */
+.panel::after {
+  content: '';
+  position: absolute; inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='110' viewBox='0 0 150 110'><g fill='none' stroke='%23a8792a' stroke-opacity='.5' stroke-width='2.4' stroke-linecap='round'><path d='M52 78a22 22 0 1 1 44 0 13 13 0 1 1 -26 0 6 6 0 1 1 12 0'/><path d='M14 78a10 10 0 1 1 20 0 5 5 0 1 1 -10 0'/><path d='M96 78q22 2 40-6 10-5 8-14'/></g></svg>"),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='110' viewBox='0 0 150 110'><g transform='translate(150,0) scale(-1,1)' fill='none' stroke='%23a8792a' stroke-opacity='.5' stroke-width='2.4' stroke-linecap='round'><path d='M52 78a22 22 0 1 1 44 0 13 13 0 1 1 -26 0 6 6 0 1 1 12 0'/><path d='M14 78a10 10 0 1 1 20 0 5 5 0 1 1 -10 0'/><path d='M96 78q22 2 40-6 10-5 8-14'/></g></svg>"),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='110' viewBox='0 0 150 110'><g transform='translate(0,110) scale(1,-1)' fill='none' stroke='%23a8792a' stroke-opacity='.5' stroke-width='2.4' stroke-linecap='round'><path d='M52 78a22 22 0 1 1 44 0 13 13 0 1 1 -26 0 6 6 0 1 1 12 0'/><path d='M14 78a10 10 0 1 1 20 0 5 5 0 1 1 -10 0'/><path d='M96 78q22 2 40-6 10-5 8-14'/></g></svg>"),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='110' viewBox='0 0 150 110'><g transform='translate(150,110) scale(-1,-1)' fill='none' stroke='%23a8792a' stroke-opacity='.5' stroke-width='2.4' stroke-linecap='round'><path d='M52 78a22 22 0 1 1 44 0 13 13 0 1 1 -26 0 6 6 0 1 1 12 0'/><path d='M14 78a10 10 0 1 1 20 0 5 5 0 1 1 -10 0'/><path d='M96 78q22 2 40-6 10-5 8-14'/></g></svg>");
+  background-repeat: no-repeat;
+  background-position: left top, right top, left bottom, right bottom;
+  background-size: 22%;
 }
 button {
   font-family: inherit;
@@ -506,42 +526,6 @@ button:disabled { opacity: .4; cursor: default; }
 /* ---------------- 行动按钮 ---------------- */
 .actions { flex: none; padding-bottom: 8px; }
 .act-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-
-/* 资料页入口行：放在标题页。
-   2026-09-14：成就 / 图鉴 已迁到主页面（成就→HUD、图鉴→底部栏），此处只剩玉符，
-   故由「固定 3 列等分」改为 auto-fit —— 剩 1 项时居中、将来回填也自动铺开。 */
-.title-util-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  max-width: 280px;
-  margin: 10px auto 0;
-}
-/* 单枚按钮不铺满整行：拉伸上限 132px，居中摆放 */
-.title-util-row .util-btn { flex: 1 1 84px; max-width: 132px; }
-.util-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 8px 4px;
-  font-size: 13px;
-  line-height: 1;
-  background: rgba(120,90,50,.04);
-  border: 1px solid #e3d6b8;
-  border-radius: 8px;
-  color: var(--text);
-  cursor: pointer;
-  font-family: 'YuYang', 'SimSun', '宋体', serif;
-  transition: border-color .15s, background .15s, color .15s;
-}
-.util-btn:hover, .util-btn:active {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(232, 193, 90, .08);
-}
-.util-btn .util-icon { font-size: 15px; line-height: 1; }
 
 /* ---------------- 状态栏（已合并到属性区） ---------------- */
 .arts-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }

@@ -9,8 +9,8 @@
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器 · PC测试版（异世轮回录式）</title>
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/TsangerYuYangT-W05.woff2">
-  <link rel="stylesheet" href="css/style.css?v=154">
-  <link rel="stylesheet" href="css/style_pc.css?v=154">
+  <link rel="stylesheet" href="css/style.css?v=155">
+  <link rel="stylesheet" href="css/style_pc.css?v=155">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -121,43 +121,45 @@
   <!-- ============ 游戏主界面 ============ -->
   <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <header class="hud">
+      <!-- Part 2（2026-09-15）：命格移出主界面（仅【角色】面板）；六维/战斗缩成迷你网格贴 HUD。
+           PC 端无头像，故六维/战斗直接排在道号下方；行动/灵石在右侧 .hud-actions。 -->
       <div class="hud-top">
-        <div class="hud-name">
-          <span id="h-name" class="name">修行者</span>
-          <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
+        <div class="hud-info">
+          <div class="hud-name">
+            <span id="h-name" class="name">修行者</span>
+          </div>
+          <div class="mini-cap">六维</div>
+          <div class="hud-mini-grid hud-six">
+            <div class="chip"><label>悟性</label><b id="st-wu">3</b></div>
+            <div class="chip"><label>体魄</label><b id="st-ti">3</b></div>
+            <div class="chip"><label>遁速</label><b id="st-dun">1</b></div>
+            <div class="chip"><label>道心</label><b id="st-dao">0</b></div>
+            <div class="chip"><label>灵力</label><b id="st-ling">0</b></div>
+            <div class="chip"><label>神识</label><b id="st-shen">0</b></div>
+          </div>
+          <div class="mini-cap">战斗</div>
+          <div class="hud-mini-grid hud-combat">
+            <div class="chip"><label>攻击</label><b id="st-atk">10</b></div>
+            <div class="chip"><label>防御</label><b id="st-def">0</b></div>
+            <div class="chip"><label>气血</label><b id="st-hp">100</b></div>
+            <div class="chip"><label>暴击</label><b id="st-crit">1%</b></div>
+            <div class="chip"><label>闪避</label><b id="st-dodge">1%</b></div>
+            <div class="chip"><label>灵力</label><b id="st-mo">0</b></div>
+          </div>
         </div>
         <div class="hud-actions">
           <div class="action-info-item"><label>行动</label><b id="h-actions-left" class="action-val">3</b></div>
           <div class="action-info-item"><label>灵石</label><b id="h-stone" class="action-val stone-val">50</b></div>
         </div>
       </div>
-    </header>
-
-    <section class="stats panel">
-      <!-- 六维：独占整行，3 列 × 2 行，单元格加宽以容纳小数 -->
-      <div class="stat-grid six-dim">
-        <div class="kv"><label>悟性</label><b id="st-wu">3</b></div>
-        <div class="kv"><label>体魄</label><b id="st-ti">3</b></div>
-        <div class="kv"><label>遁速</label><b id="st-dun">1</b></div>
-        <div class="kv"><label>神识</label><b id="st-shen">0</b></div>
-        <div class="kv"><label>道心</label><b id="st-dao">0</b></div>
-        <div class="kv"><label>灵力</label><b id="st-ling">0</b></div>
+      <div class="res-strip">
+        <div class="res"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
+        <div class="res"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
       </div>
-      <!-- 战斗属性：整行，4 列 × 2 行，紧凑以免过宽 -->
-      <div class="stat-grid combat-stats combat-full">
-        <div class="kv"><label>攻击</label><b id="st-atk">10</b></div>
-        <div class="kv"><label>防御</label><b id="st-def">0</b></div>
-        <div class="kv"><label>气血</label><b id="st-hp">100</b></div>
-        <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
-        <div class="kv"><label>暴击</label><b id="st-crit">1%</b></div>
-        <div class="kv"><label>闪避</label><b id="st-dodge">1%</b></div>
-        <div class="kv"><label>灵力</label><b id="st-mo">0</b></div>
-        <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
-      </div>
-      <div class="stat-row">
+      <div class="stat-row realm-row">
         <label>境界</label><span id="h-realm-main" class="realm-val">Ⅰ 炼气 前期</span>
       </div>
-    </section>
+    </header>
 
     <section class="log panel" id="log"></section>
 
@@ -212,9 +214,15 @@
 
   <!-- ============ 仙缘 NPC ============ -->
   <div class="screen" id="screen-npc" style="display:none" data-bg="assets/img/bg/bg_main.png">
-    <div class="panel">
-      <div class="screen-head"><h2>仙缘 · 众生相</h2><button class="btn-small ghost" id="npc-back">返回</button></div>
+    <div class="panel gear-head">
+      <h2 class="tower-title">仙缘 · 众生相</h2>
+      <p class="dim">仙缘众生，皆有定数。需先达成相应剧情方得结识；既识之后，可赠礼、叙话以厚其缘，缘深则有回报。</p>
+    </div>
+    <div class="panel" id="npc-wrap">
       <div class="screen-body" id="npc-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="npc-back" class="btn-main">返回修行</button>
     </div>
   </div>
 
@@ -579,11 +587,11 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=154"></script>
-  <script src="js/engine.js?v=154"></script>
-  <script src="js/audio.js?v=154"></script>
-  <script src="js/ui.js?v=154"></script>
-  <script src="js/tutorial.js?v=154"></script>
-  <script src="js/ui_pc.js?v=154"></script>
+  <script src="js/data.js?v=155"></script>
+  <script src="js/engine.js?v=155"></script>
+  <script src="js/audio.js?v=155"></script>
+  <script src="js/ui.js?v=155"></script>
+  <script src="js/tutorial.js?v=155"></script>
+  <script src="js/ui_pc.js?v=155"></script>
 </body>
 </html>

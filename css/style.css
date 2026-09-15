@@ -201,7 +201,7 @@ button:disabled { opacity: .4; cursor: default; }
 /* 头像在左，跨两行（道号、命格两行都贴着它右侧）
    align-self:start 而非 center：命格多到换行时，整块会变高；若居中，头像会漂到
    第二/三行旁边。顶对齐可保证头像始终与「道号」同一行（用户要求「头像在左，道号在右」）。 */
-.hud-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: start; flex-shrink: 0; }
+.hud-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; flex-shrink: 0; }
 /* 道号 + 境界：第 1 行、头像右侧 */
 .hud-name {
   grid-column: 2; grid-row: 1;
@@ -213,7 +213,7 @@ button:disabled { opacity: .4; cursor: default; }
    因为它只放得下一个按钮，放不下「设置 + 成就」。 */
 .avatar-circle {
   position: relative; overflow: hidden;
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #4ec9a0, #5ac8fa);
   color: #1a1a1a; font-size: 18px; font-weight: 700;
@@ -227,7 +227,7 @@ button:disabled { opacity: .4; cursor: default; }
   display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
   min-width: 0; margin-left: 0;
 }
-.hud-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.hud-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; grid-column: 3; grid-row: 1 / span 2; align-self: start; justify-self: end; }
 .hud-actions .action-info-item { display: inline-flex; align-items: baseline; gap: 4px; background: rgba(255,255,255,.5); border: 1px solid #e3d6b8; padding: 2px 8px; border-radius: 4px; min-width: 0; }
 .name { font-size: 18px; color: var(--text); letter-spacing: 2px; }
 .realm-badge {
@@ -282,6 +282,37 @@ button:disabled { opacity: .4; cursor: default; }
 .hud-btns { display: inline-flex; gap: 6px; }
 .hud-btns .bag-btn { margin: 0; }
 .bag-btn { margin: 0; padding: 5px 10px; font-size: 13px; }
+
+/* Part 2（2026-09-15）：六维/战斗缩成迷你网格贴头像右侧；资源细条。
+   命格已移出主界面，仅在【角色】面板显示。 */
+.hud-info {
+  grid-column: 2; grid-row: 1 / span 2;
+  min-width: 0;
+}
+.mini-cap { font-size: 11px; color: var(--dim); margin: 6px 0 3px; letter-spacing: 1px; }
+.hud-mini-grid { display: grid; gap: 3px; }
+.hud-mini-grid.hud-six { grid-template-columns: repeat(3, 1fr); }
+.hud-mini-grid.hud-combat { grid-template-columns: repeat(3, 1fr); }
+.chip {
+  background: rgba(255,255,255,.5);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 3px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.chip label { font-size: 11px; color: var(--dim); white-space: nowrap; }
+.chip b { font-size: 13px; color: var(--text); font-weight: 600; }
+.res-strip { display: flex; gap: 4px; margin-top: 6px; }
+.res {
+  flex: 1;
+  background: rgba(255,255,255,.5);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 2px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.res label { font-size: 11px; color: var(--dim); }
+.res b { font-size: 14px; color: var(--text); font-weight: 600; }
 
 /* ---------------- 子页面通用样式 ---------------- */
 #screen-gear, #screen-tech, #screen-favor, #screen-crafts, #screen-bag {

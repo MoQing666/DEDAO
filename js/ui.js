@@ -152,33 +152,7 @@
     // 年龄/寿元显示
     if ($('h-age-val')) $('h-age-val').textContent = S.age;
     if ($('h-life-val')) $('h-life-val').textContent = S.lifeMax;
-    // 命格显示（HUD右侧，每个命格独立颜色框）
-    const destinyEl = $('h-destiny');
-    if (destinyEl) {
-      destinyEl.innerHTML = '';
-      if (S.destinies && S.destinies.length) {
-        var gradeMap = { '白': 'white', '绿': 'green', '蓝': 'blue', '紫': 'purple', '金': 'gold' };
-        S.destinies.forEach(function(d, i) {
-          var dest = DESTINIES[d];
-          if (!dest) return;
-          if (i > 0) {
-            var sep = document.createElement('span');
-            sep.textContent = '、';
-            sep.style.color = 'var(--dim)';
-            destinyEl.appendChild(sep);
-          }
-          var span = document.createElement('span');
-          span.className = 'destiny-tag';
-          span.textContent = dest.name;
-          if (dest.grade) {
-            span.classList.add('grade-' + (gradeMap[dest.grade] || 'white'));
-          }
-          destinyEl.appendChild(span);
-        });
-      } else {
-        destinyEl.textContent = '无命格';
-      }
-    }
+    // 命格（Part 2 · 2026-09-15）：移出主界面 HUD，仅在【角色】面板（openAttrs）显示。
 
     // 注：主界面不再显示修为进度条；修为进度见「角色」面板与突破按钮文案（用户 2026-09-15 定稿）。
 
@@ -7835,7 +7809,7 @@
     if (typeof NPCS === 'undefined' || !Object.keys(NPCS).length) {
       body.innerHTML = '<p class="dim">此际红尘，暂无可结之缘。</p>'; return;
     }
-    let h = '<p class="dim">仙缘众生，皆有定数。需先达成相应剧情方得结识；既识之后，可赠礼、叙话以厚其缘，缘深则有回报。</p>';
+    let h = '';
     Object.keys(NPCS).forEach(function (id) {
       const n = NPCS[id];
       const unlocked = Engine.npcUnlocked(S, n);

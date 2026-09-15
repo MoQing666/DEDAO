@@ -5,6 +5,7 @@
  *   旧命格 战斗向 —— critDmgBoost（致命一击）/ execute（一剑封喉）
  *   心法   —— reduceDmg（玄武真经减伤）/ craftTimeReduce（丹道真解缩短炼丹）
  *   法术   —— buff（atkUp/defUp/critUp）/ debuff（atkDown）/ stun / dotBurn / dotPoison / disaster / heal / mpRestore / lifesteal
+ *   黄阶机制 —— 8 条黄阶法术挂载五大机制（2026-09-15）；无属性·剑气诀不挂；免控消耗 = min(3, 本档上限)
  * 口径铁律：这些字段此前只写在 data 里、引擎从不读取，等于玩家拿到手是「空命格/空法术」。
  */
 const { Suite, createGameContext } = require('./_harness');
@@ -13,6 +14,7 @@ module.exports = async function build() {
   const S = new Suite('11 死配置实装（命格/心法/法术）');
   const G = createGameContext({ seed: 20260912 });
   const E = G.get('Engine');
+  const T = G.get('TECHNIQUES');
 
   /* 清空一切外部加成，得到「裸体」状态，便于做精确等式断言 */
   function bare(name) {
@@ -484,13 +486,15 @@ module.exports = async function build() {
     t.eq(hp0 - s.battle.hp, tick1 + tick2, '两类 DoT 同回合各扣一次（' + tick1 + ' + ' + tick2 + '）');
   });
 
-  S.case('新机制④：DoT / 伐灾 叠层上限按阶（玄2 / 地4 / 天8）', (t) => {
+  S.case('新机制④：DoT / 伐灾 叠层上限按阶（黄1 / 玄2 / 地4 / 天8）', (t) => {
+    t.eq(E.dotCapByGrade('黄'), 1, '黄级叠层上限 1（2026-09-15 黄阶挂机制后新增）');
     t.eq(E.dotCapByGrade('玄'), 2, '玄级叠层上限 2');
     t.eq(E.dotCapByGrade('地'), 4, '地级叠层上限 4');
     t.eq(E.dotCapByGrade('天'), 8, '天级叠层上限 8');
+    t.eq(E.dotCapByGrade(undefined), 1, '非四阶取值回落 1（保持旧版 else 兜底行为）');
   });
 
-  S.case('新机制⑤：伐灾 disaster（破厄诀 叠层 · 净化自身毒灼 · 每3层免控）', (t) => {
+  S.case('新机制⑤：伐灾 disaster（叠层 · 净化自身毒灼 · 免控按阶取小）', (t) => {
     const s = bare('伐灾');
     s.ling = 200;
     E.refreshStats(s);
@@ -502,6 +506,7 @@ module.exports = async function build() {
     E.combatAct(s, 'spell', 'po_e');
     t.eq(s.battle.disasterStacks, 1, '破厄诀（玄级）叠 1 层伐灾');
     t.eq(s.battle.disasterTurns, 2, '伐灾每栈 3 回合：施法时置 3，本回合结束 tickBattleFx 递减 → 2');
+    t.eq(s.battle.disasterCap, 2, '玄级施法后记录本档上限 2（决定免控消耗）');
     // 净化：先给自身挂上毒/灼，再施放伐灾应清空
     s.battle.pDotBurn = 2; s.battle.pDotPoison = 2;
     s.mp = s.mpMax;
@@ -509,24 +514,190 @@ module.exports = async function build() {
     t.eq(s.battle.pDotBurn, 0, '伐灾应净化自身灼烧');
     t.eq(s.battle.pDotPoison, 0, '伐灾应净化自身中毒');
     t.eq(s.battle.disasterStacks, 2, '二次施法叠至 2 层（玄级上限）');
-    // 免控：灾厄 ≥3 层时消耗 3 层抵消一次外部控制（此处手动置 3 层以校验免控逻辑）
-    const realRandom = Math.random;
-    Math.random = () => 0;                            // 强制控制判定命中
-    s.battle.disasterStacks = 3; s.battle.pStunNext = false;
-    const immune = E.applyPlayerControl(s, s.battle, 1.0);
-    t.eq(immune, false, '灾厄 3 层应免控（不被控）');
-    t.eq(s.battle.disasterStacks, 0, '免控消耗 3 层灾厄');
-    t.eq(s.battle.pStunNext, false, '免控时不应置玩家被控标记');
-    // 灾厄不足 3 层则正常被控（双向入口）
+
+    // 免控消耗 = min(基准 3, 本档上限)：黄/玄 从「不可达」变可达，地/天 不变，无 cap 回落 3
+    t.eq(E.disasterImmuneCost({ disasterCap: 1 }), 1, '黄阶（上限 1）免控消耗 1 层');
+    t.eq(E.disasterImmuneCost({ disasterCap: 2 }), 2, '玄阶（上限 2）免控消耗 2 层');
+    t.eq(E.disasterImmuneCost({ disasterCap: 4 }), 3, '地阶（上限 4）免控消耗仍为 3 层');
+    t.eq(E.disasterImmuneCost({ disasterCap: 8 }), 3, '天阶（上限 8）免控消耗仍为 3 层');
+    t.eq(E.disasterImmuneCost({}), 3, '无 cap 记录（旧存档 / 手工置层）回落基准 3 层');
+
+    // ⚠ 必须 stub「沙箱内」的 Math（引擎跑在 vm 沙箱里，改宿主 Math 无效）
+    const SMath = G.get('Math');
+    const realRandom = SMath.random;
+    SMath.random = () => 0;                            // 强制控制判定命中
+
+    // 玄级：本局已记录 cap=2 → 2 层即可免控
     s.battle.disasterStacks = 2; s.battle.pStunNext = false;
+    const immune = E.applyPlayerControl(s, s.battle, 1.0);
+    t.eq(immune, false, '玄阶伐灾 2 层应免控（不被控）');
+    t.eq(s.battle.disasterStacks, 0, '免控消耗 2 层灾厄');
+    t.eq(s.battle.pStunNext, false, '免控时不应置玩家被控标记');
+
+    // 黄级：cap=1 → 1 层即可免控（旧版固定 3 层，黄阶上限 1 永远摸不到免控）
+    s.battle.disasterCap = 1; s.battle.disasterStacks = 1; s.battle.pStunNext = false;
+    const immuneHuang = E.applyPlayerControl(s, s.battle, 1.0);
+    t.eq(immuneHuang, false, '黄阶伐灾 1 层应免控（旧版需 3 层 → 不可达）');
+    t.eq(s.battle.disasterStacks, 0, '免控消耗 1 层灾厄');
+
+    // 无 cap 记录：回落 3 层 → 2 层不足以免控（保住旧存档行为）
+    s.battle.disasterCap = 0; s.battle.disasterStacks = 2; s.battle.pStunNext = false;
+    const controlledNoCap = E.applyPlayerControl(s, s.battle, 1.0);
+    t.eq(controlledNoCap, true, '无 cap 记录时 2 层不足以免控（回落阈值 3）');
+    t.eq(s.battle.pStunNext, true, '被控时置 pStunNext（玩家下回合无法行动）');
+
+    // 灾厄不足阈值则正常被控（双向入口）
+    s.battle.disasterCap = 4; s.battle.disasterStacks = 2; s.battle.pStunNext = false;
     const controlled = E.applyPlayerControl(s, s.battle, 1.0);
-    Math.random = realRandom;
-    t.eq(controlled, true, '灾厄不足 3 层应被控');
+    SMath.random = realRandom;
+    t.eq(controlled, true, '灾厄不足（地阶 2 < 3）应被控');
     t.eq(s.battle.pStunNext, true, '被控时置 pStunNext（玩家下回合无法行动）');
   });
 
   /* ---------------------------------------------------------------- */
-  /* 6. 万法不侵 controlImmune 免疫心魔扰神                              */
+  /* 6. 黄阶法术挂载五大机制（2026-09-15：机制线由「五机制 × 三阶」扩为 × 四阶） */
+  /* ---------------------------------------------------------------- */
+  const HUANG_MECH = ['stun', 'dotBurn', 'dotPoison', 'disaster'];
+
+  S.case('黄阶机制①：8 条法术逐一挂载字段（无属性·剑气诀必须不挂）', (t) => {
+    const want = {
+      jinren:    { disaster: 1 },   // 金 → 伐灾
+      leiyin:    { disaster: 1 },   // 金 → 伐灾
+      huoqiu:    { dotBurn: 1 },    // 火 → 灼烧
+      yuhuo:     { dotBurn: 1 },    // 火 → 灼烧
+      shuidan:   { stun: 0.10 },    // 水 → 冻结（复用 stun 字段）
+      hanshuang: { stun: 0.10 },    // 水 → 冻结
+      luoshi:    { stun: 0.10 },    // 土 → 眩晕
+      tengman:   { dotPoison: 1 },  // 木 → 中毒
+    };
+    Object.keys(want).forEach((id) => {
+      const sp = T[id];
+      t.ok(!!sp, '法术 ' + id + ' 应存在于 TECHNIQUES');
+      t.eq(sp.grade, '黄', id + ' 应为黄阶');
+      Object.keys(want[id]).forEach((k) =>
+        t.eq(sp[k], want[id][k], id + ' 的 ' + k + ' 应为 ' + want[id][k]));
+    });
+    // 机制与五行必须一一对应，不得串味
+    t.eq(T.jinren.element, '金', '金刃术 金 → 伐灾');
+    t.eq(T.huoqiu.element, '火', '火球术 火 → 灼烧');
+    t.eq(T.shuidan.element, '水', '水弹术 水 → stun 字段（水→冻结文案）');
+    t.eq(T.luoshi.element, '土', '落石术 土 → stun 字段（土→眩晕文案）');
+    t.eq(T.tengman.element, '木', '藤蔓术 木 → 中毒');
+    // 剑气诀：无属性（青云剑宗），不参与五行机制 —— 与万剑归宗 / 破天一击同口径
+    HUANG_MECH.forEach((k) =>
+      t.ok(T.jianqi[k] === undefined, '剑气诀（无属性）不得有 ' + k));
+    // 全表普查：无属性黄阶法术一律不带机制；stun 必须是 (0,1] 合法概率
+    Object.keys(T).forEach((id) => {
+      const sp = T[id];
+      if (sp.grade !== '黄') return;
+      if (sp.element === '无') {
+        HUANG_MECH.forEach((k) =>
+          t.ok(sp[k] === undefined, '无属性黄阶法术 ' + id + ' 不应带 ' + k));
+      }
+      if (sp.stun !== undefined) {
+        t.ok(sp.stun > 0 && sp.stun <= 1, id + ' 的 stun 应是 (0,1] 概率，实为 ' + sp.stun);
+      }
+    });
+    t.note('黄阶机制档位：眩晕/冻结 10%，DoT/伐灾 叠 1 层、上限 1（均取四阶最低档，避免反超玄阶纯机制法术）');
+  });
+
+  S.case('黄阶机制②：DoT / 伐灾 叠层被黄阶上限 1 夹住（玄阶仍为 2）', (t) => {
+    const s = bare('黄阶上限');
+    const b = dummyFight(s, 0, 1000000);
+    const out = [];
+    // 直接调 applySpellFx 现算，避开 tickDot 在回合开始 -1 层的干扰
+    b.dotBurn = 5; b.dotPoison = 5; b.disasterStacks = 5;
+    E.applySpellFx(s, b, T.huoqiu, out);
+    t.eq(b.dotBurn, 1, '火球术（黄，上限 1）施法后灼烧被夹到 1（旧值 5 + 1 → 1）');
+    E.applySpellFx(s, b, T.tengman, out);
+    t.eq(b.dotPoison, 1, '藤蔓术（黄，上限 1）施法后中毒被夹到 1');
+    E.applySpellFx(s, b, T.jinren, out);
+    t.eq(b.disasterStacks, 1, '金刃术（黄，上限 1）施法后伐灾被夹到 1');
+    t.eq(b.disasterCap, 1, '金刃术记录本档上限 1 → 免控消耗 1 层');
+    // 对照：玄阶同类法术上限 2，证明「夹到 1」是黄阶档位而非全局行为
+    b.dotBurn = 5;
+    E.applySpellFx(s, b, T.lie_huo, out);
+    t.eq(b.dotBurn, 2, '对照：烈火焚（玄，上限 2）同样是 5 + 1 → 2（黄阶夹 1 是档位差异）');
+    t.note('黄阶 DoT/伐灾 每施法叠 1 层 → 单次施法烧 1 回合即退；想叠层需上玄阶');
+  });
+
+  S.case('黄阶机制③：水弹术（水）确定性命中 → 冻结（stun 字段 + 水系文案）', (t) => {
+    const SMath = G.get('Math');           // ⚠ 必须 stub 沙箱 Math，改宿主 Math 对引擎无效
+    const realRandom = SMath.random;
+    // ① 纯落效果：直接调 applySpellFx，不经回合推进 —— 否则 stunNext 会在敌方跳过行动后被消耗掉
+    const s0 = bare('黄阶冻结·落效果');
+    const b0 = dummyFight(s0, 0, 1000000);
+    const out0 = [];
+    SMath.random = () => 0;                // 0 < 10% → 必中
+    E.applySpellFx(s0, b0, T.shuidan, out0);
+    SMath.random = realRandom;
+    t.eq(b0.stunNext, true, '命中时置敌方被控标记 stunNext');
+    t.eq(b0.stunKind, 'freeze', '水系控制种类应为 freeze（图标 ❄️冻结）');
+    t.ok(out0.join('|').indexOf('冻结生效') >= 0, '战报应出现「冻结生效」（水系文案，非眩晕）');
+
+    // ② 端到端：经 combatAct 打完整回合 —— 敌方被冻结，本回合无法反击
+    const s1 = bare('黄阶冻结·整回合');
+    s1.ling = 200;
+    E.refreshStats(s1);
+    s1.techs = ['shuidan'];
+    s1.techEquip = { xinfa: null, shufa: ['shuidan'], dunshu: null };
+    E.refreshStats(s1);
+    dummyFight(s1, 100, 1000000);
+    s1.mp = s1.mpMax;
+    SMath.random = () => 0;
+    const r1 = E.combatAct(s1, 'spell', 'shuidan');
+    SMath.random = realRandom;
+    t.ok(r1.lines.join('|').indexOf('冻结生效') >= 0, '整回合战报应出现「冻结生效」');
+    t.eq(s1.battle.hpLost, 0, '敌方被冻结，本回合未能反击，玩家不掉血');
+
+    // ③ 未命中：不置标记、有明确反馈、敌方正常反击
+    const s2 = bare('黄阶冻结·未命中');
+    s2.ling = 200;
+    E.refreshStats(s2);
+    s2.techs = ['shuidan'];
+    s2.techEquip = { xinfa: null, shufa: ['shuidan'], dunshu: null };
+    E.refreshStats(s2);
+    dummyFight(s2, 100, 1000000);
+    s2.mp = s2.mpMax;
+    SMath.random = () => 0.99;
+    const r2 = E.combatAct(s2, 'spell', 'shuidan');
+    SMath.random = realRandom;
+    t.ok(r2.lines.join('|').indexOf('未被冻结命中') >= 0, '未命中时应提示「未被冻结命中」');
+    t.gt(s2.battle.hpLost, 0, '未命中则敌方正常反击，玩家掉血');
+    t.note('土系（落石术）共用 stun 字段，文案按 sp.element 自动分流为「眩晕」——见新机制①');
+  });
+
+  S.case('黄阶机制④：金刃术（金）伐灾 —— 自叠 1 层 + 净化自身灼烧/中毒', (t) => {
+    const s = bare('黄阶伐灾');
+    s.ling = 200;
+    E.refreshStats(s);
+    s.techs = ['jinren'];
+    s.techEquip = { xinfa: null, shufa: ['jinren'], dunshu: null };
+    E.refreshStats(s);
+    dummyFight(s, 0, 1000000);
+    s.battle.pDotBurn = 2; s.battle.pDotPoison = 3;   // 先自挂毒·灼
+    s.mp = s.mpMax;
+    E.combatAct(s, 'spell', 'jinren');
+    t.eq(s.battle.disasterStacks, 1, '金刃术（黄）叠 1 层伐灾');
+    t.eq(s.battle.disasterCap, 1, '记录本档上限 1');
+    t.eq(s.battle.pDotBurn, 0, '伐灾应净化自身灼烧');
+    t.eq(s.battle.pDotPoison, 0, '伐灾应净化自身中毒');
+    t.eq(s.battle.fxCritUp.amt, 8, '金刃术原有暴击加成不得被机制挤掉（+8%）');
+    // 免控：cap=1 → 仅需 1 层即可抵消一次控制（旧版固定 3 层 → 黄阶永远摸不到）
+    const SMath = G.get('Math');
+    const realRandom = SMath.random;
+    SMath.random = () => 0;
+    s.battle.pStunNext = false;
+    const immune = E.applyPlayerControl(s, s.battle, 1.0);
+    SMath.random = realRandom;
+    t.eq(immune, false, '黄阶伐灾（cap1）1 层即可免控');
+    t.eq(s.battle.disasterStacks, 0, '免控消耗 1 层');
+    t.note('金系伐灾为玩家专属：bossCastSpell 不读 sp.disaster，敌人施放金刃术只取伤害');
+  });
+
+
+  /* ---------------------------------------------------------------- */
+  /* 7. 万法不侵 controlImmune 免疫心魔扰神                             */
   /* ---------------------------------------------------------------- */
   S.case('万法不侵 controlImmune：完全免疫心魔「扰神」', (t) => {
     function fight(immune) {

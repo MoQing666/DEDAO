@@ -136,22 +136,22 @@ const TECHNIQUES = {
      灵根亲和只放大「伤害」，不放大下列效果数值（用户拍板：仅伤害受亲和加成）。
      新机制字段（本轮实装）：
        stun      概率(0~1)  —— 土=眩晕 / 水=冻结，命中则目标下回合无法行动
-       dotBurn   灼烧层数   —— 每施法叠 玄1/地2/天3，每回合 1 层结算：扣当前生命 10%，-1 层；上限 2/4/8
+       dotBurn   灼烧层数   —— 每施法叠 黄1/玄1/地2/天3，每回合 1 层结算：扣当前生命 10%，-1 层；上限 1/2/4/8
        dotPoison 中毒层数   —— 同灼烧，独立叠加互不干扰
-       disaster  伐灾层数   —— 自身叠层，每栈 3 回合；施法净化自身毒·灼；每 3 层抵消一次眩晕/冻结
+       disaster  伐灾层数   —— 自身叠层，每栈 3 回合；施法净化自身毒·灼；每 min(3, 本档上限) 层抵消一次眩晕/冻结
        buff 支持 xxxDur（critUpDur/atkUpDur/defUpDur）单独指定该效果持续回合，缺省取 duration
   */
-  // --- 黄级法术 ---
-  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 40, buff: { critUp: 8, duration: 2 }, desc: '金气化刃，暴击起手，斩敌经脉。' },
+  // --- 黄级法术（黄阶机制档位：眩晕/冻结 10%，DoT/伐灾 叠 1 层、上限 1） ---
+  jinren:    { name: '金刃术',   cls: 'shufa', grade: '黄', element: '金', dmg: 2.0,  cost: 40, buff: { critUp: 8, duration: 2 }, disaster: 1, desc: '金气化刃，暴击起手，斩敌经脉（伐灾叠 1 层，上限 1）。' },
   // 剑气诀：青云剑宗一系，无属性（不享金系亲和、不参与五行生克）
   jianqi:    { name: '剑气诀',   cls: 'shufa', grade: '黄', element: '无', sect: 'qingyunjian', dmg: 2.0,  cost: 40, buff: { critUp: 8, duration: 2 }, desc: '剑气纵横，暴击起手，斩敌百步。' },
-  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 35, buff: { critUp: 8, duration: 2 }, desc: '雷音震耳，暴击起手，破敌心神。' },
-  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, desc: '火球焚身，烈焰加护。' },
-  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, desc: '御火之术，焚尽万物。' },
-  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 35, mpRestore: 0.10, desc: '水气凝聚，化弹击敌，灵泉回涌。' },
-  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 35, mpRestore: 0.10, desc: '凝霜化冰，寒气逼人，灵泉回涌。' },
-  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 35, buff: { defUp: 12, duration: 2 }, desc: '巨石压顶，土气护体。' },
-  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 30, lifesteal: 0.30, desc: '藤蔓缠绕，吸敌生机以为己用。' },
+  leiyin:    { name: '雷音引',   cls: 'shufa', grade: '黄', element: '金', dmg: 1.5,  cost: 35, buff: { critUp: 8, duration: 2 }, disaster: 1, desc: '雷音震耳，暴击起手，破敌心神（伐灾叠 1 层，上限 1）。' },
+  huoqiu:    { name: '火球术',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, dotBurn: 1, desc: '火球焚身，烈焰加护（灼烧叠 1 层，上限 1）。' },
+  yuhuo:     { name: '御火诀',   cls: 'shufa', grade: '黄', element: '火', dmg: 1.5,  cost: 35, buff: { atkUp: 12, duration: 3 }, dotBurn: 1, desc: '御火之术，焚尽万物（灼烧叠 1 层，上限 1）。' },
+  shuidan:   { name: '水弹术',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.8,  cost: 35, mpRestore: 0.10, stun: 0.10, desc: '水气凝聚，化弹击敌，灵泉回涌（10% 冻结）。' },
+  hanshuang: { name: '凝霜诀',   cls: 'shufa', grade: '黄', element: '水', dmg: 1.5,  cost: 35, mpRestore: 0.10, stun: 0.10, desc: '凝霜化冰，寒气逼人，灵泉回涌（10% 冻结）。' },
+  luoshi:    { name: '落石术',   cls: 'shufa', grade: '黄', element: '土', dmg: 1.5,  cost: 35, buff: { defUp: 12, duration: 2 }, stun: 0.10, desc: '巨石压顶，土气护体（10% 眩晕）。' },
+  tengman:   { name: '藤蔓术',   cls: 'shufa', grade: '黄', element: '木', dmg: 1.5,  cost: 30, lifesteal: 0.30, dotPoison: 1, desc: '藤蔓缠绕，吸敌生机以为己用（中毒叠 1 层，上限 1）。' },
   // --- 玄级法术（攻击） ---
   jinguang:  { name: '金光剑',   cls: 'shufa', grade: '玄', element: '金', dmg: 3.0,  cost: 65, buff: { critUp: 12, duration: 2 }, desc: '金光化剑，锐不可当，暴击骤增。' },
   muyuling:  { name: '木灵治愈', cls: 'shufa', grade: '玄', element: '木', dmg: 0,    cost: 50, heal: 0.15, desc: '木灵之力，治愈创伤。' },

@@ -1494,12 +1494,20 @@ const Engine = (function () {
   const SLOW_MUL = 0.6;           // 减速 debuff 生效回合：敌方伤害 ×0.6（即减伤 40%）
   const SUPPRESS_CHANCE = 0.35;   // 心魔「扰神」：每回合概率使你心神失守、空过一次出手
   const SUPPRESS_MECH = 'suppress';
-  /* ---- 五行新机制战斗系数（实装：眩晕/冻结 · 灼烧/中毒 · 伐灾）---- */
+  /* ---- 五行新机制战斗系数（实装：眩晕/冻结 · 灼烧/中毒 · 伐灾）----
+     档位覆盖 黄 / 玄 / 地 / 天 四阶（2026-09-15 起黄阶法术也挂机制；此前仅玄/地/天）。
+     黄阶数值取最低档：眩晕/冻结 10%，DoT/伐灾 叠 1 层、上限 1。 */
   const DOT_TICK_PCT = 0.10;       // 灼烧 / 中毒：每回合 1 层结算，扣除「当前」生命的 10%
   const DISASTER_TURNS = 3;        // 伐灾：每 1 层持续 3 回合
-  const DISASTER_IMMUNE_COST = 3;  // 伐灾：每 3 层抵消一次眩晕 / 冻结（免控）
-  // DoT / 伐灾 叠层硬上限按阶位：玄 2 / 地 4 / 天 8（每施法叠 玄1 / 地2 / 天3 层）
-  function dotCapByGrade(g) { return g === '天' ? 8 : (g === '地' ? 4 : (g === '玄' ? 2 : 1)); }
+  const DISASTER_IMMUNE_COST = 3;  // 伐灾：抵消一次眩晕 / 冻结 的基准层数（实际取 min(本值, 本档上限)，见 disasterCap）
+  // DoT / 伐灾 叠层硬上限按阶位：黄 1 / 玄 2 / 地 4 / 天 8（每施法叠 黄1 / 玄1 / 地2 / 天3 层）
+  function dotCapByGrade(g) { return g === '天' ? 8 : (g === '地' ? 4 : (g === '玄' ? 2 : (g === '黄' ? 1 : 1))); }
+  /* 伐灾免控的「实际消耗层数」= min(基准 3, 本次施法档位上限)。
+     黄(cap1)/玄(cap2) 叠不到 3，旧版固定 3 会让低阶伐灾的免控永远不可达；地/天 上限 4/8 → 仍为 3。
+     b.disasterCap 缺失（旧存档 / 手工置层）时回落基准 3，与旧版行为一致。 */
+  function disasterImmuneCost(b) {
+    return Math.min(DISASTER_IMMUNE_COST, (b && b.disasterCap) || DISASTER_IMMUNE_COST);
+  }
   /* ---- 战斗内增益 / 减益 / 控制 / 持续伤害：唯一结算入口（buff·debuff·stun·DoT·disaster·heal 全走这里）----
      旧版「冰封 freeze」已随 寒冰刺/玄冰阵/冰封千里 一并删除，冻结改由概率 stun 承载（与眩晕同字段）。
      兼容旧存档：字段缺失按「无效果」处理，不会因老存档读不到而报错。 */
@@ -1520,6 +1528,10 @@ const Engine = (function () {
     if (typeof b.pDotPoison !== 'number') b.pDotPoison = 0;       // 玩家中毒层数（双向）
     if (typeof b.disasterStacks !== 'number') b.disasterStacks = 0; // 玩家伐灾层数（金：免控）
     if (typeof b.disasterTurns !== 'number') b.disasterTurns = 0;   // 伐灾剩余回合（每栈 3 回合）
+    // 本次伐灾的「档位上限」快照（多次施法取 max）。免控消耗 = min(DISASTER_IMMUNE_COST, disasterCap)：
+    // 地/天 上限 4/8 → 仍为 3；黄/玄 上限 1/2 → 降到 1/2，使低阶伐灾的免控从「不可达」变可达。
+    // 旧存档 / 手工置层（无该字段）回落 0 → 阈值仍为 3，行为与旧版一致。
+    if (typeof b.disasterCap !== 'number') b.disasterCap = 0;
     if (typeof b.suppressed !== 'boolean') b.suppressed = false;
     if (!b.fxBossDefUp) b.fxBossDefUp = { amt: 0, turns: 0 };      // BOSS 自身减伤 %（BOSS 使用岩甲术/金光护体时）
     if (typeof b.spellChance !== 'number') b.spellChance = 0;      // BOSS 每回合施法概率
@@ -1589,7 +1601,9 @@ const Engine = (function () {
     }
     /* ---- 伐灾（金）：自身叠层（每栈 3 回合）；施法时净化自身灼烧·中毒 ---- */
     if (sp.disaster > 0) {
-      b.disasterStacks = Math.min(dotCapByGrade(sp.grade), b.disasterStacks + sp.disaster);
+      const cap = dotCapByGrade(sp.grade);
+      b.disasterCap = Math.max(b.disasterCap || 0, cap);  // 记录本档上限 → 决定免控消耗（多次施法取 max）
+      b.disasterStacks = Math.min(cap, b.disasterStacks + sp.disaster);
       b.disasterTurns = DISASTER_TURNS;
       let cleaned = '';
       if (b.pDotBurn > 0 || b.pDotPoison > 0) {
@@ -1637,14 +1651,16 @@ const Engine = (function () {
     }
   }
   /* 外部（敌方 / boss）对玩家施加控制（眩晕 / 冻结）的唯一入口。
-     概率判定命中后：玩家伐灾层数 ≥3 时消耗 3 层抵消这次控制（免控），否则玩家下回合被控。
+     概率判定命中后：玩家伐灾层数 ≥ 免控消耗时消耗对应层数抵消这次控制（免控），否则玩家下回合被控。
+     免控消耗 = min(3, 本次施法档位上限)（黄1/玄2/地3/天3），见 disasterImmuneCost。
      返回 true = 玩家被控。双向设计：boss 施控与玩家受控共用同一字段与判定。 */
   function applyPlayerControl(s, b, chance, kind) {
     ensureBattleFx(b);
     if (!(chance > 0)) return false;
     if (Math.random() >= chance) return false;
-    if (b.disasterStacks >= DISASTER_IMMUNE_COST) {
-      b.disasterStacks -= DISASTER_IMMUNE_COST;
+    const cost = disasterImmuneCost(b);
+    if (b.disasterStacks >= cost) {
+      b.disasterStacks -= cost;
       if (b.disasterStacks <= 0) b.disasterTurns = 0;
       return false;
     }
@@ -1670,7 +1686,7 @@ const Engine = (function () {
     if (b.fxAtkUp && b.fxAtkUp.amt > 0) add(me, '⚔️', '攻击 +' + b.fxAtkUp.amt + '%', false, '攻击提升 ' + b.fxAtkUp.amt + '% · 剩 ' + b.fxAtkUp.turns + ' 回合');
     if (b.fxDefUp && b.fxDefUp.amt > 0) add(me, '🛡️', '减伤 ' + b.fxDefUp.amt + '%', false, '受到的伤害降低 ' + b.fxDefUp.amt + '% · 剩 ' + b.fxDefUp.turns + ' 回合');
     if (b.fxCritUp && b.fxCritUp.amt > 0) add(me, '🎯', '暴击 +' + b.fxCritUp.amt + '%', false, '暴击率提升 ' + b.fxCritUp.amt + '% · 剩 ' + b.fxCritUp.turns + ' 回合');
-    if (b.disasterStacks > 0) add(me, '✨', '伐灾 ' + b.disasterStacks + ' 层', false, '金系伐灾 ' + b.disasterStacks + ' 层（每 3 层可抵消一次眩晕/冻结）· 剩 ' + b.disasterTurns + ' 回合');
+    if (b.disasterStacks > 0) add(me, '✨', '伐灾 ' + b.disasterStacks + ' 层', false, '金系伐灾 ' + b.disasterStacks + ' 层（每 ' + disasterImmuneCost(b) + ' 层可抵消一次眩晕/冻结）· 剩 ' + b.disasterTurns + ' 回合');
     if (b.guarded) add(me, '🧱', '防御', false, '本回合受到的伤害降低 65%');
     /* —— 我方减益 —— */
     if (b.pStunNext) add(me, stunIcon(b.pStunKind), stunName(b.pStunKind), true, '下一回合无法行动');
@@ -1765,13 +1781,14 @@ const Engine = (function () {
       out.push('法术临身，你气血 -' + d + '。');
       fx.push({ side: 'me', kind: 'dmg', amount: d });
     }
-    // 眩晕（土）/ 冻结（水）：复用 applyPlayerControl（内含金系伐灾 3 层免控）
+    // 眩晕（土）/ 冻结（水）：复用 applyPlayerControl（内含金系伐灾免控，消耗 = min(3, 本档上限)）
     if (sp.stun > 0) {
       const before = b.disasterStacks;
       if (applyPlayerControl(s, b, sp.stun, sp.element === '水' ? 'freeze' : 'stun')) {
         out.push('你身形一滞，下一回合恐难出手。');
-      } else if (before >= DISASTER_IMMUNE_COST) {
-        out.push('金光伐灾自行消抵，这一控没能落在你身上（伐灾 -' + DISASTER_IMMUNE_COST + ' 层）。');
+      } else if (b.disasterStacks < before) {
+        // 用「实际扣减量」判定，而不是拿 before 与阈值比 —— 否则控制「没命中」时也会错报成伐灾消抵
+        out.push('金光伐灾自行消抵，这一控没能落在你身上（伐灾 -' + (before - b.disasterStacks) + ' 层）。');
       }
     }
     // 灼烧 / 中毒（BOSS 施加给玩家，玩家侧字段 pDotBurn / pDotPoison）
@@ -1885,6 +1902,7 @@ const Engine = (function () {
       pDotPoison: 0,
       disasterStacks: 0,
       disasterTurns: 0,
+      disasterCap: 0,     // 本次伐灾的档位上限快照（决定免控消耗，见 disasterImmuneCost）
       suppressed: false,
       fxBossDefUp: { amt: 0, turns: 0 },
       spells: [],
@@ -5460,6 +5478,7 @@ const Engine = (function () {
     // —— 五行新机制导出（眩晕/冻结 · 灼烧/中毒 · 伐灾）——
     applySpellFx: applySpellFx, tickBattleFx: tickBattleFx, tickDot: tickDot,
     applyPlayerControl: applyPlayerControl, dotCapByGrade: dotCapByGrade,
+    disasterImmuneCost: disasterImmuneCost,
     battleFxList: battleFxList,
     equipStats: equipStats, cultGain: cultGain, getBestShufa: getBestShufa, getDunshu: getDunshu,
     findEquip: findEquip, wearEquip: wearEquip, sellEquip: sellEquip, sellEquipAll: sellEquipAll, gainEquip: gainEquip,

@@ -4,7 +4,8 @@
  *   无属性 BOSS —— 不参与生克，玩家任何伤害再乘 ×0.90
  *   镜像属性   —— 试炼之主 / 心魔：元素取玩家主灵根（不复制玩家法术）
  *   BOSS 施法  —— 按 spellChance 抽法术：伤害 / 眩晕冻结 / 灼烧中毒 / 治疗（全额）/ 自身减伤护盾
- *   玩家反制   —— 金系伐灾 3 层免控（applyPlayerControl 内含）
+ *   黄阶双向   —— 敌人施放黄阶法术（落石/水弹/火球/藤蔓）→ 机制落在玩家侧字段（2026-09-15）
+ *   玩家反制   —— 金系伐灾免控（applyPlayerControl 内含），消耗 = min(3, 本档上限)
  * 口径：BOSS 只使用「能作用在玩家身上」的效果，不使用玩家专属的 disaster（伐灾）。
  */
 const { Suite, createGameContext } = require('./_harness');
@@ -227,7 +228,7 @@ module.exports = async function build() {
     t.eq(b.fxBossDefUp.turns, 2, '护盾计时随回合递减（3 → 2）');
   });
 
-  S.case('BOSS 施法⑥：DoT 叠层封顶按阶（天阶 8 层上限）', (t) => {
+  S.case('BOSS 施法⑥：DoT 叠层封顶按阶（黄1 / 玄2 / 地4 / 天8）', (t) => {
     const s = bare('DoT封顶');
     const b = fightBoss(s, '木桩');
     b.spells = [{ id: 'jiu_you', w: 1 }];   // 九幽红莲（天）dotBurn 3
@@ -239,6 +240,7 @@ module.exports = async function build() {
     t.eq(E.dotCapByGrade('天'), 8, '天阶 DoT 上限 8');
     t.eq(E.dotCapByGrade('地'), 4, '地阶 DoT 上限 4');
     t.eq(E.dotCapByGrade('玄'), 2, '玄阶 DoT 上限 2');
+    t.eq(E.dotCapByGrade('黄'), 1, '黄阶 DoT 上限 1（2026-09-15 黄阶挂机制后新增）');
   });
 
   S.case('BOSS 施法⑦：法术伤害 = atk × dmg系数 × 0.35（压缩，避免秒杀）', (t) => {
@@ -255,6 +257,39 @@ module.exports = async function build() {
     t.ok(dealt > 0, 'BOSS 法术应造成伤害（实际 ' + dealt + '）');
     t.ok(dealt <= expectRaw, 'BOSS 法术伤害应 ≤ 压缩后的原始值 ' + expectRaw + '（实际 ' + dealt + '）');
     t.note('注：法术伤害同样过玩家的防御/护盾通道，裸体状态下仍会被压到 ' + dealt + '；压缩系数 0.35 已避免高 atk BOSS 秒杀玩家');
+  });
+
+  S.case('BOSS 施法⑧：黄阶法术双向生效（敌人施放 → 落在玩家身上）', (t) => {
+    /* 2026-09-15：黄阶法术挂上五大机制后，14 个在用黄阶法术的敌人同步获得机制（既定口径：敌我双向）。
+       本用例守住「BOSS 分支真的把机制投到玩家侧字段」，避免只改 data 却没走通 bossCastSpell。 */
+    function castOn(hit, spellId) {
+      const s = bare('黄阶双向');
+      const b = fightBoss(s, '木桩');
+      b.spells = [{ id: spellId, w: 1 }];
+      b.spellChance = 1;
+      const out = [];
+      withRand(hit ? 0 : 0.99, function () { E.bossTryCast(s, b, out, []); });
+      return { s: s, b: b, lines: out.join('|') };
+    }
+    // 落石术（土，10% 眩晕）→ 玩家下回合无法行动
+    const rock = castOn(true, 'luoshi');
+    t.eq(rock.b.pStunNext, true, '落石术命中 → 玩家被眩晕（pStunNext）');
+    t.eq(rock.b.pStunKind, 'stun', '土系控制种类 stun（💫眩晕）');
+    // 水弹术（水，10% 冻结）→ 复用同一字段，仅文案/图标不同
+    const water = castOn(true, 'shuidan');
+    t.eq(water.b.pStunNext, true, '水弹术命中 → 玩家被冻结');
+    t.eq(water.b.pStunKind, 'freeze', '水系控制种类 freeze（❄️冻结）');
+    // 火球术（火）→ 玩家灼烧，黄阶上限 1
+    const fire = castOn(false, 'huoqiu');
+    t.eq(fire.b.pDotBurn, 1, '火球术 → 玩家身中灼烧 1 层（黄阶上限 1）');
+    // 藤蔓术（木）→ 玩家中毒，黄阶上限 1
+    const vine = castOn(false, 'tengman');
+    t.eq(vine.b.pDotPoison, 1, '藤蔓术 → 玩家身中中毒 1 层');
+    // 金刃术（金）：伐灾是玩家专属（bossCastSpell 不读 sp.disaster）→ 不得给玩家加伐灾
+    const gold = castOn(false, 'jinren');
+    t.eq(gold.b.disasterStacks, 0, 'BOSS 施金刃术不得给玩家加伐灾（伐灾为玩家专属免控）');
+    t.ok(gold.lines.indexOf('伐灾') < 0, '战报不应出现伐灾相关提示');
+    t.ok(gold.lines.indexOf('施展【金刃术】') >= 0, '但金刃术本身应正常施放（只取伤害）');
   });
 
   S.case('不施法：未配置 / 教学关的 BOSS 只走普攻', (t) => {

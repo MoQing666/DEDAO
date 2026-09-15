@@ -708,10 +708,10 @@
       // 宣纸亮遮罩：背景图只淡显轮廓（压平原图棕绿杂色），整页转明亮版（2026-09-15b）
       ov.classList.add('adv-light');
       chap.classList.add('adv-light');
-      ov.style.background = 'linear-gradient(180deg, rgba(242,234,216,.88), rgba(238,229,206,.94)), url(' + url + ')';
+      ov.style.background = 'linear-gradient(180deg, rgba(242,234,216,.74), rgba(238,229,206,.86)), url(' + url + ')';
       ov.style.backgroundSize = 'cover';
       ov.style.backgroundPosition = 'center';
-      chap.style.background = 'linear-gradient(180deg, rgba(242,234,216,.88), rgba(238,229,206,.94)), url(' + url + ')';
+      chap.style.background = 'linear-gradient(180deg, rgba(242,234,216,.74), rgba(238,229,206,.86)), url(' + url + ')';
       chap.style.backgroundSize = 'cover';
       chap.style.backgroundPosition = 'center';
     } else {

@@ -314,5 +314,95 @@ module.exports = async function build() {
     t.ok(checked >= 18, '应至少夹逼 18 条阈值型成就，实为 ' + checked);
   });
 
+  /* ============================================================
+     回归 2026-09-16（玩家实测报障）：「触发条件诡异 + 解锁后在成就栏找不到」
+
+     bug-A（找不到）：实时检测 checkAchievementsLive 只写 s.announcedAch，**不写 meta**。
+       → 玩家看到「🏆 达成成就」横幅，打开成就栏该条仍是 🔒（成就栏只读 meta.achievements），
+         必须等飞升/陨落结算才入账；中途弃档或关页面，本世成就直接蒸发。
+     bug-B（诡异之①）：法宝类判据只取 s.equip.treasure（装备位）。装备槽上限仅 1~4 个，
+       而「法宝收藏」要 15 件、「法宝大成」要 47 件、「仙器满堂」要 4 件仙阶 —— 永远不可能达成；
+       买来放背包 s.arts 的法宝一件都不算。同文件里 wanmei 却用 ownsArt（装备位∪背包），口径分叉。
+     bug-C（诡异之②）：隐藏成就「仙人遗影」判据 s.flags.ktPage 全流程**从未被赋值**，
+       遗世仙踪只写了「拾得《开天篇》残页」的文案 —— 该成就（及依赖它的「天道眷顾」）恒不可达。
+
+     修法：拆成两个标记 —— achievements=已达成（成就栏可见，实时即写）；
+     achPaid=轮回点已发放（每 id 仅一次，仍在结算发）。
+     ============================================================ */
+  S.case('实时达成立即入账 meta（横幅弹过 → 成就栏当场可见，不必等结算）', (t) => {
+    const s = fresh();
+    const m = meta();
+    const newly = E.checkAchievementsLive(s, m);
+    t.ok(newly.length > 0, '开局应有即时达成的成就（如「初习道法」），实为 ' + newly.length);
+    newly.forEach(function (id) {
+      t.eq(m.achievements[id], 1, id + ' 实时达成后必须写进 meta.achievements（否则成就栏看不到）');
+      t.eq(s.announcedAch[id], 1, id + ' 应标记 announcedAch，横幅只弹一次');
+    });
+    t.eq(E.checkAchievementsLive(s, m).length, 0, '同一成就不得重复弹横幅');
+    t.eq(Object.keys(m.achPaid || {}).length, 0, '实时检测不发轮回点，achPaid 应为空');
+  });
+
+  S.case('轮回点只发一次：实时入账后结算仍发点，跨世/裸 meta 绝不重发', (t) => {
+    // ① 实时达成 → 结算把点补上，且只补一次
+    const s = fresh();
+    const m = meta();
+    E.checkAchievementsLive(s, m);
+    const r1 = E.checkAchievements(s, m).filter(x => x.new).map(x => x.id);
+    t.ok(r1.length > 0, '结算应给实时达成的成就发点');
+    const r2 = E.checkAchievements(s, m).filter(x => x.new).map(x => x.id);
+    t.eq(r2.length, 0, '同一局二次结算不得重复发点（实为 ' + r2.join(',') + '）');
+    // ② 下一世再达成同一成就，不再发点
+    t.eq(E.checkAchievements(fresh(), m).filter(x => x.new).length, 0, '第二世重复达成不得再发点');
+    // ③ 裸 meta（无 achPaid，旧档/工具脚本形制）：已达成项一律视为已发点
+    const m2 = { lives: 1, earnedTotal: 0, achievements: { chu_dao: 1, shou_zhuji: 1 }, reinc: {}, destinySeen: {} };
+    const r3 = E.checkAchievements(fresh(), m2).filter(x => x.new).map(x => x.id);
+    t.ok(r3.indexOf('chu_dao') < 0 && r3.indexOf('shou_zhuji') < 0,
+      '裸 meta 里已存在的成就不得被当成新解锁重发（实为 ' + r3.join(',') + '）');
+  });
+
+  S.case('法宝类成就按「已拥有」判定：背包 s.arts 与装备位等价且合并计数', (t) => {
+    const ART = G.get('ARTIFACTS');
+    const artIds = Object.keys(ART);
+    const xianIds = artIds.filter(id => ART[id].grade === '仙');
+    function withBag(n) { const s = fresh(); s.arts = artIds.slice(0, n); return defs(s).fabao_cang; }
+    t.eq(withBag(14), false, '背包 14 件未达「法宝收藏」15 件门槛');
+    t.eq(withBag(15), true, '背包 15 件应点亮「法宝收藏」（旧口径只算装备位，永远点不亮）');
+    // 装备位 + 背包合并
+    const s = fresh();
+    s.equip.treasure = artIds.slice(0, 3);
+    s.arts = artIds.slice(3, 15);
+    t.eq(defs(s).fabao_cang, true, '装备 3 + 背包 12 应合并计为 15 件');
+    // 仙器满堂：4 件仙阶，装备槽上限远小于此，只有合并口径才可能达成
+    const s2 = fresh();
+    s2.arts = xianIds.slice();
+    t.eq(defs(s2).xianqi_man, true, '背包凑齐仙阶法宝应点亮「仙器满堂」');
+    t.eq(defs(s2).xianqi, true, '「仙器临世」同样按已拥有判定');
+  });
+
+  S.case('隐藏成就「仙人遗影」可达：习得《开天篇》即写 flags.ktPage', (t) => {
+    const s = fresh();
+    t.eq(defs(s).xianren, false, '未得《开天篇》时不应点亮');
+    E.applyOps(s, { tech: 'kaitian' });
+    t.eq(s.flags.ktPage, true, '习得《开天篇》应留痕 flags.ktPage');
+    t.eq(defs(s).xianren, true, '「仙人遗影」应点亮（此前 ktPage 从未赋值 → 恒不可达）');
+  });
+
+  S.case('判据引用的字段必须有赋值点：不得再出现「永远解不开」的成就', (t) => {
+    const fs = require('fs');
+    const p = require('path');
+    const root = p.resolve(__dirname, '..', '..');
+    const src = ['js/engine.js', 'js/ui.js', 'js/data.js']
+      .map(f => fs.readFileSync(p.join(root, f), 'utf8')).join('\n');
+    // 判据里用到的「非通用」状态字段，逐个确认源码中存在赋值
+    [['ktPage', '仙人遗影'], ['advDmgThisRun', '无伤探秘/不死传说'], ['weakBossWin', '以弱胜强']]
+      .forEach(function (row) {
+        const writes = (src.match(new RegExp('\\b' + row[0] + '\\s*=[^=]', 'g')) || []).length;
+        t.ok(writes > 0, '字段 ' + row[0] + '（' + row[1] + '）在源码中应有赋值点，实为 ' + writes + ' 处');
+      });
+    // 无伤标记必须由引擎在开图时重置（旧版只在 UI 的 fightBoss 里置 false，判据却是严格 ===false）
+    const eng = fs.readFileSync(p.join(root, 'js', 'engine.js'), 'utf8');
+    t.ok(/s\.advDmgThisRun\s*=\s*false/.test(eng), 'engine.js 应在进入秘境时重置 s.advDmgThisRun');
+  });
+
   return S;
 };

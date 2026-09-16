@@ -7639,6 +7639,8 @@
       (byCat[c] = byCat[c] || []).push(id);
     });
     let earned = 0, total = Object.keys(A).length;
+    const paid = meta.achPaid || {};
+    let pending = 0;   // 已达成、但尚未结算发点的 → 即「刚刚点亮」的那些，标「新」便于查找
     let html = '';
     order.forEach(function (cat) {
       const ids = byCat[cat]; if (!ids) return;
@@ -7646,19 +7648,22 @@
       ids.forEach(function (id) {
         const a = A[id];
         const got = !!(meta.achievements[id]);
+        const isNew = got && !paid[id];
+        if (isNew) pending++;
         // 隐藏成就未解锁时遮名
         const name = (a.hidden && !got) ? '？？？' : a.name;
         const desc = (a.hidden && !got) ? '尚未达成的隐秘成就。' : a.desc;
         earned += got ? 1 : 0;
-        html += '<div class="ach-card' + (got ? ' got' : (a.hidden ? ' hidden' : '')) + '">' +
+        html += '<div class="ach-card' + (got ? ' got' : (a.hidden ? ' hidden' : '')) + (isNew ? ' is-new' : '') + '">' +
           '<div class="ach-ico">' + (got ? '🏆' : '🔒') + '</div>' +
-          '<div class="ach-info"><div class="ach-name">' + name + '</div>' +
+          '<div class="ach-info"><div class="ach-name">' + name + (isNew ? '<i class="ach-new">新</i>' : '') + '</div>' +
           '<div class="ach-desc">' + desc + '</div></div>' +
           '<div class="ach-pts">+' + a.pts + '</div></div>';
       });
       html += '</div>';
     });
-    $('ach-summary').textContent = '已达成 ' + earned + ' / ' + total + ' 项 · 轮回点将于飞升或陨落结算时发放';
+    $('ach-summary').textContent = '已达成 ' + earned + ' / ' + total + ' 项'
+      + (pending ? ' · 其中 ' + pending + ' 项（标「新」）待本世飞升或陨落时结算轮回点' : ' · 轮回点均已结算');
     $('ach-body').innerHTML = html;
     showScreen('achievements');
   }

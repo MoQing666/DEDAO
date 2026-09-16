@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~14-*.test.js` | 自动套件（274 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~14-*.test.js` | 自动套件（279 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 经 `tools/_engine_loader` 真加载 `Engine.*`（#60 起不再手抄镜像）；敌人基线 `enemyStats` 亦已改走引擎（#75）。改引擎公式时模拟器自动跟随，无需手抄同步 |
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~14，当前 274/274 全过
+node test/automated/run.js     # 依次跑 01~14，当前 279/279 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -102,7 +102,7 @@ node test/automated/run.js     # 依次跑 01~14，当前 274/274 全过
 | `06-travel.test.js` | 3 | 游历 3 选 1（三桩际遇 / 每年上限 / 年末归零） |
 | `07-favor.test.js` | 10 | 缘法系统（NPCS 分流 / 送礼叙话 / 单抽与探寻入口） |
 | `08-death-omen.test.js` | 11 | 五劫主线（年表 / 劫主角色卡 / 立绘占位 / 噩兆玉符倒计时与裂纹 / 渡劫档位 / 隐藏线） |
-| `09-achievements.test.js` | 8 | 成就判定（境界用 `s.idx` / 渡劫用 `s.tribPassed` / **文案「总数」与数据表动态对账** / **文案「阈值」与引擎开关点双侧夹逼**） |
+| `09-achievements.test.js` | 13 | 成就判定（境界用 `s.idx` / 渡劫用 `s.tribPassed` / **文案「总数」与数据表动态对账** / **文案「阈值」与引擎开关点双侧夹逼**） |
 | `10-year-end.test.js` | 4 | 年末结算（气血与灵力回满 / 岁增 / 行动点重置） |
 | `11-dead-config.test.js` | 37 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费） |
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
@@ -1684,3 +1684,35 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   跑 worktree 里那份 `run.js`）→ **274/274**。这条要留着：以后每加一条「断言某行代码」的静态守卫，
   都该确认那行代码在 HEAD 里真的存在（`git show HEAD:<file> | grep -c <字面量>`），
   否则就会出现「工作区带 WIP 才绿、换台机器 checkout 就红」的假绿灯。
+
+### #84 — 成就系统大修复（触发诡异 + 解锁后成就栏找不到）（v159 / dedao-v193，2026-09-16/17）
+
+- **用户实测报障**：「成就系统大 bug：触发条件诡异，触发后在成就栏也找不到」。
+- **根因三连**（审计探针 `node _probe/ach_audit.js` + `ach_audit2.js` 逐条对账后定位）：
+  - **bug-A（找不到）**：实时检测 `checkAchievementsLive` 只写 `s.announcedAch`、**不写 `meta.achievements`**。
+    玩家看到「🏆 达成成就」横幅，打开成就栏该条仍是 🔒（成就栏只读 `meta.achievements`），
+    必须等飞升/陨落结算才入账；中途弃档或关页面，本世成就直接蒸发。**这是「成就栏找不到」的真凶。**
+  - **bug-B（诡异①）**：法宝类判据只取 `s.equip.treasure`（装备位）。装备槽上限仅 1~4 个，
+    而「法宝收藏」要 15 件、「法宝大成」要 47 件、「仙器满堂」要 4 件仙阶 —— **永远不可能达成**；
+    买来放背包 `s.arts` 的法宝一件都不算。同文件里 `wanmei` 却用 `ownsArt`（装备位∪背包），**口径分叉**。
+  - **bug-C（诡异②）**：隐藏成就「仙人遗影」判据 `s.flags.ktPage` 全流程**从未被赋值**，
+    遗世仙踪只写了「拾得《开天篇》残页」的文案 —— 该成就（及依赖它的「天道眷顾」）**恒不可达**；
+    同理「无伤通关」判据 `s.advDmgThisRun === false` 若被新入口绕过则恒为 `undefined`。
+- **修法**：
+  - **拆双标记**：`achievements` = 已达成（成就栏可见，**实时即写**）；`achPaid` = 轮回点已发放（每 id 仅一次，仍只在结算发）。
+    实时检测 `checkAchievementsLive(s, meta)` 现在写 `meta.achievements[id]=1` 且 `saveMeta`，只弹一次横幅；
+    结算 `checkAchievements(s, meta)` 负责补发点并标 `achPaid`，靠 `achPaid` 去重，跨世/裸 meta 绝不重发。
+  - **法宝口径统一**：新增引擎函数 `ownedArtIds(s)`（装备位 ∪ 背包 `s.arts`），`fabao_cang`/`fabao_da`/`xianqi`/`xianqi_man` 等全部走它。
+  - **补留痕**：`applyOps` 的 `tech` 分支遇 `kaitian` 时写 `s.flags.ktPage = true`（隐藏成就「仙人遗影」终可达）。
+  - **无伤重置**：`startAdventure` 进入秘境时把 `s.advDmgThisRun = false` 复位，杜绝被其它入口绕过。
+  - **旧档兼容**：`loadMeta` 裸 meta 一律 `achPaid[id]=1` 视作已发点，避免老存档下一局重复发点。
+  - **成就栏可读性**：`openAchievements` 对「已达成但未结算发点」的项加 `.is-new` 金边 + **「新」角标**，
+    并在顶部摘要显示「其中 N 项（标新）待本世飞升或陨落时结算轮回点」，让刚点亮的成就一眼可找。
+- **守卫（09-achievements 新增 5 例）**：① 实时达成后 `meta.achievements[id]===1` 且 `announcedAch` 标记、不重复弹、不发点；
+  ② 结算发点去重（实时→结算只补一次 / 第二世不重发 / 裸 meta 不重发）；③ 法宝按「已拥有」判定（背包 15 件点亮、装备 3+背包 12 合并、仙阶背包点亮）；
+  ④ `ktPage` 留痕后 `xianren` 可达、无留痕不可达；⑤ `advNoDmgCount` 无伤通关 +1。
+  **变异验证已做**：把三处修复改坏（实时检测不写 meta / 法宝退回只看装备位 / 去掉 ktPage 留痕）→ 三处变异均被守卫捕获并还原。
+- **对账连动**：`09` 8→**13 例** → 总数 274→**279**（`AGENTS.md` 模块表 + `DEDAO_项目简介.md` 三处计数，由对账守卫逼出）。
+- **版本**：`?v=158 → ?v=159`、`dedao-v192 → dedao-v193`；`index.html` / `index_pc.html` / `sw.js` 三处同步 bump，两份 dist 副本已 `cp` 同步。
+- **验证**：全量 **279/279**（主目录 + `dist/DEDAO_release` + `dist/taptap/dedao` 三份各 279/279）。
+- **实时检测接入**：`liveAchCheck()` 挂在 `afterAction()`（所有行动/事件的统一收尾），每步行动后自动检测并弹横幅 + 即时入账，不再依赖结算。

@@ -50,6 +50,14 @@ const Engine = (function () {
         for (const k in d) if (m[k] === undefined) m[k] = d[k];
         if (!m.reinc) m.reinc = {};
         if (!m.achievements) m.achievements = {};
+        // 迁移（2026-09-16）：achPaid 是本轮新增的「轮回点发放去重」标记。
+        //   旧档的 achievements 里每一条都是**已经发过点**的（旧逻辑解锁即发点），
+        //   若不补齐，下一局结算会把它们当成「新达成」全部重发一遍，凭空多给一大笔轮回点。
+        if (!m.achPaid) {
+          m.achPaid = {};
+          Object.keys(m.achievements).forEach(function (id) { if (m.achievements[id]) m.achPaid[id] = 1; });
+          saveMeta(m);
+        }
         return m;
       }
     } catch (e) {}
@@ -1042,7 +1050,13 @@ const Engine = (function () {
           }
           break;
         }
-        case 'tech': if (s.techs.indexOf(v) < 0) { s.techs.push(v); out.push('习得功法【' + TECHNIQUES[v].name + '】'); } break;
+        // ⚠ 隐藏成就「仙人遗影」判据是 s.flags.ktPage，而该字段全流程从未被赋值（2026-09-16 修复）——
+        //   遗世仙踪的 resultWin 只写了「拾得《开天篇》残页」文案，成就却永远点不亮。
+        //   凡获得仙阶功法《开天篇》即留痕，无论走战斗掉落 / 商店 / 剧情哪条路径。
+        case 'tech':
+          if (s.techs.indexOf(v) < 0) { s.techs.push(v); out.push('习得功法【' + TECHNIQUES[v].name + '】'); }
+          if (v === 'kaitian') { if (!s.flags) s.flags = {}; s.flags.ktPage = true; }
+          break;
         case 'elixirs': Object.keys(v).forEach(function (id) {
           const n = v[id];
           if (n >= 0) {
@@ -1125,6 +1139,15 @@ const Engine = (function () {
     const bag = s.arts || [];
     const eq = (s.equip && s.equip.treasure) || [];
     return bag.indexOf(id) >= 0 || eq.indexOf(id) >= 0;
+  }
+  // 已拥有的全部法宝（装备位 ∪ 法宝囊）——法宝类成就文案一律是「拥有」，
+  // 判据必须用这个合并口径，不能只看装备位。
+  function ownedArtIds(s) {
+    const eq = (s && s.equip && s.equip.treasure) ? s.equip.treasure : [];
+    const bag = (s && Array.isArray(s.arts)) ? s.arts : [];
+    const out = [];
+    eq.concat(bag).forEach(function (id) { if (id && out.indexOf(id) < 0) out.push(id); });
+    return out;
   }
   // 秘境阶位 → 该阶位秘藏的灵物法宝 id
   function spiritArtOf(s, advKey) {
@@ -2483,6 +2506,10 @@ const Engine = (function () {
       map: map, nodeId: map.startId, items: [], itemsUsed: 0, cleared: false
     };
     if (map.byId[map.startId]) map.byId[map.startId].visited = true;
+    // 无伤标记：必须由引擎在开图时重置。旧版只在 UI 的 fightBoss 里置 false，
+    //   而判据是 `s.advDmgThisRun === false`（严格等），若该赋值被任何新入口绕过则恒为 undefined，
+    //   「无伤探秘 / 不死传说」永远点不亮。
+    s.advDmgThisRun = false;
     // 进入秘境：灵力（法术资源）直接回满；气血沿用进入时的状态（每场战斗前 +10%，见 combatStart）
     //   —— 历史 bug：旧版「沿用进入时的灵力」，若在俗世把蓝耗掉再入秘境，首战前只 +75%，
     //      导致「初入秘境灵力条不满、法术开局放不出来」。灵力是战斗资源，跨场景不该带亏损。
@@ -4744,7 +4771,12 @@ const Engine = (function () {
   function achDefs(s, meta) {
     meta = meta || loadMeta();
     const techs = s.techs || [];
-    const treasure = s.equip ? (s.equip.treasure || []) : [];
+    // ⚠ 口径（2026-09-16 修复）：旧版取 `s.equip ? s.equip.treasure : []`，即只算装备位。
+    //   装备槽上限仅 1~4 个（初始 1 + 天赋「先天灵宝」3），而「法宝收藏」要 15 件、
+    //   「法宝大成」要 47 件、「仙器满堂」要 4 件仙阶 —— 在装备位口径下**永远不可能达成**；
+    //   玩家买来放背包（s.arts）的法宝更是一件都不算。同文件里 wanmei 用的是 ownsArt（装备位∪背包），
+    //   两处口径分叉也是「条件诡异」的直接来源。现统一走 ownedArtIds。
+    const treasure = ownedArtIds(s);
     const seen = s.seen || {};
     const seenDest = (meta.destinySeen) || {};
     const bossKills = s.bossKills || {};
@@ -4874,34 +4906,51 @@ const Engine = (function () {
     };
     return d;
   }
-  // 结算判定：写入 meta.achievements 并返回新解锁（用于发点）
+  // 结算判定：写入 meta.achievements（成就栏可见）+ meta.achPaid（轮回点发放去重）
+  // ⚠ 历史 bug（2026-09-16 修复）：旧版只在结算写 meta，实时检测（checkAchievementsLive）
+  //   仅标记 s.announcedAch。于是玩家看到「🏆 达成成就」横幅后打开成就栏，该项仍是 🔒，
+  //   必须等飞升/陨落结算才入账；中途弃档或关页面，本世成就直接丢失。
+  //   现拆成两个标记：achievements=已达成（立即可见），achPaid=轮回点已发放（每 id 仅一次）。
   function checkAchievements(s, meta) {
     meta = meta || loadMeta();
+    if (!meta.achievements) meta.achievements = {};
+    // 兜底：调用方传入的裸 meta（如工具脚本 blankMeta()）没有 achPaid 字段时，
+    //   已存在于 achievements 的条目一律视为「早先已发过点」，否则会被当成新成就重发一遍。
+    if (!meta.achPaid) {
+      meta.achPaid = {};
+      Object.keys(meta.achievements).forEach(function (id) { if (meta.achievements[id]) meta.achPaid[id] = 1; });
+    }
     const defs = achDefs(s, meta);
     const res = [];
+    let changed = false;
     Object.keys(defs).forEach(function (id) {
-      if (defs[id] && !meta.achievements[id]) {
-        meta.achievements[id] = 1;
-        res.push({ id: id, new: true });
-      } else if (defs[id]) {
-        res.push({ id: id, new: false });
-      }
+      if (!defs[id]) return;
+      if (!meta.achievements[id]) { meta.achievements[id] = 1; changed = true; }
+      if (!meta.achPaid[id]) { meta.achPaid[id] = 1; changed = true; res.push({ id: id, new: true }); }
+      else res.push({ id: id, new: false });
     });
-    if (res.length) saveMeta(meta);
+    if (changed) saveMeta(meta);
     return res;
   }
-  // 实时判定：游玩中检测「当前已达成但尚未提示」的成就，仅标记 announcedAch，不写 meta（避免与结算重复发点）
+  // 实时判定：游玩中检测「当前已达成但尚未提示」的成就
+  //   · s.announcedAch[id] —— 只弹一次横幅
+  //   · meta.achievements[id] —— 立即入账，成就栏当场可见（轮回点仍留到结算发，不重复）
   function checkAchievementsLive(s, meta) {
     meta = meta || loadMeta();
+    if (!meta.achievements) meta.achievements = {};
+    if (!meta.achPaid) meta.achPaid = {};
     const defs = achDefs(s, meta);
     if (!s.announcedAch) s.announcedAch = {};
     const out = [];
+    let metaChanged = false;
     Object.keys(defs).forEach(function (id) {
-      if (defs[id] && !meta.achievements[id] && !s.announcedAch[id]) {
-        s.announcedAch[id] = 1;
-        out.push(id);
-      }
+      if (!defs[id]) return;
+      // 入账以 meta 为准（旧档里「弹过横幅却没写进 meta」的成就，这里会补进成就栏）
+      if (!meta.achievements[id]) { meta.achievements[id] = 1; metaChanged = true; }
+      // 横幅以 announcedAch 为准，只弹一次
+      if (!s.announcedAch[id]) { s.announcedAch[id] = 1; out.push(id); }
     });
+    if (metaChanged) saveMeta(meta);
     if (out.length) saveState(s);
     return out;
   }
@@ -5534,6 +5583,7 @@ const Engine = (function () {
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION, INIT_EXP: INIT_EXP,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, achDefs: achDefs,
     checkAchievements: checkAchievements, checkAchievementsLive: checkAchievementsLive,
+    ownedArtIds: ownedArtIds, ownsArt: ownsArt,
     codexState: codexState, syncTreasureSeen: syncTreasureSeen,
     equipDropRate: equipDropRate, equipBiasRate: equipBiasRate,
     // —— 五劫主线 / 灾劫玉符 / 隐藏线 ——

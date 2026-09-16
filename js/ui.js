@@ -203,7 +203,11 @@
     $('st-crit').textContent = Math.round(Engine.getCritRate(S) * 100) + '%';
     $('st-dodge').textContent = Math.round(Engine.getDodgeRate(S) * 100) + '%';
     $('st-hp').textContent = S.hp;
-    if ($('st-mo')) $('st-mo').textContent = (S.mp || 0) + '/' + (S.mpMax || 0);
+    // 主界面战斗属性区的「灵力」只显示总量（灵力上限）——
+    //   旧写法是 `当前/上限`（如 100/100）。战斗前灵力本就补满，两个数恒等、纯属占位，
+    //   且六维里已有一个「灵力」属性点，两个「灵力 · 100/100」并排更容易看错。
+    //   ⚠ 角色/属性面板仍显示「当前/上限」（战斗中有消耗，那里需要看余量）。
+    if ($('st-mo')) $('st-mo').textContent = (S.mpMax || 0);
 
     const cultTimes = S.cultTimes || 0, cultMax = S.cultMax || 1;
     $('btn-cult-label').textContent = (cultTimes >= cultMax) ? '修炼（本年已修）' : '修炼';

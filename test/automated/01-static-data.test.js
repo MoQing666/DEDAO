@@ -756,5 +756,22 @@ module.exports = async function build() {
     t.ok(/it\.conflict/.test(engCode), '引擎 initExpIds 须消费 conflict（只做 UI 互斥会被公开接口打穿）');
   });
 
+  /* 主界面战斗属性区的「灵力」只显示总量（灵力上限），不再显示「100/100」。
+     旧写法是「当前/上限」，而战前灵力本就补满 → 两个数恒等、纯属占位，
+     且六维里已有一个「灵力」属性点，并排两个「灵力 · 100/100」极易看错成同一项。 */
+  S.case('主界面战斗属性「灵力」只显示总量（防回退）', (t) => {
+    // 剥注释后再断言：注释里要写清被禁用的旧写法，不剥会自己撞自己
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const hit = code.match(/\$\('st-mo'\)\.textContent\s*=[^;]+;/g) || [];
+    t.eq(hit.length, 1, '主界面 st-mo 赋值应只有一处，实为 ' + hit.length);
+    const v = hit[0] || '';
+    t.ok(/S\.mpMax/.test(v), 'st-mo 应取灵力上限 mpMax（总量），实为 ' + v);
+    t.ok(!/S\.mp\b/.test(v), 'st-mo 不得再拼当前值 mp');
+    t.ok(!/' \/ '/.test(v), 'st-mo 不得再出现「当前/上限」分隔（如 100/100）');
+    // 反向守卫：角色/属性面板里灵力有消耗，那里**必须**保留「当前/上限」
+    const panel = code.match(/name:\s*'灵(?:力|量)'[^}]*mpMax[^}]*\}/g) || [];
+    t.gte(panel.length, 1, '角色/属性面板仍须显示灵力「当前/上限」（战斗中要看余量），实为 ' + panel.length);
+  });
+
   return S;
 };

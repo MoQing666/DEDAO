@@ -1673,4 +1673,8 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   点【角色】后面板内仍是「灵力 当前/上限」（反向确认没被顺手改掉）。
   ⚠ 探针坑：点 `btn-char-bottom` 后要 **sleep 600ms** 再读 `screen-char`，400ms 时面板尚未渲染完，
   会读成「面板里没有灵力」的假失败。
-- **提交**：`5272c4d`（HUD 回滚 + 修为条淡蓝）、`6fdd56d`（灵力总量 + 守卫 + 文档 + bump v158）。
+- **提交**：`5272c4d`（HUD 回滚 + 修为条淡蓝）、`6fdd56d`（灵力总量 + 守卫 + 文档 + bump v158）、`640e6f8`（探针结论）。
+- **「假绿灯」已闭环验证**：在**纯净 HEAD 的独立 worktree** 上跑全量（`git worktree add … HEAD --detach` →
+  跑 worktree 里那份 `run.js`）→ **274/274**。这条要留着：以后每加一条「断言某行代码」的静态守卫，
+  都该确认那行代码在 HEAD 里真的存在（`git show HEAD:<file> | grep -c <字面量>`），
+  否则就会出现「工作区带 WIP 才绿、换台机器 checkout 就红」的假绿灯。

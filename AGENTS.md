@@ -1633,6 +1633,12 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   （退回深绿 / 去掉 goto / 去掉 z-index:-1 / 早夭回退 -20 并删互斥声明）→ 6 条断言同时报红，备份还原后 29/29。
 - **对账连动**：`01` 27→28→29、`11` 36→37 → 总数 271→**273**；`AGENTS.md` 模块表与运行行、
   `DEDAO_项目简介.md` 三处同步（由 `01` 的对账守卫逼出）。
-- **验证**：主目录 **273/273**；`dist/DEDAO_release` 与 `dist/taptap/dedao` 同跑。
+- **验证**：主目录 **273/273**；`dist/DEDAO_release` 与 `dist/taptap/dedao` 同跑（各 273/273）。
+- **玩家侧视觉实测**（无头 Edge，`_probe/probe82_visual.html` → `_probe/probe82.png` / `probe82_zoom.png`，真实 `css/style.css` + 真实 class）：
+  ① 悟性故意设 **3.5** → 小数完整可读，云纹在文字之下不再糊住「.5」；防御 1.5 同；
+  ② 修为条呈淡蓝；③ 命格「天道宠儿」选中卡 = 金边 + 金底 + 右侧「✔ 已选」角标，未选卡为普通灰边；
+  ④ 开荒「三 · 经历」两卡各自带「与「早夭/延寿」互斥」金字提示，选中早夭时延寿不亮（`.ct-grid` 是 `minmax(0,1fr)`，无横向溢出）；
+  ⑤ 角色页六维大卡体魄 3.5 可读。⚠ 探针页必须用 `--window-size=520`（本机 headless Edge CSS 视口锁 ~520px，
+  写 420 会把右侧裁掉，易误判成「溢出」）；要看细节加 `--force-device-scale-factor=2`。
 - **提交**：`33a351c`。⚠ 工作区里并发会话的 HUD 回滚 WIP（`css/style.css` / `index.html` / `index_pc.html` / `js/ui.js`）
   用「构造 blob 写索引」精确排除；dist 仍按工作区整份同步（含该 WIP + 修为条改色），以便用户直接验证。

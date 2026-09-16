@@ -122,53 +122,54 @@
        洞府(bg_dongfu)预留给修炼界面（目前未接入，不会在主界面显示） -->
   <div class="screen" id="screen-game" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <header class="hud">
-      <!-- HUD 顶栏（2026-09-15 Part 2 定稿）
-           ① 头像在左，跨两行（与道号、六维、战斗同高）
-           ② 右侧 .hud-info：道号 + 六维(3×2) + 战斗(3×2) 迷你芯片贴头像右侧
-           ③ 右侧功能列（成就/图鉴/设置）跨两行。
-           命格(Part 2)：移出主界面，仅在【角色】面板显示。
-           境界(Part 1)：顶栏不再显示，落在下方「境界」行（原修为条位置）。 -->
+      <!-- HUD 顶栏：2 行 × 3 列网格（2026-09-14 用户定稿）
+           ① 头像在左（跨两行，竖向居中） ② 道号在头像右侧（第一行） ③ 命格在第二行
+           ④ 右侧功能列在第三列（跨两行）：成就在上、设置在下方。
+           旧版是 flex + flex-wrap，窄屏上 .hud-name 的 min-content 顶破宽度 →
+           整块换行、头像单独占一行（用户反馈「头像单独占了一行」）。改为 CSS Grid 固定列后不再换行。
+           2026-09-14 二次定稿：「设置」由 ⚙ 齿轮还原为文字【设置】，并在其上方新增【成就】。
+           2026-09-15：命格块（.hud-destiny-inline）保持原位；境界徽标 #h-realm 留在顶栏道号右侧。 -->
       <div class="hud-top">
         <div class="hud-avatar"><div class="avatar-circle" id="h-avatar"><img id="h-avatar-img" class="avatar-img" src="assets/img/portrait/me.png" alt="道号" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="avatar-fb" style="display:none">修</span></div></div>
-        <div class="hud-info">
-          <div class="hud-name">
-            <span id="h-name" class="name">修行者</span>
-          </div>
-          <div class="mini-cap">六维</div>
-          <div class="hud-mini-grid hud-six">
-            <div class="chip"><label>悟性</label><b id="st-wu">3</b></div>
-            <div class="chip"><label>体魄</label><b id="st-ti">3</b></div>
-            <div class="chip"><label>遁速</label><b id="st-dun">1</b></div>
-            <div class="chip"><label>道心</label><b id="st-dao">0</b></div>
-            <div class="chip"><label>灵力</label><b id="st-ling">0</b></div>
-            <div class="chip"><label>神识</label><b id="st-shen">0</b></div>
-          </div>
-          <div class="mini-cap">战斗</div>
-          <div class="hud-mini-grid hud-combat">
-            <div class="chip"><label>攻击</label><b id="st-atk">10</b></div>
-            <div class="chip"><label>防御</label><b id="st-def">0</b></div>
-            <div class="chip"><label>气血</label><b id="st-hp">100</b></div>
-            <div class="chip"><label>暴击</label><b id="st-crit">1%</b></div>
-            <div class="chip"><label>闪避</label><b id="st-dodge">1%</b></div>
-            <div class="chip"><label>灵力</label><b id="st-mo">0</b></div>
-          </div>
+        <div class="hud-name">
+          <span id="h-name" class="name">修行者</span>
+          <span id="h-realm" class="realm-badge">Ⅰ 炼气 前期</span>
         </div>
+        <span class="hud-destiny-inline"><span class="destiny-label">命格</span><span id="h-destiny" class="destiny-text">无</span></span>
         <div class="hud-side">
           <button id="btn-ach-hud" class="hud-mini" type="button" title="成就 · 轮回印记" aria-label="成就">成就</button>
           <button id="btn-codex-hud" class="hud-mini" type="button" title="图鉴" aria-label="图鉴">图鉴</button>
           <button id="hud-settings" class="hud-mini" type="button" title="设置" aria-label="设置">设置</button>
         </div>
       </div>
-      <div class="stat-row realm-row">
-        <label>境界</label><span id="h-realm-main" class="realm-val">Ⅰ 炼气 前期</span>
-      </div>
-      <div class="res-strip">
-        <div class="res"><label>行动</label><b id="h-actions-left">3</b></div>
-        <div class="res"><label>灵石</label><b id="h-stone">50</b></div>
-        <div class="res"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
-        <div class="res"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
-      </div>
     </header>
+
+    <section class="stats panel">
+      <!-- 全部属性统一 4 列网格对齐（六维 · 行动 · 灵石 · 战斗 · 年龄 · 寿元） -->
+      <div class="stat-grid main-stats">
+        <div class="kv six"><label>悟性</label><b id="st-wu">3</b></div>
+        <div class="kv six"><label>体魄</label><b id="st-ti">3</b></div>
+        <div class="kv six"><label>遁速</label><b id="st-dun">1</b></div>
+        <div class="kv action-gold"><label>行动</label><b id="h-actions-left">3</b></div>
+        <div class="kv six"><label>道心</label><b id="st-dao">0</b></div>
+        <div class="kv six"><label>灵力</label><b id="st-ling">0</b></div>
+        <div class="kv six"><label>神识</label><b id="st-shen">0</b></div>
+        <div class="kv"><label>灵石</label><b id="h-stone">50</b></div>
+        <div class="kv"><label>攻击</label><b id="st-atk">10</b></div>
+        <div class="kv"><label>防御</label><b id="st-def">0</b></div>
+        <div class="kv"><label>气血</label><b id="st-hp">100</b></div>
+        <div class="kv age-kv"><label>年龄</label><b id="h-age-val" class="age-val">16</b></div>
+        <div class="kv"><label>暴击</label><b id="st-crit">1%</b></div>
+        <div class="kv"><label>闪避</label><b id="st-dodge">1%</b></div>
+        <div class="kv"><label>灵力</label><b id="st-mo">0</b></div>
+        <div class="kv age-kv"><label>寿元</label><b id="h-life-val" class="age-val">70</b></div>
+      </div>
+      <div class="stat-row">
+        <label>修为</label>
+        <div class="bar-box"><div id="bar-qi" class="bar-fill"></div></div>
+        <span id="qi-val" class="num">0 / 100</span>
+      </div>
+    </section>
 
     <section class="log panel" id="log"></section>
 

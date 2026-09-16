@@ -141,9 +141,11 @@
       const fb = $('h-avatar').querySelector('.avatar-fb');
       if (fb) fb.textContent = (S.name || '修').slice(0, 1);
     }
-    const realmMain = $('h-realm-main');
-    if (realmMain) {
-      realmMain.textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
+    const realmEl = $('h-realm');
+    if (realmEl) {
+      realmEl.textContent = st.sym + ' ' + st.realm + ' ' + st.sub;
+      realmEl.style.color = '#1a1a1a';
+      realmEl.style.borderColor = 'var(--line)';
     }
 
     // 行动/灵石显示
@@ -152,9 +154,40 @@
     // 年龄/寿元显示
     if ($('h-age-val')) $('h-age-val').textContent = S.age;
     if ($('h-life-val')) $('h-life-val').textContent = S.lifeMax;
-    // 命格（Part 2 · 2026-09-15）：移出主界面 HUD，仅在【角色】面板（openAttrs）显示。
+    // 命格显示（HUD右侧，每个命格独立颜色框）
+    const destinyEl = $('h-destiny');
+    if (destinyEl) {
+      destinyEl.innerHTML = '';
+      if (S.destinies && S.destinies.length) {
+        var gradeMap = { '白': 'white', '绿': 'green', '蓝': 'blue', '紫': 'purple', '金': 'gold' };
+        S.destinies.forEach(function(d, i) {
+          var dest = DESTINIES[d];
+          if (!dest) return;
+          if (i > 0) {
+            var sep = document.createElement('span');
+            sep.textContent = '、';
+            sep.style.color = 'var(--dim)';
+            destinyEl.appendChild(sep);
+          }
+          var span = document.createElement('span');
+          span.className = 'destiny-tag';
+          span.textContent = dest.name;
+          if (dest.grade) {
+            span.classList.add('grade-' + (gradeMap[dest.grade] || 'white'));
+          }
+          destinyEl.appendChild(span);
+        });
+      } else {
+        destinyEl.textContent = '无命格';
+      }
+    }
 
-    // 注：主界面不再显示修为进度条；修为进度见「角色」面板与突破按钮文案（用户 2026-09-15 定稿）。
+    // 修为条
+    const need = Engine.requireNeed(S);
+    const qiPct = Math.max(0, Math.min(100, S.qi / need * 100));
+    if ($('qi-val')) $('qi-val').textContent = S.qi + ' / ' + need;
+    // 修为条：淡蓝（2026-09-16 定稿，原为深绿 #1d7a55，与气血条撞色）
+    if ($('bar-qi')) bar('bar-qi', qiPct, '#74b9e7');
 
     // 六维属性（含基础+命格+法宝+装备，与角色面板口径一致）
     $('st-wu').textContent = Engine.effAttr(S, 'wu') + (Engine.equipStats(S).wu || 0);

@@ -683,5 +683,23 @@ module.exports = async function build() {
       Object.keys(TECH).filter(id => TECH[id].cls === 'shufa').length + ' 条 shufa）');
   });
 
+  /* ---------- 好感度星星：初始空心、满足后变金色（防回退） ---------- */
+  /* 为什么非加不可：2026-09-16 用户要求「初始空心、满足后变金色」，而实现分**两处**——
+     缘法页 createFavorSection 与仙缘页 renderNpc。当时只改了前者、后者漏改，
+     玩家在仙缘页看到的仍是旧的深紫实心星（AGENTS.md #80 才补齐）。
+     「同一视觉契约两处各自实现」正是本项目口径分叉的温床，必须让机器替我们盯。 */
+  S.case('好感度星星：初始空心 + 满足变金色，两处渲染口径一致（防回退）', (t) => {
+    // 剥注释后再断言：注释里会提到被禁用的旧写法，不剥会自己撞自己
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const hollow = (code.match(/-webkit-text-stroke:1\.5px #b9b2a4/g) || []).length;
+    t.gte(hollow, 2, '空心星样式应至少两处（缘法页 + 仙缘页），实为 ' + hollow);
+    const gold = (code.match(/#a8792a/g) || []).length;
+    t.gte(gold, 2, '金色实心星应至少两处，实为 ' + gold);
+    t.ok(!/\? '#a8792a' : '#3a3450'/.test(code),
+      '仍残留旧的实心星三元配色（未达成时填深紫实心）——空心化未彻底');
+    const lit = (code.match(/Math\.floor\(fa/g) || []).length;
+    t.gte(lit, 2, '两处点亮数都应取 Math.floor（浮点口径统一），实为 ' + lit);
+  });
+
   return S;
 };

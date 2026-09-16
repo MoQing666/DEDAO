@@ -2,12 +2,12 @@
  * 设计：引导按「游戏进度」分阶段，避免开局一次性全介绍把玩家劝退。
  *   - title   开局（标题页）只讲【开始】+【轮回阁】，引导玩家进入游戏
  *   - basics  进入游戏后只讲【修炼】【角色】【游历】+ 一句「下一步怎么走」
- *   - secret  第 3 年自动解锁秘境时，单独介绍【秘境】
+ *   - secret  第 2 年自动解锁秘境时，单独介绍【秘境】
  *   - sect    第 5 年单独介绍【宗门】【百艺】
  * 触发：
  *   - 新玩家首见标题页：boot() 调 autoTitle() → 自动播放 title 阶段
  *   - 进入游戏首世：initGame() 调 onEnterGame() → 自动播放 basics 阶段
- *   - 年末推进：doYearEnd() 调 onYear(year) → 第 3 年 secret / 第 5 年 sect
+ *   - 年末推进：doYearEnd() 调 onYear(year) → 第 2 年 secret / 第 5 年 sect（在主线剧情跑完后触发）
  *   - 设置「新手引导」重看 / 标题页「新手引导」：start('replay') / start('title')
  * 可跳过：每步可「跳过引导」；看完或跳过后写 localStorage 阶段标记，不再自动弹。
  * 导航：目标不在当前屏时，经 window.DedaoNav 切到对应屏幕再高亮。
@@ -39,8 +39,8 @@
         body: '修行循环很简单：① 点【修炼】攒满修为 → ② 点【突破】破境升境界 → ③ 行动点用完后点【下一年】推进岁月、恢复状态。\n\n秘境、宗门、百艺会随年份逐步向你敞开，先把前面这几步走熟。' }
     ],
     secret: [
-      { target: 'btn-explore', title: '秘境 · 第 3 年开启',
-        body: '第 3 年到了，秘境就此向你敞开！进入层层深入的秘境夺宝，是灵材与装备的主要来源。一年可入一次，途中可随时在【静室】或右下角【强行撤离】保住收获。' }
+      { target: 'btn-explore', title: '秘境 · 第 2 年开启',
+        body: '第 2 年到了，秘境就此向你敞开！进入层层深入的秘境夺宝，是灵材与装备的主要来源。一年可入一次，途中可随时在【静室】或右下角【强行撤离】保住收获。' }
     ],
     sect: [
       { target: 'btn-sect', goto: 'sect', title: '宗门 · 第 5 年接触',
@@ -206,7 +206,7 @@
     onEnterGame: function () { return _maybeStart('basics'); },
     // 年末推进：按年份触发 secret(3) / sect(5)
     onYear: function (year) {
-      if (year === 3) return _maybeStart('secret');
+      if (year === 2) return _maybeStart('secret');
       if (year === 5) return _maybeStart('sect');
       return false;
     },

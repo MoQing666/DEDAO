@@ -181,8 +181,8 @@
     $('btn-arts').disabled = false;
     $('btn-arts').classList.remove('disabled');
     $('btn-arts-label').textContent = duantiOn ? '锻体' : '锻体（未解锁）';
-    // 秘境：第 3 年起自动解锁；此前显示「未解锁」并置灰（新手引导会在第 3 年单独介绍）
-    const advLocked = (S.year || 1) < 3;
+    // 秘境：第 2 年起自动解锁；此前显示「未解锁」并置灰（新手引导会在第 2 年单独介绍）
+    const advLocked = (S.year || 1) < 2;
     $('btn-explore').classList.toggle('disabled', advLocked || !Engine.canAction(S, 2));
     const expSpan = $('btn-explore').querySelector('span');
     if (expSpan) expSpan.textContent = advLocked ? '秘境（未解锁）' : '秘境';
@@ -725,8 +725,8 @@
 
   /* ---------------- 秘境选择扩展页面 ---------------- */
   function openAdvSelect() {
-    if ((S.year || 1) < 3) {
-      openPanel('<h3>秘境</h3><p class="dim">秘境尚未开启，需待第 3 年方启。</p><div style="margin-top:10px;"><button class="btn-main" data-close="1">知道了</button></div>');
+    if ((S.year || 1) < 2) {
+      openPanel('<h3>秘境</h3><p class="dim">秘境尚未开启，需待第 2 年方启。</p><div style="margin-top:10px;"><button class="btn-main" data-close="1">知道了</button></div>');
       return;
     }
     const ov = $('modal');
@@ -1902,7 +1902,7 @@
     }
   }
   function actExplore2() {
-    if ((S.year || 1) < 3) { log('秘境尚未开启，需待第 3 年方启。', 'dim'); afterAction(); return; }
+    if ((S.year || 1) < 2) { log('秘境尚未开启，需待第 2 年方启。', 'dim'); afterAction(); return; }
     actExplore();
   }
   function actSocial() {
@@ -2365,12 +2365,7 @@
     const r = Engine.endYear(S);
     if (r === 'end') { endLifeFlow(); return; }
     if (r === 'fate') { fateFlow(); return; }
-    // 年初：按年份触发分阶段新手引导（秘境第3年 / 宗门百艺第5年）
-    // 用 setTimeout 延后一帧：若本年有剧情章节（灾劫玉符/主线等），先让其叙事层出现，
-    // 引导遮罩（z-index 更高）再叠在其上，玩家看完引导即回到剧情。
-    if (window.Tutorial && (r === 'ok' || (typeof r === 'string' && r.indexOf('ok|') === 0))) {
-      (function (yr) { setTimeout(function () { if (window.Tutorial) window.Tutorial.onYear(yr); }, 30); })(S.year);
-    }
+    // 年初不再立即弹引导：教程改为「本年主线剧情跑完之后」才开始（见 playMainlineChain 末尾与正常年初分支）
     // 年初检查：灾劫玉符 / 隐藏线 / 死劫 / 主线剧情
     const yr = Engine.checkYearEvents(S);
     if (yr === 'omen') { omenMeetFlow(); return; }
@@ -2405,6 +2400,8 @@
     log('爆竹声中，旧岁翻篇。你长身而起，新一年的风已经吹进门来。');
     log('（一岁一枯荣：气血与灵力已随新岁尽数复原）', 'good');
     log('（进度已自动存档 · 第 ' + S.year + ' 年）', 'dim');
+    // 本年无特殊主线时，教程也统一在年初叙事之后开始
+    if (window.Tutorial) window.Tutorial.onYear(S.year);
     // 灾劫玉符：每年识海浮现的黑字（死劫倒计时）
     if (S.omen && S.omen.got && typeof Engine.omenText === 'function') {
       const ot = Engine.omenText(S);
@@ -2446,8 +2443,10 @@
     S.seen[ml.id] = 1;   // 主线事件若即某 NPC 缘法（如老乞丐），同步标记其缘法 id 已达成
     delete S.pendingMainline;
     const done = function () {
-      if (Engine.moreMainline(S)) playMainlineChain();
-      else afterAction();
+      if (Engine.moreMainline(S)) { playMainlineChain(); return; }
+      afterAction();
+      // 教程在「本年主线剧情跑完之后」开始（用户要求），不再于年初打断剧情
+      if (window.Tutorial) window.Tutorial.onYear(S.year);
     };
     if (ml.fight) {
       showChapter(ml.title, ml.lines, { subtitle: '主线剧情' }).then(function () {
@@ -3377,7 +3376,7 @@
     log('凡尘一梦，漫漫仙途，从此开始了。');
     log('你每轮有 ' + Engine.actionPoints(S) + ' 个行动点，寿元上限 ' + S.lifeMax + ' 岁。修炼、历练、机缘……成道之路，由你自己选择。', 'dim');
     refresh();
-    // 进入游戏首世：只自动播放「修炼 / 角色 / 游历」引导；秘境(第3年)、宗门百艺(第5年)分阶段触发
+    // 进入游戏首世：只自动播放「修炼 / 角色 / 游历」引导；秘境(第2年)、宗门百艺(第5年)分阶段触发
     if (window.Tutorial) window.Tutorial.onEnterGame();
   }
 
@@ -3899,8 +3898,15 @@
     stars.style.cssText = 'display:flex;gap:4px;margin:8px 0;';
     for (let i = 0; i < target.maxFavor; i++) {
       const star = document.createElement('span');
-      star.style.cssText = 'font-size:20px;color:' + (i < Math.floor(favor) ? '#a8792a' : '#3a3450');
-      star.textContent = '★';
+      const on = i < Math.floor(favor);
+      // 好感度：初始空心，满足条件后变为金色实心
+      if (on) {
+        star.style.cssText = 'font-size:20px;color:#a8792a;';
+        star.textContent = '★';
+      } else {
+        star.style.cssText = 'font-size:20px;color:transparent;-webkit-text-stroke:1.5px #b9b2a4;';
+        star.textContent = '★';
+      }
       stars.appendChild(star);
     }
     const favorText = document.createElement('span');

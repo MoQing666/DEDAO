@@ -1561,3 +1561,14 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **守卫**：`tools/font_coverage.py --check` 通过（「喽啰」→「喽罗」规避缺字 啰）。`node --check` data.js/ui.js 通过。
 - **bump**：`index.html/index_pc.html ?v=154→155`、`sw.js dedao-v188→v189`（data/engine 未改随页面 bump）。
 - **提交**：`4496b2d`（6 文件；排除并发会话 WIP `test/automated/03-ui.test.js`）。
+
+### #79 — 好感度空心星 / 村庄危机改匪徒(去独眼龙) / 秘境第2年解锁 / 教程移至主线后（2026-09-16）
+- **起因**：用户四项要求——好感度星星初始空心、满足变金色；村庄危机妖兽→匪徒且不要独眼龙命名；老乞丐线两选项都能解锁锻体；秘境第2年解锁且教程在每年主线剧情跑完后才开始。
+- **好感度(ui.js 约3898)**：`star` 初始 `color:transparent` + `-webkit-text-stroke:1.5px #b9b2a4`（空心），`i < floor(favor)` 满足时改金色实心 `★ #a8792a`。
+- **村庄危机(data.js)**：`ml_0_3` 维持赤狼旗匪徒；`resultWin` 去「独眼龙大哥不会放过你」改「这笔账，我们赤狼旗记下了」；`ml_0_4`「妖兽事件后」→「匪患过后」；黄级匪徒营寨 desc/boss 与赤狼旗喽啰去「独眼龙」命名，保留赤狼旗=洗劫村庄的因果链。全仓 `独眼龙` 计数归 0。
+- **秘境第2年(ui.js + tutorial.js)**：行动栏 `advLocked`、选择页 `openAdvSelect`、行动入口 `actExplore2` 三处年份门槛 `<3`→`<2`；`tutorial.js onYear` 触发年 `3`→`2`，秘境引导文案「第3年」→「第2年」。
+- **教程时机(ui.js + tutorial.js)**：移除年初 `doYearEnd` 里打断剧情的 `Tutorial.onYear` 调用；改为在 `playMainlineChain` 末尾（本年主线剧情全部播完）与「正常年初」分支各补 `Tutorial.onYear(S.year)`——即「本年主线剧情跑完之后」才开始教程。
+- **老乞丐线(核验已满足)**：城中老乞丐两选项(买烧鸡/施舍馒头)均置 `beggar_met`，触发练气后期《锻体诀》(`ml_2_beggar_duanti`) 解锁锻体；仙缘传艺事件 `xian_laoqigai` 两选项均直接置 `duanti`。冷/热两条线皆能解锁锻体。
+- **守卫**：`tools/font_coverage.py --check` 通过；`node --check` data.js/ui.js/tutorial.js 通过。
+- **版本**：本次未 bump（并发工作区混有未提交 HUD 改动，精确暂存仅提交本回合 3 个 JS；待工作区干净后单独 bump 双版本）。
+- **提交**：`5c121b0`（js/data.js + js/tutorial.js + js/ui.js；精确暂存排除并发会话的 css/style.css、index.html、index_pc.html 未提交 WIP）。

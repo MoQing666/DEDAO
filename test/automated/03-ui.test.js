@@ -102,9 +102,9 @@ async function enterGame(win, doc, name) {
   await new Promise(r => setTimeout(r, 200));
 }
 
-/* 续一份「第 3 年」存档进入游戏（秘境已解锁）。秘境相关用例从第 3 年起验证机制，
-   避免触碰「第 1~2 年秘境未解锁」的新手引导分期规则。 */
-async function bootYear3() {
+/* 续一份「第 2 年」存档进入游戏（秘境已解锁）。秘境相关用例从第 2 年起验证机制，
+   避免触碰「第 1 年秘境未解锁」的新手引导分期规则（2026-09-16：秘境解锁由第 3 年提前至第 2 年）。 */
+async function bootYear2() {
   const raw = await battleSave();
   const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
   click(win, 't-continue');
@@ -198,7 +198,7 @@ function battleSave() {
     raw.techEquip = Object.assign({}, raw.techEquip, { shufa: ['yanjia', 'huoqiu'] });
     raw.ling = 15;   // 灵力 15 → mpMax ≈ 300，够放「岩甲术 50 灵 + 火球术 35 灵」
     raw.mp = 300;
-    raw.year = 3;    // 秘境第 3 年起解锁（新手引导分期规则），秘境相关用例统一在此年份续档
+    raw.year = 2;    // 秘境第 2 年起解锁（新手引导分期规则），秘境相关用例统一在此年份续档
     return raw;
   })();
   return _battleSaveP;
@@ -612,7 +612,7 @@ module.exports = async function build() {
 
   // === 回归：秘境入口不再卡死（章节层 z-index 修复 + 背景切换） ===
   S.case('秘境入口：章节层正常显示且背景切换到秘境图', async (t) => {
-    const { win, doc, errors } = await bootYear3();
+    const { win, doc, errors } = await bootYear2();
     // 点秘境打开选择弹窗
     click(win, 'btn-explore');
     await new Promise(r => setTimeout(r, 150));
@@ -641,7 +641,7 @@ module.exports = async function build() {
   // 回归：秘境地图必须做成「杀戮尖塔式」——canvas 绝对定位节点 + SVG 连线 + 多条真实可选路线。
   // 历史 bug：每层只连 1 条相邻边，玩家经常「只有一条路可走」，选了等于没选。
   S.case('秘境地图：SVG 连线 + ≥2 条真实可选路线（杀戮尖塔式）', async (t) => {
-    const { win, doc, errors } = await bootYear3();
+    const { win, doc, errors } = await bootYear2();
     click(win, 'btn-explore');
     await new Promise(r => setTimeout(r, 160));
     const entryBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /入秘境|深探/.test(b.textContent) && !b.disabled);
@@ -711,7 +711,7 @@ module.exports = async function build() {
   });
 
   S.case('秘境右下角【强行撤离】按钮已接线（不再点击无反应）+ HUD 左右分栏', async (t) => {
-    const { win, doc, errors } = await bootYear3();
+    const { win, doc, errors } = await bootYear2();
     click(win, 'btn-explore');
     await new Promise(r => setTimeout(r, 160));
     const entryBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /入秘境|深探/.test(b.textContent) && !b.disabled);
@@ -751,8 +751,8 @@ module.exports = async function build() {
     if (real.length) t.fail('撤离开线报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
-  // === 新手引导分期规则：秘境第 1~2 年未解锁，第 3 年自动开放 ===
-  S.case('秘境随年份解锁：第 1 年显示「未解锁」且点击不开启，第 3 年才开放', async (t) => {
+  // === 新手引导分期规则：秘境第 1 年未解锁，第 2 年自动开放 ===
+  S.case('秘境随年份解锁：第 1 年显示「未解锁」且点击不开启，第 2 年才开放', async (t) => {
     // 第 1 年（新游戏开局）
     const a = await boot();
     await enterGame(a.win, a.doc, '锁定期');
@@ -763,16 +763,16 @@ module.exports = async function build() {
     click(a.win, 'btn-explore');
     await new Promise(r => setTimeout(r, 150));
     t.eq(visible(a.doc, 'modal'), false, '第 1 年点击秘境不应弹出选择窗');
-    // 第 3 年（预置 year=3 存档续档）
-    const b = await bootYear3();
+    // 第 2 年（预置 year=2 存档续档）
+    const b = await bootYear2();
     const exp2 = b.doc.getElementById('btn-explore');
     const span2 = exp2 && exp2.querySelector('span');
-    t.ok(span2 && span2.textContent === '秘境', '第 3 年秘境按钮文案应为「秘境」，实际: ' + (span2 ? span2.textContent : '(无)'));
-    t.ok(!(exp2 && exp2.classList.contains('disabled')), '第 3 年秘境按钮不应置灰');
+    t.ok(span2 && span2.textContent === '秘境', '第 2 年秘境按钮文案应为「秘境」，实际: ' + (span2 ? span2.textContent : '(无)'));
+    t.ok(!(exp2 && exp2.classList.contains('disabled')), '第 2 年秘境按钮不应置灰');
     click(b.win, 'btn-explore');
     await new Promise(r => setTimeout(r, 150));
     const entry = [...b.doc.querySelectorAll('#modal-body button')].find(x => /入秘境|深探/.test(x.textContent) && !x.disabled);
-    t.ok(!!entry, '第 3 年点击秘境应弹出选择窗');
+    t.ok(!!entry, '第 2 年点击秘境应弹出选择窗');
   });
 
   // === 回归：角色属性删除（轮回加成）（天赋），灵根注明效果 ===

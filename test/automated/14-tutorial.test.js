@@ -118,19 +118,20 @@ module.exports = async function build() {
     t.eq(w.Tutorial.onEnterGame(), false, 'basics 已看应不再自动播');
   });
 
-  S.case('年末 onYear：第 3 年触发秘境、第 5 年触发宗门百艺；replay 强制复习 basics', async (t) => {
+  S.case('年末 onYear：第 2 年触发秘境、第 5 年触发宗门百艺；replay 强制复习 basics', async (t) => {
     const dom = makeDom();
     const w = dom.window, doc = w.document;
     w.localStorage.removeItem('dedao_tut_secret');
     w.localStorage.removeItem('dedao_tut_sect');
-    // 第 3 年
-    t.eq(w.Tutorial.onYear(3), true, '第 3 年应触发 secret');
+    // 第 2 年（2026-09-16：秘境解锁由第 3 年提前至第 2 年，引导随之提前）
+    t.eq(w.Tutorial.onYear(2), true, '第 2 年应触发 secret');
     await tick();
     t.eq(doc.getElementById('tutorial-overlay').style.display, 'block', '秘境遮罩应显示');
     t.ok(/秘境/.test(doc.querySelector('.tut-title').textContent), '应介绍秘境');
     doc.querySelector('.tut-skip').click();
     await tick();
-    t.eq(w.Tutorial.onYear(3), false, '秘境已看不再触发');
+    t.eq(w.Tutorial.onYear(2), false, '秘境已看不再触发');
+    t.eq(w.Tutorial.onYear(3), false, '非 2/5 年不触发任何阶段');
     // 第 5 年
     t.eq(w.Tutorial.onYear(5), true, '第 5 年应触发 sect');
     await tick();

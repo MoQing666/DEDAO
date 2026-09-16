@@ -7834,7 +7834,14 @@
         const fav = Engine.favorOf(S, id);
         const tier = Engine.favorTier(n, fav);
         let stars = '';
-        for (let i = 0; i < n.maxFavor; i++) stars += '<span style="color:' + (i < fav ? '#a8792a' : '#3a3450') + '">★</span>';
+        // 好感度星星：初始空心（透明填充 + 描边），达成后变为金色实心 ★
+        // 口径与缘法页 createFavorSection 一致：点亮数一律取 Math.floor(fav)（fav 可能为小数）
+        const lit = Math.floor(fav);
+        for (let i = 0; i < n.maxFavor; i++) {
+          const on = i < lit;
+          stars += '<span style="font-size:20px;color:' + (on ? '#a8792a' : 'transparent')
+            + (on ? '' : ';-webkit-text-stroke:1.5px #b9b2a4') + '">★</span>';
+        }
         h += '<div class="npc-favor">' + stars + ' <span class="npc-grade">(' + fav + '/' + n.maxFavor + ') ' + tier.grade + '·' + tier.note + '</span></div>';
         h += '<div class="npc-tiers">';
         n.tiers.forEach(function (t) {

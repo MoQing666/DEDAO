@@ -96,7 +96,7 @@ node test/automated/run.js     # 依次跑 01~14，当前 270/270 全过
 |---|---:|---|
 | `01-static-data.test.js` | 27 | 静态数据一致性 & 引用完整性（含宗门商品单货币结构、法宝文案「++」守卫、六维面板文案守卫、**事件 effect 键 ⊆ applyOps 白名单**守卫、**手机端滚动适配在位性**守卫、**AGENTS.md 模块表计数对账**守卫、**DEDAO_项目简介.md 对外口径对账**守卫、**已删字段「突破次数」不得复活**守卫、**法术大表 dmg/cost 与 data.js 逐条对账**守卫） |
 | `02-engine-sim.test.js` | 55 | 引擎单元 & 长时模拟（宗门商人单货币、入宗考验门禁、杂役筑基、百艺播种/挖矿、秘境双通道解锁、法宝效率分离、踏风履攻速、山河探索池/每年上限、**宗门任务年上限**、**大比十年一届/五层/境界缩放**、**主线门禁 noSect/afterSectYear**、**effect.trib 真正计入渡劫率**、**阵法被动心得速率与阈值**） |
-| `03-ui.test.js` | 45 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**、**轮回塔 +/- 步进按钮真实可点且可返还**、**秘境第 1~2 年未解锁/第 3 年自动开放**守卫） |
+| `03-ui.test.js` | 45 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**、**轮回塔 +/- 步进按钮真实可点且可返还**、**秘境第 1 年未解锁/第 2 年自动开放**守卫） |
 | `04-adventure.test.js` | 36 | 秘境重构（50 层×每层 3 节点 / 保底 2 出边 / 无交叉线 / 隐藏滚动条 / 地图视口固定 4 行 / 体力 110·150 / 探索度达标任意深度直达 Boss / 死路兜底 / 产出分层 / 坊市购丹 / 折寿强搜 / 初入秘境灵力回满 / 残魂考验=精英战 / 灵石掉落量级 / 装备掉落不越阶 / **秘境装备掉落率三调** / 仙魔浩劫 BGM 指向 / **秘藏二选一全规则** / 灵物不进随机法宝池 / **秘境「剩余法宝 N」口径与选项数**） |
 | `05-xianyuan.test.js` | 10 | 仙缘 NPC 缘法（解锁门槛 / 好感分级 / 冷却 / 上限 / 机缘本世一次性 / 池空不扣行动点 / **日常小事白名单**） |
 | `06-travel.test.js` | 3 | 游历 3 选 1（三桩际遇 / 每年上限 / 年末归零） |
@@ -107,7 +107,7 @@ node test/automated/run.js     # 依次跑 01~14，当前 270/270 全过
 | `11-dead-config.test.js` | 36 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费） |
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
 | `13-tools-reinc.test.js` | 2 |
-| `14-tutorial.test.js` | 6 | 新手引导系统（聚光灯分步高亮 / 可跳过 / **分阶段**：标题阶段 2 步[开始+轮回阁] 自动播 · 进入游戏 basics 4 步[修炼·角色·游历·引导下一步] · 第 3 年 secret[秘境] · 第 5 年 sect[宗门·百艺]；步骤完整性 / 上下步 / 跳过写阶段标记 / autoTitle+onEnterGame / onYear(3,5) / replay） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
+| `14-tutorial.test.js` | 6 | 新手引导系统（聚光灯分步高亮 / 可跳过 / **分阶段**：标题阶段 2 步[开始+轮回阁] 自动播 · 进入游戏 basics 4 步[修炼·角色·游历·引导下一步] · 第 2 年 secret[秘境] · 第 5 年 sect[宗门·百艺]；步骤完整性 / 上下步 / 跳过写阶段标记 / autoTitle+onEnterGame / onYear(2,5)+非 2/5 年不触发 / replay） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
@@ -1468,14 +1468,15 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 
 - **需求**：新玩家不知"什么按键在哪里怎么用"。新增新手引导：聚光灯分步高亮每个按键并解说"这是什么 / 在哪 / 怎么用"，覆盖完整且可随时跳过。
 - **形式（已与用户确认）**：聚光灯分步高亮——半透明遮罩 + 目标元素金色高亮环 + 解说卡（上一步 / 下一步 / 跳过全部）。
-- **触发（已确认 · 分期）**：避免开局一次性全介绍劝退玩家，按进度分四阶段——① `boot()` 调 `Tutorial.autoTitle()`：首见标题页只播【开始+轮回阁】；② `initGame()` 调 `Tutorial.onEnterGame()`：进入游戏首世只播【修炼·角色·游历·引导下一步】；③ `doYearEnd()` 调 `Tutorial.onYear(year)`：第 3 年自动播【秘境】、第 5 年自动播【宗门·百艺】；④ 设置「新手引导」重看（`replay`=强制复习 basics）、标题页「新手引导」看标题阶段。每阶段独立 `localStorage('dedao_tut_<stage>')` 标记，看完/跳过即不再自动弹（重玩也不重复）。
-- **内容模型**：`js/tutorial.js` 的 `STAGES`（数据/逻辑分离），共 9 步——`title` 2 步（开始轮回 / 轮回阁·天赋）+ `basics` 4 步（修炼 / 角色 / 游历 / 引导下一步[整屏]）+ `secret` 1 步（秘境·第3年开启）+ `sect` 2 步（宗门 / 百艺）。
+- **触发（已确认 · 分期）**：避免开局一次性全介绍劝退玩家，按进度分四阶段——① `boot()` 调 `Tutorial.autoTitle()`：首见标题页只播【开始+轮回阁】；② `initGame()` 调 `Tutorial.onEnterGame()`：进入游戏首世只播【修炼·角色·游历·引导下一步】；③ `Tutorial.onYear(year)`：第 2 年自动播【秘境】、第 5 年自动播【宗门·百艺】；④ 设置「新手引导」重看（`replay`=强制复习 basics）、标题页「新手引导」看标题阶段。每阶段独立 `localStorage('dedao_tut_<stage>')` 标记，看完/跳过即不再自动弹（重玩也不重复）。
+- **内容模型**：`js/tutorial.js` 的 `STAGES`（数据/逻辑分离），共 9 步——`title` 2 步（开始轮回 / 轮回阁·天赋）+ `basics` 4 步（修炼 / 角色 / 游历 / 引导下一步[整屏]）+ `secret` 1 步（秘境·第2年开启）+ `sect` 2 步（宗门 / 百艺）。
+- **触发时机（2026-09-16 用户定稿）**：教程**不在年初打断剧情**——年初 `doYearEnd` 不再直接调 `onYear`；改为在 `playMainlineChain` 末尾（本年主线剧情全部播完，`Engine.moreMainline` 为假时）与「正常年初」分支各补一次 `Tutorial.onYear(S.year)`。
 - **导航**：目标不在当前屏时经 `window.DedaoNav`（`js/ui.js` 末尾导出：char / bag / settings / omen / battle / adv / title / game）切到对应屏再高亮；战斗/秘境屏用 `showScreen` 揭示（不改游戏状态）。
 - **可跳过**：每步「跳过引导」→ 隐藏遮罩 + 写阶段标记；`prev`/`next` 可前后翻；各阶段进度独立计数。
-- **秘境分级解锁（与分期引导配套）**：`js/ui.js` 行动栏+`actExplore2`+`openAdvSelect` 三重把关——`S.year < 3` 时秘境按钮显示「秘境（未解锁）」并置灰、点击不开启（弹「需待第 3 年方启」）；第 3 年起自动解锁。新手引导在第 3 年单独介绍秘境。
+- **秘境分级解锁（与分期引导配套）**：`js/ui.js` 行动栏+`actExplore2`+`openAdvSelect` 三重把关——`S.year < 2` 时秘境按钮显示「秘境（未解锁）」并置灰、点击不开启（弹「需待第 2 年方启」）；第 2 年起自动解锁。新手引导在第 2 年单独介绍秘境。
 - **文件**：新增 `js/tutorial.js`；改 `js/ui.js`（导出 DedaoNav + boot/ initGame/ doYearEnd 分期触发 + 秘境 year 门禁 + 设置加按钮 + 标题按钮绑定）、`index.html`/`index_pc.html`（标题按钮 + 加载脚本 ?v=150）、`css/style.css`（聚光灯/卡片样式）、`sw.js`（→v187 预缓存 `./js/tutorial.js`）；新增测试 `test/automated/14-tutorial.test.js`（6 例）。
 - **文档同步**：AGENTS.md 模块表加 14-tutorial(6 例)、运行行 01~14 / 270 例；`DEDAO_项目简介.md` 口径 270 项用例 / 270·270 通过（满足 01 模块表对账与简介对外口径对账两守卫）。
-- **验证**：全量 270/270 通过；14-tutorial 套件 6/6（步骤完整性[全部 target 存在于 index.html]、标题阶段启动、上下步、跳过写阶段标记、autoTitle+onEnterGame、onYear(3,5)+replay）；03-ui 新增「秘境第 1 年未解锁/第 3 年开放」守卫。
+- **验证**：全量 270/270 通过；14-tutorial 套件 6/6（步骤完整性[全部 target 存在于 index.html]、标题阶段启动、上下步、跳过写阶段标记、autoTitle+onEnterGame、onYear(2,5)+非 2/5 年不触发+replay）；03-ui 新增「秘境第 1 年未解锁/第 2 年开放」守卫（续档年份 `raw.year = 2`）。
 - **注意**：`tutorial.js` 对 `window.DedaoNav` 缺失有降级（仅不高亮具体元素、居中解说卡），故不加载 ui.js 也能单测。
 
 ### #71 — 主题：金色字体全转黑（保留命格/装备品阶金），匪徒营寨转黑（v147/v185，2026-09-15）
@@ -1572,3 +1573,16 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **守卫**：`tools/font_coverage.py --check` 通过；`node --check` data.js/ui.js/tutorial.js 通过。
 - **版本**：本次未 bump（并发工作区混有未提交 HUD 改动，精确暂存仅提交本回合 3 个 JS；待工作区干净后单独 bump 双版本）。
 - **提交**：`5c121b0`（js/data.js + js/tutorial.js + js/ui.js；精确暂存排除并发会话的 css/style.css、index.html、index_pc.html 未提交 WIP）。
+
+### #80 — #79 的三项收尾（仙缘页空心星补漏 / 测试断言跟到「第 2 年」/ dist 同步 + 双版本 bump）（v156/dedao-v190，2026-09-16）
+
+- **起因（三类遗漏，均属「改了但没落到玩家手上」）**：
+  ① 好感度空心星只改了缘法页 `createFavorSection`，**仙缘页 `renderNpc` 仍是旧的实心紫星**（`#3a3450`）——玩家在仙缘页看到的仍是旧样式；
+  ② 秘境解锁提前到第 2 年后，**测试断言仍钉在「第 3 年」**（`03-ui` 的 `bootYear3` / `14-tutorial` 的 `onYear(3)`）——代码与断言口径分叉，任意一轮复跑必红；
+  ③ **两份 dist 副本从未同步过 #78/#79**（`dist/` 在 `.gitignore`，`git status` 看不到）→ 发布包里跑的还是第 3 年版本，这是用户「改了没生效」的直接原因。
+- **仙缘页空心星（ui.js `renderNpc`）**：改为 `color:transparent` + `-webkit-text-stroke:1.5px #b9b2a4`（空心），达成后金色实心 `#a8792a`；同时**点亮数统一取 `Math.floor(fav)`**——原仙缘页用 `i < fav`（浮点）、缘法页用 `i < Math.floor(favor)`，两处口径分叉已并回一个。
+- **测试断言跟随（test/automated）**：`03-ui.test.js` 的 `bootYear3` → `bootYear2`（预置 `raw.year = 2`），用例名与三条断言文案改「第 2 年」；`14-tutorial.test.js` 的 `onYear(3)` → `onYear(2)`，并补一条 `onYear(3) === false`（非 2/5 年不触发任何阶段）。
+- **AGENTS.md 现状描述同步**：§四测试模块表两行（03-ui / 14-tutorial）、§新手引导分期段（触发时机补「本年主线剧情跑完之后」）、§秘境分级解锁段（`S.year < 2`）一并改口径，避免文档与代码再分叉。
+- **bump + dist**：`index.html`/`index_pc.html ?v=155→156`、`sw.js dedao-v189→v190`；两份 dist 按白名单 cp 同步（含 `js/tutorial.js`，旧同步脚本清单里漏了它），校验两份副本 `?v=156` / `dedao-v190` 且 `ui.js|data.js|tutorial.js` 与主目录逐字节一致。
+- **验证**：全量 **270/270 通过**（改前改后各跑一次均全绿）；`node --check` data/ui/tutorial 通过；`tools/font_coverage.py --check` 通过。
+- **提交口径**：工作区混有并发会话 HUD（明亮主题）未提交 WIP → 用「构造 blob 写入索引」精确暂存（`js/ui.js` 只带空心星那一段、`index*.html` 只带 `?v=` bump），复核暂存版 `index.html` 不含 `h-destiny`、`js/ui.js` 不含独立 `'h-realm'` 后提交；`css/style.css` 的并发 WIP 留在工作区未动。

@@ -1377,12 +1377,25 @@ module.exports = async function build() {
     fire(expCard(3));                                  // 早夭 -3
     await new Promise(r => setTimeout(r, 80));
     t.eq(parseInt(budgetTxt(), 10), base, '再选「早夭」（-3 点）应把消耗抵消回原值 —— 早夭是「增加预算」而非消耗');
-    t.note('全选四项净花 = 3+4+2-3 = 6 点');
+    t.note('早夭 -3 点是「反向收益」；延寿 +20 与早夭 -30 互斥，两者净花不再相加');
 
     fire(expCard(3));                                  // 再点一次取消
     await new Promise(r => setTimeout(r, 80));
     t.eq(parseInt(budgetTxt(), 10), base - 3, '再点一次「早夭」应取消选择（多选 toggle）');
     t.ok(!/selected/.test(expCard(3).className), '取消后卡片不应再高亮');
+
+    // 互斥（2026-09-16 定稿）：延寿 +20 与早夭 -30 一加一减，只能取其一
+    fire(expCard(2));                                  // 延寿 +2 → 已选 [殷实, 延寿]
+    await new Promise(r => setTimeout(r, 80));
+    t.ok(/selected/.test(expCard(2).className), '「延寿」应高亮为已选');
+    fire(expCard(3));                                  // 早夭 → 应把互斥的延寿顶掉
+    await new Promise(r => setTimeout(r, 80));
+    t.ok(/selected/.test(expCard(3).className) && !/selected/.test(expCard(2).className),
+      '选中「早夭」应自动摘掉互斥的「延寿」（界面不得出现两个都亮）');
+    t.eq(parseInt(budgetTxt(), 10), base, '互斥后预算 = 殷实3 - 早夭3 → 回到原值（不是 3+2-3=2）');
+    fire(expCard(3));                                  // 取消早夭 → 回到 [殷实]
+    await new Promise(r => setTimeout(r, 80));
+    t.eq(parseInt(budgetTxt(), 10), base - 3, '取消「早夭」后应只剩「殷实」');
 
     fire(expCard(1));                                  // 见面礼 +4
     await new Promise(r => setTimeout(r, 80));
@@ -1390,7 +1403,7 @@ module.exports = async function build() {
     fire(expCard(1));                                  // 取消见面礼
     await new Promise(r => setTimeout(r, 80));
     t.eq(parseInt(budgetTxt(), 10), base - 3, '取消「见面礼」应退回 4 点');
-    t.note('全选四项净花 = 3 + 4 + 2 - 3 = 6 点');
+    t.note('延寿与早夭互斥 → 不存在「四项全选」这一档');
 
     // 命数总览页应列出已选经历（灵根 5 + 出身 1 + 殷实 3 + 延寿 2 = 11 ≤ 14，不超支）
     fire(expCard(2));                                  // 延寿 +2 → 已选 [殷实, 延寿]

@@ -5043,7 +5043,7 @@ const Engine = (function () {
         if (a.life) s.lifeMax += a.life;
         if (a.elixirs) { for (const k in a.elixirs) s.elixirs[k] = (s.elixirs[k] || 0) + a.elixirs[k]; }
       });
-      // 【早夭】会把出生寿元压到 70-20=50；与「负属性地板」同口径，寿元下限恒保为 1
+      // 【早夭】会把出生寿元压到 70-30=40；与「负属性地板」同口径，寿元下限恒保为 1
       if (s.lifeMax < 1) s.lifeMax = 1;
       if (s.hp > s.hpMax) s.hp = s.hpMax;
     }
@@ -5065,7 +5065,12 @@ const Engine = (function () {
     const seen = {}, out = [];
     sel.exp.forEach(function (id) {
       if (seen[id]) return;
-      if (!INIT_EXP.some(function (e) { return e.id === id; })) return;   // 未知 id 直接忽略
+      const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
+      if (!it) return;   // 未知 id 直接忽略
+      // 互斥（2026-09-16）：【延寿】+20 与【早夭】-30 只能取其一 —— 先取者生效，后来者整条丢弃。
+      //   与去重同层执行，保证 initExpCost（点数）与 applyInit（结算）看到的是同一个集合，
+      //   不会出现「点数上两个都算了、结算时只剩一个」的口径分叉。
+      if (it.conflict && it.conflict.some(function (c) { return seen[c]; })) return;
       seen[id] = 1; out.push(id);
     });
     return out;
@@ -5077,6 +5082,16 @@ const Engine = (function () {
       if (it) c += it.cost;
     });
     return c;
+  }
+  // 开荒 · 经历对出生寿元的合计增减（口径与 initExpIds 同源：同样去重、同样走互斥）
+  //   UI 的「命数总览」必须调它，不能自己再遍历一遍 `exp` —— 否则互斥/去重一改，预览与实际开局立刻分叉。
+  function initExpLife(sel) {
+    let life = 0;
+    initExpIds(sel).forEach(function (id) {
+      const it = INIT_EXP.filter(function (e) { return e.id === id; })[0];
+      if (it && it.apply && it.apply.life) life += it.apply.life;
+    });
+    return life;
   }
 
   // —— 【开荒】天赋（REINC_TALENT，持久化于 meta.reincTalent，与轮回阁同池扣费）——
@@ -5541,6 +5556,7 @@ const Engine = (function () {
     cultModes: cultModes,
     finalizeNewLife: finalizeNewLife, applyInit: applyInit,
     openPointsTotal: openPointsTotal, reincTalentUpgrade: reincTalentUpgrade, initExpCost: initExpCost,
+    initExpLife: initExpLife, initExpIds: initExpIds,
     julingSet: julingSet, julingYearEnd: julingYearEnd, wuxingToggle: wuxingToggle,
     addGongye: addGongye, spendGongye: spendGongye,
     craftStudy: craftStudy,

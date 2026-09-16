@@ -701,5 +701,60 @@ module.exports = async function build() {
     t.gte(lit, 2, '两处点亮数都应取 Math.floor（浮点口径统一），实为 ' + lit);
   });
 
+  /* ---------- 2026-09-16 一轮四项改动的防回退守卫 ---------- */
+  /* 四项都是「玩家看得见、但没有行为断言会红」的视觉 / 口径契约：
+     ① 云纹水印压住小数（六维会出现 3.5）② 修为条颜色 ③ 教程跳转 ④ 早夭 -30 与延寿互斥。
+     不加守卫就会像 #80 的空心星那样，改完过几天被人改回去还毫无察觉。 */
+  S.case('云纹不压字 / 修为条淡蓝 / 教程游历步回主屏 / 早夭 -30 且与延寿互斥（防回退）', (t) => {
+    // 剥注释后再断言：注释里会提到被禁用的旧写法，不剥会自己撞自己
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const dataCode = dataJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const engCode = engineJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+    // ① 云纹水印必须落在文字之下：父级 isolation:isolate + 水印 z-index:-1
+    function ruleBlock(src, sel) {
+      const i = src.indexOf(sel + ' {');
+      if (i < 0) return null;
+      const j = src.indexOf('}', i);
+      return j < 0 ? null : src.slice(i + sel.length, j);
+    }
+    [
+      ['.stat-grid.six-dim .kv', '.stat-grid.six-dim .kv::after'],
+      ['.stat-grid.main-stats .kv.six', '.stat-grid.main-stats .kv.six::after'],
+      ['.attr-six-card', '.attr-six-card::after']
+    ].forEach(function (p) {
+      const base = ruleBlock(cssCode, p[0]);
+      const wm = ruleBlock(cssCode, p[1]);
+      t.ok(base && /isolation:\s*isolate/.test(base),
+        p[0] + ' 父级须 isolation:isolate（云纹才落得到文字之下）');
+      t.ok(wm && /z-index:\s*-1/.test(wm),
+        p[1] + ' 水印须 z-index:-1（六维出现 3.5 这类小数时不得糊住数字）');
+    });
+
+    // ② 修为条淡蓝（原深绿 #1d7a55 与气血条撞色）
+    const qiBar = code.match(/bar\('bar-qi',[^)]*\)/g) || [];
+    t.eq(qiBar.length, 1, '修为条渲染应只有一处，实为 ' + qiBar.length);
+    t.ok(qiBar.length === 1 && /#74b9e7/.test(qiBar[0]), '修为条应为淡蓝 #74b9e7，实为 ' + (qiBar[0] || '无'));
+    t.ok(!/bar\('bar-qi',[^)]*#1d7a55/.test(code), '修为条不得再是深绿 #1d7a55');
+
+    // ③ 教程「游历」步必须显式回到主屏 —— 上一站在角色页，不回主屏高亮会丢失（提示被盖掉）
+    const tutPath = path.join(ROOT, 'js', 'tutorial.js');
+    const tut = fs.existsSync(tutPath) ? fs.readFileSync(tutPath, 'utf8') : '';
+    if (!tut) {
+      t.note('js/tutorial.js 不存在（dist 副本？），跳过教程跳转守卫');
+    } else {
+      const step = tut.match(/\{ target: 'btn-social'[^}]*\}/);
+      t.ok(step && /goto:\s*'game'/.test(step[0]),
+        "教程「游历」步须声明 goto:'game'（上一站是角色页，不回主屏则高亮与提示都定位不到）");
+    }
+
+    // ④ 早夭 -30，且与延寿互斥（双向声明 + 引擎消费）
+    t.ok(/id:\s*'zaoyao'[\s\S]{0,200}?life:\s*-30/.test(dataCode), '早夭须为 出生寿元 -30');
+    t.ok(/id:\s*'life20'[\s\S]{0,220}?conflict:\s*\[[^\]]*'zaoyao'/.test(dataCode), '延寿须声明与早夭互斥');
+    t.ok(/id:\s*'zaoyao'[\s\S]{0,220}?conflict:\s*\[[^\]]*'life20'/.test(dataCode), '早夭须声明与延寿互斥（双向）');
+    t.ok(/it\.conflict/.test(engCode), '引擎 initExpIds 须消费 conflict（只做 UI 互斥会被公开接口打穿）');
+  });
+
   return S;
 };

@@ -518,18 +518,22 @@ button:disabled { opacity: .4; cursor: default; }
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
 .stat-grid.six-dim { grid-template-columns: repeat(3, 1fr); margin-bottom: 4px; }
 .stat-grid.six-dim .kv {
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; isolation: isolate;
   background: rgba(255,255,255,.5); border: 1px solid var(--line);
   min-height: 34px;
 }
 .stat-grid.six-dim .kv label { color: var(--text); }
 .stat-grid.six-dim .kv b { color: var(--text); white-space: nowrap; }
-/* 六维白框：右上角微型云纹水印（淡金，不抢字） */
+/* 六维白框：右上角微型云纹水印（淡金，不抢字）
+   2026-09-16 修：六维会出现「3.5」这类**带小数**的值（engine 里 `s.wu += 0.5`），
+   水印原本压在数值上方，小数部分被金色卷云糊住（用户反馈「云纹跟小数点后的属性冲突」）。
+   改法与 `.panel::after` 同套：父级 `isolation:isolate` + 水印 `z-index:-1` →
+   云纹落在框底色之上、文字之下，永远压不到数字；同时降低不透明度，读数不受干扰。 */
 .stat-grid.six-dim .kv::after {
-  content: ''; position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+  content: ''; position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; z-index: -1;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%239c7a2e' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M7 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M21 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M7 30 h20'/%3E%3C/g%3E%3C/svg%3E");
   background-size: contain; background-repeat: no-repeat; background-position: center;
-  opacity: .6; pointer-events: none;
+  opacity: .45; pointer-events: none;
 }
 .stat-grid.combat-stats { grid-template-columns: repeat(4, 1fr); margin-bottom: 0; }
 .stat-grid.combat-stats .kv {
@@ -551,13 +555,14 @@ button:disabled { opacity: .4; cursor: default; }
 .stat-grid.main-stats .kv.action-gold { border-color: #c9a86a; background: rgba(255,250,235,.6); }
 .stat-grid.main-stats .kv.action-gold label,
 .stat-grid.main-stats .kv.action-gold b { color: #b8860b; }
-/* 六维白框：右上角微型云纹水印（淡金，明显但不抢字） */
-.stat-grid.main-stats .kv.six { position: relative; overflow: hidden; padding-right: 22px; }
+/* 手机版主界面六维格：4 列窄格，右侧原预留 22px 给水印 —— 带小数的数值（如 3.5）会被挤到水印下方。
+   水印改到文字之下后不再需要预留 → padding 收回，数值拥有整格宽度。 */
+.stat-grid.main-stats .kv.six { position: relative; overflow: hidden; padding-right: 7px; isolation: isolate; }
 .stat-grid.main-stats .kv.six::after {
-  content: ''; position: absolute; top: 1px; right: 1px; width: 20px; height: 20px;
+  content: ''; position: absolute; top: 1px; right: 1px; width: 20px; height: 20px; z-index: -1;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%239c7a2e' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M7 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M21 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M7 30 h20'/%3E%3C/g%3E%3C/svg%3E");
   background-size: contain; background-repeat: no-repeat; background-position: center;
-  opacity: .8; pointer-events: none;
+  opacity: .5; pointer-events: none;
 }
 .age-kv { border-left-color: var(--line) !important; background: rgba(255,255,255,.5) !important; }
 .age-kv label { color: var(--text) !important; }
@@ -757,17 +762,21 @@ button:disabled { opacity: .4; cursor: default; }
 /* 六维属性大格子 */
 .attr-six-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 4px; }
 .attr-six-card {
-  position: relative; overflow: hidden;
+  position: relative; overflow: hidden; isolation: isolate;
   background: rgba(255,255,255,.5); border: 1px solid var(--line); border-left: 3px solid var(--gold);
   border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px;
   min-height: 64px;
 }
-/* 六维白框：右上角微型云纹水印（淡金，不抢字） */
+/* 六维白框：右上角微型云纹水印（淡金，不抢字）
+   2026-09-16 修：六维会出现「3.5」这类**带小数**的值（engine 里 `s.wu += 0.5`），
+   水印原本压在数值上方，小数部分被金色卷云糊住（用户反馈「云纹跟小数点后的属性冲突」）。
+   改法与 `.panel::after` 同套：父级 `isolation:isolate` + 水印 `z-index:-1` →
+   云纹落在框底色之上、文字之下，永远压不到数字；同时降低不透明度，读数不受干扰。 */
 .attr-six-card::after {
-  content: ''; position: absolute; top: 5px; right: 5px; width: 24px; height: 24px;
+  content: ''; position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; z-index: -1;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%239c7a2e' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M7 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M21 30 a6 6 0 1 1 6 -6 a4 4 0 1 0 -4 4'/%3E%3Cpath d='M7 30 h20'/%3E%3C/g%3E%3C/svg%3E");
   background-size: contain; background-repeat: no-repeat; background-position: center;
-  opacity: .6; pointer-events: none;
+  opacity: .45; pointer-events: none;
 }
 .attr-six-header { display: flex; align-items: center; gap: 6px; }
 .attr-six-icon { font-size: 16px; }
@@ -1201,7 +1210,22 @@ button:disabled { opacity: .4; cursor: default; }
   position: relative;
 }
 .destiny-card:hover { border-color: var(--accent); }
-.destiny-card.selected { border-color: var(--text); background: rgba(255,215,0,.06); }
+/* 选中态（2026-09-16 加强）：原先只有「深色细边框 + 6% 黄底」，浅色主题下几乎看不出来。
+   改为金边 + 18% 金底 + 内描边，并在卡片右侧追加「✔ 已选」角标（不覆盖锁定圆钮）。 */
+.destiny-card.selected {
+  border-color: var(--gold);
+  background: rgba(232,193,90,.18);
+  box-shadow: inset 0 0 0 1px rgba(232,193,90,.55);
+}
+.destiny-pick {
+  flex-shrink: 0;
+  align-self: center;
+  background: var(--gold);
+  color: #221a06;
+  font-size: 10px; font-weight: bold; letter-spacing: 1px;
+  padding: 3px 5px; border-radius: 3px;
+  pointer-events: none;
+}
 .destiny-card.locked { border-color: var(--accent); background: rgba(231,76,60,.06); }
 .destiny-grade {
   font-size: 11px;

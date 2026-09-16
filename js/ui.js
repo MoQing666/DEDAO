@@ -3081,12 +3081,15 @@
 
       const lockHtml = '<div class="destiny-lock' + (isLocked ? ' locked' : '') + (enterState.lockedSlots > 0 ? ' available' : '') + '" data-idx="' + idx + '">' + (isLocked ? '🔒' : '🔓') + '</div>';
 
+      const pickHtml = isSelected ? '<div class="destiny-pick">✔ 已选</div>' : '';
+
       card.innerHTML = '<span class="destiny-grade">' + gradeName + '</span>' +
         '<div class="destiny-body">' +
           '<div class="destiny-name" style="color:' + gradeColor + '">' + dest.name + '</div>' +
           '<div class="destiny-desc">' + dest.desc + '</div>' +
           detailHtml +
         '</div>' +
+        pickHtml +
         lockHtml;
 
       // 锁定按钮点击（阻止冒泡）
@@ -3175,9 +3178,12 @@
     const sel = (enterState.selected && enterState.selected.length) || 0;
     const left = Math.max(0, enterState.slotCount - sel);
     // 未选满时给出常驻提醒（玩家可选命格数 > 已选命格数）
-    const title = '天命抉择 ' + enterState.pickCount + '选' + enterState.slotCount + '（可上下滑动）'
+    // 标题即操作提示：说清「几选几 / 已选几个 / 怎么选」，未选满时给明剩余名额
+    // （断言依赖「已选 N/M」这串，改文案别动它 —— 见 03-ui.test.js 劫数用例）
+    const title = '命格 ' + enterState.pickCount + ' 选 ' + enterState.slotCount
+      + '（点卡片选中，再点取消 · 可上下滑动）'
       + '　已选 ' + sel + '/' + enterState.slotCount
-      + (left > 0 ? '　·　还可再选 ' + left + ' 个' : '　·　已选满');
+      + (left > 0 ? '　·　还可再选 ' + left + ' 个' : '　·　已选满，可点「开始这一世」');
     $('enter-destiny-title').textContent = title;
   }
 
@@ -6988,9 +6994,15 @@
       h += '<h3 class="ct-sec">三 · 经历</h3><div class="ct-grid ct-grid2">';
       (Engine.INIT_EXP || []).forEach(function (e) {
         const on = createSel.exp.indexOf(e.id) >= 0;
+        // 互斥提示直接由数据表的 conflict 生成，不手抄名字（改名/加项不会漏改）
+        const excl = (e.conflict || []).map(function (cid) {
+          const c = (Engine.INIT_EXP || []).filter(function (x) { return x.id === cid; })[0];
+          return c ? c.name : cid;
+        });
+        const exclTxt = excl.length ? '　<span style="color:#b8860b">与「' + excl.join('、') + '」互斥</span>' : '';
         h += '<div class="ct-card' + (on ? ' selected' : '') + '" data-exp="' + e.id + '">'
           + '<div class="ct-card-h"><b>' + e.name + '</b><span class="ct-point' + (e.cost < 0 ? ' good' : '') + '">' + e.cost + '点</span></div>'
-          + '<div class="ct-bonus">' + e.desc + '</div></div>';
+          + '<div class="ct-bonus">' + e.desc + exclTxt + '</div></div>';
       });
       h += '</div>';
       h += '<h3 class="ct-sec">四 · 百艺</h3><div class="ct-craft">';
@@ -7009,11 +7021,21 @@
       body.querySelectorAll('[data-lg]').forEach(function (c) { c.onclick = function () { createSel.linggenId = c.getAttribute('data-lg'); renderCreatePage(); }; });
       body.querySelectorAll('[data-bg]').forEach(function (c) { c.onclick = function () { createSel.bgId = c.getAttribute('data-bg'); renderCreatePage(); }; });
       // 经历：多选 toggle（取 / 不取），点第二次即取消；【早夭】cost 为负，选中反而增加预算
+      // 互斥（2026-09-16）：【延寿】+20 与【早夭】-30 一加一减，选中一个即摘掉另一个。
+      //   引擎侧 `initExpIds` 有同口径兜底（先取者生效），此处只负责让界面不出现"两个都亮着"。
       body.querySelectorAll('[data-exp]').forEach(function (c) {
         c.onclick = function () {
           const id = c.getAttribute('data-exp');
           const i = createSel.exp.indexOf(id);
-          if (i >= 0) createSel.exp.splice(i, 1); else createSel.exp.push(id);
+          if (i >= 0) createSel.exp.splice(i, 1);
+          else {
+            const def = (Engine.INIT_EXP || []).filter(function (e) { return e.id === id; })[0];
+            (def && def.conflict || []).forEach(function (cid) {
+              const j = createSel.exp.indexOf(cid);
+              if (j >= 0) createSel.exp.splice(j, 1);
+            });
+            createSel.exp.push(id);
+          }
           renderCreatePage();
         };
       });
@@ -7054,10 +7076,11 @@
     s += '出身：' + (bg ? bg.title : '（未选）') + '<br>';
     if (bg && bg.story) s += '<span class="ct-story">出身·' + bg.story + '</span><br>';
     s += '六维（含出身/灵根/分配）：悟 ' + wu + '　体 ' + ti + '　遁 ' + dun + '　神 ' + shen + '　道 ' + dao + '　灵 ' + ling + '<br>';
-    // 经历：只列已选；早夭会把寿元压到 50（70-20），此处显式提示
+    // 经历：只列已选；【早夭】-30 会把寿元压到 40（70-30）。
+    // 寿元合计走引擎 `initExpLife`（与 initExpIds 同源，含互斥与去重），UI 不自算
     const expNames = (Engine.INIT_EXP || []).filter(function (e) { return createSel.exp.indexOf(e.id) >= 0; });
     s += '经历：' + (expNames.length ? expNames.map(function (e) { return e.name + '（' + e.cost + '点）'; }).join('、') : '（未选）') + '<br>';
-    s += '寿元：' + (S.lifeMax + (f.life || 0) + (createSel.exp.indexOf('life20') >= 0 ? 20 : 0) + (createSel.exp.indexOf('zaoyao') >= 0 ? -20 : 0)) + ' 年<br>';
+    s += '寿元：' + (S.lifeMax + (f.life || 0) + (Engine.initExpLife ? Engine.initExpLife(createSel) : 0)) + ' 年<br>';
     s += '百艺：' + CRAFT_KINDS.map(function (k) { return k.name + ' Lv' + createSel.craft[k.id]; }).join('、');
     pv.innerHTML = s;
   }

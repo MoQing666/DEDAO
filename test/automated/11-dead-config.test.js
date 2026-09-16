@@ -770,7 +770,7 @@ module.exports = async function build() {
     // 点数折算口径（UI 与引擎共用的唯一真源）
     t.eq(E.initExpCost({ exp: [] }), 0, '未选经历 → 0 点');
     t.eq(E.initExpCost({ exp: ['zaoyao'] }), -3, '只选早夭 → -3 点');
-    t.eq(E.initExpCost({ exp: ['stone', 'juling0', 'life20', 'zaoyao'] }), 6, '全选四项净花 3+4+2-3 = 6 点');
+    t.eq(E.initExpCost({ exp: ['stone', 'juling0', 'life20'] }), 9, '殷实+见面礼+延寿 = 3+4+2 = 9 点');
 
     // 实际结算：殷实 +500 灵石 / 见面礼 聚气丹×3 / 延寿 +20 寿元
     const s = E.startLife('开荒经历');
@@ -782,12 +782,12 @@ module.exports = async function build() {
     t.eq(s.elixirs.juling, 3, '见面礼应结算 聚气丹 ×3');
     t.eq(s.lifeMax, baseLife + 20, '延寿应结算 寿元 +20');
 
-    // 早夭：寿元 -20，且不得把寿元压成 0/负数
+    // 早夭：寿元 -30（2026-09-16 定稿，原 -20），且不得把寿元压成 0/负数
     const s2 = E.startLife('早夭');
     E.applyInit(s2, { linggenId: lg.id, bgId: bg.id, points: {}, craft: {}, exp: ['zaoyao'] });
-    t.eq(s2.lifeMax, baseLife - 20, '早夭应结算 寿元 -20');
+    t.eq(s2.lifeMax, baseLife - 30, '早夭应结算 寿元 -30');
     t.gt(s2.lifeMax, 0, '寿元必须有地板（不得 ≤ 0）');
-    t.note('引入负值效果一律补地板——早夭的 -20 与【九天玄体】的体魄-1 同源');
+    t.note('引入负值效果一律补地板——早夭的 -30 与【九天玄体】的体魄-1 同源');
   });
 
   /* 经历是「取 / 不取」的二值选择 → 每项最多结算一次。
@@ -805,14 +805,48 @@ module.exports = async function build() {
     t.eq(E.initExpCost({ exp: ['bogus', 'stone'] }), 3, '未知 id 应被忽略（不报错、不计点）');
 
     const base = mk([]), rep = mk(['zaoyao', 'zaoyao', 'zaoyao']);
-    t.eq(rep.lifeMax, base.lifeMax - 20, '重复早夭只扣一次寿元（应为 ' + (base.lifeMax - 20) + '，实 ' + rep.lifeMax + '）');
+    t.eq(rep.lifeMax, base.lifeMax - 30, '重复早夭只扣一次寿元（应为 ' + (base.lifeMax - 30) + '，实 ' + rep.lifeMax + '）');
     t.gt(rep.lifeMax, 0, '寿元地板仍然成立');
     // 正常路径不受影响
     const all = mk(['stone', 'juling0', 'life20', 'zaoyao']);
     t.eq(all.stone - base.stone, 500, '全选四项：殷实照样 +500 灵石');
-    t.eq(all.lifeMax, base.lifeMax, '全选四项：延寿+20 与早夭-20 抵消');
+    t.eq(all.lifeMax, base.lifeMax + 20, '全选四项：延寿与早夭互斥 → 先取的延寿 +20 生效，早夭被丢弃');
     t.eq(all.elixirs.juling, 3, '全选四项：见面礼照样给聚气丹 ×3');
-    t.note('去重口径收在 initExpIds(sel)，initExpCost 与 applyInit 共用同一个「哪几项生效」真源');
+    t.note('去重口径收在 initExpIds(sel)，initExpCost / initExpLife / applyInit 共用同一个「哪几项生效」真源');
+  });
+
+  /* 【延寿】+20 与【早夭】-30 一加一减 → 只能取其一（2026-09-16 定稿）。
+     互斥若只在 UI 做（点一个摘掉另一个），`applyInit` 这类公开接口仍会被 exp:['life20','zaoyao'] 打穿。 */
+  S.case('开荒 · 三 经历：延寿与早夭互斥（先取者生效，后来者整条丢弃）', (t) => {
+    const L = G.get('LINGGEN_POOL')[0].id, B = G.get('BACKGROUNDS')[0].id;
+    const mk = (exp) => {
+      const s = E.startLife('经历互斥');
+      E.applyInit(s, { linggenId: L, bgId: B, points: {}, craft: {}, exp: exp });
+      return s;
+    };
+    // 数据表声明
+    const byId = {}; E.INIT_EXP.forEach(e => { byId[e.id] = e; });
+    t.ok(byId.life20.conflict && byId.life20.conflict.indexOf('zaoyao') >= 0, '延寿须声明与早夭互斥');
+    t.ok(byId.zaoyao.conflict && byId.zaoyao.conflict.indexOf('life20') >= 0, '早夭须声明与延寿互斥（双向）');
+    t.eq(byId.zaoyao.apply.life, -30, '早夭的寿元增减须为 -30');
+
+    // 引擎侧互斥：两种顺序都只留先取的那一项
+    t.eq(E.initExpIds({ exp: ['life20', 'zaoyao'] }).join(','), 'life20', '[延寿,早夭] → 只留延寿');
+    t.eq(E.initExpIds({ exp: ['zaoyao', 'life20'] }).join(','), 'zaoyao', '[早夭,延寿] → 只留早夭');
+    t.eq(E.initExpCost({ exp: ['life20', 'zaoyao'] }), 2, '互斥后点数 = 2（不是 2-3 = -1）');
+    t.eq(E.initExpCost({ exp: ['zaoyao', 'life20'] }), -3, '互斥后点数 = -3（不是 2-3 = -1）');
+
+    // 寿元合计口径 initExpLife（UI「命数总览」唯一真源）
+    t.eq(E.initExpLife({ exp: ['zaoyao', 'life20'] }), -30, 'initExpLife：[早夭,延寿] → -30');
+    t.eq(E.initExpLife({ exp: ['life20', 'zaoyao'] }), 20, 'initExpLife：[延寿,早夭] → +20');
+    t.eq(E.initExpLife({ exp: [] }), 0, 'initExpLife：未选 → 0');
+
+    // 实算：面板与开局一致（防止 UI 自算一遍后与实算分叉）
+    const b = mk([]);
+    t.eq(mk(['zaoyao', 'life20']).lifeMax, b.lifeMax - 30, '实算：选了早夭再点延寿 → 寿元 -30');
+    t.eq(mk(['life20', 'zaoyao']).lifeMax, b.lifeMax + 20, '实算：选了延寿再点早夭 → 寿元 +20');
+    t.eq(E.initExpLife({ exp: ['zaoyao', 'life20'] }), mk(['zaoyao', 'life20']).lifeMax - b.lifeMax,
+      'initExpLife 与 applyInit 实算必须完全一致（口径唯一化）');
   });
 
   S.case('轮回塔退役天赋：殷实/见面礼/延寿/舍生 不得残留，旧档按原价退还轮回点', (t) => {

@@ -3665,12 +3665,14 @@ const CRAFT_POINTS = { 0: 0, 1: 1, 2: 2, 3: 6 };
    2026-09-14 用户定稿：由轮回阁移入（殷实 / 见面礼 / 延寿）+ 新增【早夭】。
    · 每项都是「取 / 不取」的二值选择，cost 为**固定点数**（不像轮回天赋那样随等级递增）；
    · 【早夭】cost 为负数（-3）→ 选它反而**增加** 3 点开荒预算，用来对冲其他选择（以寿元换点数）；
+   · 2026-09-16 定稿：【早夭】由 -20 改为 **-30**（出生寿元 70 → 40），并与【延寿】**互斥**（一加一减，只能取其一）；
+     互斥由 `conflict` 字段声明，`Engine.initExpIds` 与开荒页 UI 双向执行，不会两边各留一份口径。
    · 效果在本世开局（`Engine.applyInit`）一次性结算，不入 meta、不跨世、可重复选择。 */
 const INIT_EXP = [
   { id: 'stone',   name: '殷实',   desc: '出生时灵石 +500',          cost: 3,  apply: { stone: 500 } },
   { id: 'juling0', name: '见面礼', desc: '出生时自带聚气丹 ×3',      cost: 4,  apply: { elixirs: { juling: 3 } } },
-  { id: 'life20',  name: '延寿',   desc: '出生寿元 +20',             cost: 2,  apply: { life: 20 } },
-  { id: 'zaoyao',  name: '早夭',   desc: '出生寿元 -20（换取 3 点）', cost: -3, apply: { life: -20 } }
+  { id: 'life20',  name: '延寿',   desc: '出生寿元 +20',             cost: 2,  apply: { life: 20 },  conflict: ['zaoyao'] },
+  { id: 'zaoyao',  name: '早夭',   desc: '出生寿元 -30（换取 3 点）', cost: -3, apply: { life: -30 }, conflict: ['life20'] }
 ];
 
 /* ---------------- 百艺（§5.3） ---------------- */

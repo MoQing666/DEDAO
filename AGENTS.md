@@ -1674,6 +1674,12 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
   ⚠ 探针坑：点 `btn-char-bottom` 后要 **sleep 600ms** 再读 `screen-char`，400ms 时面板尚未渲染完，
   会读成「面板里没有灵力」的假失败。
 - **提交**：`5272c4d`（HUD 回滚 + 修为条淡蓝）、`6fdd56d`（灵力总量 + 守卫 + 文档 + bump v158）、`640e6f8`（探针结论）。
+- **部署（2026-09-16 终于打通）**：`origin` 改为 **SSH**（`git@github.com:MoQing666/DEDAO.git`，仓库已改名）。
+  远端旧 main 停在 #72（?v=148，无独有工作）→ 先推备份分支 `backup-rebuild-v158`，再
+  `git fetch --depth=1` + `git merge -s ours --allow-unrelated-histories 6b50472`（树与本地零差异）→
+  `push origin main` 快进到 `bcd8633`。**线上已验证**：`?v=158 / dedao-v192`，且线上四份 `js/*.js`
+  去 CR 后 md5 与本地逐一相等（比对线上文件必须归一化行尾，见交付技能）。
+  ⚠ 此前「无法推送」的结论全部只试过 HTTPS；SSH 一直是通的。
 - **「假绿灯」已闭环验证**：在**纯净 HEAD 的独立 worktree** 上跑全量（`git worktree add … HEAD --detach` →
   跑 worktree 里那份 `run.js`）→ **274/274**。这条要留着：以后每加一条「断言某行代码」的静态守卫，
   都该确认那行代码在 HEAD 里真的存在（`git show HEAD:<file> | grep -c <字面量>`），

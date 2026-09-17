@@ -702,6 +702,23 @@ button:disabled { opacity: .4; cursor: default; }
 .modal-inner h3 { color: var(--text); margin: 6px 0 10px; font-size: 15px; }
 .modal-inner h4 { color: var(--text); margin: 12px 0 6px; font-size: 14px; }
 
+/* 自定义 alert/confirm 弹窗（uiAlert/uiConfirm 用；替代原生 alert/confirm，避免 WebView 阻塞宿主）
+   2026-09-17：此前在 ui.js 里硬编码暗色（overlay rgba(0,0,0,.55) / card #1c1726），
+   与全局「明亮宣纸」主题冲突，且 .btn-main.ghost「取消」取 var(--text) 黑字在暗底上不可见。
+   现统一走主题 token —— 覆盖存档确认 / 读档确认 / 各类 uiConfirm 都随主题变亮。 */
+.dialog-overlay {
+  position: fixed; inset: 0; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(60,40,20,.4); z-index: 10000;
+}
+.dialog-card {
+  min-width: 240px; max-width: 80%;
+  background: var(--panel); color: var(--text);
+  border: 2px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; box-shadow: 4px 4px 0 var(--shadow);
+  font-family: inherit;
+}
+
 /* ---------------- 属性面板 ---------------- */
 .attr-table { margin: 8px 0; }
 .attr-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #e3d6b8; font-size: 13px; }

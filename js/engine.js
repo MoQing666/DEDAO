@@ -2542,6 +2542,19 @@ const Engine = (function () {
       const t = TRIB_TRIALS[opts.trib] || null;
       theme = t ? { name: t.title, cols: t.cols, types: t.types, settings: (TRIB_STAGE_SETTINGS[opts.stage] || []) } : null;
       if (!title) title = (t ? t.title : '渡劫') + ' · ' + tribStageName(opts.stage);
+    } else if (kind === 'sect') {
+      // 入宗考验（教学关）：2026-09-17 降难度 —— 只保留 **3 层敌人 + 教头 BOSS**（原 5 层）。
+      //   层数 5→3 同时带来两个减负：途中遭遇少 2 场、体力上限 (cols+5)*5 由 50→40。
+      //   节点池不变（敌人/精英/静室），收束仍是 trialBossSect() 的「演武教头」。
+      theme = {
+        name: '入宗试炼', cols: 3, types: ['combat', 'elite', 'rest'],
+        settings: [
+          '演武场上风夹着尘。教头负手而立：先走过这三关，再谈入宗。',
+          '三步一岗，五步一哨——仙门选徒，从不含糊。',
+          '前几关是外门弟子陪练，最后一关，教头亲自下场。'
+        ]
+      };
+      if (!title) title = '入宗试炼';
     }
     const cols = (theme && theme.cols) || 5;
     const types = (theme && theme.types) || ['combat', 'elite', 'rest'];
@@ -5327,10 +5340,16 @@ const Engine = (function () {
   function sectTrial(s, win) {
     const A = effAttr(s, 'wu') >= 8, B = effAttr(s, 'dao') >= 8, C = win;
     let rank, gift = 0;
-    if (A && B && C) { rank = '真传'; gift = 100; }
-    else if ((A && B) || (A && C) || (B && C)) { rank = '内门'; gift = 50; }
-    else if (A || B || C) { rank = '外门'; gift = 0; }
-    else { rank = '杂役'; gift = 0; }
+    // 2026-09-17 修复「实战未过却入了宗」：实战（胜一场）是入宗的**硬门槛**。
+    //   旧逻辑是「三选二」评分 —— 实战败(¬C)但悟性/道心达标(A 或 B)时，
+    //   仍会命中 (A&&B) 或 (A||B||C) 评成【内门/外门】→ 玩家没打赢照样正式入宗
+    //   （用户报「并没有挑战入宗成功但入宗了」）。
+    //   现改为：实战不过 → 一律【杂役】（未入宗）；实战胜后再按武骨/道心定档。
+    //   —— 门禁语义与 UI 文案（"实战为入宗硬门槛"）保持一致。
+    if (!C) { rank = '杂役'; gift = 0; }
+    else if (A && B) { rank = '真传'; gift = 100; }
+    else if (A || B) { rank = '内门'; gift = 50; }
+    else { rank = '外门'; gift = 0; }
     return { rank: rank, gift: gift, A: A, B: B, C: C };
   }
   // applySectTrial：执行入宗考验并写入地位。杂役/未考 → 按评分定级；已过更高档则不高更低降级。

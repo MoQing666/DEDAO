@@ -512,8 +512,47 @@ module.exports = async function build() {
       await new Promise(r => setTimeout(r, 120));
       t.eq(ov.style.display, 'none', '点击取消后弹窗未关闭');
     }
+    // 2026-09-17 回归：弹窗须走「明亮宣纸」主题 —— 用户报「覆盖存档确认 / 读档还是暗色」。
+    //   旧实现把 overlay/card 颜色硬编码在 ui.js（rgba(0,0,0,.55) / #1c1726），与全局主题冲突；
+    //   且 .btn-main.ghost「取消」取 var(--text) 黑字，落暗底上不可见（用户报「读档下没有取消」）。
+    t.ok(card && /dialog-card/.test(card.className), '确认弹窗卡片应带 .dialog-card 主题类（走 CSS token 而非暗色硬编码）');
+    const cssSrc = fs.readFileSync(path.join(ROOT, 'css', 'style.css'), 'utf8');
+    t.ok(/\.dialog-card\s*\{[^}]*background:\s*var\(--panel\)/.test(cssSrc),
+      'style.css 的 .dialog-card 应以 var(--panel) 浅色为底（不得回退暗色）');
+    t.ok(/\.dialog-overlay\s*\{/.test(cssSrc), 'style.css 应定义 .dialog-overlay（暗底遮罩随主题）');
+    // ⚠ 必须剥注释再扫：历史教训就写在 ui.js 注释里（"此前硬编码 #1c1726"），不剥会自己撞自己
+    //   —— 与 01-static-data 的「突破次数不得复活」守卫同一套 stripComments 写法。
+    const uiSrc = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+      .replace(/[;)}\]]\s*\/\/[^\n]*/g, '');
+    t.ok(!/#1c1726/.test(uiSrc), 'ui.js 不得再硬编码暗色 #1c1726（弹窗须随主题；已剥注释）');
+    // 同类回退（暗色主题残留）：卡片暗底 / 暗边框 —— 一律走 var(--panel2) / var(--line)
+    t.ok(!/#2e2942|rgba\(0,0,0,\.2\)/.test(uiSrc),
+      'ui.js 不得残留暗色卡片样式（#2e2942 / rgba(0,0,0,.2)）—— 应走 var(--line) / var(--panel2)');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('弹窗交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('存档·读档面板有显式「取消」按钮（不再只能点遮罩关闭）', async (t) => {
+    const { win, doc, errors } = await boot();
+    if (!click(win, 't-settings')) { t.fail('找不到 t-settings 入口'); return; }
+    await new Promise(r => setTimeout(r, 200));
+    const openBtn = [...doc.querySelectorAll('#modal-body button')].find(b => /存档 · 读档/.test(b.textContent));
+    if (!openBtn) { t.fail('设置弹窗中未找到「存档 · 读档」按钮'); return; }
+    openBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 180));
+    const modal = doc.getElementById('modal');
+    t.eq(modal.style.display, 'flex', '存档·读档面板应已打开');
+    const cancel = [...doc.querySelectorAll('#modal-body button')].find(b => /取消/.test(b.textContent));
+    t.ok(!!cancel, '存档·读档面板缺少显式「取消」按钮（此前只能点遮罩关闭）');
+    if (cancel) {
+      cancel.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 120));
+      t.eq(doc.getElementById('modal').style.display, 'none', '点「取消」后面板应关闭');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('存档面板报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   S.case('锻体：未解锁时仅给引导，不进页面不耗行动点', async (t) => {

@@ -277,8 +277,10 @@
       box.innerHTML = '';
       $('chapter-choices').innerHTML = '';
       ov.style.display = 'flex';
-      // instant：结算类章节一次性显示全部行（不打断逐行「继续」），适合战斗胜利 / 秘境归途等战利品清单
-      cs = { resolve: resolve, opts: opts, lines: lines.slice(), i: 0, instant: !!(opts && opts.instant) };
+      // 2026-09-17：章节文案默认一次性全显示（不再逐行点「继续」）。
+      //   适用范围：所有 showChapter 内容——主线剧情 / 秘境奇遇 / 渡劫 / 突破 / 残魂传承 / 各类结算清单等。
+      //   仅当 opts.step 显式为 true 才保留逐行点「继续」的节奏（当前无调用方使用）。
+      cs = { resolve: resolve, opts: opts, lines: lines.slice(), i: 0, instant: !(opts && opts.step) };
       $('chapter-actions').style.display = 'block';
       $('chapter-actions').textContent = '继续';
       $('chapter-actions').onclick = chapterNext;
@@ -828,7 +830,7 @@
           + '</div>';
       }
       const card = document.createElement('div');
-      card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;' + (canEnter ? '' : 'opacity:0.5;');
+      card.style.cssText = 'border:1px solid var(--line);background:var(--panel2);padding:12px;margin-bottom:12px;border-radius:8px;' + (canEnter ? '' : 'opacity:0.5;');
       card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
         '<b style="color:' + adv.color + ';font-size:16px;">' + adv.grade + '级秘境 · ' + adv.name + '</b>' +
         '<span style="color:' + adv.color + ';font-size:12px;border:1px solid ' + adv.color + ';padding:2px 6px;border-radius:4px;">' + adv.grade + '级</span></div>' +
@@ -1312,13 +1314,19 @@
         }
       } else {
         if (kind === 'sect') {
-          Engine.applySectTrial(S, false);
+          const r = Engine.applySectTrial(S, false);
           Engine.saveState(S);
+          // 2026-09-17：实战是入宗硬门槛 —— 败则不入宗（杂役）。若此前已具更高身份，
+          //   applySectTrial 会走「不高更低降级」分支（changed=false），名分不受影响。
+          const held = (r && r.changed === false && r.rank && r.rank !== '杂役');
+          const tail = held
+            ? '你已有【' + r.rank + '】之位，此番落败不影响名分。'
+            : '实战为入宗硬门槛——不敌则不入宗，暂列【' + (S.sectRank || '杂役') + '】，来年可再来。';
           showChapter('入宗试炼 · 受挫', [
             '演武教头摇了摇头：「火候未到，回去再练练吧。」',
-            '实战不敌，此次试炼未过（身份维持【' + (S.sectRank || '杂役') + '】），来年可再来。'
+            tail
           ]).then(function () {
-            log('入宗试炼实战未过，维持【' + (S.sectRank || '杂役') + '】', 'bad');
+            log('入宗试炼实战未过，' + (held ? '身份仍为【' + r.rank + '】' : '暂列【' + (S.sectRank || '杂役') + '】'), 'bad');
             refresh(); renderSect();
           });
         } else if (kind === 'hidden') {
@@ -1503,7 +1511,7 @@
     box.appendChild(retreat);
   }
   function showBossChoice(extra) {
-    showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏', instant: true }).then(function () {
+    showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏' }).then(function () {
       const opts = Engine.advBossBonus(S);
       const ov = $('modal'); const box = $('modal-body');
       ov.style.display = 'flex'; ov.onclick = null; box.innerHTML = '';
@@ -1516,7 +1524,7 @@
       box.appendChild(tip);
       opts.forEach(function (ch) {
         const card = document.createElement('div');
-        card.style.cssText = 'border:1px solid #2e2942;padding:10px;margin-bottom:10px;border-radius:8px;';
+        card.style.cssText = 'border:1px solid var(--line);padding:10px;margin-bottom:10px;border-radius:8px;';
         card.innerHTML = '<b style="color:var(--text)">' + ch.label + '</b><br><span class="dim">' + ch.desc + '</span>';
         const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = '选取';
         btn.onclick = function () {
@@ -1631,9 +1639,9 @@
           // 精英战斗胜利后给予宝箱奖励
           if (res.eliteReward) {
             const eliteLoot = generateTreasureReward();
-            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot), { instant: true }).then(advAdvanceToMap);
+            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(advAdvanceToMap);
           } else {
-            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : []), { instant: true }).then(advAdvanceToMap);
+            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(advAdvanceToMap);
           }
         } else if (r.lost) {
           advFinish('战败');
@@ -1857,7 +1865,7 @@
     if (a.lostMsg) lines.push(a.lostMsg);
     $('chapter').classList.remove('explore-mode');
     $('screen-game').classList.remove('explore-active');
-    showChapter('秘境 · 归途', lines, { instant: true }).then(function () {
+    showChapter('秘境 · 归途', lines).then(function () {
       log('【秘境探索】', 'evtitle');
       lines.forEach(function (g) { log(g, a.lostMsg && g === a.lostMsg ? 'bad' : 'good'); });
       afterAction();
@@ -1992,7 +2000,7 @@
     events.forEach(function (ev) {
       const tag = tagName;
       const card = document.createElement('div');
-      card.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;cursor:pointer;transition:border-color .15s;';
+      card.style.cssText = 'border:1px solid var(--line);background:var(--panel2);padding:12px;margin-bottom:12px;border-radius:8px;cursor:pointer;transition:border-color .15s;';
       const head = document.createElement('div');
       head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
       const b = document.createElement('b'); b.style.fontSize = '16px'; b.textContent = ev.title;
@@ -2005,7 +2013,7 @@
       p.textContent = ev.desc || (ev.lines && ev.lines[0]) || '未知的际遇。';
       card.appendChild(head); card.appendChild(p);
       card.onmouseenter = function () { card.style.borderColor = '#1d7a55'; };
-      card.onmouseleave = function () { card.style.borderColor = '#2e2942'; };
+      card.onmouseleave = function () { card.style.borderColor = 'var(--line)'; };
       card.onclick = function () {
         ov.style.display = 'none';
         S.seen[ev.id] = 1;
@@ -2256,7 +2264,7 @@
 
     // 无丹药直接突破
     const directCard = document.createElement('div');
-    directCard.style.cssText = 'border:1px solid #2e2942;background:rgba(0,0,0,.2);padding:12px;margin-bottom:12px;border-radius:8px;';
+    directCard.style.cssText = 'border:1px solid var(--line);background:var(--panel2);padding:12px;margin-bottom:12px;border-radius:8px;';
     directCard.innerHTML = '<h4>直接突破</h4>' +
       '<p class="desc">不使用任何道具，直接尝试突破</p>' +
       '<p class="desc">' + passLine + '</p>';
@@ -4218,8 +4226,8 @@
     ['weapon', 'head', 'body', 'accessory'].forEach(function (slot) {
       const card = document.createElement('div');
       card.style.flex = '1 1 45%';
-      card.style.border = '1px solid #2e2942';
-      card.style.background = 'rgba(0,0,0,.2)';
+      card.style.border = '1px solid var(--line)';
+      card.style.background = 'var(--panel2)';
       card.style.padding = '6px 8px';
       card.style.fontSize = '12px';
       const inst = S.equip[slot];
@@ -4241,8 +4249,8 @@
     for (let ti = 0; ti < maxT; ti++) {
       const card = document.createElement('div');
       card.style.flex = '1 1 45%';
-      card.style.border = '1px solid #2e2942';
-      card.style.background = 'rgba(0,0,0,.2)';
+      card.style.border = '1px solid var(--line)';
+      card.style.background = 'var(--panel2)';
       card.style.padding = '6px 8px';
       card.style.fontSize = '12px';
       const id = treasures[ti];
@@ -5853,10 +5861,15 @@
     if (_dlgOv) return _dlgOv;
     const ov = document.createElement('div');
     ov.id = 'dialog-overlay';
-    ov.style.cssText = 'position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:10000;';
+    // 2026-09-17 修复：此前 overlay/card 颜色硬编码为暗色（rgba(0,0,0,.55) / #1c1726），
+    //   与全局「明亮宣纸」主题冲突 —— 用户报「覆盖存档的确认页面 / 读档还是暗色的」。
+    //   且 .btn-main.ghost「取消」取 var(--text) 黑字，落在暗底上几乎看不见 ——
+    //   用户报「读档下没有取消（按钮）、但可以取消（点遮罩）」。
+    //   现改走 style.css 的 .dialog-overlay / .dialog-card（主题 token），两处一并解决。
+    ov.className = 'dialog-overlay';
     const card = document.createElement('div');
     card.id = 'dialog-card';
-    card.style.cssText = 'min-width:240px;max-width:80%;background:#1c1726;color:#e8e1d4;border:1px solid #4a3d5c;border-radius:12px;padding:18px 20px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:inherit;';
+    card.className = 'dialog-card';
     ov.appendChild(card);
     document.body.appendChild(ov);
     _dlgOv = ov; _dlgCard = card;
@@ -5951,6 +5964,14 @@
     tip.textContent = '游戏会自动保存在【自动存档】位；手动存档位共三个，散落于修仙路的不同岔口。';
     wrap.appendChild(tip);
     box.appendChild(wrap);
+    // 2026-09-17：补显式「取消」按钮 —— 此前存档/读档面板只靠点遮罩关闭，
+    //   用户报「读档下没有取消（按钮）、但可以取消（点外面）」，交互不明确。
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-main ghost';
+    closeBtn.textContent = '取消';
+    closeBtn.style.marginTop = '10px';
+    closeBtn.onclick = function () { sfx('click'); closeModal(); };
+    box.appendChild(closeBtn);
   }
 
   /* ---------------- 轮回塔 ---------------- */
@@ -7322,7 +7343,7 @@
     const renderPanel = function () {
       if (!S.sect) {
         // 未选宗门：面板内先自选
-        let h = '<h3>入宗考验</h3><p class="dim">请先择一仙门——过【入宗考验】方录入籍。三关：武骨（悟性≥8）、道心（道心≥8）、实战（胜一场）；三关皆过为【真传】，过两关【内门】，过一关【外门】，皆不过【杂役】。</p>'
+        let h = '<h3>入宗考验</h3><p class="dim">请先择一仙门——过【入宗考验】方录入籍。三关：武骨（悟性≥8）、道心（道心≥8）、实战（胜一场）。其中【实战】为硬门槛：不打胜一律不入宗（杂役），来年可再考；打胜后再凭武骨、道心定档——两项皆备为【真传】，其一为【内门】，皆无为【外门】。</p>'
           + '<div class="ct-grid sect-pick">';
         Object.keys(SECTS).forEach(function (id) {
           const sc = SECTS[id];

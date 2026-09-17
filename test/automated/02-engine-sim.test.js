@@ -741,6 +741,46 @@ module.exports = async function build() {
     t.eq(E.sectPassed(s2), true, '真传 sectPassed=true');
   });
 
+  /* === 回归 2026-09-17：入宗考验「实战硬门槛」 ===
+     用户报「并没有挑战入宗成功但入宗了」。根因：旧 sectTrial 是「A/B/C 三选二」评分——
+     实战败(¬C) 但悟性/道心达标(A 或 B) 时仍命中 (A&&B)/(A||B||C) → 评成【内门/外门】
+     → 玩家没打赢照样正式入宗。现改为：实战不过一律【杂役】，实战胜再按武骨/道心定档。 */
+  S.case('入宗考验硬门槛：实战未过即便悟性/道心达标也不得入宗', (t) => {
+    const s = E.startLife('门槛');
+    E.commitStart(s, TALENTS[0].id);
+    const SECTS0 = G.get('SECTS') || {};
+    s.sect = Object.keys(SECTS0)[0];
+    s.wu = 12; s.dao = 12;                       // 武骨/道心双高，但实战败
+    const r = E.applySectTrial(s, false);
+    t.eq(s.sectRank, '杂役', '实战败（即便悟性/道心达标）应判杂役，实为 ' + s.sectRank);
+    t.eq(r.passed, false, '实战败 passed 必须为 false');
+    t.eq(E.sectPassed(s), false, '实战败不得视为正式入宗');
+    // 反证：跨年实战胜 → 双高评真传
+    s.year = s.year + 1;
+    const r2 = E.applySectTrial(s, true);
+    t.eq(s.sectRank, '真传', '实战胜 + 武骨/道心皆备应评真传，实为 ' + s.sectRank);
+    t.eq(E.sectPassed(s), true, '实战胜后应正式入宗');
+    // 仅实战胜、武骨/道心皆无 → 外门（不再有「悟性单项即可外门」）
+    const s2 = E.startLife('门槛2'); E.commitStart(s2, TALENTS[0].id);
+    s2.sect = Object.keys(SECTS0)[0]; s2.wu = 1; s2.dao = 1;
+    E.applySectTrial(s2, true);
+    t.eq(s2.sectRank, '外门', '仅实战过关应评外门，实为 ' + s2.sectRank);
+  });
+
+  /* === 回归 2026-09-17：入宗试炼降难度 ===
+     用户要求「只保留 3 层敌人 + 教头 BOSS」（原 5 层）。层数同时决定体力上限 (cols+5)*5。 */
+  S.case('入宗试炼地图：只有 3 层普通敌人 + 演武教头 BOSS', (t) => {
+    const s = E.startLife('入宗层数');
+    E.commitStart(s, TALENTS[0].id);
+    const r = E.startTrial(s, 'sect', {});
+    t.eq(!!r && r.ok, true, 'startTrial(sect) 启动失败');
+    t.eq(s.adv.trial, 'sect');
+    t.eq(s.adv.map.normalCols, 3, '入宗试炼应只有 3 层普通敌人（原 5 层）');
+    t.eq(s.adv.trialBoss.name, '演武教头', '末层 BOSS 应为演武教头，实为 ' + s.adv.trialBoss.name);
+    t.ok(s.adv.trialBoss.atk > 0 && s.adv.trialBoss.hp > 0, '教头 BOSS 数值应合法');
+    t.eq(s.adv.staminaMax, 40, '体力上限应随层数降为 (3+5)*5 = 40');
+  });
+
   S.case('宗门向主线门禁：未过考验不触发（needSect 顺延），正式入宗才连播', (t) => {
     const s = E.startLife('宗门主线门禁');
     E.commitStart(s, TALENTS[0].id);

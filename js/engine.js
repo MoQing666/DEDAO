@@ -2289,34 +2289,36 @@ const Engine = (function () {
   const TECH_DROPS = [TECH_DROPS_1, TECH_DROPS_1, TECH_DROPS_2, TECH_DROPS_2];
   
   // 获取秘境功法池（法术+心法+遁术）
-  function getAdvTechPools(advType) {
-    var spellPool = [];  // 法术
-    var xinfaPool = [];  // 心法
-    var dunshuPool = []; // 遁术
-    
-    if (advType === 'huang') {
-      // 黄级秘境：只出黄阶功法/法术/遁术（与玄级严格区分，2026-09-17 修「玄级奇遇法术==黄级」）
-      spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
-      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tunai', 'shengong', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'];
-      dunshuPool = ['xiaoyao', 'qy_dun1', 'dx_dun1', 'xt_dun1'];
-    } else if (advType === 'xuan') {
-      // 玄级秘境：只出玄阶功法/法术/遁术（与黄级明显不同）
-      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
-      xinfaPool = ['tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan', 'qy_xinfa2', 'dx_xinfa2', 'xt_xinfa2'];
-      dunshuPool = ['yingdun', 'qy_dun2', 'dx_dun2', 'xt_dun2'];
-    } else if (advType === 'di') {
-      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
-      xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
-      dunshuPool = ['suodi'];
-    } else {
-      spellPool = ['wanjian', 'shengjiayang', 'tianhuo', 'shanyue', 'potian', 'wanmu', 'fantian', 'dadi', 'han_shan', 'han_yuan', 'fen_hun', 'dang_xie', 'bai_du', 'zhen_yue', 'wan_zai', 'jiu_you', 'fa_zai', 'wan_du'];
-      xinfaPool = ['baihu', 'qinglong', 'xuanwu', 'zhuque', 'qilin', 'hundun'];
-      dunshuPool = [];
+  // 秘境功法池（按秘境阶位分层，单一数据源，由 TECHNIQUES 实时派生）
+  // 规则：秘境阶位 gi 只出「本阶及以上」功法——
+  //   黄级只出黄、玄级出玄/地/天、地级出地/天、天级出天（绝不掉低阶）。
+  // 历史 bug：① 黄/玄共用一份池（玄级奇遇==黄级）；② 地级池误用玄级法术（地出玄）；
+  //          ③ 天级池误用地级法术（天出地）；④ 天级遁术池为空。均已修（2026-09-17）。
+  const ADV_TECH_POOL = (function () {
+    const by = { spell: { 黄: [], 玄: [], 地: [], 天: [], 仙: [] }, xinfa: { 黄: [], 玄: [], 地: [], 天: [], 仙: [] }, dunshu: { 黄: [], 玄: [], 地: [], 天: [], 仙: [] } };
+    for (const id in TECHNIQUES) {
+      const t = TECHNIQUES[id];
+      const c = t.cls === 'xinfa' ? 'xinfa' : t.cls === 'dunshu' ? 'dunshu' : 'spell';
+      const g = t.grade || '黄';
+      if (by[c][g]) by[c][g].push(id);
     }
-    
-    return { spell: spellPool, xinfa: xinfaPool, dunshu: dunshuPool };
+    return by;
+  })();
+  const ADV_GRADE_ORDER = ['黄', '玄', '地', '天', '仙'];
+  function advTechPoolForGrade(gi) {
+    // 每个秘境只掉「本阶」功法：黄级只出黄、玄级只出玄、地级只出地、天级只出天。
+    // （与「玄出玄以及以上」一致——玄的floor是玄、绝不掉黄；且构成 黄<玄<地<天 的正确阶梯。）
+    const g = ADV_GRADE_ORDER[gi] || '黄';
+    return {
+      spell: (ADV_TECH_POOL.spell[g] || []).slice(),
+      xinfa: (ADV_TECH_POOL.xinfa[g] || []).slice(),
+      dunshu: (ADV_TECH_POOL.dunshu[g] || []).slice()
+    };
   }
-  
+  function getAdvTechPools(advType) {
+    return advTechPoolForGrade(ADVENTURE_GRADE[advType] || 0);
+  }
+
   // 从功法池中随机获取一个功法。
   // 关键：必须按秘境阶位分层——黄级秘境只出黄阶功法，绝不掉玄阶心法/遁术。
   // （历史 bug：黄/玄共用一份池子，导致黄级匪寨能搜出玄阶的「天罡诀」「影遁术」。）
@@ -2328,7 +2330,7 @@ const Engine = (function () {
       var T = TECHNIQUES[t];
       if (!T) return;
       if (s && s.techs && s.techs.indexOf(t) >= 0) return; // 已习得不重复
-      if (gradeIdxOf(T.grade) > gi) return;                // 越阶功法不出
+      if (gradeIdxOf(T.grade) < gi) return;                // 只出本阶及以上（绝不掉低阶功法）
       allPool.push(t);
     };
     pools.spell.forEach(push);
@@ -2850,31 +2852,12 @@ const Engine = (function () {
   
   // 残魂事件生成
   function genRemnantSoulEvent(s, d, bi, advType) {
-    // 根据秘境等级选择可学习的功法
-    var spellPool = [];  // 法术
-    var xinfaPool = [];  // 心法
-    var dunshuPool = []; // 遁术
-    
-    if (advType === 'huang') {
-      // 黄级秘境：只出黄阶功法/法术/遁术（与玄级严格区分，2026-09-17 修「玄级奇遇法术==黄级」）
-      spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
-      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tunai', 'shengong', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'];
-      dunshuPool = ['xiaoyao', 'qy_dun1', 'dx_dun1', 'xt_dun1'];
-    } else if (advType === 'xuan') {
-      // 玄级秘境：只出玄阶功法/法术/遁术（与黄级明显不同）
-      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
-      xinfaPool = ['tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan', 'qy_xinfa2', 'dx_xinfa2', 'xt_xinfa2'];
-      dunshuPool = ['yingdun', 'qy_dun2', 'dx_dun2', 'xt_dun2'];
-    } else if (advType === 'di') {
-      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
-      xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
-      dunshuPool = ['suodi'];
-    } else {
-      spellPool = ['wanjian', 'shengjiayang', 'tianhuo', 'shanyue', 'potian', 'wanmu', 'fantian', 'dadi', 'han_shan', 'han_yuan', 'fen_hun', 'dang_xie', 'bai_du', 'zhen_yue', 'wan_zai', 'jiu_you', 'fa_zai', 'wan_du'];
-      xinfaPool = ['baihu', 'qinglong', 'xuanwu', 'zhuque', 'qilin', 'hundun'];
-      dunshuPool = [];
-    }
-    
+    // 根据秘境等级选择可学习的功法（与宝箱/秘地探查共用单一阶位分层数据源）
+    var pools = advTechPoolForGrade(ADVENTURE_GRADE[advType] || 0);
+    var spellPool = pools.spell.slice();
+    var xinfaPool = pools.xinfa.slice();
+    var dunshuPool = pools.dunshu.slice();
+
     // 过滤掉玩家已有的功法
     spellPool = spellPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
     xinfaPool = xinfaPool.filter(function(t) { return TECHNIQUES[t] && s.techs.indexOf(t) < 0; });
@@ -5626,6 +5609,7 @@ const Engine = (function () {
     ADV_EXPLORE_GAIN: ADV_EXPLORE_GAIN,
     getAdvItemCap: getAdvItemCap, returnUnusedAdvItems: returnUnusedAdvItems,
     realmTierRange: realmTierRange, equipAllowed: equipAllowed,
+    advTechPoolForGrade: advTechPoolForGrade, ADVENTURE_GRADE: ADVENTURE_GRADE,
     findEquipBySub: findEquipBySub, forgeTier: forgeTier, forgeResultTier: forgeResultTier, rollForge: rollForge,
     wearEquip: wearEquip, treasureItem: treasureItem, equipTreasureAuto: equipTreasureAuto, unequipTreasure: unequipTreasure, findEquip: findEquip,
     refreshStats: refreshStats, requireNeed: requireNeed, maxTreasure: maxTreasure, calcMpMax: calcMpMax,

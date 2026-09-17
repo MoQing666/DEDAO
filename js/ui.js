@@ -1568,12 +1568,12 @@
   }
   function generateTreasureReward() {
     if (!S.materials) S.materials = {};
-    const bi = Engine.bigIdxOf(S);
+    const gi = Engine.ADVENTURE_GRADE[S.advType || 'huang'] || 0; // 秘境阶位决定掉落品阶（与玩家境界无关，2026-09-17 修「黄级秘境出上品」）
     const d = S.adv ? S.adv.depth || 1 : 1;
     const g = [];
     const roll = Math.random();
     if (roll < 0.33) {
-      const equip = Engine.randomEquip(bi, d);
+      const equip = Engine.randomEquip(gi, d);
       if (equip) { g.push.apply(g, Engine.grantEquipChecked(S, equip)); }
       else { S.stone += 50; g.push('灵石 +50'); }
     } else if (roll < 0.66) {
@@ -1583,8 +1583,8 @@
     } else {
       const matType = Math.random() < 0.5 ? 'herb' : 'iron';
       const matKey = matType === 'herb' ?
-        ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][bi] || 'herb_huang' :
-        ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][bi] || 'iron_huang';
+        ['herb_huang', 'herb_xuan', 'herb_di', 'herb_tian'][gi] || 'herb_huang' :
+        ['iron_huang', 'iron_xuan', 'iron_di', 'iron_tian'][gi] || 'iron_huang';
       const amount = 5 + d * 3;
       S.materials[matKey] = (S.materials[matKey] || 0) + amount;
       g.push(MATERIALS[matKey].name + ' +' + amount);

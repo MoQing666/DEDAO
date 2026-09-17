@@ -271,6 +271,71 @@ module.exports = async function build() {
     t.ok(xuanXuan, '玄级奇遇应含 玄 阶功法（与黄级明显不同）');
   });
 
+  S.case('秘境功法池严格按本阶派生（黄=黄/玄=玄/地=地/天=天，绝不串阶或越阶）', (t) => {
+    // 2026-09-17 修「地出玄/天出地/黄出玄」串阶：每个秘境只产出「本阶」功法，
+    // 既不串到更低阶（如地出玄、玄出黄），也不越到更高阶（如黄出玄、玄出地）。
+    const GNAME = ['黄', '玄', '地', '天', '仙'];
+    const advTypes = ['huang', 'xuan', 'di', 'tian', 'xian'];
+    // 1) 引擎功法池（奇遇/秘地探查的权威来源）：精确本阶
+    for (const advType of advTypes) {
+      const gi = E.ADVENTURE_GRADE[advType] || 0;
+      const pool = E.advTechPoolForGrade(gi);
+      const ids = [].concat(pool.spell, pool.xinfa, pool.dunshu);
+      t.ok(ids.length > 0, advType + ' 功法池不应为空');
+      let badLower = 0, badHigher = 0, minG = 9, maxG = -1;
+      ids.forEach(function (id) {
+        const td = E.TECHNIQUES[id];
+        const g = GNAME.indexOf((td && td.grade) || '黄');
+        if (g < 0) return;
+        if (g < minG) minG = g;
+        if (g > maxG) maxG = g;
+        if (g < gi) badLower++;   // 串到更低阶（如地出玄、玄出黄）
+        if (g > gi) badHigher++;  // 串到更高阶（如黄出玄、玄出地）
+      });
+      t.eq(badLower, 0, advType + ' 功法池不应含更低阶（串阶），实际 ' + badLower);
+      t.eq(badHigher, 0, advType + ' 功法池不应含更高阶（越阶），实际 ' + badHigher);
+      t.ok(minG === gi && maxG === gi, advType + ' 功法池应严格限定为「' + GNAME[gi] + '」阶（实测[' + GNAME[minG] + ',' + GNAME[maxG] + ']）');
+    }
+    // 2) 残魂奇遇真实掉落（advResolve event 路径）：地出地、天出天，绝不掉黄/玄
+    for (const advType of advTypes) {
+      const gi = E.ADVENTURE_GRADE[advType] || 0;
+      let bad = 0, minG = 9, maxG = -1, drops = 0;
+      for (let i = 0; i < 400; i++) {
+        const s = { techs: [], advType: advType, adv: { depth: 1 }, materials: {}, stone: 0 };
+        const r = E.advResolve(s, { type: 'event', col: 5, id: 'e' + i, next: [] });
+        if (r && r.type === 'remnant_soul') {
+          [r.spell1, r.spell2].forEach(function (id) {
+            if (!id) return;
+            drops++;
+            const g = GNAME.indexOf((E.TECHNIQUES[id] && E.TECHNIQUES[id].grade) || '黄');
+            if (g < gi) bad++;
+            if (g < minG) minG = g;
+            if (g > maxG) maxG = g;
+          });
+        }
+      }
+      t.eq(bad, 0, advType + ' 奇遇不应掉低于本阶的功法，越阶 ' + bad);
+      t.ok(minG === gi && maxG === gi, advType + ' 奇遇掉落应严格为本阶「' + GNAME[gi] + '」（实测[' + GNAME[minG] + ',' + GNAME[maxG] + ']，样本 ' + drops + '）');
+    }
+    // 3) 秘地探查宝箱法术映射（TECH_DROPS_MAP）同样精确本阶
+    const TDM = G.get('TECH_DROPS_MAP');
+    if (TDM) {
+      for (const advType of advTypes) {
+        const gi = E.ADVENTURE_GRADE[advType] || 0;
+        const ids = TDM[advType] || [];
+        t.ok(ids.length > 0, advType + ' 秘地探查法术池不应为空');
+        let bad = 0;
+        ids.forEach(function (id) {
+          const g = GNAME.indexOf((E.TECHNIQUES[id] && E.TECHNIQUES[id].grade) || '黄');
+          if (g !== gi) bad++;
+        });
+        t.eq(bad, 0, advType + ' 秘地探查法术应全部为本阶「' + GNAME[gi] + '」，串阶 ' + bad);
+      }
+    } else {
+      t.warn('TECH_DROPS_MAP 未暴露，跳过秘地探查法术池校验');
+    }
+  });
+
   S.case('战斗前恢复 10% 气血 / +50% 灵力（不回扣、不覆盖回满）', (t) => {
     const s = started();
     E.refreshStats(s);

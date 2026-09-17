@@ -3316,14 +3316,25 @@ const ADVENTURE_GRADE = {
   trial: 0
 };
 
-// 秘境功法掉落映射
-const TECH_DROPS_MAP = {
-  huang: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'leiyin', 'jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'jianqi', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'],
-  xuan: ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'yingdun', 'tiangang', 'changchun'],
-  di: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
-  tian: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
-  xian: ['kaitian', 'taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi']
-};
+// 秘境功法掉落映射（由 TECHNIQUES 实时派生：每个秘境只出「本阶」功法，与引擎 advTechPoolForGrade 同源）
+//   黄级只出黄、玄级只出玄、地级只出地、天级只出天（不越阶、不串阶）。
+//   用于「秘地探查」宝箱的法术掉落，须与引擎功法池规则一致：2026-09-17 修「地出玄/天出地/黄出玄」串阶。
+const TECH_DROPS_MAP = (function () {
+  const order = ['黄', '玄', '地', '天', '仙'];
+  const byGrade = { 黄: [], 玄: [], 地: [], 天: [], 仙: [] };
+  for (const id in TECHNIQUES) {
+    const g = (TECHNIQUES[id] && TECHNIQUES[id].grade) || '黄';
+    if (byGrade[g]) byGrade[g].push(id);
+  }
+  const advGi = { huang: 0, xuan: 1, di: 2, tian: 3, xian: 3, trial: 0 };
+  const map = {};
+  for (const k in advGi) {
+    const gi = advGi[k];
+    const g = order[gi] || '黄';
+    map[k] = (byGrade[g] || []).slice(); // 只取「本阶」功法（精确阶位，绝不越阶/串阶）
+  }
+  return map;
+})();
 
 /* ---------------- 冒险环境与节点文案（按秘境等级分层） ---------------- */
 // 黄级秘境：匪徒营寨（炼气期，人型怪）

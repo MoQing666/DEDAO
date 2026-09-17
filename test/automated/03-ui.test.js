@@ -1730,6 +1730,68 @@ module.exports = async function build() {
     if (real.length) t.fail('红尘练心流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 回归 2026-09-17：游历事件「悟性→道心」重平衡必须在 UI 端到端落地。
+     引擎层（04-adventure）已守「游历池（jiyuan/shejiao/shanhe）的 numeric 悟性奖励全部转为道心、
+     不残留 wu」；这里守玩家端可见结果：
+       · 触发一个带 道心 奖励的游历事件 → 主界面六维 HUD 的「道心」(#st-dao) 真实 +N
+       · 章节结算文案出现「道心+N」、且不再出现「悟性」（防重平衡漏改文案或回退成悟性）
+     用 山河探索 节点驱动（shanhe 是三池之一，确定性注入单事件即可稳定复现）。 */
+  S.case('游历「悟性→道心」重平衡：游历事件奖励须落到道心 HUD 且文案不再写悟性', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '道心');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+    // 把 shanhe 池替换为一个确定性的「给道心」事件（chapter:false + choices，无顶层 effect，
+    //   正是 04 守护的游历事件形态；这里守它落到 UI 的道心 HUD）
+    win.eval(`(function(){
+      EVENTS.shanhe.length = 0;
+      E('shanhe', {
+        id: 'test_dao_shanhe', title: '游历道心测试', weight: 1, min: 0, max: 14, once: false,
+        lines: ['山河文案·道心之一', '山河文案·道心之二'],
+        choices: [{ t: '淬炼道心', effect: { dao: 7 }, lines: ['你于山河间悟得一丝清明道心。（道心+7）'] }]
+      });
+    })()`);
+    const daoBefore = parseInt((doc.getElementById('st-dao') || {}).textContent, 10);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+    const node = doc.querySelector('#travel-body [data-act="shanhe"]');
+    t.ok(!!node, '游历页应有「山河探索」入口');
+    if (!node) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // 择一弹窗回到主界面（游历页无日志区，文案/结果须落主界面才可见）
+    t.eq(visible(doc, 'screen-game'), true, '择一弹窗应回到主界面展示');
+    const cards = [...doc.querySelectorAll('#modal-body > div')].filter(e => /游历道心测试/.test(e.textContent));
+    t.ok(cards.length >= 1, '弹窗应列出可去的际遇');
+    if (!cards.length) return;
+    cards[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'chapter'), true, '道心事件应弹章节层');
+    const cbody = () => (doc.getElementById('chapter-body') || {}).textContent || '';
+    t.ok(/山河文案·道心之一/.test(cbody()), '章节层应展示文案（实：' + cbody().slice(0, 60) + '）');
+    // 推进到选项
+    for (let i = 0; i < 6 && !doc.querySelector('#chapter-choices .choice-btn'); i++) {
+      click(win, 'chapter-actions');
+      await new Promise(r => setTimeout(r, 160));
+    }
+    const cb = doc.querySelector('#chapter-choices .choice-btn');
+    t.ok(!!cb, '应出现可选项');
+    if (!cb) return;
+    cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    // ① 结算文案出现「道心+7」，且不得残留「悟性」
+    t.ok(/道心\+7/.test(cbody()), '结算文案应出现「道心+7」（实：' + cbody().slice(-70) + '）');
+    t.ok(!/悟性/.test(cbody()), '结算文案不得残留「悟性」（游历重平衡：悟性→道心；实：' + cbody().slice(-70) + '）');
+    // 收尾：关章节层 → afterAction/refresh → 道心 HUD 同步
+    click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 250));
+    await waitUntil(() => parseInt((doc.getElementById('st-dao') || {}).textContent, 10) === daoBefore + 7);
+    const daoAfter = parseInt((doc.getElementById('st-dao') || {}).textContent, 10);
+    t.eq(daoAfter, daoBefore + 7, '道心事件应使「道心」HUD +7（实 ' + daoBefore + ' → ' + daoAfter + '）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('游历道心流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   /* 回归 2026-09-14：主页面 HUD 布局（用户反馈「头像单独占了一行」）。
      目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 右侧功能列（成就上、设置下）。
      旧版 flex + flex-wrap：窄屏上 .hud-name 的 min-content 顶破容器 → 整块换行。

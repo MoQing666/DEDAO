@@ -1714,5 +1714,97 @@ module.exports = async function build() {
     t.ok(foe.every(e => { const i = e.querySelector('.bf-ic'); return i && (i.textContent || '').trim(); }), '敌方徽章图标不得为空');
   });
 
+  /* ============================================================
+     回归 2026-09-17：战斗胜利 / 秘境离开结算「一次性显示全部行」
+     —— 用户反馈：战斗胜利与秘境离开的结算原本要逐行点「继续」，太繁琐。
+        改为结算类章节一次性渲染全部行（showChapter 的 instant 选项）。
+        下面两条用例锁定：胜利结算与归途结算必须「不点继续就一次性铺满」。
+     ============================================================ */
+  S.case('战斗胜利结算一次性显示（不点继续即铺满全部行）', async (t) => {
+    const ctx = await enterAdvBattle(1);
+    if (ctx.err) { t.fail('未能进入战斗层：' + ctx.err); return; }
+    const { win, doc, errors } = ctx;
+    // 连点普攻直到战斗层关闭（胜/逃/败任一结局）
+    let closed = false;
+    for (let i = 0; i < 100; i++) {
+      if (visible(doc, 'battle') !== true) { closed = true; break; }
+      click(win, 'b-atk');
+      await new Promise(r => setTimeout(r, 25));
+    }
+    t.ok(closed, '战斗应在有限回合内结束（胜利结算出现）');
+    t.eq(visible(doc, 'chapter'), true, '战斗结束后应弹出结算章节');
+    const title = doc.getElementById('chapter-title');
+    t.ok(title && /胜/.test(title.textContent || ''), '结算标题应为「胜」，实为「' + (title ? title.textContent : '无') + '」');
+    // 关键：不点「继续」，全部行已一次性渲染
+    const lines = [...doc.querySelectorAll('#chapter-body .chap-line')];
+    t.ok(lines.length >= 2, '胜利结算应一次性渲染至少 2 行（实为 ' + lines.length + ' 行，若仅为 1 行说明回退成逐行）');
+    const full = lines.map(p => p.textContent).join('\n');
+    t.ok(/你收剑而立/.test(full), '胜利结算首段应为「你收剑而立，清点战利品。」');
+    t.ok(/(灵石|装备|丹药|灵草|灵铁|一无所获)/.test(full), '胜利结算应已含战利品清单（证明非逐行点出）');
+    // 点一次「继续」即应关闭（证明是「一次性展示 + 单个关闭」而非逐行）
+    click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 120));
+    t.eq(visible(doc, 'chapter'), false, '点一次「继续」后应关闭结算（回到秘境地图）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('胜利结算渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('秘境探索离开结算一次性显示（归途不逐行）', async (t) => {
+    // 进秘境地图（不触发战斗），再用右下角【强行撤离】触发离开结算
+    const raw = await battleSave();
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 220));
+    await advanceChapters(win, doc);
+    await new Promise(r => setTimeout(r, 180));
+    click(win, 'btn-explore');
+    await new Promise(r => setTimeout(r, 220));
+    if (visible(doc, 'modal') !== true) { t.fail('秘境选择弹窗未出现'); return; }
+    seedRng(win, 1);
+    const enter = [...doc.querySelectorAll('#modal-body .btn-main')].find(b => /入秘境/.test(b.textContent));
+    if (!enter) { t.fail('未找到「入秘境」按钮'); return; }
+    enter.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 280));
+    for (let i = 0; i < 12; i++) {
+      if (doc.querySelectorAll('#adv-map .adv-node.selectable').length) break;
+      click(win, 'chapter-actions');
+      await new Promise(r => setTimeout(r, 150));
+    }
+    await new Promise(r => setTimeout(r, 220));
+    if (!doc.getElementById('adv-screen') || doc.getElementById('adv-screen').style.display === 'none') { t.fail('未进入秘境地图'); return; }
+    // 点【强行撤离】→ 二次确认章节（逐行 display，需点「继续」到选项出现）
+    click(win, 'adv-retreat');
+    await new Promise(r => setTimeout(r, 150));
+    t.eq(visible(doc, 'chapter'), true, '点【强行撤离】应弹出二次确认章节');
+    // 逐行点「继续」直到确认选项按钮出现（该章节非 instant，选项在末行之后才渲染）
+    let okConfirm = null;
+    for (let i = 0; i < 8; i++) {
+      okConfirm = [...doc.querySelectorAll('#chapter-choices .choice-btn')].find(b => /强行撤离/.test(b.textContent));
+      if (okConfirm) break;
+      if (visible(doc, 'chapter') !== true) break;
+      click(win, 'chapter-actions');
+      await new Promise(r => setTimeout(r, 120));
+    }
+    t.ok(!!okConfirm, '应弹出「强行撤离」二次确认选项');
+    if (!okConfirm) return;
+    okConfirm.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    // 二次确认章节以「继续」收尾：点一次关闭才触发 advFinish → 归途结算
+    if (visible(doc, 'chapter') === true) click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 250));
+    // 确认后进入「秘境 · 归途」结算（instant）
+    const okGuitu = await waitUntil(() => {
+      const el = doc.getElementById('chapter-title');
+      return el && /归途/.test(el.textContent || '') && doc.querySelectorAll('#chapter-body .chap-line').length >= 2;
+    }, 2500);
+    t.ok(okGuitu, '应弹出「秘境 · 归途」离开结算');
+    const lines = [...doc.querySelectorAll('#chapter-body .chap-line')];
+    t.ok(lines.length >= 2, '归途结算应一次性渲染至少 2 行（实为 ' + lines.length + ' 行，若仅为 1 行说明回退成逐行）');
+    const full = lines.map(p => p.textContent).join('\n');
+    t.ok(/本次收获/.test(full), '归途结算应含「本次收获」段（证明非逐行点出）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('归途结算渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

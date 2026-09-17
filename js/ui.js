@@ -277,7 +277,8 @@
       box.innerHTML = '';
       $('chapter-choices').innerHTML = '';
       ov.style.display = 'flex';
-      cs = { resolve: resolve, opts: opts, lines: lines.slice(), i: 0 };
+      // instant：结算类章节一次性显示全部行（不打断逐行「继续」），适合战斗胜利 / 秘境归途等战利品清单
+      cs = { resolve: resolve, opts: opts, lines: lines.slice(), i: 0, instant: !!(opts && opts.instant) };
       $('chapter-actions').style.display = 'block';
       $('chapter-actions').textContent = '继续';
       $('chapter-actions').onclick = chapterNext;
@@ -287,8 +288,13 @@
   function chapterNext() {
     if (!cs) return;
     if (cs.i < cs.lines.length) {
-      appendLine(cs.lines[cs.i]);
-      cs.i++;
+      if (cs.instant) {
+        // 一次性把剩余行全部渲染出来（结算清单不逐行打断）
+        while (cs.i < cs.lines.length) { appendLine(cs.lines[cs.i]); cs.i++; }
+      } else {
+        appendLine(cs.lines[cs.i]);
+        cs.i++;
+      }
       const hasChoices = cs.opts.choices && cs.opts.choices.length;
       $('chapter-actions').textContent = (cs.i >= cs.lines.length && hasChoices) ? '下一步' : '继续';
     } else if (cs.opts.choices && cs.opts.choices.length) {
@@ -1497,7 +1503,7 @@
     box.appendChild(retreat);
   }
   function showBossChoice(extra) {
-    showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏' }).then(function () {
+    showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏', instant: true }).then(function () {
       const opts = Engine.advBossBonus(S);
       const ov = $('modal'); const box = $('modal-body');
       ov.style.display = 'flex'; ov.onclick = null; box.innerHTML = '';
@@ -1625,9 +1631,9 @@
           // 精英战斗胜利后给予宝箱奖励
           if (res.eliteReward) {
             const eliteLoot = generateTreasureReward();
-            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot)).then(advAdvanceToMap);
+            showChapter('精英击败', ['你收剑而立，从精英身上搜出宝物——'].concat(b ? b.gains : []).concat(eliteLoot), { instant: true }).then(advAdvanceToMap);
           } else {
-            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : [])).then(advAdvanceToMap);
+            showChapter('胜', ['你收剑而立，清点战利品。'].concat(b ? b.gains : []), { instant: true }).then(advAdvanceToMap);
           }
         } else if (r.lost) {
           advFinish('战败');
@@ -1851,7 +1857,7 @@
     if (a.lostMsg) lines.push(a.lostMsg);
     $('chapter').classList.remove('explore-mode');
     $('screen-game').classList.remove('explore-active');
-    showChapter('秘境 · 归途', lines).then(function () {
+    showChapter('秘境 · 归途', lines, { instant: true }).then(function () {
       log('【秘境探索】', 'evtitle');
       lines.forEach(function (g) { log(g, a.lostMsg && g === a.lostMsg ? 'bad' : 'good'); });
       afterAction();

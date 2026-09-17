@@ -1656,6 +1656,80 @@ module.exports = async function build() {
     if (real.length) t.fail('探寻仙缘触发报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 回归 2026-09-15：游历地图新增「红尘练心」节点。
+     引擎层（04-adventure）已守「单次道心 0.5/1、每大境界至多 10 次、突破重置、扣行动点」逻辑；
+     这里守 UI 渲染与点击链不被回退：
+       · 游历地图须有 [data-act="hongchen"] 节点
+       · 点节点 → screen-hongchen 可见、#hongchen-body 渲染出练心按钮（文案「练心」）
+       · 点「练心」一次 → 行动点 -1 且计数文本推进到「本境界已历炼 1/10」
+       · 连点至上限 → 按钮变「已至极限」且禁用、计数停在「10/10」、共恰好消耗 10 行动点
+       · 点「返回游历」→ 回到 screen-travel 地图、练心页隐藏 */
+  S.case('游历地图「红尘练心」：节点→开页→练心扣行动点→计数→返回游历', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '红尘');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    raw.actionsLeft = 50;           // 行动点充足，足够练满 10 次（每大境界上限）
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 220));
+    await advanceChapters(win, doc);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+
+    // ① 游历地图须有「红尘练心」节点
+    const node = doc.querySelector('#travel-body [data-act="hongchen"]');
+    t.ok(!!node, '游历页应有「红尘练心」入口节点[data-act="hongchen"]');
+    if (!node) return;
+    t.ok(/红尘练心/.test(node.textContent || ''), '节点文案应为「红尘练心」（实：' + (node.textContent || '').trim().slice(0, 20) + '）');
+
+    // ② 点击节点 → 打开 screen-hongchen，且渲染出练心按钮（未达上限文案「练心」）
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    t.eq(visible(doc, 'screen-hongchen'), true, '点「红尘练心」未打开练心页');
+    const body = doc.getElementById('hongchen-body');
+    t.ok(!!body, '练心页应有 #hongchen-body');
+    const btn = body && body.querySelector('.formula-row button');
+    t.ok(!!btn, '练心页应渲染出练心按钮');
+    if (!btn) return;
+    t.eq(btn.textContent.trim(), '练心', '未达上限时按钮文案应为「练心」（实：' + btn.textContent + '）');
+
+    // ③ 练心一次：行动点 -1，计数 0/10 → 1/10
+    const apEl = doc.getElementById('h-actions-left');
+    const apBefore = parseInt(apEl ? apEl.textContent : '0', 10);
+    btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+    const apAfter1 = parseInt((doc.getElementById('h-actions-left') || {}).textContent || '0', 10);
+    t.eq(apAfter1, apBefore - 1, '练心一次应恰好消耗 1 行动点（实 ' + apBefore + ' → ' + apAfter1 + '）');
+    const row1 = (doc.getElementById('hongchen-body') || {}).textContent || '';
+    t.ok(/本境界已历炼 1\/10/.test(row1), '练心一次后计数应为 1/10（实：' + row1.replace(/\s+/g, ' ').slice(0, 70) + '）');
+
+    // ④ 连点至上限（再点 9 次，共 10 次）；按钮变「已至极限」且禁用，计数停在 10/10
+    for (let i = 2; i <= 10; i++) {
+      const b = doc.querySelector('#hongchen-body .formula-row button');
+      if (!b || b.disabled) break;
+      b.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 120));
+    }
+    const btnMax = doc.querySelector('#hongchen-body .formula-row button');
+    t.ok(!!btnMax && btnMax.disabled, '达上限后练心按钮应禁用');
+    t.eq(btnMax ? btnMax.textContent.trim() : '', '已至极限', '达上限后按钮文案应为「已至极限」（实：' + (btnMax ? btnMax.textContent : '') + '）');
+    const rowMax = (doc.getElementById('hongchen-body') || {}).textContent || '';
+    t.ok(/10\/10/.test(rowMax), '计数应停在 10/10（实：' + rowMax.replace(/\s+/g, ' ').slice(0, 70) + '）');
+    const apEnd = parseInt((doc.getElementById('h-actions-left') || {}).textContent || '0', 10);
+    t.eq(apEnd, apBefore - 10, '练满 10 次应恰好消耗 10 行动点（实 ' + apBefore + ' → ' + apEnd + '）');
+
+    // ⑤ 返回游历 → 回到 screen-travel 地图，练心页隐藏
+    click(win, 'hongchen-back');
+    await new Promise(r => setTimeout(r, 200));
+    t.eq(visible(doc, 'screen-travel'), true, '点「返回游历」应回到游历地图');
+    t.eq(visible(doc, 'screen-hongchen'), false, '返回后练心页应隐藏');
+
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('红尘练心流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   /* 回归 2026-09-14：主页面 HUD 布局（用户反馈「头像单独占了一行」）。
      目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 右侧功能列（成就上、设置下）。
      旧版 flex + flex-wrap：窄屏上 .hud-name 的 min-content 顶破容器 → 整块换行。

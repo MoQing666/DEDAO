@@ -1048,11 +1048,11 @@ const MAINLINE = [
     setFlags: { linBattle: 1 },
     lines: [
       '魔修突袭宗门，你和林婉儿并肩站在城墙上。',
-      '她拔出长剑，剑光如水："今天，我们一起守。"',
+      '她拔出长剑，剑光如水：“今天，我们一起守。”',
       '魔修如潮水般涌来，你们背靠背，剑光交织。'
     ],
     choices: [
-      { t: '并肩作战', fight: { name: '魔修先锋', atk: 130, hp: 600, loot: { stone: 200, atk: 10 } },
+      { t: '并肩作战', fight: { name: '魔修先锋', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { stone: 200, atk: 10 } },
         resultWin: '你们联手斩杀魔修先锋，魔修溃退。她靠在你肩上，大口喘气："我们赢了。"你握紧她的手。',
         resultLose: '魔修太强，你们被迫撤退。她的手臂被划伤，你为她包扎时，手在发抖。' },
       { t: '让她断后', effect: { atk: 15, dao: 0.5 },
@@ -1551,7 +1551,7 @@ E('jiyuan', {
     '领头那人冷笑："把储物袋留下，饶你一命。"'
   ],
   choices: [
-    { t: '拔剑迎战', fight: { name: '劫修头领', atk: 40, hp: 120, loot: { stone: 80, herb: 2 } },
+    { t: '拔剑迎战', zhie: true, fight: { name: '劫修头领', atk: 40, hp: 120, loot: { stone: 80, herb: 2 } },
       lines: ['你剑光如电，三招放倒两人。那劫修头领见势不妙，丢下口袋便跑。'] },
     { t: '交出储物袋，忍辱负重',
       effect: { stone: -15 },
@@ -1679,7 +1679,7 @@ E('shejiao', {
   setFlags: { choux: 1 },
   lines: ['采药时节，当年在你家中落难时借了五十灵石不还、还反咬一口的同乡，带着三个帮手堵住了你。', '"风水轮流转。今日，连本带利还来！"'],
   choices: [
-    { t: '剑出鞘，讨个公道', fight: { name: '同乡恶徒', atk: 35, hp: 160, loot: { stone: 120 } }, resultWin: '你一剑扫开三人，盯着他发抖的腿："当年五十的债，现在拿命了。"他跪了。', resultLose: '双拳难敌四手，你挂了彩，被抢走一些灵石。（气血受损）' },
+    { t: '剑出鞘，讨个公道', zhie: true, fight: { name: '同乡恶徒', atk: 35, hp: 160, loot: { stone: 120 } }, resultWin: '你一剑扫开三人，盯着他发抖的腿："当年五十的债，现在拿命了。"他跪了。', resultLose: '双拳难敌四手，你挂了彩，被抢走一些灵石。（气血受损）' },
     { t: '破财消灾', effect: { stone: -60 }, lines: ['你把六十灵石丢在地上："拿了，滚。"他们捡起钱，连滚带爬地跑了。你望着那道背影，心中毫无波澜。'] }
   ]
 });
@@ -1992,7 +1992,7 @@ E('shanhe', {
     '你破冰而入，寒气顺着经脉直往心口钻。潭底白影一晃——一头沉睡的冰蛟盘踞在冰髓旁。'
   ],
   choices: [
-    { t: '悄悄取髓', fight: { name: '冰蛟', atk: 90, hp: 420, loot: { iron: 20, stone: 160, art: 'xuanwu_guijia' } }, resultWin: '冰蛟轰然倒下，冰髓入手的一刻，你手心的温度几乎被冻透，心却是热的。', resultLose: '冰蛟一尾将你拍飞，你被寒气冻昏在半路，醒来时已在十里外的山脚。（气血大损）',
+    { t: '悄悄取髓', fight: { name: '冰蛟', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { iron: 20, stone: 160, art: 'xuanwu_guijia' } }, resultWin: '冰蛟轰然倒下，冰髓入手的一刻，你手心的温度几乎被冻透，心却是热的。', resultLose: '冰蛟一尾将你拍飞，你被寒气冻昏在半路，醒来时已在十里外的山脚。（气血大损）',
       next: {
         winOnly: true,
         lines: ['冰髓在掌中散发着幽幽蓝光。传闻将冰髓融入经脉，可大幅拓宽道基，但也有逆流之险。'],
@@ -2011,7 +2011,7 @@ E('mijing', {
     '你顶着灼热深入，却见炉前坐着一具焦黑的身躯——一位抱炉而死的铸师。'
   ],
   choices: [
-    { t: '以礼相待，取炉中神铁', fight: { name: '火脉元灵', atk: 130, hp: 600, loot: { iron: 40, equip: 'jinylv' } }, resultWin: '元灵散去，神铁入手滚烫，仿佛还带着那位铸师的掌温。（获得灵铁与金缕衣）', resultLose: '火灵反噬，你被热浪卷出洞外，衣甲尽碎。（气血大损，丢失两株灵草）' },
+    { t: '以礼相待，取炉中神铁', fight: { name: '火脉元灵', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { iron: 40, equip: 'jinylv' } }, resultWin: '元灵散去，神铁入手滚烫，仿佛还带着那位铸师的掌温。（获得灵铁与金缕衣）', resultLose: '火灵反噬，你被热浪卷出洞外，衣甲尽碎。（气血大损，丢失两株灵草）' },
     { t: '收骨安葬，不取一物', effect: { herb: 8, wu: 1 }, lines: ['你用潭水洗净尸骨，以石头垒墓。最后一铲土落下时，炉中竟"叮"一声弹出一柄火红短剑——他留给有缘人的。（悟性+1）'] }
   ]
 });
@@ -2024,7 +2024,7 @@ E('mijing', {
   ],
   choices: [
     { t: '讨一杯悟道茶', effect: { herb: 30, wu: 2, elixirs: { wudao: 1 } }, lines: ['老龟煮茶，你饮下三口。一时间，万年光阴在你眼前流淌而过，你什么都懂了。（悟性+2，获得悟道丹与大量灵草）'] },
-    { t: '拔剑，请指教', fight: { name: '守园老龟', atk: 200, hp: 2000, loot: { wu: 1, elixirs: { wudao: 1 } } }, resultWin: '老龟挨了一剑，不怒反笑："好剑。这园子，送你了。"你抱拳一礼，悟道意蕴入体。（悟性+1，获得悟道丹）', resultLose: '老龟一爪将你按下："败了，就留下喝一年的茶。"你哭笑不得——这园子，怕是要扫一年地了。（气血受损）' }
+    { t: '拔剑，请指教', fight: { name: '守园老龟', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { wu: 1, elixirs: { wudao: 1 } } }, resultWin: '老龟挨了一剑，不怒反笑："好剑。这园子，送你了。"你抱拳一礼，悟道意蕴入体。（悟性+1，获得悟道丹）', resultLose: '老龟一爪将你按下："败了，就留下喝一年的茶。"你哭笑不得——这园子，怕是要扫一年地了。（气血受损）' }
   ]
 });
 E('mijing', {
@@ -2138,7 +2138,7 @@ E('mijing', {
     '门缝里透出一线幽光——禁制之内的东西，还在发亮。'
   ],
   choices: [
-    { t: '破禁而入', fight: { name: '守府阵灵', atk: 70, hp: 320, loot: { tech: 'taixuan', stone: 120 } },
+    { t: '破禁而入', fight: { name: '守府阵灵', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { tech: 'taixuan', stone: 120 } },
       resultWin: '阵灵破碎，你入府取走一卷《太玄经》残篇与灵石——那正是这位前辈毕生所求的道。',
       resultLose: '禁制反噬，你被弹出十丈，额头撞出个包。看来修为还差些火候。（气血受损）' },
     { t: '以灵石供于门前，只取一物', effect: { stone: -50, qi: 200 },
@@ -2160,13 +2160,13 @@ E('mijing', {
       next: {
         lines: ['石室深处还有一扇暗门，门上刻着：一子一乾坤。'],
         choices: [
-          { t: '以鲜血为引，强开暗门', fight: { name: '天机傀儡', atk: 110, hp: 450, loot: { elixirs: { juling: 1 }, wu: 1 } },
+          { t: '以鲜血为引，强开暗门', fight: { name: '天机傀儡', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { elixirs: { juling: 1 }, wu: 1 } },
             resultWin: '傀儡散架，你从暗格里捧出一枚聚气丹——阵道大师的随身之宝！',
             resultLose: '傀儡一拳将你轰出石室，你带着阵道笔记逃之夭夭。（气血受损）' },
           { t: '见好就收，打道回府', effect: { stone: 40 }, lines: ['你掂了掂怀里的收获，心满意足地离开。有些门，不必全开。'] }
         ]
       } },
-    { t: '以力破门', fight: { name: '石门机关', atk: 80, hp: 380, loot: { stone: 150, iron: 12 } },
+    { t: '以力破门', fight: { name: '石门机关', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { stone: 150, iron: 12 } },
       resultWin: '你把机关砸了个稀烂，从废墟里翻出灵石与灵铁——粗暴，但有效。',
       resultLose: '机关迸出铁刺，你躲闪不及，肩头挂了彩。（气血受损）' },
     { t: '在门口刻下"后来者，天机有缘"，便走', effect: { wu: 1 },
@@ -2186,7 +2186,7 @@ E('shanhe', {
       next: {
         lines: ['雷池深处，一团紫色雷液在池心缓缓旋转——那是淬炼千年才成的雷髓。'],
         choices: [
-          { t: '涉足池心，取雷髓', fight: { name: '雷池元灵', atk: 150, hp: 550, loot: { iron: 30, hpMax: 150, art: 'jilin_jia' } },
+          { t: '涉足池心，取雷髓', fight: { name: '雷池元灵', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { iron: 30, hpMax: 150, art: 'jilin_jia' } },
             resultWin: '你以手代器，将雷髓淬入己身——经脉拓宽，气血如虹！（气血上限+150）',
             resultLose: '雷髓反噬，你被电弧轰出雷池，躺在岸边抽搐了半日。（气血受损）' },
           { t: '取一瓢雷液便退', effect: { iron: 20 },
@@ -2216,7 +2216,7 @@ E('shanhe', {
           { t: '再拜一礼，从容离开', effect: { wu: 1 }, lines: ['你不疾不徐行了一礼，才转身离去。走出三里，背后传来一声悠长的叹息——"善。"（悟性+1）'] }
         ]
       } },
-    { t: '取玉果', fight: { name: '荒神残念', atk: 180, hp: 900, loot: { elixirs: { wudao: 2 }, wu: 1, art: 'panshi_kai' } },
+    { t: '取玉果', fight: { name: '荒神残念', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { elixirs: { wudao: 2 }, wu: 1, art: 'panshi_kai' } },
       resultWin: '残念消散，你捧起两枚玉果——这是神佛都垂涎的东西！（悟道丹×2，悟性+1）',
       resultLose: '神像掌风扫来，你倒飞十丈，埋在沙里半晌才爬起来。（气血大损）' },
     { t: '以空敬之：不取一物，只静坐一夜', effect: { wu: 2, qi: function (s) { return Math.round(requireNeed(s) * 0.3); } },
@@ -2231,7 +2231,7 @@ E('shanhe', {
     '你循声而去，却见一头通体透明的风灵兽盘踞阶前，周身罡风凛冽，阶下静静躺着一双轻履。'
   ],
   choices: [
-    { t: '踏风而上，夺履而走', fight: { name: '风灵兽', atk: 75, hp: 360, loot: { art: 'tafeng_lv' } },
+    { t: '踏风而上，夺履而走', fight: { name: '风灵兽', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: { art: 'tafeng_lv' } },
       resultWin: '风灵兽散作漫天清风，那双踏风履静静落在阶前——你穿上它，身形竟轻快了三分。（获得法宝·踏风履）', resultLose: '罡风将你掀下古径，你狼狈滚落，只捡回半条命。（气血大损）' },
     { t: '不夺其履，静观风势', effect: { dun: 1 }, lines: ['你不与风灵兽相争，只盘膝观风。一夜过后，对「遁速」的领悟深了一层。（遁速+1）'] }
   ]
@@ -2323,7 +2323,7 @@ E('mijing', {
     '你御剑悬停在裂缝前，指尖凝起灵力。'
   ],
   choices: [
-    { t: '冲入裂缝，一探究竟', fight: { name: '虚空兽潮', atk: 220, hp: 1500, loot: { tech: 'kaitian', wu: 2 } },
+    { t: '冲入裂缝，一探究竟', fight: { name: '虚空兽潮', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { tech: 'kaitian', wu: 2 } },
       resultWin: '你杀穿兽潮，在虚空尽头拾得一片金色残页——那是《开天篇》的最后一页！（获得仙阶功法）',
       resultLose: '虚空兽潮将你撕扯得遍体鳞伤，你拼死退回人间。（气血大损）' },
     { t: '以灵力封印裂缝', effect: { qi: function (s) { return Math.round(requireNeed(s) * 0.5); }, hp: -60 },
@@ -2340,7 +2340,7 @@ E('mijing', {
     '陨星核旁，一头吞星巨蟒正盘踞酣睡。'
   ],
   choices: [
-    { t: '偷挖星核', fight: { name: '吞星巨蟒', atk: 200, hp: 1300, loot: { iron: 60, elixirs: { zengshou: 1 } } },
+    { t: '偷挖星核', fight: { name: '吞星巨蟒', enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, loot: { iron: 60, elixirs: { zengshou: 1 } } },
       resultWin: '巨蟒被你一剑惊走，你掘出星核——炽热得几乎握不住！（灵铁×60，增寿丹）',
       resultLose: '巨蟒尾鞭扫来，你被拍飞出谷，星铁碎了一地。（气血大损）' },
     { t: '收集谷中星铁便走', effect: { iron: 35 },
@@ -3851,7 +3851,7 @@ E('shejiao', {
   lines: ['市集喧闹处，一个无赖正欺辱卖花老妪。你按剑上前。',
     '"光天化日，欺老凌弱，也好意思用这张脸？"'],
   choices: [
-    { t: '拔剑止恶', fight: { name: '市井无赖', atk: 30, hp: 100, loot: { stone: 20 } }, resultWin: '无赖抱头鼠窜，老妪连连道谢，塞来几枚灵石。（灵石+20）', resultLose: '你挂了彩，却也护住了老妪。她含泪替你包扎。' },
+    { t: '拔剑止恶', zhie: true, fight: { name: '市井无赖', atk: 30, hp: 100, loot: { stone: 20 } }, resultWin: '无赖抱头鼠窜，老妪连连道谢，塞来几枚灵石。（灵石+20）', resultLose: '你挂了彩，却也护住了老妪。她含泪替你包扎。' },
     { t: '以银钱打发', effect: { stone: -10 }, lines: ['你丢下一袋灵石，无赖权衡片刻悻悻离去。息事宁人，亦是修行。'] }
   ]
 });

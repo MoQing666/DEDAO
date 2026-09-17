@@ -387,12 +387,36 @@
   function choose(c) {
     return new Promise(function (resolve) {
       if (c.fight) {
-        openBattle(c.fight, { title: '遭遇战' }).then(function (r) {
+        var fb = c.fight;
+        var spec = fb;
+        // 金丹/元婴 EVENTS 守敌改「秘境精英怪 10 层」：enemyBoss 走 Engine.enemyGen 实时生成
+        // （与宗门任务 commissionEnemy 同口径，按玩家当前境界/叠劫缩放），保留事件原味 name/loot。
+        if (fb.enemyBoss) {
+          var gen = Engine.enemyGen(S, fb.enemyBoss.tag, fb.enemyBoss.depth, fb.enemyBoss.adv);
+          spec = {
+            name: fb.name,
+            line: fb.line || '',
+            atk: gen.atk, hp: gen.hp,
+            loot: fb.loot || {},
+            portrait: gen.portrait,
+            dunSpeed: gen.dunSpeed,
+            mechanic: gen.mechanic,
+            noFlee: gen.noFlee
+          };
+        }
+        openBattle(spec, { title: '遭遇战' }).then(function (r) {
           const lines = (c.lines || []).slice();
           const b = S.battle;
           if (r.win) {
             lines.push(c.resultWin || '你赢得了这场战斗。');
             if (b && b.gains.length) lines.push.apply(lines, b.gains);
+            // 止恶：战斗胜利且无属性奖励（仅 stone/herb/iron 等资源不算）则 +0.5 道心
+            if (c.zhie) {
+              var zloot = fb.loot || {}, zeff = c.effect || {};
+              var zAttr = ['atk', 'hp', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'atkSpd', 'recover', 'mpPct', 'wu', 'dao', 'qi', 'ti', 'ling', 'dun', 'shen', 'cult', 'doubleCult', 'doubleDmg'];
+              var zHasAttr = zAttr.some(function (k) { return zloot[k] != null || zeff[k] != null; });
+              if (!zHasAttr) { Engine.applyOps(S, { dao: 0.5 }).forEach(function (x) { lines.push(x); }); }
+            }
           } else if (r.lost) {
             lines.push(c.resultLose || '你负伤败退，踉跄而逃。');
             if (b && b.hpLost) lines.push('此战你气血 -' + b.hpLost + '。');

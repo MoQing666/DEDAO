@@ -1792,6 +1792,125 @@ module.exports = async function build() {
     if (real.length) t.fail('游历道心流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 回归 2026-09-17：EVENTS 金丹/元婴守敌升「秘境第10层精英」必须在 UI 端到端落地。
+     引擎层（02-engine-sim）已守「12 处金丹/元婴 EVENTS 战斗声明 enemyBoss（adv∈{di,tian}、tag=elite、depth=10）、
+     enemyGen 数值远强于写死弱值」；这里守玩家端可见结果：触发一个金丹 elite 守敌事件
+     → 遭遇战敌人实为 Engine.enemyGen('elite',10,'di') 水准、且保留事件原味 flavor name。 */
+  S.case('EVENTS 金丹守敌：遭遇战敌人须达秘境第10层精英水准（enemyBoss 实时生成）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '金丹精英');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+    // 用确定性事件覆盖 shanhe 池：金丹 elite 守敌（enemyBoss.adv='di'）
+    win.eval(`(function(){
+      EVENTS.shanhe.length = 0;
+      E('shanhe', {
+        id: 'test_jindan_elite', title: '秘境精英测试', weight: 1, min: 0, max: 14, once: false,
+        lines: ['一名金丹期秘境守敌挡在前方。'],
+        choices: [{ t: '迎战', fight: { name: '测试·秘境守灵', line: '它目光如电。', enemyBoss: { adv: 'di', tag: 'elite', depth: 10 }, loot: {} } }]
+      });
+    })()`);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+    const node = doc.querySelector('#travel-body [data-act="shanhe"]');
+    t.ok(!!node, '游历页应有「山河探索」入口');
+    if (!node) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-game'), true, '择一弹窗应回到主界面展示');
+    const card = [...doc.querySelectorAll('#modal-body > div')].filter(e => /秘境精英测试/.test(e.textContent))[0];
+    t.ok(!!card, '弹窗应列出该际遇');
+    if (!card) return;
+    card.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    for (let i = 0; i < 6 && !doc.querySelector('#chapter-choices .choice-btn'); i++) {
+      click(win, 'chapter-actions'); await new Promise(r => setTimeout(r, 160));
+    }
+    const cb = doc.querySelector('#chapter-choices .choice-btn');
+    t.ok(!!cb, '应出现「迎战」选项');
+    if (!cb) return;
+    cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 300));
+    // 战斗层已开 → 从 DOM 读取真实守敌数值（S 在 ui.js 闭包内，不可经 win.eval 直达，故读 DOM）
+    t.eq(visible(doc, 'battle'), true, '应进入遭遇战');
+    const nameEl = doc.getElementById('b-enemy-name');
+    const numEl = doc.getElementById('b-enemy-num');
+    t.ok(!!nameEl && !!numEl, '战斗层应渲染敌方名 / 气血');
+    if (!nameEl || !numEl) return;
+    const foeName = nameEl.textContent;
+    const foeHp = parseInt((numEl.textContent || '').split('/')[0].replace(/[^0-9]/g, ''), 10);
+    // 运行期 ui.js 正是用这一句生成守敌（与 commissionEnemy 同口径）：{jie:0} 即开局炼气玩家
+    const expect = win.eval('Engine.enemyGen({jie:0}, "elite", 10, "di")');
+    t.eq(foeHp, expect.hp, '守敌血量须等于地级秘境第10层精英（Engine.enemyGen 同源），实 ' + foeHp + ' / 基准 ' + expect.hp);
+    t.gt(foeHp, 1900, '守敌血量应远高于旧写死弱值（实 ' + foeHp + '）');
+    t.ok(/测试·秘境守灵/.test(foeName), '应保留事件原味 flavor name（实：' + foeName + '）');
+    // （守敌攻击由 02-engine-sim 用例以 enemyGen 数值同源锁死，这里端到端验证「UI 真的生成并展示了精英级敌人」）
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('金丹精英遭遇战报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* 回归 2026-09-17：止恶类社交战斗「胜利且无属性奖励」须额外 +0.5 道心（UI 端到端）。
+     引擎数据层（02）已守 3 个止恶战斗选择带 zhie:true；这里守玩家端可见结果：
+       · 触发一个 zhie 战斗（弱敌、loot 仅 stone、无属性奖励）→ 胜利 → 道心 HUD +0.5、结算文案「道心 +0.5」
+       · 同时证明「炼气/筑基止恶保持写死弱值」：敌人是弱值，且 +0.5 不依赖敌人强度 */
+  S.case('止恶战斗胜利且无属性奖励 → 额外 +0.5 道心（UI 端到端）', async (t) => {
+    const { win, doc, errors } = await boot();
+    await enterGame(win, doc, '止恶道心');
+    t.eq(visible(doc, 'screen-game'), true, '未进入主界面');
+    const daoBefore = parseFloat((doc.getElementById('st-dao') || {}).textContent) || 0;
+    // 注入确定性「止恶」战斗事件：zhie:true、弱敌（保证玩家必胜以稳定验证 win 分支）、loot 仅 stone（无属性奖励）
+    win.eval(`(function(){
+      EVENTS.shanhe.length = 0;
+      E('shanhe', {
+        id: 'test_zhie', title: '止恶测试', weight: 1, min: 0, max: 14, once: false,
+        lines: ['市井无赖正在欺凌弱小。'],
+        choices: [{ t: '拔剑止恶', zhie: true, fight: { name: '市井无赖', line: '他狞笑着扑来。', atk: 1, hp: 20, loot: { stone: 20 } } }]
+      });
+    })()`);
+    click(win, 'btn-social');
+    await new Promise(r => setTimeout(r, 250));
+    t.eq(visible(doc, 'screen-travel'), true, '点「游历」未进入游历页');
+    const node = doc.querySelector('#travel-body [data-act="shanhe"]');
+    t.ok(!!node, '游历页应有「山河探索」入口');
+    if (!node) return;
+    node.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    const card = [...doc.querySelectorAll('#modal-body > div')].filter(e => /止恶测试/.test(e.textContent))[0];
+    t.ok(!!card, '弹窗应列出该际遇');
+    if (!card) return;
+    card.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 250));
+    for (let i = 0; i < 6 && !doc.querySelector('#chapter-choices .choice-btn'); i++) {
+      click(win, 'chapter-actions'); await new Promise(r => setTimeout(r, 160));
+    }
+    const cb = doc.querySelector('#chapter-choices .choice-btn');
+    t.ok(!!cb, '应出现「拔剑止恶」选项');
+    if (!cb) return;
+    cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    // 弱敌 atk20/hp100：玩家普攻连点至胜利（败北非致命，仅 s.hp=1，不影响 +0.5 断言）
+    let closed = false;
+    for (let i = 0; i < 120; i++) {
+      if (visible(doc, 'battle') !== true) { closed = true; break; }
+      click(win, 'b-atk');
+      await new Promise(r => setTimeout(r, 25));
+    }
+    t.ok(closed, '止恶战斗应在有限回合内结束');
+    // 结算章节出现：先抓文案（含「道心 +0.5」），再关章节触发 HUD 刷新
+    await waitUntil(() => /道心\s*\+0\.5/.test((doc.getElementById('chapter-body') || {}).textContent || ''), 3000).catch(() => {});
+    const cbody = (doc.getElementById('chapter-body') || {}).textContent || '';
+    t.ok(/道心\s*\+0\.5/.test(cbody), '结算文案应出现「道心 +0.5」（实：' + cbody.slice(-90) + '）');
+    // 关结算章节 → refresh → 道心 HUD 同步（与游历道心用例同：HUD 在章节关闭时才刷新）
+    click(win, 'chapter-actions');
+    await new Promise(r => setTimeout(r, 250));
+    await waitUntil(() => parseFloat((doc.getElementById('st-dao') || {}).textContent) === daoBefore + 0.5, 3000).catch(() => {});
+    const daoAfter = parseFloat((doc.getElementById('st-dao') || {}).textContent) || 0;
+    t.eq(daoAfter, daoBefore + 0.5, '止恶胜利无属性奖励应使道心 +0.5（实 ' + daoBefore + ' → ' + daoAfter + '）');
+    const hud = (doc.getElementById('st-dao') || {}).textContent;
+    t.ok(hud === String(daoAfter), '道心 HUD 应同步显示 +0.5（实：' + hud + '）');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('止恶战斗报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   /* 回归 2026-09-14：主页面 HUD 布局（用户反馈「头像单独占了一行」）。
      目标：头像在左 / 道号在右（同一行）/ 命格在下一行 / 右侧功能列（成就上、设置下）。
      旧版 flex + flex-wrap：窄屏上 .hud-name 的 min-content 顶破容器 → 整块换行。

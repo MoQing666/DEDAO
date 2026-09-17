@@ -1272,6 +1272,48 @@ module.exports = async function build() {
     t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）；护卫商队守敌 攻 ' + (huwei ? E.commissionEnemy(s, huwei).atk : '?') + ' / 血 ' + (huwei ? E.commissionEnemy(s, huwei).hp : '?') + '（玄级秘境第 10 层精英同源）；镇魔差遣守敌 攻 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).atk : '?') + ' / 血 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).hp : '?') + '（天级秘境第 10 层精英同源）');
   });
 
+  S.case('EVENTS 金丹/元婴守敌对标秘境第10层精英（enemyBoss 实时生成，炼气/筑基保持写死弱值）', (t) => {
+    const s = E.startLife('事件守敌重平衡');
+    E.commitStart(s, 'wuxing');
+    // 扫描全部事件战斗选项（EVENTS 五池 + 主线 MAINLINE + 统一仙缘池 XIANYUAN，递归取嵌套 choices），
+    // 区分「已升级 elite 守敌」与「保持写死弱值」
+    const all = [];
+    function walkChoices(cs, ev, tag) {
+      if (!cs || !cs.length) return;
+      cs.forEach(function (c) {
+        if (c && c.fight) all.push({ ev: ev, c: c, tag: tag });
+        if (c && c.choices) walkChoices(c.choices, ev, tag);
+        if (c && c.next && c.next.choices) walkChoices(c.next.choices, ev, tag);
+      });
+    }
+    ['jiyuan', 'shejiao', 'mijing', 'shanhe', 'year'].forEach(function (tag) {
+      (G.get('EVENTS')[tag] || []).forEach(function (ev) { walkChoices(ev.choices, ev, tag); });
+    });
+    (G.get('MAINLINE') || []).forEach(function (ev) { walkChoices(ev.choices, ev, 'mainline'); });
+    (G.get('XIANYUAN') || []).forEach(function (ev) { walkChoices(ev.choices, ev, 'xianyuan'); });
+    const eliteFoes = all.filter(function (x) { return x.c.fight.enemyBoss; });
+    t.ok(eliteFoes.length >= 12, '金丹/元婴 EVENTS 应有 ≥12 处守敌升级为秘境10层精英（实 ' + eliteFoes.length + '）');
+    // 每一处 enemyBoss：adv 必为 金丹(di)/元婴(tian)、tag=elite、depth=10，且 enemyGen 数值明显强于旧写死弱值
+    eliteFoes.forEach(function (x) {
+      const eb = x.c.fight.enemyBoss;
+      t.ok(eb.adv === 'di' || eb.adv === 'tian', x.ev.id + ' 守敌应为金丹(di)/元婴(tian)（实 ' + eb.adv + '）');
+      t.eq(eb.tag, 'elite', x.ev.id + ' 应标 elite');
+      t.eq(eb.depth, 10, x.ev.id + ' 应对标第 10 层');
+      // 运行期 ui.js 正是用这一句生成守敌（与 commissionEnemy 同口径），数值须同源且远强于写死弱值
+      const g = E.enemyGen(s, eb.tag, eb.depth, eb.adv);
+      t.gt(g.atk, 400, x.ev.id + ' 守敌攻击应远高于旧写死弱值（实 ' + g.atk + '）');
+      t.gt(g.hp, 1900, x.ev.id + ' 守敌血量应远高于旧写死弱值（实 ' + g.hp + '）');
+    });
+    // 炼气/筑基（及未指定境界的社交止恶）EVENTS 战斗应保持写死弱值——不声明 enemyBoss
+    const keepWeak = ['moyou_shanyao', 'chou_xiang', 'shijin_yijian', 'wu_valley', 'baigu_gumu', 'lin_battle'];
+    keepWeak.forEach(function (id) {
+      all.filter(function (x) { return x.ev.id === id; }).forEach(function (x) {
+        t.ok(!x.c.fight.enemyBoss, id + '（' + x.c.t + '）应保持写死弱值、不升精英');
+      });
+    });
+    t.note('金丹/元婴 EVENTS 守敌共 ' + eliteFoes.length + ' 处升级为秘境第10层精英（enemyBoss 实时生成，与宗门任务 commissionEnemy 同口径）；炼气/筑基社交止恶保持写死弱值');
+  });
+
   S.case('宗门大比：十年一届 · 首赛第 10 年 · 一条直线 5 层 · 对手随境界缩放', (t) => {
     const DABI = G.get('SECT_DABI');
     t.eq(DABI.intervalYears, 10, '宗门大比应十年一届（旧为 3 年）');

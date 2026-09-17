@@ -3619,6 +3619,47 @@ const Engine = (function () {
     };
   }
 
+  /* ---------------- 红尘练心（游历内开页；逻辑同锻体：进入免费、每次耗 1 行动点、每境有上限、随机红尘事件出道心） ---------------- */
+  var HONGCHEN_MAX = 10;            // 每大境界，道心历炼至多 10 次（与锻体对齐）
+  // 1 行动点对应 0.5 / 1 / 1 点道心：6 个事件里 2 个 +0.5、4 个 +1，按权重均匀摇 → P(0.5)=1/3、P(1)=2/3
+  var HONGCHEN_EVENTS = [
+    { id: 'hc_chashi', title: '茶摊听书',   dao: 0.5, weight: 1, lines: ['市井茶棚里，说书人拍案讲一段兴亡。你听得入神，忽觉心头蒙尘被扫去一隅。（道心 +0.5）'] },
+    { id: 'hc_xingyi', title: '行医济世',   dao: 0.5, weight: 1, lines: ['你以微末法术替穷苦人医病疗伤，见众生皆苦，亦见众生皆韧。（道心 +0.5）'] },
+    { id: 'hc_beihuan', title: '见证人间悲欢', dao: 1, weight: 1, lines: ['酒楼之上，你见离人垂泪、游子还乡。悲欢起落间，你忽然懂了何为「情」、何为「执」。（道心 +1）'] },
+    { id: 'hc_lundao', title: '老者论道',   dao: 1, weight: 1, lines: ['街角槐荫下，一布衣老者与人论道，句句直指本心。你驻足良久，若有所悟。（道心 +1）'] },
+    { id: 'hc_meng', title: '悟红尘如梦',   dao: 1, weight: 1, lines: ['夜宿客栈，灯下看你自己的影子——三十年功名尘与土，到头不过一场大梦。梦醒时，道心愈坚。（道心 +1）'] },
+    { id: 'hc_yuan', title: '了却一段缘',   dao: 1, weight: 1, lines: ['你替一对有情人捎去口信，了却一桩悬了多年的心愿。成全他人，亦是圆满自己。（道心 +1）'] }
+  ];
+  function hongchenState(s) {
+    var bi = bigIdxOf(s);
+    if (!s.hongchen || s.hongchen.realm !== bi) {
+      s.hongchen = { realm: bi, counts: { dao: 0 } };
+    }
+    return s.hongchen;
+  }
+  function hongchenInfo(s) {
+    return { unlocked: true, max: HONGCHEN_MAX, realm: bigIdxOf(s), counts: hongchenState(s).counts };
+  }
+  function doHongchen(s) {
+    var st = hongchenState(s);
+    var cap = HONGCHEN_MAX;
+    if (st.counts.dao >= cap) {
+      return { ok: false, msg: '道心已历炼 ' + cap + ' 次，红尘百态尽数尝过——待突破大境界后，方有新悟。' };
+    }
+    if (!canAction(s, 1)) return { ok: false, msg: '行动点不足。' };
+    spend(s, 1);
+    var ev = pickWeighted(HONGCHEN_EVENTS);
+    s.dao = (s.dao || 0) + ev.dao;
+    st.counts.dao++;
+    refreshStats(s); saveState(s);
+    return {
+      ok: true,
+      msg: ev.lines.join('') + '（道心 ' + st.counts.dao + '/' + cap + '）',
+      dao: ev.dao,
+      left: cap - st.counts.dao
+    };
+  }
+
   function explore(s) {
     if (!canAction(s, 2)) return false;
     const pool = EVENTS.mijing.filter(evOK(s, 2));
@@ -3762,6 +3803,26 @@ const Engine = (function () {
     s.shanheCount = (s.shanheCount || 0) + 1;
     return { multi: true, events: picks };
   }
+  /* ---------------- 游历重平衡（2026-09-17）：游历事件池的「悟性」奖励一律改为「道心」 ---------------- */
+  // 游历池（jiyuan 名山大川 / shejiao 市井 / shanhe 山河）里带 numeric 悟性 奖励的事件，
+  // 把 effect.wu 并入 effect.dao 并删除 wu，同时改写文案「悟性+N」→「道心+N」。
+  // 注：实测游历池仅 3 个事件带 numeric 悟性（茶摊听书 / 林婉儿重逢·飞升），按设计意图「悟性→道心」全部转入，
+  // 使游历不再产出悟性、改为产出道心。确定性、可测、幂等。
+  function normalizeTravelWuToDao() {
+    if (normalizeTravelWuToDao._done) return;
+    normalizeTravelWuToDao._done = true;
+    [EVENTS.jiyuan, EVENTS.shejiao, EVENTS.shanhe].forEach(function (pool) {
+      (pool || []).forEach(function (ev) {
+        if (!ev || !ev.effect || typeof ev.effect.wu !== 'number') return;
+        ev.effect.dao = (ev.effect.dao || 0) + ev.effect.wu;
+        delete ev.effect.wu;
+        if (ev.lines) ev.lines = ev.lines.map(function (ln) {
+          return typeof ln === 'string' ? ln.replace(/悟性\s*\+([0-9]+(?:\.[0-9]+)?)/g, '道心+$1') : ln;
+        });
+      });
+    });
+  }
+  normalizeTravelWuToDao();
   // 带权不放回抽样 n 个（高权重大概率先被抽中，且互不相同）
   function pickWeightedN(pool, n) {
     const bag = pool.slice();
@@ -5627,6 +5688,7 @@ const Engine = (function () {
     getAvailableEvents: getAvailableEvents, triggerEvent: triggerEvent,
     bigIdxOf: bigIdxOf,
     duantiInfo: duantiInfo, doDuanti: doDuanti,
+    hongchenInfo: hongchenInfo, doHongchen: doHongchen,
     TECHNIQUES: TECHNIQUES, ARTIFACTS: ARTIFACTS, ELIXIRS: ELIXIRS,
     ACHIEVEMENTS: ACHIEVEMENTS, REINCARNATION: REINCARNATION, INIT_EXP: INIT_EXP,
     logLife: logLife, settlePoints: settlePoints, earnPoints: earnPoints, achDefs: achDefs,

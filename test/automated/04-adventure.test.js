@@ -1248,5 +1248,51 @@ module.exports = async function build() {
       + (u10 * 100).toFixed(1) + '% / 20层' + (u20 * 100).toFixed(1) + '%');
   });
 
+  S.case('红尘练心：每次耗1行动点随机产出道心0.5/1，每境有上限并跨境重置', (t) => {
+    t.ok(typeof E.doHongchen === 'function' && typeof E.hongchenInfo === 'function', 'doHongchen / hongchenInfo 未导出');
+    const s = started();
+    s.actionsLeft = 50;                 // 足够多次历炼（3 境 × 10 次 = 30 行动点）
+    let saw05 = false, saw1 = false, total = 0;
+    function train10() {
+      for (let i = 0; i < 10; i++) {
+        const r = E.doHongchen(s);
+        t.ok(r.ok, '历炼应成功');
+        t.ok(r.dao === 0.5 || r.dao === 1, '单次道心只可能 0.5 或 1（实 ' + r.dao + '）');
+        if (r.dao === 0.5) saw05 = true;
+        if (r.dao === 1) saw1 = true;
+        total++;
+      }
+    }
+    train10();                          // 第 1 大境界（炼气,bigRealm 0）：历炼 10 次至上限
+    s.idx = 3; s.realm = '筑基'; E.refreshStats(s); train10();   // 突破筑基（bigRealm 1）：次数重置，再历炼 10 次
+    s.idx = 6; s.realm = '金丹'; E.refreshStats(s); train10();   // 突破金丹（bigRealm 2）：再次重置，再历炼 10 次
+    t.eq(total, 30, '共应历炼 30 次（3 个大境界 × 10）');
+    t.eq(s.actionsLeft, 50 - 30, '应恰好消耗 30 行动点');
+    t.ok(saw05 && saw1, '分布应同时出现 0.5 与 1 两种结果（对应「0.5,1,1」）');
+    // 已至上限（当前大境界）再练心应被拒
+    const r2 = E.doHongchen(s);
+    t.ok(!r2.ok, '已至上限再练心应失败');
+    // 突破大境界（金丹→元婴,bigRealm 2→3）后次数重置
+    s.idx = 9; s.realm = '元婴'; E.refreshStats(s);
+    t.eq(E.hongchenInfo(s).counts.dao, 0, '突破大境界后道心历炼次数应重置');
+  });
+
+  S.case('游历重平衡：游历事件池的「悟性」奖励已全部改为「道心」（无事件同时含 wu 与 dao）', (t) => {
+    const EV = G.get('EVENTS');
+    t.ok(EV && EV.jiyuan && EV.shejiao && EV.shanhe, 'EVENTS 游历池不可达');
+    const pools = EV.jiyuan.concat(EV.shejiao, EV.shanhe);
+    const wu = pools.filter(function (e) { return e.effect && typeof e.effect.wu === 'number'; });
+    const dao = pools.filter(function (e) { return e.effect && typeof e.effect.dao === 'number'; });
+    const both = pools.filter(function (e) { return e.effect && typeof e.effect.wu === 'number' && typeof e.effect.dao === 'number'; });
+    t.eq(both.length, 0, '游历主池不应有事件同时含 wu 与 dao（转换应互斥）');
+    t.eq(wu.length, 0, '游历主池的悟性奖励应已全部转为道心（wu 应为 0）');
+    t.ok(dao.length > 0, '重平衡后应有若干游历事件奖励道心（实 ' + dao.length + ' 个）');
+    // 原先「茶摊听书」类纯悟性事件应已改为道心
+    const chashi = pools.find(function (e) { return e.id === 'chashi_tingshu'; });
+    t.ok(chashi, 'chashi_tingshu 应存在');
+    t.ok(!chashi || typeof chashi.effect.wu !== 'number', 'chashi_tingshu 不应再含 wu');
+    t.ok(chashi && typeof chashi.effect.dao === 'number', 'chashi_tingshu 应改为奖励道心');
+  });
+
   return S;
 };

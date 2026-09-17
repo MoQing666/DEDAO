@@ -2111,6 +2111,46 @@
     refresh();
   }
 
+  /* ---------------- 红尘练心页（游历地图内开页；进入不耗行动点） ---------------- */
+  function openHongchen() { renderHongchenPage(); }
+  function renderHongchenPage() {
+    showScreen('hongchen');
+    const body = $('hongchen-body');
+    if (!body) return;
+    body.innerHTML = '';
+    const info = Engine.hongchenInfo(S);
+    const st = STAGES[S.idx] || { realm: S.realm, sub: '' };
+
+    const head = document.createElement('h4');
+    head.textContent = '红尘练心 · ' + st.realm + (st.sub ? ' · ' + st.sub : '');
+    body.appendChild(head);
+
+    const note = document.createElement('p');
+    note.className = 'dim';
+    note.textContent = '入红尘不耗行动点。每一大境界，道心历炼至多 ' + info.max +
+      ' 次，突破大境界后重置。当前行动点：' + S.actionsLeft;
+    body.appendChild(note);
+
+    const used = info.counts.dao || 0;
+    const left = info.max - used;
+    const maxed = left <= 0;
+    const rowEl = document.createElement('div');
+    rowEl.className = 'formula-row';
+    rowEl.innerHTML = '<div><b>[ 入红尘 ]</b><br><span class="dim">' +
+      '1 行动点 → 随机机缘淬炼道心 +0.5 / +1　|　本境界已历炼 ' + used + '/' + info.max +
+      (maxed ? '（已至极限）' : '') + '</span></div><button>' + (maxed ? '已至极限' : '练心') + '</button>';
+    const btn = rowEl.querySelector('button');
+    btn.disabled = maxed || !Engine.canAction(S, 1);
+    btn.onclick = function () {
+      const r = Engine.doHongchen(S);
+      log(r.msg, r.ok ? 'good' : 'bad');
+      renderHongchenPage();
+      refresh();
+    };
+    body.appendChild(rowEl);
+    refresh();
+  }
+
   /* ---------------- 突破 / 渡劫（人劫 · 天劫） ---------------- */
   function statSheet(s) {
     const st = STAGES[s.idx] || { realm: '仙', sub: '', color: 'var(--text)', sym: 'Ⅵ', bigRealm: 4 };
@@ -6237,6 +6277,7 @@
     $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
     $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('duanti-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
+    $('hongchen-back').onclick = function () { sfx('click'); showScreen('travel'); renderTravel(); };
     $('tech-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('favor-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('modal-close').onclick = function () { sfx('click'); closeModal(); };
@@ -7600,7 +7641,8 @@
       { id: 'youli', name: '游历', icon: '🧭', desc: '访名山、入市井，山野与人间机缘尽汇于此（耗 1 点，每年至多 5 次）。', act: 'travel' },
       { id: 'xianyuan', name: '仙缘', icon: '🍀', desc: '叩问机缘，或遇一段尘缘（耗 1 点，每年至多 3 次）。', act: 'xianyuan' },
       { id: 'xunxian', name: '探寻仙缘', icon: '🐾', desc: '寻访已结识的仙缘之人，单独触发 NPC 缘法（耗 1 点，每年限 1 次）。', act: 'xunxian' },
-      { id: 'shanhe', name: '山河探索', icon: '⛰️', desc: '深入山河险地，触发各类战斗际遇，亦有机缘可探（耗 1 点，每年限 1 次）。', act: 'shanhe' }
+      { id: 'shanhe', name: '山河探索', icon: '⛰️', desc: '深入山河险地，触发各类战斗际遇，亦有机缘可探（耗 1 点，每年限 1 次）。', act: 'shanhe' },
+      { id: 'honghong', name: '红尘练心', icon: '☯', desc: '入红尘历练心智，随机机缘淬炼道心（耗 1 点，每大境界至多 10 次）。', act: 'hongchen' }
     ];
     nodes.forEach(function (n) {
       h += '<div class="travel-node" data-act="' + n.act + '"><div class="tn-icon">' + n.icon + '</div><div class="tn-name">' + n.name + '</div><div class="tn-desc">' + n.desc + '</div></div>';
@@ -7633,6 +7675,7 @@
           if (r && r.multi) { openEventChoice(r.events); return; }
           if (r) { showScreen('game'); runEvent(r); }
         }
+        if (a === 'hongchen') { openHongchen(); return; }
       };
     });
   }

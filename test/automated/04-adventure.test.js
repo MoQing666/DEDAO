@@ -189,23 +189,24 @@ module.exports = async function build() {
 
   function mapVisited(s, id) { return !!(s.adv.map.byId[id] && s.adv.map.byId[id].visited); }
 
-  S.case('战斗前恢复 10% 气血 / +75% 灵力（不回扣、不覆盖回满）', (t) => {
+  S.case('战斗前恢复 10% 气血 / +50% 灵力（不回扣、不覆盖回满）', (t) => {
     const s = started();
     E.refreshStats(s);
-    s.hp = 1; s.mp = Math.round(s.mpMax * 0.5); // 故意置半满，验证「+75% 加法」而非「设为 75%」
+    s.hp = 1; s.mp = Math.round(s.mpMax * 0.5); // 故意置半满，验证「+50% 加法」而非「设为 50%」
     const spec = { name: '靶子', atk: 10, hp: 50, loot: {}, bi: 0, dunSpeed: 1, portrait: 'foe' };
     E.combatStart(s, spec, { adventure: true });
     t.gt(s.hp, 1, '战斗前应恢复少量气血（+10% 最大）');
     t.lt(s.hp, s.hpMax, '战斗前不应回满血');
-    const expectMp = Math.min(s.mpMax, Math.round(s.mpMax * 0.5) + Math.round(s.mpMax * 0.75));
-    t.eq(s.mp, expectMp, '战斗前灵力应为 进战前 + 75% 上限（加法封顶）');
+    // 2026-09-17：战前灵力恢复由 75% 下调至 50%
+    const expectMp = Math.min(s.mpMax, Math.round(s.mpMax * 0.5) + Math.round(s.mpMax * 0.50));
+    t.eq(s.mp, expectMp, '战斗前灵力应为 进战前 + 50% 上限（加法封顶）');
     t.gt(s.mp, Math.round(s.mpMax * 0.5), '战斗前灵力应净增');
     t.lte(s.mp, s.mpMax, '战斗前灵力不超过上限');
-    // 满蓝进战（模拟年末回满后开打）：应保持满蓝，不被战前恢复压回 75%
+    // 满蓝进战（模拟年末回满后开打）：应保持满蓝，不被战前恢复压回 50%
     const sFull = started(); E.refreshStats(sFull); sFull.mp = sFull.mpMax;
     E.combatStart(sFull, spec, { adventure: true });
     t.eq(sFull.mp, sFull.mpMax, '满蓝进战：灵力应保持满蓝（不覆盖年末回满）');
-    // 秘境与普通战斗行为一致：气血仅恢复 10%、灵力 +75%，绝不回满
+    // 秘境与普通战斗行为一致：气血仅恢复 10%、灵力 +50%，绝不回满
     const s2 = started(); E.refreshStats(s2); s2.hp = 5;
     E.combatStart(s2, spec);
     t.lt(s2.hp, s2.hpMax, '普通战斗同样不应回满血');
@@ -1050,11 +1051,11 @@ module.exports = async function build() {
     t.ok(audio.indexOf("assets/audio/bgm/bgm_xianmo.mp3") < 0, '不应再引用不存在的 assets/audio/bgm/bgm_xianmo.mp3');
   });
 
-  /* 回归守卫：秘境装备掉落率四调（2026-09-14 用户拍板公式：封顶抬到 0.40、斜率 0.025）
-     总掉率（杂兵/精英）= min(0.40, 有效深度×0.025) → 首层 2.5% / 10 层 25% / 16 层起封顶 40%；Boss 固定 0.60。
+  /* 回归守卫：秘境装备掉落率五调（2026-09-17 用户拍板公式：封顶抬到 0.50、斜率 0.03）
+     总掉率（杂兵/精英）= min(0.50, 有效深度×0.03) → 首层 3% / 10 层 30% / 17 层起封顶 50%；Boss 固定 0.60。
      「高一品」概率 = min(0.30, 深度×0.02) → 首层 2% / 10 层 20% / 15 层起封顶 30%，本阶品 = 1 − 该值（本轮未动）。
-     旧值③：总掉率 min(0.30, ed×0.02)；旧值①：0.06+ed×0.02（封顶 0.35）；旧值②：0.10+ed×0.04（封顶 0.55）/ Boss 0.80。 */
-  S.case('秘境装备掉落率四调：用户拍板 min(0.40, 深度×0.025)', (t) => {
+     旧值④：总掉率 min(0.40, ed×0.025)；旧值③：min(0.30, ed×0.02)；旧值①：0.06+ed×0.02（封顶 0.35）；旧值②：0.10+ed×0.04（封顶 0.55）/ Boss 0.80。 */
+  S.case('秘境装备掉落率五调：用户拍板 min(0.50, 深度×0.03)', (t) => {
     const s = started();
     E.startAdventure(s, 'huang', { ap: 2, items: [] });
     const N = 1200;
@@ -1070,9 +1071,9 @@ module.exports = async function build() {
     const r10 = dropRate(10, 'combat', 'huang');
     const r20 = dropRate(20, 'combat', 'huang');
     const rBoss = dropRate(20, 'boss', 'huang');
-    t.inRange(r1, 0.008, 0.055, '杂兵首层装备总掉率应 ≈2.5%（实 ' + (r1 * 100).toFixed(1) + '%）');
-    t.inRange(r10, 0.20, 0.30, '杂兵第10层总掉率应 ≈25%（实 ' + (r10 * 100).toFixed(1) + '%）');
-    t.inRange(r20, 0.34, 0.46, '杂兵第20层总掉率应封顶 ≈40%（实 ' + (r20 * 100).toFixed(1) + '%）');
+    t.inRange(r1, 0.015, 0.045, '杂兵首层装备总掉率应 ≈3%（实 ' + (r1 * 100).toFixed(1) + '%）');
+    t.inRange(r10, 0.25, 0.35, '杂兵第10层总掉率应 ≈30%（实 ' + (r10 * 100).toFixed(1) + '%）');
+    t.inRange(r20, 0.43, 0.57, '杂兵第20层总掉率应封顶 ≈50%（实 ' + (r20 * 100).toFixed(1) + '%）');
     t.inRange(rBoss, 0.53, 0.67, 'Boss 总掉率应 ≈60%（实 ' + (rBoss * 100).toFixed(1) + '%）');
     t.gt(r20, r1, '越深总掉率应越高');
 

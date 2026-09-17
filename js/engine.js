@@ -490,7 +490,9 @@ const Engine = (function () {
     // ⚠ 下限 1：负体魄（仙命【九天玄体】ti-1）会让 effAttr(ti) 变小甚至为负；
     //   本公式无天然地板，极端叠加能算出 hpMax ≤ 0 → 战斗一进场即死、存档不可玩。
     //   当前最坏情况为 effAttr(ti)=0 → hpMax=80，故本次兜底不改动任何现状数值。
-    return Math.max(1, m);
+    // ⚠ 取整：applyWuxing 乘的是分数(如 ×1.40)，会留下最长 1 位小数；不取整会让
+    //   hpMax 透传到主页面/战斗屏/角色面板出现「小数点后多位」(用户报 12 位)。统一落整。
+    return Math.max(1, Math.round(m));
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
@@ -1397,11 +1399,11 @@ const Engine = (function () {
   //   旧值 0.18 + 深度×0.02（封顶 0.55）、更旧 0.30 + 深度×0.03（封顶 0.90）——层层收紧。
   const RANGE_BIAS_PER_DEPTH = 0.02;
   const RANGE_BIAS_CAP = 0.30;
-  // 装备总掉落率（2026-09-14 四调 · 用户拍板公式）：杂兵/精英 p = min(0.40, 有效深度 × 0.025)
-  //   → 首层 2.5% / 第 10 层 25% / 第 16 层起封顶 40%；Boss 固定 0.60（本轮未动）。
-  //   旧值 min(0.30, ed×0.02)、更旧 (0.06 + ed×0.02, 封顶 0.35)、最旧 (0.10 + ed×0.04, 封顶 0.55)。
-  const EQUIP_DROP_PER_DEPTH = 0.025;
-  const EQUIP_DROP_CAP = 0.40;
+  // 装备总掉落率（2026-09-17 五调 · 用户拍板公式）：杂兵/精英 p = min(0.50, 有效深度 × 0.03)
+  //   → 首层 3% / 第 10 层 30% / 第 17 层起封顶 50%；Boss 固定 0.60（本轮未动）。
+  //   旧值(四调) min(0.40, ed×0.025)、更旧 min(0.30, ed×0.02)、最旧 (0.06 + ed×0.02, 封顶 0.35)、最旧 (0.10 + ed×0.04, 封顶 0.55)。
+  const EQUIP_DROP_PER_DEPTH = 0.03;
+  const EQUIP_DROP_CAP = 0.50;
   const EQUIP_DROP_BOSS = 0.60;
   // 装备掉落率查询（供 UI 展示，与 randomEquip 同一套公式）
   //   杂兵/精英 p = min(EQUIP_DROP_CAP, 深度 × EQUIP_DROP_PER_DEPTH)
@@ -1880,11 +1882,13 @@ const Engine = (function () {
   function combatStart(s, spec, opts) {
     refreshStats(s);
     opts = opts || {};
-    // 战前恢复：气血 +10%、灵力 +75%（均为加法、封顶、绝不回扣）。
+    // 战前恢复：气血 +10%、灵力 +50%（均为加法、封顶、绝不回扣）。
+    // 2026-09-17 调整：灵力战前恢复由 75% 下调至 50%（原「75%」过宽，几乎等于每战满蓝）；
+    //   缺蓝更依赖秘境【篝火(静室歇脚)】调息回满，恢复经济更有节奏。
     // 多回复机制并存时取「最高值」：加法不会低于已有更高基线——例如年末已回满(100%)，
-    // 战前再 +75% 仍封顶满蓝，绝不会被压回 75%。故年末回满不会被战前恢复覆盖。
+    // 战前再 +50% 仍封顶满蓝，绝不会被压回 50%。故年末回满不会被战前恢复覆盖。
     s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.10));
-    s.mp = Math.min(s.mpMax, s.mp + Math.round(s.mpMax * 0.75));
+    s.mp = Math.min(s.mpMax, s.mp + Math.round(s.mpMax * 0.50));
     const d = getDunshu(s);
     const playerSpeed = s.dunSpeed || 1;
     const enemySpeed = spec.dunSpeed || (spec.bi || 0) + 1;
@@ -2384,7 +2388,7 @@ const Engine = (function () {
       const tech = getRandomTechFromPools(advKey, s);
       if (tech) loot.tech = tech;
     }
-    // 装备掉落按秘境等级（总掉率见顶部 EQUIP_DROP_* 常量：杂兵 p=min(0.30, ed×0.02)，首层 2%→15 层封顶 30%，Boss 60%）
+    // 装备掉落按秘境等级（总掉率见顶部 EQUIP_DROP_* 常量，五调：杂兵 p=min(0.50, ed×0.03)，首层 3%→17 层封顶 50%，Boss 60%）
     if (Math.random() < (boss ? EQUIP_DROP_BOSS : Math.min(EQUIP_DROP_CAP, ed * EQUIP_DROP_PER_DEPTH))) loot.equip = randomEquip(bi, ed + (boss ? 2 : 0));
     // 灵物掉落（2026-09-13 改制：BOSS 不再自动掉灵物）
     //   旧版在这里给 Boss 白送一件灵物，玩家通关后再在「秘藏二选一」里选法宝，
@@ -3030,6 +3034,9 @@ const Engine = (function () {
   }
   function advRest(s, kind) {
     const lines = [];
+    // 2026-09-17 重设计：篝火(静室歇脚)为秘境中「灵力回复」主锚点——
+    //   调息(回蓝)由 60% 改为【回满灵力】，与战前恢复下调至 50% 配套，让缺蓝有可控补给。
+    //   打坐(回血)维持 60%，双修为气血 30% + 灵力回满，体力 +10 不变。
     if (kind === 'hp' || kind === 'both') {
       const pct = kind === 'both' ? 0.30 : 0.60;
       const h = Math.round(s.hpMax * pct);
@@ -3037,10 +3044,9 @@ const Engine = (function () {
       lines.push((kind === 'both' ? '双修共参，气血 ' : '打坐吐纳，气血 ') + '+' + h);
     }
     if (kind === 'mp' || kind === 'both') {
-      const pct = kind === 'both' ? 0.30 : 0.60;
-      const m = Math.round(s.mpMax * pct);
-      s.mp = Math.min(s.mpMax, s.mp + m);
-      lines.push((kind === 'both' ? '双修共参，灵力 ' : '调息运功，灵力 ') + '+' + m);
+      const before = s.mp;
+      s.mp = s.mpMax;          // 调息运功：篝火回满灵力
+      lines.push((kind === 'both' ? '双修共参，灵力 ' : '调息运功，灵力 ') + '回满（+' + (s.mpMax - before) + '）');
     }
     if (kind === 'stamina') {
       const a = s.adv;
@@ -4502,8 +4508,9 @@ const Engine = (function () {
     if (s.age >= 200) return 'fate';
     if (s.idx >= 15) return 'end';
     s.year += 1;
-    // —— 年度结算：聚灵阵年耗 + 阵法被动心得 + 宗门地位自动晋升（杂役筑基升内门 / 正式档按功业晋升）——
+    // —— 年度结算：聚灵阵年耗 + 五行阵维持 + 阵法被动心得 + 宗门地位自动晋升（杂役筑基升内门 / 正式档按功业晋升）——
     julingYearEnd(s);
+    wuxingYearEnd(s);      // 五行阵每阵每年维持灵石（断供关阵）
     zhenfaPassiveExp(s);   // 聚灵阵 / 五行阵布置着即逐年累积阵道心得
     const ru = sectYearPromote(s);
     if (ru) s.lastYearRankUp = ru.rank;
@@ -5206,13 +5213,38 @@ const Engine = (function () {
   }
 
   // —— 五行阵（§5.2）——
+  // 五行阵·单阵灵石消耗（2026-09-17 新增，与阵法等级无关）
+  const WUXING_DEPLOY_STONE = 100;   // 开启任一阵：一次性启动灵石
+  const WUXING_YEAR_STONE = 50;      // 每阵每年维持灵石
   function wuxingToggle(s, key) {
     if (!WUXING_ARRAY[key]) return { ok: false, msg: '无此阵。' };
     if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
     if (!s.array.wuxing) s.array.wuxing = {};
-    s.array.wuxing[key] = !s.array.wuxing[key];
+    const turningOn = !s.array.wuxing[key];
+    if (turningOn) {
+      if ((s.stone || 0) < WUXING_DEPLOY_STONE) {
+        return { ok: false, msg: '灵石不足，无法开启' + WUXING_ARRAY[key].name + '（启动需 ' + WUXING_DEPLOY_STONE + '）。' };
+      }
+      s.stone -= WUXING_DEPLOY_STONE;
+    }
+    s.array.wuxing[key] = turningOn;
     refreshStats(s); saveState(s);
-    return { ok: true, on: s.array.wuxing[key], name: WUXING_ARRAY[key].name };
+    return { ok: true, on: turningOn, name: WUXING_ARRAY[key].name,
+      msg: (turningOn ? ('开启' + WUXING_ARRAY[key].name + '（耗灵石 ' + WUXING_DEPLOY_STONE + '，每年维持 ' + WUXING_YEAR_STONE + '）')
+                      : ('关闭' + WUXING_ARRAY[key].name)) };
+  }
+  // 五行阵·岁末维持：每开启的阵扣 WUXING_YEAR_STONE；断供则关该阵。
+  function wuxingYearEnd(s) {
+    if (!s.array || !s.array.wuxing) return;
+    WUXING_ORDER.forEach(function (key) {
+      if (!s.array.wuxing[key]) return;
+      if ((s.stone || 0) < WUXING_YEAR_STONE) {
+        s.array.wuxing[key] = false;
+        logLife(s, 'wuxing', '五行阵·' + WUXING_ARRAY[key].name + '因灵石断供而失效。');
+      } else {
+        s.stone -= WUXING_YEAR_STONE;
+      }
+    });
   }
 
   // —— 功业货币 ——
@@ -5607,7 +5639,7 @@ const Engine = (function () {
     finalizeNewLife: finalizeNewLife, applyInit: applyInit,
     openPointsTotal: openPointsTotal, reincTalentUpgrade: reincTalentUpgrade, initExpCost: initExpCost,
     initExpLife: initExpLife, initExpIds: initExpIds,
-    julingSet: julingSet, julingYearEnd: julingYearEnd, wuxingToggle: wuxingToggle,
+    julingSet: julingSet, julingYearEnd: julingYearEnd, wuxingToggle: wuxingToggle, wuxingYearEnd: wuxingYearEnd,
     addGongye: addGongye, spendGongye: spendGongye,
     craftStudy: craftStudy,
     tryRankUp: tryRankUp, sectYearPromote: sectYearPromote, sectPassed: sectPassed, realmIdx: realmIdx,

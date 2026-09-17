@@ -1042,8 +1042,8 @@ module.exports = async function build() {
     }
   });
 
-  // === 回归：灵力条（统一口径 mpMax = 20 + (灵力-1)×20；战前 +75% 加法、不覆盖回满） ===
-  S.case('灵力条：上限=20+(灵力-1)×20，战前 +75% 灵力且不覆盖年末回满', async (t) => {
+  // === 回归：灵力条（统一口径 mpMax = 20 + (灵力-1)×20；战前 +50% 加法、不覆盖回满） ===
+  S.case('灵力条：上限=20+(灵力-1)×20，战前 +50% 灵力且不覆盖年末回满', async (t) => {
     const { win } = await boot();
     const v = JSON.parse(win.eval(`(function(){
       var s = Engine.startLife('灵力条');
@@ -1063,11 +1063,11 @@ module.exports = async function build() {
     t.eq(v.lowL, 20, '灵力=1 时灵力上限应为 20+(1-1)×20=20');
     t.eq(v.highL, 60, '灵力=3 时灵力上限应为 20+(3-1)×20=60');
     t.eq(v.cap, 40, '灵力=2 时灵力上限应为 20+(2-1)×20=40');
-    // 场景A：低蓝进战，+75% 加法封顶
-    const expectLow = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.75));
-    t.eq(v.aLow, expectLow, '低蓝进战：灵力应为 进战前 + 75% 上限（加法封顶）');
+    // 场景A：低蓝进战，+50% 加法封顶（2026-09-17 由 75% 下调至 50%）
+    const expectLow = Math.min(v.afterMax, v.before + Math.round(v.afterMax * 0.50));
+    t.eq(v.aLow, expectLow, '低蓝进战：灵力应为 进战前 + 50% 上限（加法封顶）');
     t.gt(v.aLow, v.before, '低蓝进战：灵力应净增');
-    // 场景B：满蓝进战（年末回满后），应保持满蓝，不被战前恢复压回 75%
+    // 场景B：满蓝进战（年末回满后），应保持满蓝，不被战前恢复压回 50%
     t.eq(v.aFull, v.cap, '满蓝进战：灵力应保持满蓝（不覆盖年末回满）');
   });
 

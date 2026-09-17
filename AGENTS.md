@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~14-*.test.js` | 自动套件（279 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~15-*.test.js` | 自动套件（293 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 经 `tools/_engine_loader` 真加载 `Engine.*`（#60 起不再手抄镜像）；敌人基线 `enemyStats` 亦已改走引擎（#75）。改引擎公式时模拟器自动跟随，无需手抄同步 |
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~14，当前 279/279 全过
+node test/automated/run.js     # 依次跑 01~15，当前 293/293 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -108,6 +108,7 @@ node test/automated/run.js     # 依次跑 01~14，当前 279/279 全过
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
 | `13-tools-reinc.test.js` | 2 |
 | `14-tutorial.test.js` | 6 | 新手引导系统（聚光灯分步高亮 / 可跳过 / **分阶段**：标题阶段 2 步[开始+轮回阁] 自动播 · 进入游戏 basics 4 步[修炼·角色·游历·引导下一步] · 第 2 年 secret[秘境] · 第 5 年 sect[宗门·百艺]；步骤完整性 / 上下步 / 跳过写阶段标记 / autoTitle+onEnterGame / onYear(2,5)+非 2/5 年不触发 / replay） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
+| `15-tap-balance.test.js` | 14 | TAP 包平衡（**小数位数守卫**：开五行阵后 hpMax/atk/mpMax 必为整数、主页面/战斗属性最多 1 位小数；**五行阵灵石消耗**：开启扣 100 启动、岁末每阵 50、不足拒绝、断供关阵、升级不变消耗；**战前灵力恢复 75%→50%**、气血 +10% 不变；**篝火（静室）调息/双修回满灵力**、打坐回血 60% 不变；**装备掉落率 = min(0.5, 深度×0.03)**、Boss 0.60） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。

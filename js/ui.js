@@ -42,6 +42,14 @@
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+  // 数值显示守卫：主页面/战斗属性最多 1 位小数，去尾随 .0。
+  // 2026-09-17：五行阵(applyWuxing)会让 hpMax 等带分数（如 ×1.40），不取整会透传成
+  // 「小数点后多位」。calcHpMax 已在引擎落整，这里再兜一层保证任何入口都不会现长小数。
+  function fmtStat(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return v;
+    const r = Math.round(v * 10) / 10;
+    return (r % 1 === 0) ? String(r) : r.toFixed(1);
+  }
   function randName() {
     const surnames = ['李', '王', '张', '刘', '陈', '杨', '黄', '赵', '周', '吴', '徐', '孙', '马', '朱', '胡', '郭', '林', '何', '高', '罗', '郑', '梁', '谢', '宋', '唐', '韩', '曹', '许', '邓', '萧', '冯', '曾', '程', '蔡', '彭', '潘', '袁', '于', '董', '余', '苏', '叶', '吕', '魏', '蒋', '田', '杜', '丁', '沈', '姜', '范', '江', '傅', '钟', '卢', '汪', '戴', '崔', '任', '陆', '廖', '姚', '方', '金', '邱', '夏', '谭', '石', '贾', '邹', '熊', '孟', '秦', '阎', '薛', '侯', '段', '雷', '龙', '史', '陶', '贺', '顾', '毛', '郝', '龚', '邵', '万', '钱', '严', '覃', '武', '戚', '尚'];
     const chars = ['云', '风', '月', '星', '霜', '雪', '雨', '烟', '尘', '渊', '鸿', '鹤', '剑', '影', '林', '山', '水', '川', '海', '天', '寒', '孤', '墨', '青', '白', '玄', '无', '一', '九', '归', '逐', '问', '临', '落', '离', '止', '明', '衣', '微', '崖', '风', '雷', '电', '火', '冰', '玉', '琴', '棋', '书', '画', '诗', '酒', '花', '茶', '龙', '凤', '麟', '虎', '豹', '鲸'];
@@ -197,17 +205,17 @@
     $('st-dao').textContent = Engine.effAttr(S, 'dao') + (Engine.equipStats(S).dao || 0);
     $('st-ling').textContent = Engine.effAttr(S, 'ling') + (Engine.equipStats(S).ling || 0);
     // 战斗属性
-    $('st-atk').textContent = S.atk || 0;
+    $('st-atk').textContent = fmtStat(S.atk || 0);
     // 防御/暴击/闪避：全部走引擎统一口径，与属性面板、战斗结算一致
-    $('st-def').textContent = Engine.getDefense(S);
+    $('st-def').textContent = fmtStat(Engine.getDefense(S));
     $('st-crit').textContent = Math.round(Engine.getCritRate(S) * 100) + '%';
     $('st-dodge').textContent = Math.round(Engine.getDodgeRate(S) * 100) + '%';
-    $('st-hp').textContent = S.hp;
+    $('st-hp').textContent = fmtStat(S.hp);
     // 主界面战斗属性区的「灵力」只显示总量（灵力上限）——
     //   旧写法是 `当前/上限`（如 100/100）。战斗前灵力本就补满，两个数恒等、纯属占位，
     //   且六维里已有一个「灵力」属性点，两个「灵力 · 100/100」并排更容易看错。
     //   ⚠ 角色/属性面板仍显示「当前/上限」（战斗中有消耗，那里需要看余量）。
-    if ($('st-mo')) $('st-mo').textContent = (S.mpMax || 0);
+    if ($('st-mo')) $('st-mo').textContent = fmtStat(S.mpMax || 0);
 
     const cultTimes = S.cultTimes || 0, cultMax = S.cultMax || 1;
     $('btn-cult-label').textContent = (cultTimes >= cultMax) ? '修炼（本年已修）' : '修炼';
@@ -533,13 +541,13 @@
         const bb = S.battle;
         const ep = Math.max(0, Math.min(100, bb.hp / bb.hpMax * 100));
         $('b-enemy-bar').style.width = ep + '%';
-        $('b-enemy-num').textContent = bb.hp + ' / ' + bb.hpMax;
+        $('b-enemy-num').textContent = fmtStat(bb.hp) + ' / ' + fmtStat(bb.hpMax);
         const mp = Math.max(0, Math.min(100, S.hp / S.hpMax * 100));
         $('b-me-bar').style.width = mp + '%';
-        $('b-me-num').textContent = S.hp + ' / ' + S.hpMax;
+        $('b-me-num').textContent = fmtStat(S.hp) + ' / ' + fmtStat(S.hpMax);
         const meMp = Math.max(0, Math.min(100, (S.mpMax ? S.mp / S.mpMax * 100 : 0)));
         $('b-me-mp-bar').style.width = meMp + '%';
-        $('b-me-mp-num').textContent = (S.mp || 0) + ' / ' + (S.mpMax || 0) + ' 灵';
+        $('b-me-mp-num').textContent = fmtStat(S.mp || 0) + ' / ' + fmtStat(S.mpMax || 0) + ' 灵';
         /* 2026-09-14：徽章数据源改为 Engine.battleFxList(s, b) —— 现算的 { me, foe }。
            旧版两行都读 bb.buffs（bb === S.battle）→ 敌我同源，且 s.battle.buffs 全仓库从未被写入，
            徽章因此恒为空；现在由「唯一真源」的派生函数供数。 */
@@ -913,8 +921,8 @@
     }
     const hpPct = S.hpMax ? S.hp / S.hpMax * 100 : 0;
     const mpPct = S.mpMax ? (S.mp || 0) / S.mpMax * 100 : 0;
-    fillBar('adv-hp-bar', 'adv-hp-num', hpPct, S.hp + ' / ' + S.hpMax, hpPct < 35 ? '#c94a6a' : '#e0604a');
-    fillBar('adv-mp-bar', 'adv-mp-num', mpPct, (S.mp || 0) + ' / ' + (S.mpMax || 0), '#5a8fe0');
+    fillBar('adv-hp-bar', 'adv-hp-num', hpPct, fmtStat(S.hp) + ' / ' + fmtStat(S.hpMax), hpPct < 35 ? '#c94a6a' : '#e0604a');
+    fillBar('adv-mp-bar', 'adv-mp-num', mpPct, fmtStat(S.mp || 0) + ' / ' + fmtStat(S.mpMax || 0), '#5a8fe0');
     fillBar('adv-stamina-bar', 'adv-stamina-num', a.stamina / a.staminaMax * 100, a.stamina + ' / ' + a.staminaMax, '#8a6bff');
     // 探索度：满 100% 方可直面秘境之主
     const exNow = a.trial ? 100 : Math.min(100, a.explore || 0);
@@ -1464,7 +1472,7 @@
     const title = document.createElement('h3'); title.textContent = '静室歇脚';
     box.appendChild(title);
     const tip = document.createElement('p'); tip.className = 'dim';
-    tip.textContent = '当前：气血 ' + S.hp + '/' + S.hpMax + '，灵力 ' + (S.mp || 0) + '/' + (S.mpMax || 0) + '，秘境体力 ' + (S.adv ? S.adv.stamina : 0) + '。可回复气血/灵力 60%（双修各 30%），或恢复秘境体力 10。';
+    tip.textContent = '当前：气血 ' + fmtStat(S.hp) + '/' + fmtStat(S.hpMax) + '，灵力 ' + fmtStat(S.mp || 0) + '/' + fmtStat(S.mpMax || 0) + '，秘境体力 ' + (S.adv ? S.adv.stamina : 0) + '。打坐回血 60%、调息回满灵力（双修气血30%+灵力回满），或恢复秘境体力 10。';
     box.appendChild(tip);
     const mk = function (label, kind) {
       const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = label;
@@ -1477,8 +1485,8 @@
       box.appendChild(btn);
     };
     mk('打坐（回血 60%）', 'hp');
-    mk('调息（回蓝 60%）', 'mp');
-    mk('双修（气血灵力各 30%）', 'both');
+    mk('调息（回满灵力）', 'mp');
+    mk('双修（气血30%+灵力回满）', 'both');
     mk('养精蓄锐（秘境体力 +10）', 'stamina');
     // 「不再停留」已删除（用户 2026-09-14 要求）：它的作用与右上【关闭】完全等价——
     //   advMove 早已把玩家移到该节点，advAdvanceToMap 只是刷回地图，留两个出口纯属冗余。
@@ -5451,8 +5459,9 @@
       const w = WUXING_ARRAY[key];
       const on = !!(S.array && S.array.wuxing && S.array.wuxing[key]);
       const pct = Math.round((w.pctByLv[zhenfaLv] || 0) * 100);
+      // 灵石消耗：开启一次 100（启动）、每阵每年维持 50；与阵法等级无关（引擎 WUXING_DEPLOY_STONE / WUXING_YEAR_STONE）
       const b = document.createElement('button'); b.className = 'btn-small' + (on ? ' ghost' : '');
-      b.textContent = w.name + '（' + (on ? '开' : '关') + ' +' + pct + '% ' + w.cn + '）';
+      b.textContent = w.name + '（' + (on ? '开' : '关') + ' +' + pct + '% ' + w.cn + (on ? ' · 50/年' : ' · 开需100灵石') + '）';
       b.onclick = function () { const r = Engine.wuxingToggle(S, key); log((r.ok ? (r.on ? '开启' : '关闭') : r.msg), r.ok ? 'good' : 'bad'); refresh(); renderBaiyiStudy(body); };
       wg.appendChild(b);
     });
@@ -5460,7 +5469,7 @@
     const zfTip = document.createElement('p');
     zfTip.className = 'dim';
     zfTip.style.cssText = 'margin:8px 0 0;font-size:12px;';
-    zfTip.textContent = '阵法布置着（洞府·聚灵阵 / 本页五行阵开启任一）将于每年岁末自动累积阵道心得：单阵约 60 年臻化境（Lv5），聚灵阵与五行阵并行约 30 年。';
+    zfTip.textContent = '五行阵开启耗灵石 100（启动），每阵每年维持 50（断供自动关阵）；阵法升级不改变消耗。布置着（洞府·聚灵阵 / 本页五行阵开启任一）将于每年岁末自动累积阵道心得：单阵约 60 年臻化境（Lv5），聚灵阵与五行阵并行约 30 年。';
     sec.appendChild(zfTip);
     body.appendChild(sec);
 
@@ -6463,14 +6472,14 @@
     const extraAtkBase = Math.round(Engine.getExtraAtkChance(S) * 100);
 
     const combatStats = [
-      { name: '攻击', val: Math.round(S.atk * atkMul), color: '#c0402a', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
-      { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
-      { name: '气血', val: S.hp + ' / ' + S.hpMax, color: '#c0402a', desc: '80+体魄×50+境界' },
+      { name: '攻击', val: fmtStat(Math.round(S.atk * atkMul)), color: '#c0402a', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
+      { name: '防御', val: fmtStat(defTotal), color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
+      { name: '气血', val: fmtStat(S.hp) + ' / ' + fmtStat(S.hpMax), color: '#c0402a', desc: '80+体魄×50+境界' },
       { name: '暴击', val: critBase + '%', color: 'var(--text)', desc: '神识×1% + 道心×2% + 装备 + 命格' },
       { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
       { name: '攻速', val: extraAtkBase + '%', color: '#8a5f14', desc: '遁速×1% + 装备：几率额外攻击一次' },
-      { name: '灵力', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '战斗前补满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
-      { name: '修为', val: S.qi + ' / ' + Engine.requireNeed(S), color: '#2f7fb0', desc: '修炼积累，满则突破' },
+      { name: '灵力', val: fmtStat(S.mp || 0) + ' / ' + fmtStat(S.mpMax || 0), color: '#2f7fb0', desc: '战前补 50%，秘境篝火回满，法术消耗灵力（灵力上限：灵力1时=20，此后每点+20）' },
+      { name: '修为', val: fmtStat(S.qi) + ' / ' + fmtStat(Engine.requireNeed(S)), color: '#2f7fb0', desc: '修炼积累，满则突破' },
       { name: '修炼', val: '+' + cultR.gain, color: '#1d7a55', desc: '(60+悟性×10)×境界' }
     ];
 

@@ -27,6 +27,7 @@ const MODULES = [
   ['12-boss-element.test.js', 'BOSS 五行属性与法术适配（生克/施法/免控）'],
   ['13-tools-reinc.test.js', '镜像工具回归（tools/reinc_validate.js 口径一致）'],
   ['14-tutorial.test.js', '新手引导系统（聚光灯/可跳过/完整介绍）'],
+  ['15-tap-balance.test.js', 'TAP 包平衡（小数/五行阵灵石/灵力恢复/掉落率）'],
 ];
 
 function bar(pass, fail) {

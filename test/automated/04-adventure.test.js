@@ -154,18 +154,18 @@ module.exports = async function build() {
     t.eq(s.adv.stamina, st0 - 5, '直取决战应扣 1 步体力');
   });
 
-  S.case('行动点→秘境体力换算（2行动=110，3行动=150）', (t) => {
+  S.case('行动点→秘境体力换算（2行动=40，3行动=75）', (t) => {
     const s2 = started();
     const r2 = E.startAdventure(s2, 'huang', { ap: 2, items: [] });
     t.ok(r2.ok, '2行动进入失败: ' + (r2.msg || ''));
-    t.eq(s2.adv.stamina, 110, '2行动体力应为 110（22 步，远不足以走完 50 层）');
-    t.eq(s2.adv.staminaMax, 110, '2行动体力上限应为 110');
+    t.eq(s2.adv.stamina, 40, '2行动体力应为 40（8 步，远不足以走完 50 层）');
+    t.eq(s2.adv.staminaMax, 40, '2行动体力上限应为 40');
 
     const s3 = started();
     const r3 = E.startAdventure(s3, 'huang', { ap: 3, items: [] });
     t.ok(r3.ok, '3行动进入失败: ' + (r3.msg || ''));
-    t.eq(s3.adv.stamina, 150, '3行动体力应为 150（30 步）');
-    t.eq(s3.adv.staminaMax, 150, '3行动体力上限应为 150');
+    t.eq(s3.adv.stamina, 75, '3行动体力应为 75（15 步）');
+    t.eq(s3.adv.staminaMax, 75, '3行动体力上限应为 75');
   });
 
   S.case('进入秘境不回满血蓝（沿用入场状态），跨节点扣体力', (t) => {
@@ -175,19 +175,101 @@ module.exports = async function build() {
     s.mp = Math.round(s.mpMax * 0.4);
     E.startAdventure(s, 'huang', { ap: 2, items: [] });
     t.eq(s.hp, Math.round(s.hpMax * 0.5), '进入后不应回满血（沿用入场状态）');
-    t.eq(s.adv.stamina, 110, '2行动体力应为 110');
-    t.eq(s.adv.staminaMax, 110, '2行动体力上限应为 110');
+    t.eq(s.adv.stamina, 40, '2行动体力应为 40');
+    t.eq(s.adv.staminaMax, 40, '2行动体力上限应为 40');
     const choices = E.advNextChoices(s);
     t.ok(choices.length > 0, '首层应至少有一个可选节点');
     const mv = E.advMove(s, choices[0].id);
     t.ok(mv.ok, 'advMove 失败: ' + (mv.msg || ''));
     t.eq(s.adv.nodeId, choices[0].id, 'nodeId 未更新');
-    t.eq(s.adv.stamina, 105, '走一步后应扣 5 体力（110→105）');
+    t.eq(s.adv.stamina, 35, '走一步后应扣 5 体力（40→35）');
     t.eq(s.hp, Math.round(s.hpMax * 0.5), '跨节点不回血');
     t.ok(mapVisited(s, choices[0].id), '节点未标记 visited');
   });
 
   function mapVisited(s, id) { return !!(s.adv.map.byId[id] && s.adv.map.byId[id].visited); }
+  function equipTierOf(id) { const it = E.findEquip(id); return it ? it.tier : null; }
+  function highRealm() { const s = started(); s.idx = 6; return s; } // 金丹（bigRealm=2），复现旧 bug 触发条件
+
+  S.case('装备掉落品阶由秘境等级钳制（randomEquip 不越阶）', (t) => {
+    // 黄[1,2] 玄[2,3] 地[3,4] 天[4,5]：严禁向上越阶（防「黄级出上品」）
+    const ranges = [[1, 2], [2, 3], [3, 4], [4, 5]];
+    for (let g = 0; g < 4; g++) {
+      const lo = ranges[g][0], hi = ranges[g][1];
+      for (let k = 0; k < 400; k++) {
+        const eq = E.randomEquip(g, 3);
+        if (!eq) continue;
+        const tier = equipTierOf(eq.id);
+        t.ok(tier != null && tier >= lo && tier <= hi, 'grade ' + g + ' 掉落 tier 应∈[' + lo + ',' + hi + ']，实际 ' + tier + '(' + eq.id + ')');
+      }
+    }
+  });
+
+  S.case('黄级秘境（高境界玩家）宝箱/敌人/Boss 永不出上品', (t) => {
+    // 复现：金丹玩家进黄级，旧代码按玩家境界 randomEquip(2,...) → 上品/极品
+    let bad = [];
+    for (let i = 0; i < 300; i++) {
+      const s = highRealm();
+      E.startAdventure(s, 'huang', { ap: 2, items: [] });
+      const before = (s.equips || []).length;
+      E.advResolve(s, { type: 'treasure', col: 5, id: 't' + i, next: [] });
+      (s.equips || []).slice(before).forEach(function (e) {
+        const tier = equipTierOf(e.id);
+        if (tier != null && tier > 2) bad.push(e.id + '(tier' + tier + ')');
+      });
+    }
+    t.eq(bad.length, 0, '黄级宝箱不应掉出上品及以上，违规: ' + bad.join(','));
+
+    let bad2 = [];
+    for (let i = 0; i < 150; i++) {
+      const s = highRealm();
+      const spec = E.enemyGen(s, 'combat', 3, 'huang');
+      if (spec.loot && spec.loot.equip) {
+        const tier = equipTierOf(spec.loot.equip.id);
+        if (tier != null && tier > 2) bad2.push(spec.loot.equip.id + '(tier' + tier + ')');
+      }
+    }
+    t.eq(bad2.length, 0, '黄级敌人不应掉出上品及以上，违规: ' + bad2.join(','));
+
+    const s = highRealm();
+    E.startAdventure(s, 'huang', { ap: 2, items: [] });
+    const before3 = (s.equips || []).length;
+    let bad3 = [];
+    E.advClearReward(s);
+    (s.equips || []).slice(before3).forEach(function (e) {
+      const tier = equipTierOf(e.id);
+      if (tier != null && tier > 2) bad3.push(e.id + '(tier' + tier + ')');
+    });
+    t.eq(bad3.length, 0, '黄级洞天秘藏不应掉出上品及以上，违规: ' + bad3.join(','));
+  });
+
+  S.case('玄级秘境奇遇法术与黄级严格区分（不重叠、各自限阶）', (t) => {
+    const huang = new Set(), xuan = new Set();
+    function collect(advType, bucket) {
+      for (let i = 0; i < 300; i++) {
+        const s = started();
+        E.startAdventure(s, 'huang', { ap: 2, items: [] }); // 黄级秘境托底 s.adv
+        s.advType = advType; // advResolve 内部读取 s.advType 决定奇遇池（黄/玄）
+        const r = E.advResolve(s, { type: 'event', col: 5, id: 'e' + i, next: [] });
+        if (r && r.type === 'remnant_soul') {
+          if (r.spell1) bucket.add(r.spell1);
+          if (r.spell2) bucket.add(r.spell2);
+        }
+      }
+    }
+    collect('huang', huang);
+    collect('xuan', xuan);
+    const overlap = [];
+    huang.forEach(function (id) { if (xuan.has(id)) overlap.push(id); });
+    t.eq(overlap.length, 0, '玄级与黄级奇遇法术不应重叠，实际重叠: ' + overlap.join(','));
+    t.ok(huang.size > 0, '黄级奇遇应至少给出一种功法');
+    t.ok(xuan.size > 0, '玄级奇遇应至少给出一种功法');
+    let huangHuang = false, xuanXuan = false;
+    huang.forEach(function (id) { const td = E.TECHNIQUES[id]; if (td && td.grade === '黄') huangHuang = true; });
+    xuan.forEach(function (id) { const td = E.TECHNIQUES[id]; if (td && td.grade === '玄') xuanXuan = true; });
+    t.ok(huangHuang, '黄级奇遇应含 黄 阶功法');
+    t.ok(xuanXuan, '玄级奇遇应含 玄 阶功法（与黄级明显不同）');
+  });
 
   S.case('战斗前恢复 10% 气血 / +50% 灵力（不回扣、不覆盖回满）', (t) => {
     const s = started();

@@ -2294,10 +2294,16 @@ const Engine = (function () {
     var xinfaPool = [];  // 心法
     var dunshuPool = []; // 遁术
     
-    if (advType === 'huang' || advType === 'xuan') {
+    if (advType === 'huang') {
+      // 黄级秘境：只出黄阶功法/法术/遁术（与玄级严格区分，2026-09-17 修「玄级奇遇法术==黄级」）
       spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
-      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan'];
-      dunshuPool = ['xiaoyao', 'yingdun'];
+      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tunai', 'shengong', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'];
+      dunshuPool = ['xiaoyao', 'qy_dun1', 'dx_dun1', 'xt_dun1'];
+    } else if (advType === 'xuan') {
+      // 玄级秘境：只出玄阶功法/法术/遁术（与黄级明显不同）
+      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
+      xinfaPool = ['tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan', 'qy_xinfa2', 'dx_xinfa2', 'xt_xinfa2'];
+      dunshuPool = ['yingdun', 'qy_dun2', 'dx_dun2', 'xt_dun2'];
     } else if (advType === 'di') {
       spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
       xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
@@ -2498,7 +2504,7 @@ const Engine = (function () {
     // 体力预算：地图 50 层（每步 5 体力），单次秘境绝无可能走到底——
     // 体力是「能探多深」的硬预算，剩余深度只能靠折寿强搜/强行前行去换。
     // 探索度满 100%（约 12 层）时秘境之主即现身，可在任意深度直取决战。
-    const staminaMax = (ap === 3) ? 150 : 110;
+    const staminaMax = (ap === 3) ? 75 : 40;
     s.adv = {
       grade: advKey,
       depth: 1, maxDepth: map.normalCols,
@@ -2781,7 +2787,7 @@ const Engine = (function () {
       const roll = Math.random();
       if (roll < 0.30) {
         // 装备
-        const equipTier = advType === 'xian' ? 4 : bi;
+        const equipTier = advType === 'xian' ? 4 : gi;
         const equip = randomEquip(equipTier, d);
         if (equip) { g.push.apply(g, grantEquipChecked(s, equip)); }
         else { const s1 = Math.round((25 + d * 18) * realmM); s.stone += s1; g.push('灵石 +' + s1); }
@@ -2849,10 +2855,16 @@ const Engine = (function () {
     var xinfaPool = [];  // 心法
     var dunshuPool = []; // 遁术
     
-    if (advType === 'huang' || advType === 'xuan') {
+    if (advType === 'huang') {
+      // 黄级秘境：只出黄阶功法/法术/遁术（与玄级严格区分，2026-09-17 修「玄级奇遇法术==黄级」）
       spellPool = ['jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'yuhuo', 'hanshuang', 'leiyin', 'jianqi'];
-      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan'];
-      dunshuPool = ['xiaoyao', 'yingdun'];
+      xinfaPool = ['jingang', 'qingmu', 'xuanshui', 'chihuo', 'houtu', 'tunai', 'shengong', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'];
+      dunshuPool = ['xiaoyao', 'qy_dun1', 'dx_dun1', 'xt_dun1'];
+    } else if (advType === 'xuan') {
+      // 玄级秘境：只出玄阶功法/法术/遁术（与黄级明显不同）
+      spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
+      xinfaPool = ['tiangang', 'changchun', 'taiyin', 'chunyang', 'kunyuan', 'qy_xinfa2', 'dx_xinfa2', 'xt_xinfa2'];
+      dunshuPool = ['yingdun', 'qy_dun2', 'dx_dun2', 'xt_dun2'];
     } else if (advType === 'di') {
       spellPool = ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'lie_di', 'shuang_han', 'lie_huo', 'po_e', 'fu_du'];
       xinfaPool = ['gengjin', 'yimu', 'guishui', 'binghuo', 'wutu', 'taixuan'];
@@ -3391,12 +3403,13 @@ const Engine = (function () {
 
   function advClearReward(s) {
     const bi = bigIdxOf(s), realmM = 1 + bi * 0.8;
+    const gi = ADVENTURE_GRADE[s.advType || 'huang'] || 0; // 秘境等级决定掉落装备品阶（2026-09-17 修「黄级秘境出上品」）
     const gains = [];
     const s1 = Math.round((150 + 60 * bi) * realmM);
     s.stone += s1; gains.push('洞天秘藏 · 灵石 +' + s1);
     const h = 3 + Math.floor(Math.random() * (4 + bi)); gains.push.apply(gains, applyOps(s, { herb: h }));
     const i2 = 2 + Math.floor(Math.random() * 3); gains.push.apply(gains, applyOps(s, { iron: i2 }));
-    const eid = randomEquip(bi, 4);
+    const eid = randomEquip(gi, 4);
     if (eid) gains.push.apply(gains, grantEquipChecked(s, eid));
     const t = TECH_DROPS[bi][Math.floor(Math.random() * TECH_DROPS[bi].length)];
     if (s.techs.indexOf(t) < 0) gains.push.apply(gains, applyOps(s, { tech: t }));

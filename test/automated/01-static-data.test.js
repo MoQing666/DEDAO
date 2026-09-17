@@ -773,5 +773,28 @@ module.exports = async function build() {
     t.gte(panel.length, 1, '角色/属性面板仍须显示灵力「当前/上限」（战斗中要看余量），实为 ' + panel.length);
   });
 
+  /* ---------- 回归 2026-09-17：子页面返回按钮统一为「返回修行」 ----------
+     用户要求：宗门/仙缘/游历等所有进一步页面的返回，必须是统一 UI、统一位置的「返回修行」。
+     旧实现有两套样式：部分页面用顶部 .screen-head 里的 btn-small ghost「返回」，
+     其余页面用底部 .gear-footer 里的 btn-main「返回修行」。本守卫锁死统一结果：
+       · 这三类页面（cultivate/sect/travel）的返回按钮必须是 btn-main「返回修行」
+       · 且不得再出现顶部 header 风格的 btn-small ghost「返回」（曾与底部样式并存、位置不统一） */
+  S.case('子页面返回按钮统一为底部 btn-main「返回修行」（宗门/仙缘/游历等）', (t) => {
+    const ids = ['cultivate-back', 'sect-back', 'travel-back'];
+    ids.forEach(function (id) {
+      t.ok(html.indexOf('id="' + id + '" class="btn-main">返回修行') >= 0,
+        '#' + id + ' 应使用统一样式 btn-main「返回修行」');
+      t.ok(html.indexOf('class="btn-small ghost" id="' + id + '"') < 0,
+        '#' + id + ' 不得再保留顶部 header 风格的 btn-small ghost「返回」');
+    });
+    // 反向：统一后的按钮必须位于 gear-footer 容器内（位置统一）
+    const footer = html.match(/<div class="gear-footer">[\s\S]*?<\/div>/g) || [];
+    let inFooter = 0;
+    ids.forEach(function (id) {
+      footer.forEach(function (blk) { if (blk.indexOf('id="' + id + '"') >= 0) inFooter++; });
+    });
+    t.eq(inFooter, ids.length, '三个返回按钮都应位于 .gear-footer 容器内（位置统一），实为 ' + inFooter);
+  });
+
   return S;
 };

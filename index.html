@@ -9,7 +9,7 @@
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器</title>
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/TsangerYuYangT-W05.woff2">
-  <link rel="stylesheet" href="css/style.css?v=162">
+  <link rel="stylesheet" href="css/style.css?v=163">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -201,27 +201,36 @@
   <!-- ============ 洞府 ============ -->
   <div class="screen" id="screen-cultivate" style="display:none" data-bg="assets/img/bg/bg_dongfu.png">
     <div class="panel">
-      <div class="screen-head"><h2>洞府 · 修行</h2><button class="btn-small ghost" id="cultivate-back">返回</button></div>
+      <div class="screen-head"><h2>洞府 · 修行</h2></div>
       <div class="screen-body" id="cultivate-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="cultivate-back" class="btn-main">返回修行</button>
     </div>
   </div>
 
   <!-- ============ 宗门 ============ -->
   <div class="screen" id="screen-sect" style="display:none" data-bg="assets/img/bg/bg_main.png">
     <div class="panel">
-      <div class="screen-head"><h2>宗门</h2><button class="btn-small ghost" id="sect-back">返回</button></div>
+      <div class="screen-head"><h2>宗门</h2></div>
       <div class="screen-body" id="sect-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="sect-back" class="btn-main">返回修行</button>
     </div>
   </div>
 
   <!-- ============ 游历地图 ============ -->
   <div class="screen" id="screen-travel" style="display:none" data-bg="assets/img/bg/bg_title_yunhai.png">
     <div class="panel">
-      <div class="screen-head"><h2>游历 · 山河图</h2><button class="btn-small ghost" id="travel-back">返回</button></div>
+      <div class="screen-head"><h2>游历 · 山河图</h2></div>
       <div class="screen-body" id="travel-body"></div>
       <!-- 游历页内反馈条：本页是静态地图、没有日志区，任何提示（行动点不足 / 尚无可寻访之人 /
            今年已探寻过 …）都必须写在这里，否则玩家「点了没反应」（2026-09-14 用户反馈）。 -->
       <div class="travel-msg" id="travel-msg" style="display:none"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="travel-back" class="btn-main">返回修行</button>
     </div>
   </div>
 
@@ -584,10 +593,10 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=162"></script>
-  <script src="js/engine.js?v=162"></script>
-  <script src="js/audio.js?v=162"></script>
-  <script src="js/ui.js?v=162"></script>
-  <script src="js/tutorial.js?v=162"></script>
+  <script src="js/data.js?v=163"></script>
+  <script src="js/engine.js?v=163"></script>
+  <script src="js/audio.js?v=163"></script>
+  <script src="js/ui.js?v=163"></script>
+  <script src="js/tutorial.js?v=163"></script>
 </body>
 </html>

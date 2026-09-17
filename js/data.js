@@ -3318,8 +3318,8 @@ const ADVENTURE_GRADE = {
 
 // 秘境功法掉落映射
 const TECH_DROPS_MAP = {
-  huang: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'],
-  xuan: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'changchun', 'leiyin', 'yingdun'],
+  huang: ['shengong', 'yuhuo', 'hanshuang', 'xiaoyao', 'leiyin', 'jinren', 'tengman', 'shuidan', 'huoqiu', 'luoshi', 'jianqi', 'qy_xinfa1', 'dx_xinfa1', 'xt_xinfa1'],
+  xuan: ['jinguang', 'muyuling', 'lieyan', 'luoyan', 'jinguanghu', 'shengji', 'shuilingshu', 'huodun', 'yanjia', 'yingdun', 'tiangang', 'changchun'],
   di: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
   tian: ['taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi', 'tiangang'],
   xian: ['kaitian', 'taixuan', 'hundun', 'jianqi', 'wanjian', 'suodi']

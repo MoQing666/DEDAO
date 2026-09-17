@@ -3754,7 +3754,11 @@ const COMMISSIONS = [
     enemy: { name: '秘境妖兽', line: '秘境幽深，一头踞守多年的妖兽缓缓睁开竖瞳。', atk: 656, hp: 3112, loot: { stone: [300, 600] } },
     enemyBoss: { adv: 'di', tag: 'boss', depth: 10 },
     check: { shen: 10 }, ap: 2, stone: [500, 800], gongye: [20, 30] },
-  { id: 'zhenmo',  name: '镇魔差遣',   realm: '元婴', type: 'fight', enemy: { name: '魔修', atk: 90, hp: 800, loot: { stone: [1500, 3000] } }, ap: 3, stone: [2000, 5000], gongye: [30, 50] }
+  // 镇魔差遣：守敌对标「天级秘境第 10 层精英怪」——enemyBoss 交给 Engine.commissionEnemy 实时生成
+  //   （= ENEMY_REALM_BASE[3] × depthFactor(第10层 0.61) × eliteMul(1.4) ≈ 攻 429 / 血 2245，随叠劫难度同步）。
+  //   旧版写死 atk 90 / hp 800（元婴期玩家一击即溃，比玄级精英还弱），玩家反馈「元婴护卫太弱」。
+  //   下方 enemy 里的 name/line 仅作展示，实战攻血一律走 commissionEnemy()；收益随难度上调。
+  { id: 'zhenmo',  name: '镇魔差遣',   realm: '元婴', type: 'fight', enemy: { name: '天级秘境魔修', line: '魔潮汹涌，一头修为深不可测的魔修自裂隙中踏出，气息竟堪比天级秘境深处精英。' }, enemyBoss: { adv: 'tian', tag: 'elite', depth: 10 }, ap: 3, stone: [3000, 6000], gongye: [35, 55] }
 ];
 
 /* ---------------- 宗门大比（§6.6 秘境化连战 · 一条直线 5 场） ---------------- */

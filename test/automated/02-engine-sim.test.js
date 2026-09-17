@@ -1254,7 +1254,22 @@ module.exports = async function build() {
       t.gt(f2.atk, 200, '应远高于旧写死的 20（实 ' + f2.atk + '）');
       t.gt(f2.hp, 1000, '应远高于旧写死的 150（实 ' + f2.hp + '）');
     }
-    t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）；护卫商队守敌 攻 ' + (huwei ? E.commissionEnemy(s, huwei).atk : '?') + ' / 血 ' + (huwei ? E.commissionEnemy(s, huwei).hp : '?') + '（玄级秘境第 10 层精英同源）');
+    // 镇魔差遣：守敌对标「天级秘境第 10 层精英怪」（同口径，不再写死 90/800）
+    const zhenmo = G.get('COMMISSIONS').filter(function (x) { return x.id === 'zhenmo'; })[0];
+    t.ok(!!zhenmo, '数据应含「镇魔差遣」');
+    if (zhenmo) {
+      t.ok(!!zhenmo.enemyBoss, '「镇魔差遣」应声明 enemyBoss');
+      t.eq(zhenmo.enemyBoss.adv, 'tian', '应对标天级秘境');
+      t.eq(zhenmo.enemyBoss.tag, 'elite', '应标为精英怪');
+      t.eq(zhenmo.enemyBoss.depth, 10, '应对标第 10 层');
+      const expectZ = E.enemyGen(s, 'elite', zhenmo.enemyBoss.depth, 'tian');
+      const fz = E.commissionEnemy(s, zhenmo);
+      t.eq(fz.atk, expectZ.atk, '守敌攻击须与天级秘境 10 层精英同源（Engine.enemyGen）');
+      t.eq(fz.hp, expectZ.hp, '守敌血量须与天级秘境 10 层精英同源');
+      t.gt(fz.atk, 400, '应远高于旧写死的 90（实 ' + fz.atk + '）');
+      t.gt(fz.hp, 2000, '应远高于旧写死的 800（实 ' + fz.hp + '）');
+    }
+    t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）；护卫商队守敌 攻 ' + (huwei ? E.commissionEnemy(s, huwei).atk : '?') + ' / 血 ' + (huwei ? E.commissionEnemy(s, huwei).hp : '?') + '（玄级秘境第 10 层精英同源）；镇魔差遣守敌 攻 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).atk : '?') + ' / 血 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).hp : '?') + '（天级秘境第 10 层精英同源）');
   });
 
   S.case('宗门大比：十年一届 · 首赛第 10 年 · 一条直线 5 层 · 对手随境界缩放', (t) => {

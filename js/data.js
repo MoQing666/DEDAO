@@ -3738,7 +3738,11 @@ function sectRankIndex(id) { for (let i = 0; i < SECT_RANKS.length; i++) if (SEC
 const COMMISSIONS = [
   { id: 'caiyao',  name: '采药巡山',   realm: '筑基', type: 'six',   check: { ti: 4, shen: 3 }, ap: 1, stone: [20, 50],   gongye: [3, 8] },
   { id: 'wenxin',  name: '问心录',     realm: '筑基', type: 'six',   check: { wu: 5, dao: 5 },  ap: 1, stone: [20, 50],   gongye: [3, 8] },
-  { id: 'huwei',   name: '护卫商队',   realm: '筑基', type: 'fight', enemy: { name: '散修', atk: 20, hp: 150, loot: { stone: [40, 80] } }, ap: 2, stone: [80, 150], gongye: [8, 15] },
+  // 护卫商队：守敌对标「玄级秘境第 10 层精英怪」——enemyBoss 交给 Engine.commissionEnemy 实时生成
+  //   （= ENEMY_REALM_BASE[1] × depthFactor(第10层 0.61) × eliteMul(1.4) ≈ 攻 290 / 血 1288，随叠劫难度同步）。
+  //   旧版写死 atk 20 / hp 150（连炼气杂兵都不如），筑基期玩家一击即溃 → 玩家反馈「筑基级护卫太简单」。
+  //   下方 enemy 里的 name/line 仅作展示，实战攻血一律走 commissionEnemy()；收益随难度上调。
+  { id: 'huwei',   name: '护卫商队',   realm: '筑基', type: 'fight', enemy: { name: '玄级秘境妖兽', line: '商队途经玄级秘境边缘，一头久踞此地的妖兽自林间扑出，气息竟堪比秘境深处精英。' }, enemyBoss: { adv: 'xuan', tag: 'elite', depth: 10 }, ap: 2, stone: [200, 400], gongye: [12, 22] },
   { id: 'lindan1', name: '炼制供奉·丹', realm: '筑基', type: 'craft', craft: 'liandan', minLv: 2, ap: 1, stone: [100, 200], gongye: [8, 15] },
   { id: 'lianqi1', name: '修缮法器·器', realm: '金丹', type: 'craft', craft: 'lianqi',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },
   { id: 'zhenfa1', name: '布阵值守·阵', realm: '金丹', type: 'craft', craft: 'zhenfa',  minLv: 3, ap: 2, stone: [300, 500], gongye: [15, 25] },

@@ -1239,13 +1239,22 @@ module.exports = async function build() {
     t.eq(foe.hp, expect.hp, '守敌血量必须与地级秘境 BOSS 同源');
     t.gt(foe.atk, 500, '应远高于旧写死的 40（实 ' + foe.atk + '）');
     t.gt(foe.hp, 2000, '应远高于旧写死的 300（实 ' + foe.hp + '）');
-    // 非 enemyBoss 委托仍沿用 data 写死值（低阶杂兵战）
+    // 护卫商队：守敌对标「玄级秘境第 10 层精英怪」（同口径，不再写死 20/150）
     const huwei = E.commissionAvailable(s).filter(function (x) { return x.id === 'huwei'; })[0];
+    t.ok(!!huwei, '真传应可承接「护卫商队」');
     if (huwei) {
+      t.ok(!!huwei.enemyBoss, '「护卫商队」应声明 enemyBoss（对标哪一阶秘境）');
+      t.eq(huwei.enemyBoss.adv, 'xuan', '应对标玄级秘境');
+      t.eq(huwei.enemyBoss.tag, 'elite', '应标为精英怪');
+      t.eq(huwei.enemyBoss.depth, 10, '应对标第 10 层');
+      const expectH = E.enemyGen(s, 'elite', huwei.enemyBoss.depth, 'xuan');
       const f2 = E.commissionEnemy(s, huwei);
-      t.eq(f2.atk, huwei.enemy.atk, '无 enemyBoss 的委托应沿用 data 数值');
+      t.eq(f2.atk, expectH.atk, '守敌攻击须与玄级秘境 10 层精英同源（Engine.enemyGen）');
+      t.eq(f2.hp, expectH.hp, '守敌血量须与玄级秘境 10 层精英同源');
+      t.gt(f2.atk, 200, '应远高于旧写死的 20（实 ' + f2.atk + '）');
+      t.gt(f2.hp, 1000, '应远高于旧写死的 150（实 ' + f2.hp + '）');
     }
-    t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）');
+    t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）；护卫商队守敌 攻 ' + (huwei ? E.commissionEnemy(s, huwei).atk : '?') + ' / 血 ' + (huwei ? E.commissionEnemy(s, huwei).hp : '?') + '（玄级秘境第 10 层精英同源）');
   });
 
   S.case('宗门大比：十年一届 · 首赛第 10 年 · 一条直线 5 层 · 对手随境界缩放', (t) => {

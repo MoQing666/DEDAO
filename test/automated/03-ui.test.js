@@ -1257,8 +1257,11 @@ module.exports = async function build() {
   /* 注：自动续档（autoResumeSave 开机自动读档）已按需求移除；开机停在标题页，
      由玩家手动点【继续征途】读取存档。相关断言（存活自动进游戏 / 结档停标题页）随之删除。 */
 
-  // === 回归 2026-09-13：宗门页菜单（切磋演武未开放 / 任务年上限 / 大比倒计时） ===
-  S.case('宗门页菜单：切磋演武（未开放）+ 宗门任务年上限 + 大比倒计时', async (t) => {
+  // === 回归 2026-09-13（2026-09-18 修订）：宗门页菜单
+  //    · 废弃的「切磋演武（未开放）」死入口已移除（原本就从未开放，纯占位）
+  //    · 师父传功（sect-master，切磋战斗）入口存在
+  //    · 宗门任务年上限 / 大比倒计时 仍正常 ===
+  S.case('宗门页菜单：废弃切磋演武入口已移除 + 师父传功入口存在 + 任务年上限 + 大比倒计时', async (t) => {
     const a = await boot();
     await enterGame(a.win, a.doc, '宗门菜单');
     const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
@@ -1272,18 +1275,13 @@ module.exports = async function build() {
     await new Promise(r => setTimeout(r, 220));
     const body = doc.getElementById('sect-body');
     const txt = body ? body.textContent : '';
-    t.ok(/切磋演武（未开放）/.test(txt), '宗门页应标「切磋演武（未开放）」（实：' + txt.slice(0, 90) + '）');
+    t.ok(!/切磋演武/.test(txt), '宗门页不应再出现已废弃的「切磋演武」入口（实：' + txt.slice(0, 90) + '）');
     t.ok(/本年剩余 3\/3 件/.test(txt), '宗门任务应显示「本年剩余 3/3 件」');
     t.ok(/距离下次大比还有 \d+ 年/.test(txt), '宗门大比应显示「距离下次大比还有 X 年」');
     const fb = doc.querySelector('[data-act="sect-fight"]');
-    t.ok(!!fb, '切磋演武入口应存在');
-    if (fb) {
-      fb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-      await new Promise(r => setTimeout(r, 180));
-      const dc = doc.getElementById('dialog-card');
-      t.ok(dc && /尚未开放/.test(dc.textContent), '点击切磋演武应提示「尚未开放」（不再静默无效）');
-      t.eq(visible(doc, 'battle'), false, '切磋演武不应进入战斗层');
-    }
+    t.ok(!fb, '废弃的「切磋演武」入口应已移除（sect-fight 不应存在）');
+    const master = doc.querySelector('[data-act="sect-master"]');
+    t.ok(!!master, '师父传功（切磋战斗）入口应存在');
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('宗门页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });

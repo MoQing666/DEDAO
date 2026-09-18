@@ -7371,8 +7371,7 @@
       ['sect-train', '练神峰·聚灵潭', ''],
       ['sect-shop', '宗门商人', ''],
       ['sect-lecture', '道庭讲法', usedTeach ? '本年已用' : '不耗行动点 · 每年 1 次'],
-      ['sect-master', '师父传功', usedTeach ? '本年已用' : '切磋 · 每年 1 次'],
-      ['sect-fight', '切磋演武（未开放）', '']
+      ['sect-master', '师父传功', usedTeach ? '本年已用' : '切磋 · 每年 1 次']
     ];
     items.forEach(function (it) {
       const dis = usedTeach && (it[0] === 'sect-lecture' || it[0] === 'sect-master');
@@ -7392,7 +7391,6 @@
     if (act === 'sect-shop') return sectDoShop();
     if (act === 'sect-lecture') return doSectLecture();
     if (act === 'sect-master') return doSectMaster();
-    if (act === 'sect-fight') return sectDoFight();
   }
   function sectDoTrial() {
     // 每年限应考 1 次：今年已考过（杂役重考）→ 拦截提示
@@ -7700,11 +7698,6 @@
       };
     });
   }
-  // 切磋演武：**未开放**，入口保留占位并给出明确提示（原先点了无反应，玩家反馈「不可交互、无效」）
-  function sectDoFight() {
-    uiAlert('切磋演武尚未开放，敬请期待。');
-  }
-
   /* ---------- P5 游历地图 ---------- */
   function openTravel() {
     if (!S || S.dead) return;

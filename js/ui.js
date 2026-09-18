@@ -2055,11 +2055,13 @@
   }
   function actSect() {
     if (!S.sect) { log('你尚未加入宗门，无法参加宗门活动。'); return; }
+    const usedTeach = !!S.sectTeachYear;
     showChapter(SECTS[S.sect].name, ['宗门之内，诸事待举。今日你想做些什么？'], {
       subtitle: '宗门活动',
       choices: [
         { t: '降妖除魔\n下山斩妖，护宗安民', sectAct: 'combat' },
-        { t: '道庭讲法\n聆听长老论道，或亲讲大道', sectAct: 'lecture' },
+        { t: '道庭讲法\n' + (usedTeach ? '本年已用，来年方得' : '聆听长老论道，随机得一门本阶功法（不耗行动点）'), sectAct: 'lecture' },
+        { t: '师父传功\n' + (usedTeach ? '本年已用，来年方得' : '与长老切磋，胜则三选一亲传（不耗行动点）'), sectAct: 'master' },
         { t: '同门交游\n与师兄弟切磋论道、剑峰习剑', sectAct: 'social' }
       ]
     }).then(function (r) {
@@ -2069,9 +2071,11 @@
         if (typeof res === 'string') { log(res); afterAction(); return; }
         runEvent(res);
       } else if (r.pick.sectAct === 'lecture') {
-        const res = Engine.sectLecture(S);
-        if (typeof res === 'string') { log(res); afterAction(); return; }
-        runEvent(res);
+        if (S.sectTeachYear) { log('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
+        doSectLecture();
+      } else if (r.pick.sectAct === 'master') {
+        if (S.sectTeachYear) { log('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
+        doSectMaster();
       } else if (r.pick.sectAct === 'social') {
         const res = Engine.sectSocial(S);
         if (typeof res === 'string') { log(res); afterAction(); return; }
@@ -6764,8 +6768,9 @@
     const hints = [];
     const realmNames = ['炼气', '筑基', '金丹', '元婴', '化神', '合体', '大乘', '渡劫', '仙'];
     const bi = Math.floor((s.idx || 0) / 3);
-    const daoBonus = Math.min(3, Math.floor((s.dao || 0) / 10));
-    const shenBonus = Math.min(3, Math.floor((s.shen || 0) / 10));
+    // 与 maxTreasure 同源：用有效值（基础+命格+法宝），与角色面板显示一致（2026-09-18 修正）
+    const daoBonus = Math.min(3, Math.floor(Engine.effAttr(s, 'dao') / 10));
+    const shenBonus = Math.min(3, Math.floor(Engine.effAttr(s, 'shen') / 10));
     const reincBonus = (s.reinc && s.reinc.treasureSlot) || 0;
     if (bi < 15) hints.push('突破至「' + (realmNames[bi + 1] || '更高') + '」境界（+1 栏位）');
     if (daoBonus < 3) hints.push('道心达 ' + ((daoBonus + 1) * 10) + '（+1 栏位）');
@@ -7358,17 +7363,20 @@
     h += '<div class="ct-grid sect-menu">';
     const dabiSt = Engine.dabiStatus(S);
     const commLeft = Engine.commissionYearLeft(S);
+    const usedTeach = !!S.sectTeachYear;
     const items = [
       ['sect-promote', '申请晋升', ''],
       ['sect-comm', '宗门任务', '本年剩余 ' + commLeft + '/3 件'],
       ['sect-dabi', '宗门大比', dabiSt.msg],
       ['sect-train', '练神峰·聚灵潭', ''],
       ['sect-shop', '宗门商人', ''],
-      ['sect-master', '师父传功', ''],
+      ['sect-lecture', '道庭讲法', usedTeach ? '本年已用' : '不耗行动点 · 每年 1 次'],
+      ['sect-master', '师父传功', usedTeach ? '本年已用' : '切磋 · 每年 1 次'],
       ['sect-fight', '切磋演武（未开放）', '']
     ];
     items.forEach(function (it) {
-      h += '<button class="ct-card act-card" data-act="' + it[0] + '"><div class="ct-card-h"><b>' + it[1] + '</b></div>'
+      const dis = usedTeach && (it[0] === 'sect-lecture' || it[0] === 'sect-master');
+      h += '<button class="ct-card act-card' + (dis ? ' disabled' : '') + '" data-act="' + it[0] + '"' + (dis ? ' disabled' : '') + '><div class="ct-card-h"><b>' + it[1] + '</b></div>'
         + (it[2] ? '<div class="ct-sub">' + it[2] + '</div>' : '') + '</button>';
     });
     h += '</div>';
@@ -7382,7 +7390,8 @@
     if (act === 'sect-dabi') return sectDoDabi();
     if (act === 'sect-train') return sectDoTrain();
     if (act === 'sect-shop') return sectDoShop();
-    if (act === 'sect-master') return sectDoMaster();
+    if (act === 'sect-lecture') return doSectLecture();
+    if (act === 'sect-master') return doSectMaster();
     if (act === 'sect-fight') return sectDoFight();
   }
   function sectDoTrial() {
@@ -7619,12 +7628,77 @@
       b.onclick = function () { const r = Engine.sectBuy(S, b.getAttribute('data-ref')); log(r.msg, r.ok ? 'good' : 'bad'); refresh(); sectDoShop(); };
     });
   }
-  function sectDoMaster() {
-    const box = openPanel('<h3>师父传功</h3><p class="dim">可听道庭讲法增益修为，或与同门切磋演武。</p>'
-      + '<div style="display:flex;gap:8px;margin-top:8px;"><button class="btn-small" id="m-lecture">听讲（道庭讲法）</button><button class="btn-small" id="m-fight" disabled>切磋演武（未开放）</button></div>'
-      + '<div id="m-r" style="margin-top:8px;"></div>');
-    $('m-lecture').onclick = function () { const res = Engine.sectLecture(S); if (typeof res === 'string') { log(res, 'bad'); return; } runEvent(res); };
-    $('m-fight').onclick = function () { uiAlert('切磋演武尚未开放，敬请期待。'); };
+  /* 道庭讲法：随机得一门本阶宗门功法 + 保底修为（不耗行动点，每年与传功共享 1 次） */
+  function doSectLecture() {
+    if (S.sectTeachYear) { log('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
+    if (!S.sect) { log('你尚未加入宗门，无法听讲的法。', 'bad'); return; }
+    const res = Engine.sectLecture(S);
+    if (res.used) { log('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
+    if (res.error) { log(res.error, 'bad'); return; }
+    let line = '道庭讲法：长老妙语连珠，你颇有所悟。';
+    if (res.tech) {
+      const t = TECHNIQUES[res.tech];
+      line += ' 习得【' + (t ? t.name : res.tech) + '】。';
+    } else {
+      line += ' 本门此阶功法你已尽数掌握，长老遂授你一场修为体悟。';
+    }
+    line += ' 保底修为 +' + res.qi + '。';
+    log(line, 'good');
+    refresh();
+  }
+  /* 师父传功：与长老切磋（战力=本阶秘境 10 层精英）；
+     胜则本阶三选一亲传，败则随机一门 + 保底修为（不耗行动点，每年与讲法共享 1 次） */
+  function doSectMaster() {
+    if (S.sectTeachYear) { log('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
+    if (!S.sect) { log('你尚未加入宗门，无法受传功。', 'bad'); return; }
+    const mp = Engine.sectMasterPrep(S);
+    if (mp.used) { log('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
+    if (mp.error) { log(mp.error, 'bad'); return; }
+    openBattle(mp.spec, { title: '师父传功·切磋' }).then(function (r) {
+      if (r.fled) { log('你借机遁走，传功作罢。', 'dim'); return; }
+      if (r.win) {
+        const opts = Engine.sectMasterOptions(S);
+        if (!opts.length) {
+          const lr = Engine.sectMasterResolve(S, false, null);
+          log('切磋得胜！然本门此阶功法你已尽数掌握，长老遂赐一番修为体悟。保底修为 +' + lr.qi + '。', 'good');
+          refresh();
+          return;
+        }
+        showMasterPick(opts);
+      } else {
+        const lr = Engine.sectMasterResolve(S, false, null);
+        let line = '切磋惜败，长老点头点拨，';
+        if (lr.tech) { const t = TECHNIQUES[lr.tech]; line += '赐你【' + (t ? t.name : lr.tech) + '】'; }
+        else line += '授你一场修为体悟';
+        line += '。保底修为 +' + lr.qi + '。';
+        log(line, 'good');
+        refresh();
+      }
+    });
+  }
+  /* 传功胜：本阶三选一亲传面板 */
+  function showMasterPick(opts) {
+    let h = '<h3>师父传功 · 择一亲传</h3><p class="dim">长老见你进境可喜，许你自本门此阶功法中择一亲传。</p><div class="ct-grid">';
+    opts.forEach(function (id) {
+      const t = TECHNIQUES[id];
+      h += '<div class="ct-card" data-tech="' + id + '"><div class="ct-card-h"><b>' + (t ? t.name : id) + '</b>'
+        + (t ? '<span class="ct-tier">' + t.grade + '</span>' : '') + '</div>'
+        + '<div class="ct-desc">' + (t ? (t.desc || '') : '') + '</div></div>';
+    });
+    h += '</div>';
+    const box = openPanel(h);
+    box.querySelectorAll('[data-tech]').forEach(function (c) {
+      c.onclick = function () {
+        const id = c.getAttribute('data-tech');
+        const r = Engine.sectMasterResolve(S, true, id);
+        let line = '你择【' + (TECHNIQUES[id] ? TECHNIQUES[id].name : id) + '】亲传';
+        if (r.tech) line += '，已录入识海';
+        line += '。修为亦得精进，保底修为 +' + r.qi + '。';
+        log(line, 'good');
+        closeModal();
+        refresh();
+      };
+    });
   }
   // 切磋演武：**未开放**，入口保留占位并给出明确提示（原先点了无反应，玩家反馈「不可交互、无效」）
   function sectDoFight() {

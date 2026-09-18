@@ -28,6 +28,8 @@ const MODULES = [
   ['13-tools-reinc.test.js', '镜像工具回归（tools/reinc_validate.js 口径一致）'],
   ['14-tutorial.test.js', '新手引导系统（聚光灯/可跳过/完整介绍）'],
   ['15-tap-balance.test.js', 'TAP 包平衡（小数/五行阵灵石/灵力恢复/掉落率）'],
+  ['16-treasure-unlock.test.js', '法宝栏槽位解锁（有效值口径）'],
+  ['17-sect-lecture.test.js', '宗门讲法 / 师父传功（v5 实装回归）'],
 ];
 
 function bar(pass, fail) {

@@ -262,7 +262,7 @@ module.exports = async function build() {
   /* ---------------------------------------------------------------- */
   /* 4. 心法：reduceDmg（减伤） / craftTimeReduce（缩短炼丹）            */
   /* ---------------------------------------------------------------- */
-  S.case('心法①：玄武真经 reduceDmg 与护盾 buff 走同一减伤通道', (t) => {
+  S.case('心法①：玄武真经 反伤(thorns) 替代减伤，guard 常驻减伤通道', (t) => {
     const s = bare('玄武减伤');
     s.equip.body = { id: 'tie_jia', aff: [] };      // 铁甲 def = 18
     E.refreshStats(s);
@@ -281,11 +281,11 @@ module.exports = async function build() {
     }
     t.eq(base, enemyAtk - defAbs, '校验前置：基准受击 = 敌atk - 面板防御 = 82');
 
-    // 装玄武真经（guard 0.20 常驻减伤 + reduceDmg 0.05）→ 100×0.75 = 75 - 18 = 57
+    // 装玄武真经（v5：移除 reduceDmg，改 thorns 0.15 反伤；guard 0.20 常驻减伤）→ 100×0.80 = 80 - 18 = 62
     s.techs = ['xt_xinfa4'];
     s.techEquip = { xinfa: 'xt_xinfa4', shufa: [], dunshu: null };
     E.refreshStats(s);
-    t.eq(E.getXinfaReduceDmg(s), 0.05, '玄武真经 reduceDmg = 0.05');
+    t.eq(E.getXinfaThorns(s), 0.15, '玄武真经 thorns = 0.15（v5 反伤替代减伤）');
     t.eq(E.getXinfaGuard(s), 0.20, '玄武真经 guard = 0.20（玄天门系常驻减伤）');
     t.eq(E.getXinfaHpMax(s), 150, '玄武真经 hpMax = +150');
     dummyFight(s, enemyAtk, 1000000);
@@ -296,7 +296,7 @@ module.exports = async function build() {
       E.combatAct(s, 'atk');
       const d = s.battle.hpLost - bb;
       if (d > 0) {
-        t.eq(d, Math.max(1, Math.round(enemyAtk * 0.75) - defAbs), '心法常驻减伤 25%（guard20+reduceDmg5）= 75-18=57');
+        t.eq(d, Math.max(1, Math.round(enemyAtk * 0.80) - defAbs), '心法常驻减伤 20%（仅 guard，reduceDmg 已移除）= 80-18=62');
         break;
       }
     }
@@ -321,19 +321,19 @@ module.exports = async function build() {
     t.note('startCraft: craftYears = max(0, 原年数 - 丹药/炼器轮回天赋 - getXinfaCraftReduce)');
   });
 
-  S.case('心法③：宗门心法 atkMul / spellMul / hpMax 全部实装', (t) => {
+  S.case('心法③：宗门心法 atkSpd（青云）/ spellMul / hpMax（玄天）全部实装', (t) => {
     const s = bare('宗门心法');
-    s.techs = ['qy_xinfa4'];                        // 太虚剑典：atkMul 0.20、spellMul 0.10
+    s.techs = ['qy_xinfa4'];                        // 太虚剑典（v5）：atkSpd 0.20、spellMul 0.10（攻击%已改为攻速%）
     s.techEquip = { xinfa: 'qy_xinfa4', shufa: [], dunshu: null };
     E.refreshStats(s);
-    t.eq(E.getXinfaAtkMul(s), 0.20, '太虚剑典 atkMul = 0.20');
+    t.eq(E.getXinfaAtkSpd(s), 0.20, '太虚剑典 atkSpd = 0.20（v5 攻速替代攻击%）');
     t.eq(E.getXinfaSpellMul(s), 0.10, '太虚剑典 spellMul = 0.10');
-    const atkWith = s.atk;
+    const atkSpdWith = E.getExtraAtkChance(s);
     s.techs = []; s.techEquip = { xinfa: null, shufa: [], dunshu: null };
     E.refreshStats(s);
-    const atkWithout = s.atk;
-    // 攻击基数 ×1.20（techMult 只影响修炼速度，不影响攻击）
-    t.eq(atkWith, Math.round(atkWithout * 1.20), '心法 atkMul 应作用于攻击（+20%）');
+    const atkSpdWithout = E.getExtraAtkChance(s);
+    // 攻速转化为额外出手几率（v5：青云剑宗攻击% → 攻速%）
+    t.ok(Math.abs(atkSpdWith - atkSpdWithout - 0.20) < 1e-6, '心法 atkSpd 应转化为额外出手几率（+20%）');
 
     // 玄天门系 hpMax：玄武真经 +150（守护/天罡心法依次 +50/+100）
     const s2 = bare('玄天心法');
@@ -344,7 +344,7 @@ module.exports = async function build() {
     t.eq(E.getXinfaHpMax(s2), 50, '护山心经 hpMax = +50');
     t.eq(E.getXinfaGuard(s2), 0.10, '护山心经 guard = 0.10');
     t.eq(s2.hpMax - hp0, 50, '心法固定气血应计入气血上限');
-    t.note('宗门心法附加效果（青云剑宗 atkMul/spellMul、玄天门 guard/hpMax、丹霞谷 atkMul）此前全是死配置，而 DEDAO_秘境功法法术池映射.md 已明文宣传');
+    t.note('宗门心法附加效果（青云剑宗 atkSpd/spellMul、玄天门 guard/hpMax/thorns、丹霞谷 spellMul）此前全是死配置，v5 已接通：青云由攻击%改为攻速%、玄天门增反伤');
   });
 
   /* ---------------------------------------------------------------- */

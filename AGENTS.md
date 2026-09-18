@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~15，当前 310/310 全过
+node test/automated/run.js     # 依次跑 01~16，当前 314/314 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -109,6 +109,8 @@ node test/automated/run.js     # 依次跑 01~15，当前 310/310 全过
 | `13-tools-reinc.test.js` | 2 |
 | `14-tutorial.test.js` | 6 | 新手引导系统（聚光灯分步高亮 / 可跳过 / **分阶段**：标题阶段 2 步[开始+轮回阁] 自动播 · 进入游戏 basics 4 步[修炼·角色·游历·引导下一步] · 第 2 年 secret[秘境] · 第 5 年 sect[宗门·百艺]；步骤完整性 / 上下步 / 跳过写阶段标记 / autoTitle+onEnterGame / onYear(2,5)+非 2/5 年不触发 / replay） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
 | `15-tap-balance.test.js` | 14 | TAP 包平衡（**小数位数守卫**：开五行阵后 hpMax/atk/mpMax 必为整数、主页面/战斗属性最多 1 位小数；**五行阵灵石消耗**：开启扣 100 启动、岁末每阵 50、不足拒绝、断供关阵、升级不变消耗；**战前灵力恢复 75%→50%**、气血 +10% 不变；**篝火（静室）调息/双修回满灵力**、打坐回血 60% 不变；**装备掉落率 = min(0.5, 深度×0.03)**、Boss 0.60） |
+| `16-treasure-unlock.test.js` | 4 | 法宝栏槽位解锁（**有效值口径**：`maxTreasure` 与 `treasureSlotUnlockText` 必须用 `effAttr` 的道心/神识（基础+命格+法宝），与角色面板一致；原始值达标、**法宝/命格加成使有效值达标**两类均解锁、加成封顶各 +3） |
+| `17-sect-lecture.test.js` | 11 | 宗门讲法 / 师父传功（v5 实装回归：9 门新宗门法术、心法攻速/反伤修订、五行心法额外效果 getter 接线、讲法随机给本阶技+保底修为、传功切磋胜败结算、讲法↔传功共享年计数、池空降级、阶位映射） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。

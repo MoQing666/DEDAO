@@ -482,6 +482,7 @@ const Engine = (function () {
     m += equipStats(s).hpMax;
     m += artifactStats(s).hpMax;
     m += getXinfaHpMax(s);   // 当前装备心法的固定气血（玄天门系：护山心经/天罡心法/玄武真经）
+    m = Math.round(m * (1 + getXinfaHpMul(s)));   // 木系五行心法：气血上限 %（qingmu/changchun/yimu/qinglong）
     // 装备「血量上限 %」词条
     m = Math.round(m * (1 + (equipStats(s).hpPct || 0) / 100));
     // 五行阵·木阵（气血上限 %）
@@ -612,6 +613,7 @@ const Engine = (function () {
     if (eff && eff.mpMax) m += eff.mpMax;
     m = Math.round(m * (1 + (equipStats(s).mpPct || 0) / 100));
     m = applyWuxing(s, 'mpMax', m);
+    m = Math.round(m * (1 + getXinfaMpMul(s)));   // 水系五行心法：法力上限 %（xuanshui/taiyin/guishui/xuanwu）
     return Math.round(m);
   }
   // 灵根词条 + 五行阵 → 战斗次级属性（暴击/闪避/渡劫/防御）
@@ -799,15 +801,22 @@ const Engine = (function () {
     if (kind === '丹' && t.sect === 'dpxia') return t.craftTimeReduce;
     return 0;
   }
+  /* 心法常驻额外效果（五行心法 / 青云剑宗攻速 / 玄天门反伤 等本轮新增字段） */
+  function getXinfaAtkSpd(s) { const t = xinfaCur(s); return (t && t.atkSpd) || 0; }   // 攻速（青云剑宗系，百分点→几率额外攻击一次）
+  function getXinfaThorns(s) { const t = xinfaCur(s); return (t && t.thorns) || 0; }    // 反伤（玄天门系，受伤反弹比例）
+  function getXinfaCritPct(s) { const t = xinfaCur(s); return (t && t.critPct) || 0; }  // 暴击率（金系五行心法）
+  function getXinfaMpMul(s) { const t = xinfaCur(s); return (t && t.mpMul) || 0; }      // 法力上限%（水系五行心法）
+  function getXinfaHpMul(s) { const t = xinfaCur(s); return (t && t.hpMul) || 0; }      // 气血上限%（木系五行心法）
+  function getXinfaDefMul(s) { const t = xinfaCur(s); return (t && t.defMul) || 0; }    // 防御减伤%（土系五行心法，与 guard/earthPct 同通道）
 
   /* 有效六维 = 基础值 + 命格属性加成 + 法宝六维加成 */
   function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k) + ((s.artAttr && s.artAttr[k]) || 0); }
   /* 暴击率：神识×1%（×天眼通 shenMul）×命格 + 道心×2% + 装备 + 法宝 */
-  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100; }
+  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100 + getXinfaCritPct(s); }
   /* 闪避率：遁速×2%（×风驰电掣 dunMul）+ 命格闪避 + 法宝 */
   function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
   /* 攻速（几率额外攻击一次）：遁速×1%（×dunMul）+ 命格额外攻击 + 装备攻速 + 疾风连击 doubleHit */
-  function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + talentApply(s, 'doubleHit'); }
+  function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + getXinfaAtkSpd(s) + talentApply(s, 'doubleHit'); }
   /* 回复（吸血）：体魄×1% + 命格 recoverPct（回复）+ 命格 lifesteal（吸血）+ 装备回复词条
      ⚠ 下限 0：仙命【九天玄体】起首次引入**负体魄**（ti-1）。开局六维恒为 1，故当下 effAttr(ti)≥0、
        结果非负；但一旦再出现第二个「减体魄」来源（剧情/新命格），负值会让吸血变成**自残**
@@ -829,7 +838,7 @@ const Engine = (function () {
     return base + (equipStats(s).def || 0) + (s.flatDef || 0) + (s.artDef || 0);
   }
   /* 防御·百分比减伤：五行阵·土阵(earthPct) + 法宝(defPct)，合计封顶 90% 防溢出 */
-  function getDefensePct(s) { return Math.min(0.9, (s.earthPct || 0) + (s.artDefPct || 0)); }
+  function getDefensePct(s) { return Math.min(0.9, (s.earthPct || 0) + (s.artDefPct || 0) + getXinfaDefMul(s)); }
   /* 防御·除算减伤：金缕衣（每 100 灵石 +1%，上限 300%）→ 受伤 ÷(1+x) */
   function getDefenseDiv(s) { return s.jinylvDef || 0; }
 
@@ -1093,8 +1102,11 @@ const Engine = (function () {
   // 另受轮回阁天赋「先天灵宝」加成（每级 +1，最高 3 级）。
   function maxTreasure(s) {
     var n = 3 + bigIdxOf(s);                                   // 炼气3/筑基4/金丹5/元婴6
-    n += Math.min(3, Math.floor((s.dao || 0) / 10));           // 道心 10/20/30 → +1/+2/+3
-    n += Math.min(3, Math.floor((s.shen || 0) / 10));          // 神识 10/20/30 → +1/+2/+3
+    // ⚠ 2026-09-18 修正：解锁判定必须用「有效值」(effAttr=基础+命格+法宝)，
+    //    与角色面板显示的道心/神识一致。否则玩家靠命格/法宝把有效值堆到≥10，
+    //    法宝栏却因原始 s.dao/s.shen 未达标而不解锁（「达标却没解锁」根因）。
+    n += Math.min(3, Math.floor(effAttr(s, 'dao') / 10));      // 道心 10/20/30 → +1/+2/+3
+    n += Math.min(3, Math.floor(effAttr(s, 'shen') / 10));     // 神识 10/20/30 → +1/+2/+3
     n += (s.reinc && s.reinc.treasureSlot) || 0;               // 先天灵宝（轮回阁天赋）
     return n;
   }
@@ -2085,8 +2097,8 @@ const Engine = (function () {
           b.hp = Math.min(b.hpMax, b.hp + hl);
           out.push('魔化吸血，『' + b.name + '』气血 +' + hl + '。');
         }
-        // 反伤效果（玩家天赋）
-        const thorns = getDestinyBonus(s, 'thorns');
+        // 反伤效果（玩家天赋 + 心法：玄天门系 thorns）
+        const thorns = getDestinyBonus(s, 'thorns') + getXinfaThorns(s);
         if (thorns > 0) {
           const thornDmg = Math.round(d * thorns);
           b.hp -= thornDmg;
@@ -3712,40 +3724,61 @@ const Engine = (function () {
           resultWin: '你收剑而立，此战大获全胜。', resultLose: '妖兽凶猛，你且战且退，总算保住了性命。' }
       ] };
   }
+  // 当前大境界 → 对应阶位（炼气=黄 / 筑基=玄 / 金丹=地 / 元婴及以上=天）
+  function gradeOfBig(bi) { return GRADE_ORDER[Math.min(bi, 3)]; }
+  // 本宗「本等级」未习得技池（心法/法术/遁术，阶位==本等级 且 玩家未习得）
+  function sectTeachPool(s) {
+    const grade = gradeOfBig(bigIdxOf(s));
+    return Object.keys(TECHNIQUES).filter(function (k) {
+      const t = TECHNIQUES[k];
+      return t.sect === s.sect && t.grade === grade && s.techs.indexOf(k) < 0;
+    });
+  }
+  /* 道庭讲法（选 1 · 不耗行动点 · 每年与传功共享 1 次）
+     随机给 1 个本等级未习得宗门技；保底修为 = 当前境界 10%。 */
   function sectLecture(s) {
-    if (!s.sect) return '你尚未加入宗门。';
-    if (!canAction(s, 1)) return false;
-    spend(s, 1);
-    const bi = bigIdxOf(s);
-    if (!s.sectLectureCount) s.sectLectureCount = 0;
-    if (s.idx >= 10) {
-      return { id: 'player_lecture', title: '道庭开讲', chapter: true,
-        lines: ['你在道庭开讲，座下弟子满堂。你深吸一口气，开口论道。', '今日你可选讲的主题：'],
-        choices: [
-          { t: '讲气血运行之道', effect: { hp: 80 }, lines: ['你讲述气血运行之理，座下弟子频频点头。讲毕，你自觉气血充沛了不少。（气血 +80）'] },
-          { t: '讲道心修炼之悟', effect: { wu: 0.3 }, lines: ['你分享道心修炼的感悟，座下弟子若有所思。讲毕，你对道的领悟又深了一层。（悟性 +0.3）'] },
-          { t: '讲体魄淬炼之术', effect: { ti: 0.3 }, lines: ['你讲述体魄淬炼之术，弟子们摩拳擦掌。讲毕，你自觉体魄更加强韧。（体魄 +0.3）'] }
-        ] };
-    }
-    s.sectLectureCount++;
-    const qiGain = Math.round(requireNeed(s) * 0.08);
-    const result = '你心有所悟，体内灵气流转顺畅了不少。';
-    if (s.sectLectureCount >= 6 && !s.sectLectureTech) {
-      const sectTechs = { qingyunjian: 'jianqi', dpxia: 'changchun', xuantian: 'leiyin' };
-      const tid = sectTechs[s.sect];
-      if (tid && s.techs.indexOf(tid) < 0) {
-        s.techs.push(tid);
-        s.sectLectureTech = true;
-        refreshStats(s); saveState(s);
-        return { id: 'dao_ting_tech', title: '道庭讲法·顿悟', chapter: true,
-          lines: SECT_LECTURE.lines.concat(['今日讲法与往日不同——你听着听着，忽然心领神会，一缕灵光闪过脑海！']),
-          effect: { qi: qiGain },
-          result: '你领悟了宗门秘传【' + TECHNIQUES[tid].name + '】！' + result };
-      }
-    }
+    if (!s.sect) return { error: '你尚未加入宗门。' };
+    if (s.sectTeachYear) return { used: true };
+    const pool = sectTeachPool(s);
+    let tid = null;
+    if (pool.length) { tid = pool[Math.floor(Math.random() * pool.length)]; if (s.techs.indexOf(tid) < 0) s.techs.push(tid); }
+    const qi = Math.round(requireNeed(s) * 0.10);
+    s.qi += qi;
+    s.sectTeachYear = 1;
     refreshStats(s); saveState(s);
-    return { id: 'dao_ting_jiang', title: SECT_LECTURE.title, chapter: true,
-      lines: SECT_LECTURE.lines, effect: { qi: qiGain }, result: result };
+    return { type: 'lecture', tech: tid, qi: qi, poolEmpty: !pool.length };
+  }
+  /* 师父传功·前置（切磋战斗准备，不耗行动点）
+     返回 10 层精英战力的师父 spec；年限在战斗结算时才扣。 */
+  function sectMasterPrep(s) {
+    if (!s.sect) return { error: '你尚未加入宗门。' };
+    if (s.sectTeachYear) return { used: true };
+    const sectName = (SECTS[s.sect] && SECTS[s.sect].name) || '宗门';
+    const spec = enemyGen(s, 'elite', 10, s.advType || 'huang');
+    spec.name = '【' + sectName + '】传功长老';
+    spec.line = '长老含笑抚须：「且让老夫看看你这些年的进境。」';
+    const need = requireNeed(s);
+    return { type: 'master', spec: spec, pool: sectTeachPool(s), qiLose: Math.round(need * 0.10), qiWin: Math.round(need * 0.20) };
+  }
+  // 传功胜：本等级 3 个自选 1 的候选（实时重算，与战前一致）
+  function sectMasterOptions(s) { return sectTeachPool(s).slice(0, 3); }
+  /* 师父传功·结算（win=true 亲传 / false 点拨）
+     胜：给出本等级 3 选 1（chosenId 指定其一）；败：随机 1 个；均保底修为（胜 20% / 败 10%）。 */
+  function sectMasterResolve(s, win, chosenId) {
+    const need = requireNeed(s);
+    let tid = null;
+    if (win) {
+      if (chosenId && s.techs.indexOf(chosenId) < 0) { s.techs.push(chosenId); tid = chosenId; }
+      const qi = Math.round(need * 0.20);
+      s.qi += qi; s.sectTeachYear = 1; refreshStats(s); saveState(s);
+      return { type: 'master', win: true, tech: tid, qi: qi };
+    } else {
+      const pool = sectTeachPool(s);
+      if (pool.length) { tid = pool[Math.floor(Math.random() * pool.length)]; s.techs.push(tid); }
+      const qi = Math.round(need * 0.10);
+      s.qi += qi; s.sectTeachYear = 1; refreshStats(s); saveState(s);
+      return { type: 'master', win: false, tech: tid, qi: qi };
+    }
   }
   function jiyuan(s) {
     if (!canAction(s, 1)) return false;
@@ -4599,6 +4632,7 @@ const Engine = (function () {
     s.mp = s.mpMax;               // 年末：灵力同步回满
     s.cultedThisYear = false;
     s.cultTimes = 0;
+    s.sectTeachYear = 0;   // 宗门讲法/传功：每年共享 1 次，年末清零
     // 法宝：聚宝盆（每年得灵石 = 当前 ×5%）
     const artY = artifactStats(s);
     if (artY.stoneYearPct) { const add = Math.round(s.stone * artY.stoneYearPct); s.stone += add; s.lastYearStoneBonus = add; }
@@ -5638,6 +5672,10 @@ const Engine = (function () {
     canBreak: canBreak, breakInfo: breakInfo, breakthrough: breakthrough,
     perfectBreakthrough: perfectBreakthrough, normalBreakthrough: normalBreakthrough,
     sectCombat: sectCombat, sectLecture: sectLecture, sectSocial: sectSocial,
+    sectTeachPool: sectTeachPool,
+    sectMasterPrep: sectMasterPrep, sectMasterOptions: sectMasterOptions, sectMasterResolve: sectMasterResolve,
+    getXinfaAtkSpd: getXinfaAtkSpd, getXinfaThorns: getXinfaThorns, getXinfaCritPct: getXinfaCritPct,
+    getXinfaMpMul: getXinfaMpMul, getXinfaHpMul: getXinfaHpMul, getXinfaDefMul: getXinfaDefMul, gradeOfBig: gradeOfBig,
     cultCost: cultCost, actionPoints: actionPoints,
     endYear: endYear, checkYearEvents: checkYearEvents, moreMainline: moreMainline, fateBattle: fateBattle,
     endLife: endLife, useElixir: useElixir,

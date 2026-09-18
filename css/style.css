@@ -153,7 +153,7 @@ button:disabled { opacity: .4; cursor: default; }
   box-shadow: 8px 8px 0 rgba(120,90,50,.08), inset 0 0 60px rgba(232,193,90,.06);
   background: rgba(255,255,255,.3);
 }
-.logo-cn { font-size: 64px; color: var(--gold); text-shadow: 0 0 24px rgba(232,193,90,.6); letter-spacing: 14px; }
+.logo-cn { font-size: 48px; color: var(--gold); text-shadow: 0 0 24px rgba(232,193,90,.6); letter-spacing: 14px; }
 .logo-cn .gold { color: var(--gold); text-shadow: 0 0 24px rgba(232,193,90,.6); }
 .logo-en { color: var(--dim); letter-spacing: 8px; margin-top: 6px; font-size: 13px; }
 .logo-sub { color: var(--dim); margin-top: 14px; font-size: 12px; letter-spacing: 3px; }

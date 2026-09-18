@@ -193,17 +193,17 @@
     // 修为条
     const need = Engine.requireNeed(S);
     const qiPct = Math.max(0, Math.min(100, S.qi / need * 100));
-    if ($('qi-val')) $('qi-val').textContent = S.qi + ' / ' + need;
+    if ($('qi-val')) $('qi-val').textContent = fmtStat(S.qi) + ' / ' + fmtStat(need);
     // 修为条：淡蓝（2026-09-16 定稿，原为深绿 #1d7a55，与气血条撞色）
     if ($('bar-qi')) bar('bar-qi', qiPct, '#74b9e7');
 
     // 六维属性（含基础+命格+法宝+装备，与角色面板口径一致）
-    $('st-wu').textContent = Engine.effAttr(S, 'wu') + (Engine.equipStats(S).wu || 0);
-    $('st-ti').textContent = Engine.effAttr(S, 'ti') + (Engine.equipStats(S).ti || 0);
-    $('st-dun').textContent = Engine.effAttr(S, 'dun') + (Engine.equipStats(S).dun || 0);
-    $('st-shen').textContent = Engine.effAttr(S, 'shen') + (Engine.equipStats(S).shen || 0);
-    $('st-dao').textContent = Engine.effAttr(S, 'dao') + (Engine.equipStats(S).dao || 0);
-    $('st-ling').textContent = Engine.effAttr(S, 'ling') + (Engine.equipStats(S).ling || 0);
+    $('st-wu').textContent = fmtStat(Engine.effAttr(S, 'wu') + (Engine.equipStats(S).wu || 0));
+    $('st-ti').textContent = fmtStat(Engine.effAttr(S, 'ti') + (Engine.equipStats(S).ti || 0));
+    $('st-dun').textContent = fmtStat(Engine.effAttr(S, 'dun') + (Engine.equipStats(S).dun || 0));
+    $('st-shen').textContent = fmtStat(Engine.effAttr(S, 'shen') + (Engine.equipStats(S).shen || 0));
+    $('st-dao').textContent = fmtStat(Engine.effAttr(S, 'dao') + (Engine.equipStats(S).dao || 0));
+    $('st-ling').textContent = fmtStat(Engine.effAttr(S, 'ling') + (Engine.equipStats(S).ling || 0));
     // 战斗属性
     $('st-atk').textContent = fmtStat(S.atk || 0);
     // 防御/暴击/闪避：全部走引擎统一口径，与属性面板、战斗结算一致
@@ -3636,7 +3636,7 @@
 
       const valRow = document.createElement('div');
       valRow.className = 'attr-six-val';
-      valRow.innerHTML = '<b>' + total + '</b>';
+      valRow.innerHTML = '<b>' + fmtStat(total) + '</b>';
       card.appendChild(valRow);
 
       const affect = document.createElement('div');
@@ -3670,11 +3670,11 @@
       { name: '攻击', val: Math.round(S.atk * atkMul), color: '#c0402a', desc: '基础10+境界 + 神识×5 + 灵力×5 + 装备' },
       { name: '防御', val: defTotal, color: '#1d7a55', desc: '体魄×0.5 + 装备/法宝/灵根防御 + 命格（土阵%、金缕衣减伤另计）' },
       { name: '暴击', val: critBase + '%', color: 'var(--text)', desc: '神识×1% + 道心×2% + 装备 + 命格' },
-      { name: '血量', val: S.hp + ' / ' + S.hpMax, color: '#c0402a', desc: '80 + 体魄×50 + 境界 + 装备血量上限%' },
+      { name: '血量', val: fmtStat(S.hp) + ' / ' + fmtStat(S.hpMax), color: '#c0402a', desc: '80 + 体魄×50 + 境界 + 装备血量上限%' },
       { name: '攻速', val: extraAtkBase + '%', color: '#8a5f14', desc: '遁速×1% + 装备：几率额外攻击一次' },
       { name: '回复', val: recoverBase + '%', color: '#1d7a55', desc: '体魄×1% + 装备：造成伤害的吸血比例' },
       { name: '闪避', val: dodgeBase + '%', color: '#1d7a55', desc: '遁速×2% + 装备 + 命格' },
-      { name: '灵量', val: (S.mp || 0) + ' / ' + (S.mpMax || 0), color: '#2f7fb0', desc: '灵力上限（灵力×20）+ 装备灵力上限%' }
+      { name: '灵量', val: fmtStat(S.mp || 0) + ' / ' + fmtStat(S.mpMax || 0), color: '#2f7fb0', desc: '灵力上限（灵力×20）+ 装备灵力上限%' }
     ];
 
     combatStats.forEach(function (cs) {
@@ -6539,7 +6539,7 @@
 
       const valRow = document.createElement('div');
       valRow.className = 'attr-six-val';
-      valRow.innerHTML = '<b>' + total + '</b>';
+      valRow.innerHTML = '<b>' + fmtStat(total) + '</b>';
       card.appendChild(valRow);
 
       const affect = document.createElement('div');
@@ -7240,7 +7240,7 @@
     const need = Engine.requireNeed(S);
     const modes = Engine.cultModes(S);
     const cultTimes = S.cultTimes || 0, cultMax = S.cultMax || 1;
-    let h = '<div class="stat-row"><label>修为</label><div class="bar-box"><div class="bar-fill" style="width:' + Math.min(100, S.qi / need * 100) + '%"></div></div><span class="num">' + S.qi + ' / ' + need + '</span></div>';
+    let h = '<div class="stat-row"><label>修为</label><div class="bar-box"><div class="bar-fill" style="width:' + Math.min(100, S.qi / need * 100) + '%"></div></div><span class="num">' + fmtStat(S.qi) + ' / ' + fmtStat(need) + '</span></div>';
     h += '<h3 class="ct-sec">修炼（每年 ' + cultMax + ' 次）</h3><div class="ct-grid">';
     modes.forEach(function (m) {
       const dis = ((cultTimes >= cultMax) || !Engine.canAction(S, m.ap) || S.qi >= need) ? ' disabled' : '';
@@ -7535,7 +7535,7 @@
     if (!S.dabi || S.dabi.done) { openPanel('<h3>宗门大比</h3><p>' + (S.lastDabiMsg || '本届大比已结束。') + '</p><div style="margin-top:10px;"><button class="btn-main" data-close="1">返回</button></div>'); return; }
     const fi = S.dabi.idx;
     let h = '<h3>宗门大比 · 第 ' + (fi + 1) + '/' + total + ' 层</h3>'
-      + '<p class="dim">一条直线连战五层，连胜方为全胜（唯一回满之机）。当前气血 ' + S.hp + '/' + S.hpMax + '</p>'
+      + '<p class="dim">一条直线连战五层，连胜方为全胜（唯一回满之机）。当前气血 ' + fmtStat(S.hp) + '/' + fmtStat(S.hpMax) + '</p>'
       + '<div class="dabi-ladder">';
     for (let i = 0; i < total; i++) {
       const lf = Engine.dabiFoe(S, i);

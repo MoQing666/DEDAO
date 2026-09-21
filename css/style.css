@@ -1425,7 +1425,17 @@ button:disabled { opacity: .4; cursor: default; }
 /* 开荒页：.panel 必须撑满屏幕高度并成为纵向 flex，否则内部 .screen-body 无高度约束、无法滚动 */
 #screen-create .panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
 #screen-create .screen-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 64px; }
-.create-budget { color: var(--dim); font-size: 13px; margin: 4px 0 10px; }
+/* 开荒点数固定上方：滚动命数页时始终可见剩余点数 */
+.create-budget {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  color: var(--dim);
+  font-size: 13px;
+  margin: 0 0 10px;
+  padding: 4px 0;
+  background: var(--panel);
+}
 .create-budget b.good { color: var(--good); }
 .create-budget b.bad { color: var(--bad); }
 #screen-create .screen-body { font-size: 13px; }

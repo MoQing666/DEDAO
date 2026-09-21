@@ -65,7 +65,7 @@
         '<div class="tut-title"></div>' +
         '<div class="tut-body"></div>' +
         '<div class="tut-actions">' +
-          '<button class="tut-skip" data-act="skip">跳过引导</button>' +
+          '<button class="tut-skip" data-act="skip">结束引导</button>' +
           '<span class="tut-spacer"></span>' +
           '<button class="tut-prev" data-act="prev">上一步</button>' +
           '<button class="tut-next" data-act="next">下一步</button>' +

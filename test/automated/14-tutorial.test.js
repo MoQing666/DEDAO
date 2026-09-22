@@ -48,7 +48,7 @@ module.exports = async function build() {
   const re = /id="([^"]+)"/g;
   while ((m = re.exec(htmlRaw))) ids.add(m[1]);
 
-  S.case('分阶段步骤数据完整性：target 存在、group 合法、文案非空；标题 2 步 / 游戏 7 步', (t) => {
+  S.case('分阶段步骤数据完整性：target 存在、group 合法、文案非空；标题 2 步 / 游戏 6 步', (t) => {
     const dom = makeDom();
     const steps = dom.window.Tutorial._debugSteps;
     let titleN = 0, gameN = 0;
@@ -60,7 +60,7 @@ module.exports = async function build() {
       if (s.group === 'title') titleN++; else gameN++;
     }
     t.eq(titleN, 2, '标题阶段步数应为 2（开始 + 轮回阁）');
-    t.eq(gameN, 7, '游戏阶段步数应为 7（修炼/角色/游历/引导 + 秘境 + 宗门/百艺）');
+    t.eq(gameN, 6, '游戏阶段步数应为 6（修炼/角色/游历 + 秘境 + 宗门/百艺）');
   });
 
   S.case('标题阶段可启动且步数 = 2，进度 1/2', async (t) => {
@@ -112,7 +112,7 @@ module.exports = async function build() {
     // 进入游戏首世
     t.eq(w.Tutorial.onEnterGame(), true, '新玩家应自动播 basics');
     await tick();
-    t.ok(/（1 \/ 4）/.test(doc.querySelector('.tut-progress').textContent), 'basics 进度应为 1/4');
+    t.ok(/（1 \/ 3）/.test(doc.querySelector('.tut-progress').textContent), 'basics 进度应为 1/3');
     doc.querySelector('.tut-skip').click();
     await tick();
     t.eq(w.Tutorial.onEnterGame(), false, 'basics 已看应不再自动播');

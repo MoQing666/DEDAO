@@ -30,6 +30,7 @@ const MODULES = [
   ['15-tap-balance.test.js', 'TAP 包平衡（小数/五行阵灵石/灵力恢复/掉落率）'],
   ['16-treasure-unlock.test.js', '法宝栏槽位解锁（有效值口径）'],
   ['17-sect-lecture.test.js', '宗门讲法 / 师父传功（v5 实装回归）'],
+  ['18-daily-login.test.js', '每日登录礼（7 天递增 / 断签重置 / 补签 / 时间倒流保护）'],
 ];
 
 function bar(pass, fail) {

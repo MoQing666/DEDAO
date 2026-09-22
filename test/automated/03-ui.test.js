@@ -2098,5 +2098,57 @@ module.exports = async function build() {
     if (real.length) t.fail('归途结算渲染报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* ---------- 每日登录礼：标题页按钮 + 自动弹面板（端到端） ---------- */
+  function todayStr() {
+    const d = new Date(); const m = d.getMonth() + 1, dd = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+  function seedMeta(daily) {
+    return JSON.stringify({
+      points: 7, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
+      achPaid: {}, _bonus20: true, daily: daily
+    });
+  }
+
+  S.case('每日登录礼：标题页按钮存在，当日已领取时不弹面板且文案为「已领取」', async (t) => {
+    const { win, doc } = await boot({ seed: { dedao_meta: seedMeta({ last: todayStr(), streak: 3, total: 3, patch: 0 }) } });
+    const btn = doc.getElementById('t-daily');
+    t.ok(!!btn, '标题页应有 #t-daily 每日登录礼按钮');
+    if (btn) {
+      t.ok(/每日登录礼/.test(btn.textContent || ''), '按钮文案应含「每日登录礼」');
+      t.ok(/已领取/.test(btn.textContent || ''), '当日已领取时应显示「已领取」，实际：' + btn.textContent);
+      t.ok(!/daily-ready/.test(btn.className || ''), '已领取时不应带可领取标记');
+    }
+    const modal = doc.getElementById('modal');
+    t.ok(modal && /display:\s*none/.test(modal.getAttribute('style') || ''), '已领取时不应自动弹面板');
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m && m.points, 7, '已领取当日不应再发点');
+  });
+
+  S.case('每日登录礼：未领取时开机自动弹面板，7 格齐全，领取后 +2 点且按钮转「已领取」', async (t) => {
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: seedMeta(undefined) } });
+    const modal = doc.getElementById('modal');
+    t.ok(modal && !/display:\s*none/.test(modal.getAttribute('style') || ''), '当日未领取时应自动弹面板');
+    t.eq(doc.querySelectorAll('#modal-body .daily-cell').length, 7, '面板应渲染 7 个格子');
+    t.eq(doc.querySelectorAll('#modal-body .daily-cell.cur').length, 1, '应有且仅有一个「当前可领」高亮格');
+    const body = (doc.getElementById('modal-body') || {}).textContent || '';
+    t.ok(/每日登录礼/.test(body), '面板标题应为「每日登录礼」');
+
+    const claim = [...doc.querySelectorAll('#modal-body .daily-acts button')].find(b => /领取/.test(b.textContent || ''));
+    t.ok(!!claim, '应有领取按钮');
+    if (!claim) return;
+    claim.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m && m.points, 9, '领取后轮回点应为 7 + 2 = 9');
+    t.eq(m && m.daily && m.daily.streak, 1, 'streak 应为 1');
+    t.eq(m && m.daily && m.daily.last, todayStr(), 'last 应写为今天');
+    const btn = doc.getElementById('t-daily');
+    t.ok(btn && /已领取/.test(btn.textContent || ''), '领取后标题按钮应转为「已领取」，实际：' + (btn && btn.textContent));
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('登录礼面板渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   return S;
 };

@@ -6183,6 +6183,121 @@
     const maxJie = M.maxJie || 0;
     const jieInfo = nextJie > 0 ? ' · ' + nextJie + '劫轮回' : '';
     $('t-points').textContent = M.points ? '轮回点累计 ' + M.points + jieInfo : (jieInfo ? jieInfo.slice(3) : '');
+    dailyBtnSync();
+  }
+
+  /* ---------------- 每日登录礼（账号级 / 跨存档） ----------------
+   * 数值与规则集中在 Engine：DAILY_REWARDS = [2,10,10,10,11,12,24]（共 79 点/轮）、
+   * PATCH_COST = 5（补签单价，限 Δ=2 且每周期 1 次）。此处只做渲染与交互。
+   */
+  function dailyBtnSync() {
+    const b = $('t-daily'); if (!b) return;
+    let st;
+    try { st = Engine.dailyStatus(); } catch (e) { return; }
+    if (!st) return;
+    b.classList.remove('daily-ready');
+    if (st.anomaly) { b.textContent = '每日登录礼 · 暂不可用'; }
+    else if (st.claimed) { b.textContent = '每日登录礼 · 已领取'; }
+    else { b.textContent = '每日登录礼 · 可领取'; b.classList.add('daily-ready'); }
+  }
+
+  function openDailyPanel(afterClose) {
+    const ov = $('modal'); const box = $('modal-body');
+    if (!ov || !box) return;
+
+    function close() {
+      ov.style.display = 'none';
+      ov.onclick = null;
+      closeModal();
+      if (afterClose) { const f = afterClose; afterClose = null; f(); }
+    }
+
+    function render(msg) {
+      let st;
+      try { st = Engine.dailyStatus(); } catch (e) { return; }
+      if (!st) return;
+      box.innerHTML = '';
+
+      const h = document.createElement('h3'); h.textContent = '每日登录礼'; box.appendChild(h);
+      const sub = document.createElement('p'); sub.className = 'dim';
+      sub.textContent = '连续登录 7 天，轮回点逐日递增'; box.appendChild(sub);
+
+      const line = document.createElement('p'); line.className = 'dim';
+      if (st.anomaly) line.textContent = '系统时间异常，暂无法领取';
+      else if (st.claimed) line.textContent = '今日已领取，明日再来（已连续 ' + st.streak + ' 天）';
+      else if (st.broke) line.textContent = '已断签：连续天数将重置为第 1 天';
+      else line.textContent = '已连续 ' + st.streak + ' 天 · 今日可领第 ' + st.next + ' 天';
+      box.appendChild(line);
+
+      // 7 格：已领 / 当前 / 未到
+      const claimedN = st.claimed ? st.streak : (st.broke ? 0 : st.streak);
+      const grid = document.createElement('div'); grid.className = 'daily-grid';
+      for (let i = 1; i <= st.rewards.length; i++) {
+        const cell = document.createElement('div');
+        let cls = 'daily-cell ';
+        if (i <= claimedN) cls += 'got';
+        else if (!st.claimed && !st.anomaly && i === st.next) cls += 'cur';
+        else cls += 'todo';
+        cell.className = cls;
+        cell.innerHTML = '<span class="dc-day">第' + i + '天</span><span class="dc-num">' +
+          st.rewards[i - 1] + '</span>' + (i <= claimedN ? '<span class="dc-ok">✓</span>' : '');
+        grid.appendChild(cell);
+      }
+      box.appendChild(grid);
+
+      if (msg) {
+        const p = document.createElement('p'); p.className = 'daily-tip'; p.textContent = msg;
+        box.appendChild(p);
+      }
+
+      const acts = document.createElement('div'); acts.className = 'daily-acts';
+      if (!st.claimed && !st.anomaly) {
+        if (st.broke) {
+          const tip = document.createElement('p'); tip.className = 'daily-hint';
+          tip.textContent = st.canPatch
+            ? ('已断签，不补签则连续天数重置为第 1 天（补签可续上第 ' + st.patchNext + ' 天，+' + st.patchReward + '）')
+            : (st.patchCost && (st.points < st.patchCost) && !st.patch
+                ? '已断签，且轮回点不足 ' + st.patchCost + '，无法补签'
+                : '已断签，不补签则连续天数重置为第 1 天');
+          box.insertBefore(tip, acts);
+          if (st.canPatch) {
+            const pb = document.createElement('button'); pb.className = 'btn-main ghost';
+            pb.textContent = '补签（' + st.patchCost + ' 轮回点）';
+            pb.onclick = function () { sfx('click'); doClaim(true); };
+            acts.appendChild(pb);
+          }
+        }
+        const cb = document.createElement('button'); cb.className = 'btn-main';
+        cb.textContent = '领取（+' + st.reward + ' 轮回点）';
+        cb.onclick = function () { sfx('click'); doClaim(false); };
+        acts.appendChild(cb);
+      }
+      const kb = document.createElement('button'); kb.className = 'btn-main ghost';
+      kb.textContent = '关闭'; kb.onclick = function () { sfx('click'); close(); };
+      acts.appendChild(kb);
+      box.appendChild(acts);
+    }
+
+    function doClaim(usePatch) {
+      const r = Engine.dailyClaim(usePatch);
+      M = Engine.loadMeta();
+      renderTitle();
+      if (r && r.ok) render(r.msg);
+      else if (r && r.msg) render(r.msg);
+    }
+
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) close(); };
+    render('');
+  }
+
+  /* 当日未领取时开机自动弹一次；返回是否弹了面板（供 boot 决定是否延后新手引导） */
+  function autoDailyPanel(afterClose) {
+    let st;
+    try { st = Engine.dailyStatus(); } catch (e) { return false; }
+    if (!st || st.claimed || st.anomaly) return false;
+    openDailyPanel(afterClose);
+    return true;
   }
   function actContinue(opts) {
     opts = opts || {};
@@ -6255,8 +6370,14 @@
     
     showScreen('title');
     renderTitle();
-    // 新玩家首见标题页：只自动播放「开始 + 轮回阁」引导，引导其进入游戏（其余分阶段在游戏中触发）
-    if (window.Tutorial) window.Tutorial.autoTitle();
+    // 每日登录礼：当日未领取则先弹面板，关掉后再播新手引导（避免聚光灯与弹窗两层浮层打架）
+    let tutPlayed = false;
+    function playTitleTutorial() {
+      if (tutPlayed) return;
+      tutPlayed = true;
+      if (window.Tutorial) window.Tutorial.autoTitle();
+    }
+    if (!autoDailyPanel(playTitleTutorial)) playTitleTutorial();
     
     // 自动激活音频
     if (typeof AudioManager !== 'undefined') {
@@ -6277,6 +6398,7 @@
     $('t-new').onclick = function () { sfx('click'); startNewLife(); };
     $('t-continue').onclick = function () { sfx('click'); actContinue(); };
     $('t-rebirth').onclick = function () { sfx('click'); renderRebirth(); showScreen('rebirth'); };
+    if ($('t-daily')) $('t-daily').onclick = function () { sfx('click'); openDailyPanel(); };
     $('rb-back').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };
     $('btn-reborn').onclick = function () { sfx('click'); actReborn(); };
     $('btn-end-title').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };

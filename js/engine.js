@@ -14,8 +14,132 @@ const Engine = (function () {
 
   /* ---------------- 档案 ---------------- */
   function defaultMeta() {
-    return { points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0 };
+    return {
+      points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
+      daily: { last: '', streak: 0, total: 0, patch: 0 }
+    };
   }
+
+  /* ---------------- 每日登录礼（账号级 / 跨存档） ----------------
+   * 口径：本地每日首开（无后端无账号，按设备本地自然日判定）。
+   * 币种：纯轮回点 meta.points —— 零依赖局内存档，标题页随时可领、绝不会丢。
+   * 数值：DAILY_REWARDS 共 79 点/轮；第 2 天 10 点使累计达 12（= 开荒天赋 Lv1→2 的 6 点的 2 倍），
+   *       保证玩家第二天「领了就能买、买了就变强」，形成留存闭环。调曲线只改这一个数组。
+   */
+  const DAILY_REWARDS = [2, 10, 10, 10, 11, 12, 24];  // index = streak - 1
+  const PATCH_COST = 5;                                 // 补签单价（轮回点）
+  const DAILY_CYCLE = 7;                                // 一个周期天数
+
+  function todayStr(d) {
+    const t = d || new Date();
+    const m = (t.getMonth() + 1);
+    const dd = t.getDate();
+    return t.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+  /* 用 UTC 零点把日期折算成天序号再相减，绕开时区/夏令时导致的 ±1 漂移 */
+  function dayNum(s) {
+    const p = String(s || '').split('-');
+    if (p.length !== 3) return NaN;
+    return Date.UTC(+p[0], (+p[1]) - 1, +p[2]) / 86400000;
+  }
+  function diffDays(a, b) { return dayNum(a) - dayNum(b); }
+
+  /* 兜底：旧档无 daily / daily 结构不完整时，一律按首次处理，禁止直接读属性崩溃 */
+  function normDaily(m) {
+    if (!m) return { last: '', streak: 0, total: 0, patch: 0 };
+    const d = m.daily;
+    if (!d || typeof d !== 'object') return { last: '', streak: 0, total: 0, patch: 0 };
+    return {
+      last: typeof d.last === 'string' ? d.last : '',
+      streak: Number(d.streak) > 0 ? Math.floor(Number(d.streak)) : 0,
+      total: Number(d.total) > 0 ? Math.floor(Number(d.total)) : 0,
+      patch: d.patch ? 1 : 0
+    };
+  }
+
+  /* 只读查询：不写档、不发奖，供 UI 渲染 */
+  function dailyStatus() {
+    const m = loadMeta();
+    const d = normDaily(m);
+    const today = todayStr();
+    const has = !!d.last;
+    const delta = has ? diffDays(today, d.last) : null;
+    const anomaly = has && !(delta >= 0);      // 含 NaN（日期串损坏）与时间倒流
+    const claimed = has && delta === 0;
+    const pts = m.points || 0;
+
+    let next = 1, patchNext = 1, canPatch = false, broke = false;
+    if (!claimed && !anomaly) {
+      if (!has) {
+        next = 1;
+      } else if (delta === 1) {
+        next = d.streak >= DAILY_CYCLE ? 1 : d.streak + 1;
+      } else if (delta === 2) {
+        // 恰好漏 1 天：不补签则重置为第 1 天；补签则续上
+        broke = true;
+        patchNext = d.streak >= DAILY_CYCLE ? 1 : d.streak + 1;
+        canPatch = !d.patch && pts >= PATCH_COST;
+        next = 1;
+      } else {
+        broke = true;   // Δ≥3
+        next = 1;
+      }
+    }
+    return {
+      claimed: claimed, streak: d.streak, total: d.total, last: d.last, today: today,
+      next: next, reward: (anomaly || claimed) ? 0 : (DAILY_REWARDS[next - 1] || 0),
+      patchNext: patchNext, patchReward: (anomaly || claimed) ? 0 : (DAILY_REWARDS[patchNext - 1] || 0),
+      delta: delta, canPatch: canPatch, patchCost: PATCH_COST, broke: broke, anomaly: anomaly,
+      points: pts, rewards: DAILY_REWARDS.slice(), cycle: DAILY_CYCLE
+    };
+  }
+
+  /* 唯一写档入口。usePatch = true 时尝试补签（仅在 Δ=2 且满足条件时生效） */
+  function dailyClaim(usePatch) {
+    const m = loadMeta();
+    const d = normDaily(m);
+    const today = todayStr();
+    const has = !!d.last;
+    const delta = has ? diffDays(today, d.last) : null;
+
+    // 时间倒流 / 日期串损坏：只提示，不发放、不推进、不写 last（否则会把进度锁死到未来）
+    if (has && !(delta >= 0)) return { ok: false, msg: '系统时间异常，暂无法领取', anomaly: true };
+    if (has && delta === 0) return { ok: false, msg: '今日已领取，明日再来', claimed: true };
+
+    let streak = 1, patched = false, newCycle = false;
+    if (!has) {
+      streak = 1;
+    } else if (delta === 1) {
+      if (d.streak >= DAILY_CYCLE) { streak = 1; newCycle = true; d.patch = 0; }
+      else streak = d.streak + 1;
+    } else if (delta === 2 && usePatch) {
+      if (d.patch) return { ok: false, msg: '本周期补签已用完', patchUsed: true, streak: d.streak };
+      if ((m.points || 0) < PATCH_COST) return { ok: false, msg: '轮回点不足 ' + PATCH_COST + '，无法补签', poor: true, streak: d.streak };
+      m.points = (m.points || 0) - PATCH_COST;
+      d.patch = 1;
+      patched = true;
+      streak = d.streak >= DAILY_CYCLE ? 1 : d.streak + 1;
+    } else {
+      streak = 1; d.patch = 0;   // Δ=2 不补签 / Δ≥3：重置
+    }
+
+    const reward = DAILY_REWARDS[streak - 1] || 0;
+    m.points = (m.points || 0) + reward;
+    d.streak = streak;
+    d.total = (d.total || 0) + 1;
+    d.last = today;
+    m.daily = d;
+    saveMeta(m);
+
+    return {
+      ok: true, reward: reward, streak: streak, patched: patched, newCycle: newCycle,
+      patchCost: patched ? PATCH_COST : 0, points: m.points, last: today,
+      msg: patched
+        ? ('补签成功，轮回点 -' + PATCH_COST + '，连续天数已续上；本日奖励 +' + reward + ' 点')
+        : ('领取成功，轮回点 +' + reward + '（已连续 ' + streak + ' 天）')
+    };
+  }
+
   function loadMeta() {
     try {
       const m = JSON.parse(localStorage.getItem(LS_META));
@@ -50,6 +174,9 @@ const Engine = (function () {
         for (const k in d) if (m[k] === undefined) m[k] = d[k];
         if (!m.reinc) m.reinc = {};
         if (!m.achievements) m.achievements = {};
+        // 兼容（2026-09-22）：daily 为本轮新增的每日登录礼字段，旧档必然没有。
+        // 统一兜底成「首次」结构，禁止 UI/API 直接读属性崩溃。
+        m.daily = normDaily(m);
         // 迁移（2026-09-16）：achPaid 是本轮新增的「轮回点发放去重」标记。
         //   旧档的 achievements 里每一条都是**已经发过点**的（旧逻辑解锁即发点），
         //   若不补齐，下一局结算会把它们当成「新达成」全部重发一遍，凭空多给一大笔轮回点。
@@ -5660,6 +5787,10 @@ const Engine = (function () {
     return {
     slotExists: slotExists, slotInfo: slotInfo, isUsableSave: isUsableSave,
     loadMeta: loadMeta, saveMeta: saveMeta, loadState: loadState, saveState: saveState, clearState: clearState,
+    // —— 每日登录礼 ——
+    DAILY_REWARDS: DAILY_REWARDS, PATCH_COST: PATCH_COST, DAILY_CYCLE: DAILY_CYCLE,
+    todayStr: todayStr, diffDays: diffDays, normDaily: normDaily,
+    dailyStatus: dailyStatus, dailyClaim: dailyClaim,
     cleanupLegacySaves: cleanupLegacySaves, clearAllSaves: clearAllSaves, isLegacySave: isLegacySave, SAVE_VERSION: SAVE_VERSION,
     ensureTechEquip: ensureTechEquip, equippedShufa: equippedShufa, techMult: techMult,
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,

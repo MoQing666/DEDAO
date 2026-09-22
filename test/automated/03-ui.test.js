@@ -2103,9 +2103,14 @@ module.exports = async function build() {
     const d = new Date(); const m = d.getMonth() + 1, dd = d.getDate();
     return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
   }
-  function seedMeta(daily) {
+  function daysAgoStr(n) {
+    const d = new Date(); d.setDate(d.getDate() - n);
+    const m = d.getMonth() + 1, dd = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+  }
+  function seedMeta(daily, points) {
     return JSON.stringify({
-      points: 7, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
+      points: points === undefined ? 7 : points, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
       achPaid: {}, _bonus20: true, daily: daily
     });
   }
@@ -2148,6 +2153,48 @@ module.exports = async function build() {
     t.ok(btn && /已领取/.test(btn.textContent || ''), '领取后标题按钮应转为「已领取」，实际：' + (btn && btn.textContent));
     const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
     if (real.length) t.fail('登录礼面板渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  /* 断签态回归：曾因 box.insertBefore(tip, acts) 在 acts 入 DOM 前调用而抛 NotFoundError，
+     导致「领取 / 补签 / 关闭」按钮全不渲染、面板无法操作。此两条钉死按钮必须存在且可点。 */
+  S.case('每日登录礼：断签 Δ=2 可补签时，面板渲染补签+领取+关闭三按钮，点补签扣 5 点续上第 4 天', async (t) => {
+    const { win, doc, errors } = await boot({
+      seed: { dedao_meta: seedMeta({ last: daysAgoStr(2), streak: 3, total: 3, patch: 0 }, 20) }
+    });
+    const body0 = (doc.getElementById('modal-body') || {}).textContent || '';
+    t.ok(/断签/.test(body0), '断签态面板正文应提示已断签，实际：' + body0.slice(0, 60));
+    const btns = [...doc.querySelectorAll('#modal-body .daily-acts button')].map(b => b.textContent || '');
+    t.eq(btns.length, 3, '断签可补签时应有 3 个按钮（补签/领取/关闭），实际 ' + btns.length + ' 个：' + JSON.stringify(btns));
+    const patch = [...doc.querySelectorAll('#modal-body .daily-acts button')].find(b => /补签/.test(b.textContent || ''));
+    t.ok(!!patch, '应有补签按钮');
+    if (!patch) return;
+    patch.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m && m.points, 25, '补签后轮回点应为 20 - 5(补签) + 10(第4天) = 25，实际 ' + (m && m.points));
+    t.eq(m && m.daily && m.daily.streak, 4, '补签后 streak 应从 3 续到 4');
+    t.eq(m && m.daily && m.daily.patch, 1, '补签后 patch 应标记为已用');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('断签补签流程报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('每日登录礼：断签 Δ≥3 不可补签时，仍须渲染领取+关闭按钮且可正常领取', async (t) => {
+    const { win, doc, errors } = await boot({
+      seed: { dedao_meta: seedMeta({ last: daysAgoStr(5), streak: 4, total: 4, patch: 0 }, 7) }
+    });
+    const btns = [...doc.querySelectorAll('#modal-body .daily-acts button')].map(b => b.textContent || '');
+    t.eq(btns.length, 2, '不可补签时应有 2 个按钮（领取/关闭），实际 ' + btns.length + ' 个：' + JSON.stringify(btns));
+    t.ok(!btns.some(x => /补签/.test(x)), 'Δ≥3 不应出现补签按钮');
+    const claim = [...doc.querySelectorAll('#modal-body .daily-acts button')].find(b => /领取/.test(b.textContent || ''));
+    t.ok(!!claim, 'Δ≥3 仍应有领取按钮（重置后领第 1 天）');
+    if (!claim) return;
+    claim.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m && m.points, 9, '重置后领取应为 7 + 2 = 9，实际 ' + (m && m.points));
+    t.eq(m && m.daily && m.daily.streak, 1, '断签重置后 streak 应为 1');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('断签重置领取流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   return S;

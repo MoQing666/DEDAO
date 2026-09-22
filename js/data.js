@@ -1547,12 +1547,6 @@ E('jiyuan', {
   ]
 });
 E('jiyuan', {
-  id: 'xiongzhao', title: '夜半凶兆', chapter: false, weight: 5, min: 0, max: 14,
-  lines: ['这一夜，你修到紧要关头时，丹田中忽然一凉——窗外似有一双眼睛盯着你。'],
-  effect: { hp: -40, qi: function (s) { return -Math.round(STAGES[s.idx].need * 0.05); } },
-  result: '你强行收功，仍被反噬伤了经脉。窗外那双眼睛，早已不见。'
-});
-E('jiyuan', {
   id: 'xinzang_shuji', title: '古卷遗页', chapter: false, weight: 4, min: 4, max: 14, once: true,
   lines: ['你在洞府之底挖出一页残破金页，上面的文字你认不得，却莫名明白了它的意思——那是一门心法的开头。'],
   effect: { tech: 'taixuan' },

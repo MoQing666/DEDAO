@@ -2452,7 +2452,8 @@
   /* ---------------- 年末 ---------------- */
   function runSectYearEvent(ev) {
     S.seen['se_' + ev.id] = 1;
-    if (ev.chapter) {
+    const hasChoices = !!(ev.choices && ev.choices.length);
+    if (ev.chapter || hasChoices) {
       return showChapter(ev.title, ev.lines, {
         choices: ev.choices,
         toLog: true,
@@ -6259,7 +6260,9 @@
             : (st.patchCost && (st.points < st.patchCost) && !st.patch
                 ? '已断签，且轮回点不足 ' + st.patchCost + '，无法补签'
                 : '已断签，不补签则连续天数重置为第 1 天');
-          box.insertBefore(tip, acts);
+          // ⚠ 2026-09-22 修正：原为 box.insertBefore(tip, acts)，此时 acts 尚未 append 进 box，
+          // 会抛 NotFoundError 导致后面的「领取/补签/关闭」按钮全部不渲染（断签时面板无法操作）。
+          box.appendChild(tip);
           if (st.canPatch) {
             const pb = document.createElement('button'); pb.className = 'btn-main ghost';
             pb.textContent = '补签（' + st.patchCost + ' 轮回点）';

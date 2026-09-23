@@ -284,6 +284,44 @@ module.exports = async function build() {
     t.ok(r === null || r === undefined, `空存档应返回 null，实际 ${JSON.stringify(r)}`);
   });
 
+  /* 灵石坏值兜底（2026-09-23）：旧档 stone=null / 缺字段 / 数字字符串曾导致 HUD 灵石整格空白
+     （textContent = null/undefined → ''），且首次灵石收益 undefined+50=NaN → 存档固化为 null。
+     三层守卫：loadState 归零 / saveState 防 NaN 固化 / applyOps 坏值先归零。 */
+  S.case('灵石坏值兜底：null/缺字段读档归 0，数字字符串转数字，applyOps 后必为有限数字且文案不再撒谎', (t) => {
+    const mk = (mut) => {
+      const g = createGameContext({ seed: 99 });
+      const E3 = g.get('Engine');
+      const s0 = E3.startLife('兜'); E3.commitStart(s0, (G.get('TALENTS') || [{ id: 'tunai' }])[0].id);
+      E3.saveState(s0);
+      const raw = JSON.parse(g.localStorage.getItem('dedao_save'));
+      mut(raw);
+      g.localStorage.setItem('dedao_save', JSON.stringify(raw));
+      return { E: E3, g };
+    };
+    // a) stone=null → 归 0
+    let r = mk(raw => { raw.stone = null; });
+    let s = r.E.loadState();
+    t.eq(s.stone, 0, 'stone=null 读档后应为 0，实际 ' + JSON.stringify(s.stone));
+    let out = r.E.applyOps(s, { stone: 50 });
+    t.eq(s.stone, 50, 'null 兜底后 +50 应为 50，实际 ' + JSON.stringify(s.stone));
+    t.ok(out.some(x => /灵石 \+50/.test(x)), '收益文案应含「灵石 +50」');
+    // b) 缺 stone 字段 → 归 0
+    r = mk(raw => { delete raw.stone; });
+    s = r.E.loadState();
+    t.eq(s.stone, 0, '缺 stone 字段读档后应为 0，实际 ' + JSON.stringify(s.stone));
+    // c) 数字字符串 → 转数字
+    r = mk(raw => { raw.stone = '80'; });
+    s = r.E.loadState();
+    t.ok(s.stone === 80, 'stone="80" 读档后应为数字 80，实际 ' + JSON.stringify(s.stone) + '（' + typeof s.stone + '）');
+    // d) saveState 防 NaN 固化：写档后存档里不得出现 null
+    r = mk(raw => { raw.stone = 10; });
+    s = r.E.loadState();
+    s.stone = NaN;
+    r.E.saveState(s);
+    const rawBack = JSON.parse(r.g.localStorage.getItem('dedao_save'));
+    t.ok(rawBack.stone === 0, 'NaN 写档后存档里应为 0（不得固化为 null），实际 ' + JSON.stringify(rawBack.stone));
+  });
+
   /* ---------- 丹药 ---------- */
   S.case('丹药使用扣除数量且生效', (t) => {
     const s = E.startLife('壬'); E.commitStart(s, TALENTS[0].id);

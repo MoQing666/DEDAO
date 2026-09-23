@@ -220,6 +220,10 @@ const Engine = (function () {
         if (s.ling === undefined) s.ling = 0;
         // 灵力条（法力）兼容：旧档无 mp 字段则按公式补算
         if (s.mpMax === undefined) { s.mpMax = 20 + Math.max(0, (s.ling || 0) - 1) * 20; s.mp = s.mpMax; }
+        // 灵石兜底（2026-09-23）：旧档/异常档可能缺 stone、为 null（运行期 NaN 被 JSON 固化的产物）或数字字符串。
+        // 不兜底的后果：HUD 灵石一格显示为空白（textContent = null/undefined → ''），
+        // 且首次灵石收益 undefined+50=NaN → 存档再固化为 null，空白永久化、所有灵石消费被静默拦死。
+        if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
         if (!s.destinies) s.destinies = [];
         if (!s.destinySlots) s.destinySlots = 1;
         if (!s.equip) s.equip = { head: null, body: null, weapon: null, accessory: null, treasure: [] };
@@ -273,7 +277,12 @@ const Engine = (function () {
     return null;
   }
   function saveState(s, slot) {
-    if (s && typeof s === 'object') s.__saveVersion = SAVE_VERSION;  // 盖上当前存档版本戳
+    if (s && typeof s === 'object') {
+      s.__saveVersion = SAVE_VERSION;  // 盖上当前存档版本戳
+      // 灵石写档守卫（2026-09-23）：NaN 会被 JSON.stringify 固化为 null，读档后灵石一格空白。
+      // 与 loadState 兜底、applyOps 归零三层配合，确保存档里的 stone 永远是有限数字。
+      if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
+    }
     try { localStorage.setItem(slotKey(slot), JSON.stringify(s)); } catch (e) {}
     if (slot != null) { try { localStorage.setItem(LS_SAVE, JSON.stringify(s)); } catch (e) {} }
   }
@@ -1146,6 +1155,8 @@ const Engine = (function () {
         case 'hp': s.hp += v; out.push('气血 ' + (v > 0 ? '+' : '') + v); break;
         case 'stone': {
           let sv = v;
+          // 坏值先归零（2026-09-23）：s.stone 为 null/undefined 时直接 += 会得到 NaN/null，文案却报「灵石 +50」
+          if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
           if (s.talents.indexOf('fuyuan') >= 0 && sv > 0) sv = Math.round(sv * 1.10);
           s.stone += sv;
           out.push('灵石 ' + (sv > 0 ? '+' : '') + sv);

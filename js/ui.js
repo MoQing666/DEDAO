@@ -156,8 +156,9 @@
       realmEl.style.borderColor = 'var(--line)';
     }
 
-    // 行动/灵石显示
-    if ($('h-stone')) $('h-stone').textContent = S.stone;
+    // 行动/灵石显示。灵石守卫（2026-09-23）：灵石为 0 必须显示「0」；
+    // null/undefined/NaN 一律显示 0，禁止空白（旧档坏值曾导致灵石一格整块空白，见 engine.loadState 兜底）。
+    if ($('h-stone')) $('h-stone').textContent = (S.stone || 0);
     if ($('h-actions-left')) $('h-actions-left').textContent = S.actionsLeft;
     // 年龄/寿元显示
     if ($('h-age-val')) $('h-age-val').textContent = S.age;
@@ -5057,8 +5058,9 @@
           const b = document.createElement('button');
           b.className = 'btn-small';
           const need = sd.stone * q;
-          b.textContent = '买' + q + '株·' + need + '灵石';
           b.disabled = !fb.canBuy || S.stone < need;
+          // 灰按钮也给原因（2026-09-23）：只 disabled 不提示，玩家不知道为什么点不了
+          b.textContent = '买' + q + '株·' + need + '灵石' + (!fb.canBuy ? '（境界不足）' : (S.stone < need ? '（灵石不足）' : ''));
           b.onclick = function () {
             const r = Engine.plantField(S, id, q, 'buy');
             log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');
@@ -5208,8 +5210,9 @@
         const b = document.createElement('button');
         b.className = 'btn-small';
         const need = sd.stone * q;
-        b.textContent = '买' + q + '株·' + need + '灵石';
         b.disabled = !fb.canBuy || S.stone < need;
+        // 灰按钮也给原因（2026-09-23）
+        b.textContent = '买' + q + '株·' + need + '灵石' + (!fb.canBuy ? '（境界不足）' : (S.stone < need ? '（灵石不足）' : ''));
         b.onclick = function () {
           const r = Engine.plantField(S, id, q, 'buy');
           log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');
@@ -5222,8 +5225,9 @@
         const b = document.createElement('button');
         b.className = 'btn-small ghost';
         const need = sd.herb * q;
-        b.textContent = '自备种' + q + '株·' + fb.herbName + '×' + need;
-        b.disabled = (S.materials[fb.ownHerbKey] || 0) < need;
+        const lackHerb = (S.materials[fb.ownHerbKey] || 0) < need;
+        b.disabled = lackHerb;
+        b.textContent = '自备种' + q + '株·' + fb.herbName + '×' + need + (lackHerb ? '（材料不足）' : '');
         b.onclick = function () {
           const r = Engine.plantField(S, id, q, 'own');
           log(r, (typeof r === 'string' && r.indexOf('你翻土') === 0) ? 'good' : 'bad');

@@ -2197,5 +2197,28 @@ module.exports = async function build() {
     if (real.length) t.fail('断签重置领取流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  /* 灵石显示守卫（2026-09-23）：灵石为 0 必须显示「0」，坏值（null/缺字段）不得让格子空白。 */
+  S.case('灵石显示：灵石 0 时 HUD 显示「0」，坏值存档（null/缺字段）经兜底后也显示「0」不空白', async (t) => {
+    for (const mutate of [
+      (raw) => { raw.stone = 0; },
+      (raw) => { raw.stone = null; },
+      (raw) => { delete raw.stone; }
+    ]) {
+      // battleSave() 返回缓存对象，这里浅拷贝后再改，避免污染其他用例
+      const raw = Object.assign({}, await battleSave());
+      mutate(raw);
+      const { win, doc } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+      click(win, 't-continue');
+      await new Promise(r => setTimeout(r, 220));
+      await advanceChapters(win, doc);
+      await new Promise(r => setTimeout(r, 180));
+      const el = doc.getElementById('h-stone');
+      t.ok(!!el, '主界面应有 #h-stone 灵石格');
+      if (!el) continue;
+      t.eq((el.textContent || '').trim(), '0', '灵石坏值/0 时 HUD 应显示「0」，实际 ' + JSON.stringify(el.textContent));
+      // 引擎层读档治愈由 02 模块「灵石坏值兜底」用例覆盖；此处只回归玩家可见的 HUD 显示行为。
+    }
+  });
+
   return S;
 };

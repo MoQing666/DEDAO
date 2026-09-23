@@ -555,6 +555,35 @@ const Engine = (function () {
     }
     return st;
   }
+  /* ---------------- 功法遗忘 ----------------
+     从识海（s.techs）移除一门功法。
+     限制：已装备（心法 / 遁术 / 法术位）不可遗忘，须先切换或卸下。
+     费用：20 灵石起，每次 +20，封顶 500（随遗忘次数递增，次数存于 s.forgetCount）。 */
+  function forgetCost(s) { return Math.min(20 * ((s.forgetCount || 0) + 1), 500); }
+  function forgetTech(s, id) {
+    if (!id || (s.techs || []).indexOf(id) < 0) return { ok: false, msg: '该功法不在识海之中。' };
+    const eq = s.techEquip || {};
+    if (eq.xinfa === id) return { ok: false, msg: '此乃当前所修心法，请先改修他法再遗忘。' };
+    if (eq.dunshu === id) return { ok: false, msg: '此乃当前所习遁术，请先改习他术再遗忘。' };
+    if ((eq.shufa || []).indexOf(id) >= 0) return { ok: false, msg: '此法已置于法术位，请先卸下再遗忘。' };
+    const cost = forgetCost(s);
+    if ((s.stone || 0) < cost) return { ok: false, msg: '灵石不足，遗忘需 ' + cost + ' 灵石。' };
+    s.stone = (s.stone || 0) - cost;
+    s.techs.splice(s.techs.indexOf(id), 1);
+    s.forgetCount = (s.forgetCount || 0) + 1;
+    return { ok: true, cost: cost, msg: '你散去【' + (TECHNIQUES[id] ? TECHNIQUES[id].name : id) + '】之传承，耗灵石 ' + cost + '。' };
+  }
+  /* 功法按品质从高到低排序（仙>天>地>玄>黄），用于功法页 / 角色面板展示 */
+  function sortTechsByGrade(ids) {
+    const order = {}; GRADE_ORDER.forEach(function (g, i) { order[g] = i; });
+    return (ids || []).slice().sort(function (a, b) {
+      const ta = TECHNIQUES[a], tb = TECHNIQUES[b];
+      const ga = ta ? (order[ta.grade] != null ? order[ta.grade] : -1) : -1;
+      const gb = tb ? (order[tb.grade] != null ? order[tb.grade] : -1) : -1;
+      if (gb !== ga) return gb - ga;
+      return (a < b ? -1 : (a > b ? 1 : 0));
+    });
+  }
   // 法宝聚合：遍历「已装备」的法宝（s.equip.treasure，统一为装备型），累计其 effect。
   // 仅装备槽内的法宝生效；库存（s.arts）中的法宝不生效。
   // 含 scale 资源缩放 / stack 累计 / 血量条件 / 道心向 等子机制。
@@ -911,7 +940,10 @@ const Engine = (function () {
     let mult = 1;
     (s.destinies || []).forEach(function(d) {
       const dest = DESTINIES[d];
-      if (dest && dest.type === 'combat' && dest.effect && dest.effect[attr + 'Mul']) {
+      // ⚠️ 不再限定 dest.type === 'combat'：属性命格（type:'attr'）同样可携带 defMul/atkMul 等倍率，
+      //   例如【厚土之体】type:'attr' 带 effect.defMul:0.05，此前因被 type 限制而永不可见 = 死配置。
+      //   其余 attr 类命格的 effect 仅含 stonePerYear/wuPerYear/tiPerYear/tribBonus，均非 *Mul，去掉限制不会串味。
+      if (dest && dest.effect && dest.effect[attr + 'Mul']) {
         mult *= (1 + dest.effect[attr + 'Mul']);
       }
     });
@@ -1695,7 +1727,8 @@ const Engine = (function () {
   /* ---------------- 回合制战斗 v2 ---------------- */
   // 战斗内固定系数（原先散落为魔法数字，集中于此便于平衡调整与「口径可查」）
   const GUARD_ACTION_MUL = 0.35;  // 「防御」动作：本回合受到伤害 ×0.35（即减伤 65%）
-  const SLOW_MUL = 0.6;           // 减速 debuff 生效回合：敌方伤害 ×0.6（即减伤 40%）
+  // 注：减速（slow）功能已移除，冻结由水系 stun 字段承载（见 applySpellFx）。
+
   const SUPPRESS_CHANCE = 0.35;   // 心魔「扰神」：每回合概率使你心神失守、空过一次出手
   const SUPPRESS_MECH = 'suppress';
   /* ---- 五行新机制战斗系数（实装：眩晕/冻结 · 灼烧/中毒 · 伐灾）----
@@ -1877,7 +1910,7 @@ const Engine = (function () {
      ⚠ 刻意「不写回 s.battle」：s.battle 会被整对象序列化进存档，若把派生数组存进去，
        一旦真实字段变化（DoT 结算、回合结束递减）数组就会与字段不同步；旧档也没有该字段。
      每项：{ icon, label, bad, tip }。bad=true → 减益配色（暗红）。
-     不进列表：b.slow（全仓库只读、从未置真，属死状态）、b.guard（遁术常驻减伤，已有遁术列表承担）、
+     不进列表：b.slow（减速功能已下线，不再置真）、b.guard（遁术常驻减伤，已有遁术列表承担）、
                b.mechanic（召唤/荆棘/吸血是敌人固有特性，非可变状态）、瞬时量（heal/mpRestore/lifesteal）。 */
   function battleFxList(s, b) {
     const me = [], foe = [];
@@ -2083,7 +2116,7 @@ const Engine = (function () {
     s.battle = {
       name: spec.name, line: spec.line || '', atk: spec.atk,
       hp: spec.hp, hpMax: spec.hp, loot: spec.loot || {}, loseLoot: spec.loseLoot || null,
-      flee: flee, guard: d.guard, slow: false, guarded: false,
+      flee: flee, guard: d.guard, guarded: false,
       spellUsed: false, noFlee: !!spec.noFlee, done: false, win: false, fled: false, lost: false,
       gains: [], hpLost: 0,
       spellList: spellList,
@@ -2216,7 +2249,6 @@ const Engine = (function () {
       // 敌方基础伤害 = 攻击力；先结算「削弱」类 debuff（藤蔓术/生机缠绕/山岳镇压）
       let d = b.atk;
       if (b.fxAtkDown.amt > 0) d = Math.round(d * (1 - b.fxAtkDown.amt / 100));
-      if (b.slow) { d = Math.round(d * SLOW_MUL); b.slow = false; } // 减速当回合生效后移除
       if (b.guarded) d = Math.round(d * GUARD_ACTION_MUL);          // 「防御」动作：65% 减伤
       if (b.guard > 0) d = Math.round(d * (1 - b.guard));           // 遁术减伤（UI 显示于遁术列表）
       // 护盾类 buff（土气护体/金光护体/岩甲术/大地守护）+ 心法【玄武真经】reduceDmg + 心法 guard：同一通道累加，封顶 90%
@@ -3315,7 +3347,10 @@ const Engine = (function () {
       explore: a.explore || 0, stamina: a.stamina
     };
   }
-  // 体力不足时：以寿元强行前行（1 年 1 步）
+  // 体力不足时：以寿元强行前行。
+  // 2026-09-23 改：代价**沿用「折寿强搜」的同一套递增阶梯**（1 → 2 → 4 → 8 → 16 年封顶），
+  //   不再是「固定 -1 年 / 步」。两种折寿手段（强搜 / 强行前行）共用 a.forceN 这一个计数，
+  //   即「本秘境内第几次以寿元换进度」——同一秘境里折寿越多次，每一步都越贵。
   function advForceMove(s, nodeId) {
     const a = s.adv;
     if (!a || a.done) return { ok: false, msg: '秘境已结束' };
@@ -3324,15 +3359,32 @@ const Engine = (function () {
     const cur = a.map.byId[a.nodeId];
     const revealed = (nodeId === 'boss') && advBossRevealed(s);
     if (!revealed && (!cur || cur.next.indexOf(nodeId) < 0)) return { ok: false, msg: '此路不通' };
-    const cost = (a.map && a.map.stepCost) || 5;
-    if (a.stamina >= cost) return { ok: false, msg: '体力尚足，无需折寿。' };
-    const msg = loseLife(s, 1, 'force');
+    const stepCost = (a.map && a.map.stepCost) || 5;
+    if (a.stamina >= stepCost) return { ok: false, msg: '体力尚足，无需折寿。' };
+    const cost = forceLifeCost(a.forceN || 0);
+    a.forceN = (a.forceN || 0) + 1;   // 与折寿强搜共用同一计数
+    const next = forceLifeCost(a.forceN);
+    const msg = loseLife(s, cost, 'force');
     a.nodeId = nodeId;
     node.visited = true;
     a.depth = node.col + 1;
+    // 折寿后寿元已尽 → 此世终结（与折寿强搜同源，由 UI 送入死亡结算）
+    const fatal = (s.age || 0) >= (s.lifeMax || 0);
+    if (fatal) { s.dead = true; s.endReason = '寿元耗尽'; }
     saveState(s);
-    return { ok: true, node: node, final: node.type === 'final', lines: [msg, '你咬牙折寿前行（强行前行 · 固定 -1 年 / 步），又深入了一步。'] };
+    return {
+      ok: true, node: node, final: node.type === 'final',
+      cost: cost, nextCost: next, times: a.forceN, fatal: fatal, lifeLeft: lifeLeft(s),
+      lines: [msg, '你咬牙折寿前行（强行前行 · 本秘境第 ' + a.forceN + ' 次折寿，-' + cost + ' 年寿元），又深入了一步。']
+        .concat([fatal
+          ? '（以命易物，尽入轮回——寿元已尽，此身油尽灯枯，此后再无来日）'
+          : '（再折寿一次需 -' + next + ' 年寿元；与折寿强搜同一递增阶梯 1/2/4/8/16 封顶）'])
+    };
   }
+  // 下一次「强行前行」的寿元代价（与折寿强搜同源：同看 a.forceN；不在秘境时按第 1 次计）
+  function forceMoveCost(s) { return forceExploreCost(s); }
+  // 强行前行的余寿风险评估（与折寿强搜同一判定，供 UI 在致命前弹确认）
+  function forceMoveRisk(s) { return forceExploreRisk(s); }
   // Boss 门槻：探索度未满 100% 不得直面秘境之主
   function advCanFightBoss(s) {
     const a = s.adv;
@@ -5684,19 +5736,36 @@ const Engine = (function () {
     const maxR = RANK_REALM_MAX[s.sectRank] || 1;
     return COMMISSIONS.filter(function (c) { return realmIdx(c.realm) <= maxR; });
   }
+  // 六维中文名（承接条件的提示文案用，与属性面板同一套称呼）
+  const SIX_NAMES = { wu: '悟性', ti: '体魄', dun: '遁速', shen: '神识', dao: '道心', ling: '灵力' };
+  // 委托六维门槛：返回未达标的属性键数组（空数组=全部达标）。
+  // ⚠ 2026-09-23 修：此前 commissionCanAccept 不校验 c.check，导致「秘境探勘」（战斗类 + 神≥10）
+  //   在卡片上显示为「可接取」，玩家打完地级秘境 BOSS 胜利后才被 commissionComplete 静默拒绝
+  //   → 无奖励、不消耗次数、面板直接弹回（玩家报告）。门槛必须前移到接取前，胜战必结算。
+  function commissionCheckFail(s, c) {
+    if (!c || !c.check) return [];
+    return Object.keys(c.check).filter(function (k) { return (s[k] || 0) < c.check[k]; });
+  }
   function commissionCanAccept(s, c) {
     if (!sectPassed(s)) return false;
     if (realmIdx(c.realm) > (RANK_REALM_MAX[s.sectRank] || 1)) return false;
     if (c.type === 'craft' && (!s.craft || !s.craft[c.craft] || s.craft[c.craft].lv < c.minLv)) return false;
+    if (commissionCheckFail(s, c).length) return false;
     return true;
   }
   function commissionComplete(s, id) {
     const c = COMMISSIONS.filter(function (x) { return x.id === id; })[0];
     if (!c) return { ok: false, msg: '委托不存在。' };
-    if (!commissionCanAccept(s, c)) return { ok: false, msg: '不满足承接条件（境界或百艺等级不足）。' };
+    if (!sectPassed(s) || realmIdx(c.realm) > (RANK_REALM_MAX[s.sectRank] || 1)
+        || (c.type === 'craft' && (!s.craft || !s.craft[c.craft] || s.craft[c.craft].lv < c.minLv))) {
+      return { ok: false, msg: '不满足承接条件（境界或百艺等级不足）。' };
+    }
     if (commissionYearLeft(s) <= 0) return { ok: false, msg: '本年宗门任务已接满（每年至多 ' + COMM_YEAR_MAX + ' 件），来年再来。' };
-    if (c.check) {
-      for (const k in c.check) if ((s[k] || 0) < c.check[k]) return { ok: false, msg: '属性不足：' + k + ' 需 ≥ ' + c.check[k] + '。' };
+    const lack = commissionCheckFail(s, c);
+    if (lack.length) {
+      return { ok: false, msg: '属性不足：' + lack.map(function (k) {
+        return (SIX_NAMES[k] || k) + ' 需 ≥ ' + c.check[k] + '（当前 ' + (s[k] || 0) + '）';
+      }).join('，') + '。' };
     }
     // 注：含敌人的委托，其战斗由 UI 通过手动战斗（openBattle）先行触发，
     //    胜利后再调用本函数结算奖励；此处不再自动开打（自动战斗功能已移除）。
@@ -5897,6 +5966,7 @@ const Engine = (function () {
     advExplore: advExplore, loseLife: loseLife, addExplore: addExplore,
     advForceExplore: advForceExplore, advForceMove: advForceMove, advCanFightBoss: advCanFightBoss, advSituation: advSituation,
     forceExploreCost: forceExploreCost, forceExploreRisk: forceExploreRisk, lifeLeft: lifeLeft,
+    forceMoveCost: forceMoveCost, forceMoveRisk: forceMoveRisk,
     FORCE_LIFE_COSTS: FORCE_LIFE_COSTS, ELIXIRS: ELIXIRS,
     SPIRIT_FOR_ADV: SPIRIT_FOR_ADV, ADV_ART_CAP: ADV_ART_CAP,
     artEffectText: artEffectText, attrGainText: attrGainText,
@@ -5962,10 +6032,13 @@ const Engine = (function () {
     RANK_REALM_MAX: RANK_REALM_MAX,
     sectTrial: sectTrial, applySectTrial: applySectTrial,
     commissionAvailable: commissionAvailable, commissionCanAccept: commissionCanAccept, commissionComplete: commissionComplete,
+    commissionCheckFail: commissionCheckFail, SIX_NAMES: SIX_NAMES,
     commissionEnemy: commissionEnemy, commissionYearLeft: commissionYearLeft,
     sectTrain: sectTrain, sectDabiStart: sectDabiStart, sectDabiStep: sectDabiStep,
     dabiFoe: dabiFoe, dabiStatus: dabiStatus, dabiNextYear: dabiNextYear, dabiLayerCount: dabiLayerCount,
     sectGoods: sectGoods, sectBuy: sectBuy, sectGoodCoin: sectGoodCoin, sectGoodCost: sectGoodCost,
+    // —— 功法遗忘 / 品质排序 ——
+    forgetTech: forgetTech, forgetCost: forgetCost, sortTechsByGrade: sortTechsByGrade, GRADE_ORDER: GRADE_ORDER,
     DESTINIES: DESTINIES
   };
 })();

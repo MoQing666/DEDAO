@@ -701,7 +701,7 @@ module.exports = async function build() {
     t.eq(sit4.choices.length, 3, '入口层应给出 3 条路（每行 3 个选项）');
   });
 
-  S.case('折寿强搜只出具体造化（不计探索度）+ 代价等比递增 1/2/4/8/16（封顶）/ 强行前行 1 年 1 步', (t) => {
+  S.case('折寿强搜只出具体造化（不计探索度）+ 代价等比递增 1/2/4/8/16（封顶）/ 强行前行沿用同一阶梯', (t) => {
     const s = started();
     E.startAdventure(s, 'huang', { ap: 2, items: [] });
     const life0 = s.lifeMax;
@@ -745,15 +745,76 @@ module.exports = async function build() {
     s.adv.stamina = 1;
     const mv = E.advMove(s, choices[0].id);
     t.ok(!mv.ok, '体力不足时普通前进应失败');
+    // 2026-09-23：强行前行不再是「固定 -1 年 / 步」，改为**沿用折寿强搜的同一递增阶梯**。
+    // 本秘境此前已折寿强搜 6 次（forceN=6）→ 强行前行应为第 7 次 → 代价取封顶值 16 年。
     const lifeBeforeMove = s.lifeMax;
+    const fnBefore = s.adv.forceN;
     const fm = E.advForceMove(s, choices[0].id);
     t.ok(fm.ok, '强行前行应成功: ' + (fm.msg || ''));
     t.eq(s.adv.nodeId, choices[0].id, '强行前行后应到达目标节点');
-    t.eq(s.lifeMax, lifeBeforeMove - 1, '强行前行应 -1 年寿元（1 年 1 步）');
-    // 体力充足时不应允许无谓折寿
+    t.eq(fm.cost, 16, '强行前行代价须取折寿阶梯当前值（forceN=' + fnBefore + ' → 16 年）');
+    t.eq(s.lifeMax, lifeBeforeMove - 16, '强行前行应 -16 年寿元（与强搜共用同一递增阶梯）');
+    t.eq(s.adv.forceN, fnBefore + 1, '强行前行须计入折寿计数（与强搜共用 a.forceN）');
+    t.eq(fm.nextCost, 16, '封顶后下一次折寿仍为 16 年');
+    t.eq(E.forceMoveCost(s), 16, 'UI 预展示的强行前行代价须与实扣一致（Engine.forceMoveCost）');
+    t.eq(E.forceMoveCost(s), E.forceExploreCost(s), '强搜与强行前行同源：预展示代价必须相等');
+    t.ok(E.forceMoveRisk(s).cost === 16 && E.forceMoveRisk(s).left === E.forceExploreRisk(s).left,
+      '强行前行风险判定须与折寿强搜同源（Engine.forceMoveRisk）');
+    t.ok((fm.lines || []).some((l) => l.indexOf('强行前行') >= 0 && l.indexOf('-16 年寿元') >= 0),
+      '须写明本次强行前行的实际代价（-16 年寿元）');
+    t.ok((fm.lines || []).some((l) => l.indexOf('再折寿一次需') >= 0 || l.indexOf('寿元已尽') >= 0),
+      '须提示下一次折寿代价（本次折寿若已耗尽寿元则改为提示此世终结）');
+    // 崭新秘境（forceN=0）：首次强行前行即为阶梯起点 -1 年
+    const s3 = started();
+    E.startAdventure(s3, 'huang', { ap: 2, items: [] });
+    const ch3 = E.advNextChoices(s3);
+    const life3 = s3.lifeMax;
+    s3.adv.stamina = 0;
+    t.eq(E.forceMoveCost(s3), 1, '未折寿过时强行前行应为 -1 年（阶梯起点）');
+    const fm3 = E.advForceMove(s3, ch3[0].id);
+    t.ok(fm3.ok, '首次强行前行应成功');
+    t.eq(s3.lifeMax, life3 - 1, '首次强行前行应 -1 年');
+    t.eq(s3.adv.forceN, 1, '强行前行后折寿计数应为 1');
+    s3.adv.stamina = 0;
+    t.eq(E.forceMoveCost(s3), 2, '第 2 次折寿（含强行前行）代价应为 2 年');
+    t.eq(E.forceMoveRisk(s3).cost, 2, '强行前行风险判定取同阶梯的下一档');
+    // 体力充足时不应允许无谓折寿，且不得白耗折寿计数
     s.adv.stamina = 50;
     const fm2 = E.advForceMove(s, 'c1_0');
     t.ok(!fm2.ok, '体力充足时不应允许折寿强行前行');
+    t.eq(s.adv.forceN, fnBefore + 1, '被拒的强行前行不应计入折寿计数');
+  });
+
+  /* 2026-09-23：体力不支的「强行前行」改版 —— 代价沿用折寿强搜的同一递增阶梯（两套机制合一），
+     且 UI 的「体力不支」说明与选项每入一次秘境只出现一次，此后静默折寿（只留一行「寿元 -N」日志）。 */
+  S.case('强行前行：与强搜共用递增阶梯 + 折寿至耗尽即结档 + 体力不支说明每秘境仅一次', (t) => {
+    const s = started();
+    E.startAdventure(s, 'huang', { ap: 2, items: [] });
+    const ch = E.advNextChoices(s);
+    s.adv.stamina = 0;
+    s.age = 30; s.lifeMax = 33;      // 余寿 3 年
+    t.eq(E.forceMoveRisk(s).left, 3, '余寿应为 3 年');
+    t.ok(!E.forceMoveRisk(s).fatal, '代价 1 年 < 余寿 3 年，不应判致命');
+    s.adv.forceN = 4;                // 下一次代价 = 16 年 > 余寿 3 年
+    t.ok(E.forceMoveRisk(s).fatal, '代价 16 年 > 余寿 3 年，应判致命（UI 须弹「以命相搏」确认）');
+    const fm = E.advForceMove(s, ch[0].id);
+    t.ok(fm.ok, '以命相搏仍应走得动这一步');
+    t.eq(fm.cost, 16, '实际扣减应为 16 年');
+    t.ok(fm.fatal, '应标记 fatal，供 UI 送死亡结算');
+    t.ok(s.dead, '应标记 s.dead');
+    t.eq(s.endReason, '寿元耗尽', '死亡原因应为寿元耗尽');
+    // UI 守卫：说明只出现一次（forceMoveSeen）+ 此后静默折寿；旧「固定 -1 年 / 步」文案不得残留
+    const fsm = require('fs');
+    const src = fsm.readFileSync(require('path').join(ROOT, 'js', 'ui.js'), 'utf8');
+    t.ok(src.indexOf('forceMoveSeen') > 0, 'UI 须用 a.forceMoveSeen 记住「体力不支说明已出现过」');
+    t.ok(src.indexOf('if (a && a.forceMoveSeen) { doForceMove(id, true); return; }') > 0,
+      '说明已出现过后，点前方节点须静默折寿（不再弹框要求抉择）');
+    t.ok(src.indexOf('function runForceMove') > 0, '须有统一的折寿前行执行入口 runForceMove');
+    t.ok(src.indexOf('function forceMoveChoiceText') > 0, '强行前行按钮文案须动态展示本次/下次代价');
+    t.eq((src.match(/固定 -1 年/g) || []).length, 0, '不得残留「固定 -1 年」的旧文案');
+    t.eq((src.match(/固定 1 年 \/ 步/g) || []).length, 0, '不得残留「固定 1 年 / 步」的旧文案');
+    t.ok(src.indexOf('Engine.forceMoveCost(S)') > 0, '秘境提示条须展示实时折寿代价（Engine.forceMoveCost）');
+    t.ok(src.indexOf('force_move_fatal_go') > 0, '致命折寿仍须有「以命相搏」确认（不得静默结档）');
   });
 
   /* 寿元不足：不再静默钳制，而是「提示 → 玩家确认 → 以命换物 → 死亡结算」。

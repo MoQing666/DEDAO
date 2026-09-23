@@ -3046,7 +3046,7 @@ const DESTINIES = {
   yibi:         { name:'以彼之道',   grade:'绿', type:'combat', attr:{ dun:1 }, effect:{ counterRate:0.05 }, desc:'以彼之道，还施彼身' },
   tianshengsl:  { name:'天生神力',   grade:'绿', type:'combat', effect:{ atkMul:0.05, critRate:0.03 }, desc:'力大无穷，一力降十会' },
   lingqiao:     { name:'灵巧之身',   grade:'绿', type:'attr',  attr:{ dun:2 }, effect:{ dodgeRate:0.03 }, desc:'身法灵动，闪避极高' },
-  houtu:        { name:'厚土之体',   grade:'绿', type:'attr',  attr:{ ti:2 }, effect:{ defMul:0.05 }, desc:'如大地般厚重坚韧' },
+  houtu:        { name:'厚土之体',   grade:'绿', type:'attr',  attr:{ ti:2 }, effect:{ defMul:0.05 }, desc:'如大地般厚重坚韧，防御 +5%' },
   lingqinqinhe: { name:'灵气亲和',   grade:'绿', type:'attr',  attr:{ wu:1, dao:1 }, desc:'与天地灵气亲和' },
   zhuifeng:     { name:'追风逐电',   grade:'绿', type:'combat', attr:{ dun:2 }, effect:{ firstStrike:0.10 }, desc:'速度如电，必定先手' },
 
@@ -3750,7 +3750,9 @@ function sectRankInfo(id) { return SECT_RANKS.filter(function (r) { return r.id 
 function sectRankIndex(id) { for (let i = 0; i < SECT_RANKS.length; i++) if (SECT_RANKS[i].id === id) return i; return -1; }
 
 /* ---------------- 委托池（§6.2，宗门/游历共用框架） ---------------- */
-// type: six(六维考验) / fight(战斗) / craft(百艺只需等级)
+// type: six(六维考验) / fight(战斗) / craft(百艺只需等级) / fightsix(战斗 + 六维门槛)
+//   ⚠ fightsix：六维 check 是**接取前置条件**（在 commissionCanAccept 校验，未达则卡片显示「未达」不可接），
+//     战斗只是过程；不可把它当成「打赢就结算」——否则会出现「胜战后因属性不足拒绝结算」的空打（2026-09-23 修）。
 // realm: 任务所需境界（承接上限依 rank）; check: 多属性同时判定; enemy: 战斗
 const COMMISSIONS = [
   { id: 'caiyao',  name: '采药巡山',   realm: '筑基', type: 'six',   check: { ti: 4, shen: 3 }, ap: 1, stone: [20, 50],   gongye: [3, 8] },

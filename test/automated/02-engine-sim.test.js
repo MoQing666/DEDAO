@@ -1366,6 +1366,47 @@ module.exports = async function build() {
     t.note('秘境探勘守敌 攻 ' + foe.atk + ' / 血 ' + foe.hp + '（地级秘境第 ' + c.enemyBoss.depth + ' 层 Boss 同源）；护卫商队守敌 攻 ' + (huwei ? E.commissionEnemy(s, huwei).atk : '?') + ' / 血 ' + (huwei ? E.commissionEnemy(s, huwei).hp : '?') + '（玄级秘境第 10 层精英同源）；镇魔差遣守敌 攻 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).atk : '?') + ' / 血 ' + (zhenmo ? E.commissionEnemy(s, zhenmo).hp : '?') + '（天级秘境第 10 层精英同源）');
   });
 
+  /* 2026-09-23 修：委托的六维门槛必须**前移到接取前**校验。
+     玩家报告「秘境探勘战斗胜利后自动弹回、没有胜利奖励和次数消耗」——
+     根因：tancha 是 fightsix（战斗 + 神≥10），commissionCanAccept 此前不校验 check，
+     卡片显示「接取」可用，玩家打完地级秘境 BOSS 胜利后才被 commissionComplete 静默拒绝。 */
+  S.case('宗门任务六维门槛前移：秘境探勘 神不足则不可接取，达标则胜战必结算', (t) => {
+    const mk = function (shen) {
+      const s = E.startLife('门槛' + shen);
+      E.commitStart(s, 'wuxing');
+      s.sect = 'qingyunjian'; s.sectRank = '真传';
+      s.actionsLeft = 30; s.year = 30;
+      s.shen = shen;
+      return s;
+    };
+    const pick = function (s, id) {
+      return E.commissionAvailable(s).filter(function (x) { return x.id === id; })[0];
+    };
+    // 神不足：不可接取（UI 按钮显示「未达」），拒绝文案须给中文属性名与门槛
+    const low = mk(9);
+    t.eq(E.commissionCanAccept(low, pick(low, 'tancha')), false, '神 9 < 10：秘境探勘不应可接取（避免打完守敌却结算不了）');
+    t.eq(E.commissionCheckFail(low, pick(low, 'tancha')).join(','), 'shen', '应指出缺的是神识');
+    const r0 = E.commissionComplete(low, 'tancha');
+    t.eq(r0.ok, false, '神不足时结算必须被拒');
+    t.ok(/神识\s*需\s*≥\s*10/.test(r0.msg || ''), '拒绝文案须写清中文属性名与门槛（实：' + r0.msg + '）');
+    t.eq(E.commissionYearLeft(low), 3, '被拒不得消耗本年次数');
+    // 神达标：可接取，胜战（结算）必得奖励并消耗次数
+    const ok = mk(10);
+    t.eq(E.commissionCanAccept(ok, pick(ok, 'tancha')), true, '神 10 ≥ 10：应可接取');
+    const r1 = E.commissionComplete(ok, 'tancha');
+    t.eq(r1.ok, true, '达标后结算必须成功（胜战不再空打）：' + (r1.msg || ''));
+    t.gt(r1.stone, 0, '应发放灵石奖励');
+    t.eq(E.commissionYearLeft(ok), 2, '结算成功须消耗本年 1 次');
+    // 六维考验类（six）同口径：只按门槛判定，不因门槛被误拒/误放
+    const six = mk(20);
+    six.ti = 9; six.wu = 9; six.dao = 9;
+    t.eq(E.commissionCanAccept(six, pick(six, 'caiyao')), true, '六维达标的「采药巡山」应可接取');
+    six.shen = 1;   // caiyao 门槛：ti≥4 且 shen≥3
+    t.eq(E.commissionCanAccept(six, pick(six, 'caiyao')), false, '神 1 < 3：采药巡山应不可接取');
+    t.eq(E.commissionCheckFail(six, pick(six, 'caiyao')).join(','), 'shen', '应指出缺的是神识');
+    t.eq(E.commissionCheckFail(six, { id: 'noCheck' }).length, 0, '无 check 的委托不应报缺口');
+  });
+
   S.case('EVENTS 金丹/元婴守敌对标秘境第10层精英（enemyBoss 实时生成，炼气/筑基保持写死弱值）', (t) => {
     const s = E.startLife('事件守敌重平衡');
     E.commitStart(s, 'wuxing');

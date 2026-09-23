@@ -674,6 +674,11 @@ button:disabled { opacity: .4; cursor: default; }
   display: flex; align-items: flex-end; justify-content: center;
 }
 .modal-inner { width: 100%; max-width: 520px; max-height: 80vh; overflow-y: auto; margin: 0; min-height: 0; }
+/* 静室弹窗：加高并放大按钮（2026-09-23） */
+.rest-wrap { min-height: 46vh; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.rest-wrap h3 { font-size: 20px; margin-bottom: 2px; }
+.rest-wrap .btn-main { font-size: 16px; padding: 12px 14px; }
+.rest-wrap .dim { font-size: 13px; line-height: 1.5; }
 .name-input {
   width: 100%;
   font-family: inherit;
@@ -696,6 +701,8 @@ button:disabled { opacity: .4; cursor: default; }
   padding: 8px 10px; margin: 6px 0;
 }
 .formula-row button { flex: none; padding: 6px 8px; font-size: 12px; }
+.btn-forget { color: #b23a2e; border-color: #b23a2e; margin-left: 6px; }
+.btn-forget:hover { background: #b23a2e; color: #fff; }
 .bag-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .bag-item { border: 1px solid #e3d6b8; background: rgba(255,255,255,.5); padding: 6px 8px; font-size: 13px; }
 .bag-item button { margin-top: 6px; padding: 4px 8px; font-size: 12px; }

@@ -249,7 +249,7 @@
     let breakLabel;
     if (!canB) breakLabel = '突破（修为未满）';
     else if (info.trib) breakLabel = '渡劫·' + info.trib + '劫';
-    else breakLabel = '破境突破 ' + Math.round(info.base * 100) + '%';
+    else breakLabel = '突破（修为已满）';
     if (canB && info && !info.trib && (S.breakFails || 0) >= 2) breakLabel += ' · 下次必成';
     $('btn-break-label').textContent = breakLabel;
   }
@@ -903,7 +903,7 @@
       + '\n\n你放轻脚步，走入其中。传闻深处有洞天秘藏——但活着出去，才算赢。'
       + '\n· 秘境共 ' + ((a.maxDepth || 0) + 1) + ' 层，每层 3 条岔路，任选一条深入。每步消耗 5 点秘境体力。'
       + '\n· 探索度满 100% 时，秘境之主会在图上现身（一道血色虚线自你脚下直贯顶层），此时可在任意深度直接决战。'
-      + '\n· 体力耗尽后：点前方节点可用寿元「强行前行」（固定 1 年 / 步）；也可「折寿强搜」直接硬搜一处造化，代价按次数递增 1 → 2 → 4 → 8 → 16 年封顶。'
+      + '\n· 体力耗尽后：点前方节点可用寿元「强行前行」（第 N 次折寿代价递增 1 → 2 → 4 → 8 → 16 年封顶）；也可「折寿强搜」直接硬搜一处造化。两者共用同一递增阶梯——同一秘境里折寿次数越多，每一步都越贵。'
       + '\n· 战斗丹药不再需要提前携带——秘境中的「荒野坊市」节点可直接购买，买下即为随身，战斗与歇脚时都能服用（未用完的会随此行消散）。';
     showChapter('秘境 · 轻身而入', [
       (a.setting || ''),
@@ -1066,7 +1066,8 @@
     if (a.trial) {
       hint.textContent = '沿劫境之路择路而行（每步耗 ' + (map.stepCost || 5) + ' 体力）· 途遇敌人、精英、险地与祭坛，尽头为大敌。';
     } else if (!Engine.advCanMove(S) && a.nodeId !== 'boss') {
-      hint.textContent = '体力已尽——点前方节点可用寿元「强行前行」（固定 1 年 / 步，不随次数递增；折寿搜刮走坊市旁的「强搜」）。';
+      hint.textContent = '体力已尽——点前方节点将以寿元「强行前行」（本秘境第 ' + ((a.forceN || 0) + 1)
+        + ' 次折寿 · -' + Engine.forceMoveCost(S) + ' 年寿元；与折寿强搜共用递增阶梯 1/2/4/8/16 封顶）。想收手可点右下角【强行撤离】。';
     } else if (canBossNow && a.nodeId !== 'boss') {
       hint.textContent = '探索度已满 ' + exHint + '%——秘境之主已在图上现身（血色虚线），可继续搜刮，也可即刻直取决战。';
     } else {
@@ -1099,43 +1100,88 @@
   function onAdvNode(id) {
     const r = Engine.advMove(S, id);
     if (!r.ok) {
-      // 体力不足：提供「以寿元强行前行」（1 年 1 步）
-      const cost = (S.adv && S.adv.map && S.adv.map.stepCost) || 5;
-      if (S.adv && S.adv.stamina < cost) { offerForceMove(id); return; }
+      // 体力不足 → 以寿元强行前行（代价沿用折寿强搜的递增阶梯）
+      const stepCost = (S.adv && S.adv.map && S.adv.map.stepCost) || 5;
+      if (S.adv && S.adv.stamina < stepCost) { offerForceMove(id); return; }
       log(r.msg || '此路不通', 'bad'); return;
     }
     refresh();
     handleMovedNode(r.node);
   }
-  // 体力耗尽时：以寿元强行前行（固定 1 年 1 步 —— 与「折寿强搜」是两套机制）
+  // 体力不足时点前方节点：本次秘境**第一次**弹「体力不支」说明＋抉择；
+  // 此后（a.forceMoveSeen 已置位）再体力不足只静默折寿前行，只留一行「寿元 -N」日志，
+  // 不再弹框要求玩家抉择——想收手随时可点右下角【强行撤离】。
   function offerForceMove(id) {
+    const a = S.adv;
+    if (a && a.forceMoveSeen) { doForceMove(id, true); return; }
+    const LADDER = Engine.FORCE_LIFE_COSTS || [];
+    const n = ((a && a.forceN) || 0) + 1;
+    const cost = Engine.forceMoveCost(S);
+    const nextCost = LADDER.length ? LADDER[Math.min(n, LADDER.length - 1)] : cost;
     return showChapter('体力不支', [
       '你气力将尽，双腿如灌了铅。前方仍有路，只是再迈一步，怕是要拿寿元去换。',
-      '（这是「强行前行」：固定 -1 年寿元换一步，不随次数递增。折寿搜刮是另一套——代价按次数 1→2→4→8→16 递增）'
+      '（以寿元强行前行：本秘境第 ' + n + ' 次折寿，需 -' + cost + ' 年寿元。代价与「折寿强搜」共用同一递增阶梯 1→2→4→8→16 年封顶，'
+        + '本次之后每折一次都更贵，再折需 -' + nextCost + ' 年）',
+      '（此说明每次入秘境只出现一次：此后点前方节点将直接折寿前行，不再询问；想收手可点右下角【强行撤离】。）'
     ], {
       choices: [
-        { t: '以寿元强行前行\n固定 -1 年寿元，前进一步', special: 'adv_force_move', target: id },
+        { t: forceMoveChoiceText(), special: 'adv_force_move', target: id },
         { t: '【强行撤离】\n失去部分收获（灵石草铁 -50%）', special: 'adv_retreat' }
       ]
     }).then(function (r) {
       const pick = r.pick || {};
-      if (pick.special === 'adv_force_move') {
-        const fr = Engine.advForceMove(S, pick.target);
-        if (!fr.ok) { log(fr.msg, 'bad'); renderAdvMap(); return; }
-        (fr.lines || []).forEach(function (l) { log(l, 'bad'); });
-        refresh();
-        handleMovedNode(fr.node);
-        return;
-      }
+      if (pick.special === 'adv_force_move') { doForceMove(pick.target, false); return; }
       advFinish('强行撤离');
     });
+  }
+  // 「强行前行」按钮文案：与折寿强搜同源（同看 a.forceN），把本次 / 下次代价摊开写清。
+  function forceMoveChoiceText() {
+    const r = Engine.forceMoveRisk(S);
+    const n = ((S.adv && S.adv.forceN) || 0) + 1;
+    const LADDER = Engine.FORCE_LIFE_COSTS || [r.cost];
+    const nextCost = LADDER[Math.min(n, LADDER.length - 1)];
+    if (r.fatal) {
+      return '以寿元强行前行\n⚠ 以命易物，尽入轮回：本次为第 ' + n + ' 次，需 ' + r.cost + ' 年，余寿仅 ' + r.left + ' 年（此步之后寿元耗尽，此世即终）';
+    }
+    return '以寿元强行前行\n第 ' + n + ' 次 · -' + r.cost + ' 年寿元（下次 -' + nextCost + '；代价序列 1/2/4/8/16 封顶）';
+  }
+  // 折寿强行前行入口：余寿不足以支付这一步时，仍给一次「以命相搏」确认
+  // （静默折寿是常规流程，但直接把玩家的这一世走完必须让他自己点头）。
+  function doForceMove(id, silent) {
+    const risk = Engine.forceMoveRisk(S);
+    if (!risk.fatal) return runForceMove(id, silent);
+    return showChapter('寿元将尽', [
+      '再迈这一步，需折寿 ' + risk.cost + ' 年；而你此生只余 ' + risk.left + ' 年阳寿。',
+      '迈出这步，寿元即刻枯竭——你这一世，便到此为止了。',
+      '以命易物，尽入轮回：这是一种结档方式，身死道消，所得尽数归入轮回。'
+    ], {
+      choices: [
+        { t: '以命相搏\n换这一步路，此世即终', special: 'force_move_fatal_go' },
+        { t: '收手\n保住已有收获，不折此寿', special: 'force_move_fatal_stop' }
+      ]
+    }).then(function (res) {
+      if ((res.pick || {}).special === 'force_move_fatal_go') return runForceMove(id, silent);
+      renderAdvMap();
+      return undefined;
+    });
+  }
+  // 执行一次折寿强行前行；若因此寿元耗尽，直接送死亡结算（返回 null，调用方不得再渲染）
+  function runForceMove(id, silent) {
+    const fr = Engine.advForceMove(S, id);
+    if (!fr.ok) { log(fr.msg, 'bad'); renderAdvMap(); return null; }
+    if (S.adv) S.adv.forceMoveSeen = true;   // 说明只出现一次：此后静默折寿
+    (fr.lines || []).forEach(function (l) { log(l, 'bad'); });
+    refresh();
+    if (fr.fatal) { endLifeFlow(); return null; }
+    handleMovedNode(fr.node);
+    return fr;
   }
   function handleMovedNode(node) {
     if (node.type === 'final') { openBossGate(node); return; }
     advResolveNode(node);
   }
-  // 折寿强搜按钮文案：把「第几次 / 本次代价 / 下次代价」全部摊开写清，
-  // 避免玩家误以为折寿搜刮永远是 -1 年（-1 年那条是「强行前行」，另一套机制）。
+  // 折寿强搜按钮文案：把「第几次 / 本次代价 / 下次代价」全部摊开写清。
+  // 强行前行与该阶梯**共用 a.forceN**（2026-09-23 起两套机制合一），故这里的「第 N 次」是折寿总次数。
   function forceChoiceText(isContinue, suffix) {
     const r = Engine.forceExploreRisk(S);
     const n = (S.adv && S.adv.forceN) || 0;
@@ -1504,18 +1550,23 @@
     Engine.advAdvance(S);
     const a = S.adv;
     if (a.done) return;
-    // 体力耗尽不再强制结束：玩家可选择以 1 年寿元强行前行，或自行撤退
+    // 体力耗尽不再强制结束：点前方节点可以寿元强行前行（代价递增，与折寿强搜共用同一阶梯），或自行撤退
     renderAdvMap();
   }
   function openRestScreen() {
     const ov = $('modal'); const box = $('modal-body');
     ov.style.display = 'flex'; ov.onclick = null;
     box.innerHTML = '';
+    // 「不再停留」已删除（用户 2026-09-14 要求）：它的作用与右上【关闭】完全等价。
+    // 静室专属的【撤离（保住收获）】：静室是秘境中唯一可完整收货的撤退点
+    //   （其余中途撤离一律走右下角【强行撤离（失五成收获）】）。
+    // 2026-09-23：静室弹窗加高（.rest-wrap 给定高度与更大按钮），撤离按钮去掉小字号类名，与打坐等字号一致。
+    const wrap = document.createElement('div'); wrap.className = 'rest-wrap';
     const title = document.createElement('h3'); title.textContent = '静室歇脚';
-    box.appendChild(title);
+    wrap.appendChild(title);
     const tip = document.createElement('p'); tip.className = 'dim';
     tip.textContent = '当前：气血 ' + fmtStat(S.hp) + '/' + fmtStat(S.hpMax) + '，灵力 ' + fmtStat(S.mp || 0) + '/' + fmtStat(S.mpMax || 0) + '，秘境体力 ' + (S.adv ? S.adv.stamina : 0) + '。打坐回血 60%、调息回满灵力（双修气血30%+灵力回满），或恢复秘境体力 10。';
-    box.appendChild(tip);
+    wrap.appendChild(tip);
     const mk = function (label, kind) {
       const btn = document.createElement('button'); btn.className = 'btn-main'; btn.textContent = label;
       btn.onclick = function () {
@@ -1524,19 +1575,16 @@
         refresh();
         advAdvanceToMap();
       };
-      box.appendChild(btn);
+      wrap.appendChild(btn);
     };
     mk('打坐（回血 60%）', 'hp');
     mk('调息（回满灵力）', 'mp');
     mk('双修（气血30%+灵力回满）', 'both');
     mk('养精蓄锐（秘境体力 +10）', 'stamina');
-    // 「不再停留」已删除（用户 2026-09-14 要求）：它的作用与右上【关闭】完全等价——
-    //   advMove 早已把玩家移到该节点，advAdvanceToMap 只是刷回地图，留两个出口纯属冗余。
-    // 原位置改为静室专属的【撤离（保住收获）】：静室是秘境中唯一可完整收货的撤退点
-    //   （其余中途撤离一律走右下角【强行撤离（失五成收获）】）。
-    const retreat = document.createElement('button'); retreat.className = 'btn-main ghost adv-retreat'; retreat.textContent = '撤离（保住收获）';
+    const retreat = document.createElement('button'); retreat.className = 'btn-main ghost'; retreat.textContent = '撤离（保住收获）';
     retreat.onclick = function () { ov.style.display = 'none'; advFinish('撤离'); };
-    box.appendChild(retreat);
+    wrap.appendChild(retreat);
+    box.appendChild(wrap);
   }
   function showBossChoice(extra) {
     showChapter('秘境通关', ['洞天秘藏尽数显现！'].concat(extra || []), { subtitle: '通关秘藏' }).then(function () {
@@ -3814,6 +3862,12 @@
     const eqParts = [];
     if (es.hpMax) eqParts.push('气血上限+' + es.hpMax);
     if (es.atk) eqParts.push('攻击+' + es.atk);
+    if (es.def) eqParts.push('防御+' + es.def);
+    if (es.critPct) eqParts.push('暴击+' + es.critPct + '%');
+    if (es.atkSpd) eqParts.push('攻速+' + es.atkSpd + '%');
+    if (es.recover) eqParts.push('回复+' + es.recover);
+    if (es.mpPct) eqParts.push('法力上限+' + es.mpPct + '%');
+    if (es.hpPct) eqParts.push('气血上限+' + es.hpPct + '%');
     if (es.wu) eqParts.push('悟性+' + es.wu);
     if (es.ti) eqParts.push('体魄+' + es.ti);
     if (es.cult) eqParts.push('修炼+' + Math.round(es.cult * 100) + '%');
@@ -5629,7 +5683,7 @@
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
       currentRow.style.borderColor = '#a8792a';
-      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
+      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">' + techEffSummary(currentXinfa) + '</span>' +
         '<br><span class="dim">' + esc(currentXinfa.desc) + '</span></div>';
       wrap.appendChild(currentRow);
     } else {
@@ -5640,17 +5694,17 @@
     }
     
     // 显示其他可用心法
-    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa' && t !== eq.xinfa; });
+    const xinfa = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa' && t !== eq.xinfa; }));
     if (xinfa.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
       switchTitle.textContent = '可切换心法：';
       switchTitle.style.marginTop = '8px';
       wrap.appendChild(switchTitle);
-      
+
       xinfa.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, '修炼 +' + Math.round((x.mult - 1) * 100) + '%');
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('切换', 'btn-small', function () {
           Engine.setXinfa(S, t);
           sfx('good');
@@ -5658,6 +5712,7 @@
           renderTechPage();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         wrap.appendChild(row);
       });
     }
@@ -5675,7 +5730,7 @@
         const row = document.createElement('div');
         row.className = 'formula-row';
         row.style.borderColor = '#a8792a';
-        row.innerHTML = '<div><b style="color:var(--text)">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
+        row.innerHTML = '<div><b style="color:var(--text)">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">' + techEffSummary(x) + '</span>' +
           '<br><span class="dim">' + esc(x.desc) + '</span></div>';
         const b = mkBtn('卸下', 'btn-small', function () {
           Engine.toggleShufa(S, t);
@@ -5694,17 +5749,17 @@
     }
     
     // 显示可用法术
-    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa' && (eq.shufa || []).indexOf(t) < 0; });
+    const shufa = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa' && (eq.shufa || []).indexOf(t) < 0; }));
     if (shufa.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
       switchTitle.textContent = '可装备法术：';
       switchTitle.style.marginTop = '8px';
       wrap.appendChild(switchTitle);
-      
+
       shufa.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, (x.slow ? '缚敌之霜' : '威力 ' + x.dmg + '× 攻击') + ' · 耗灵 ' + (x.cost || 0));
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('装备', 'btn-small', function () {
           const ok = Engine.toggleShufa(S, t);
           if (!ok) {
@@ -5716,6 +5771,7 @@
           renderTechPage();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         wrap.appendChild(row);
       });
     }
@@ -5730,7 +5786,7 @@
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
       currentRow.style.borderColor = '#a8792a';
-      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
+      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">' + techEffSummary(currentDunshu) + '</span>' +
         '<br><span class="dim">' + esc(currentDunshu.desc) + '</span></div>';
       wrap.appendChild(currentRow);
     } else {
@@ -5741,17 +5797,17 @@
     }
     
     // 显示可用遁术
-    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu' && t !== eq.dunshu; });
+    const dunshu = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu' && t !== eq.dunshu; }));
     if (dunshu.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
       switchTitle.textContent = '可切换遁术：';
       switchTitle.style.marginTop = '8px';
       wrap.appendChild(switchTitle);
-      
+
       dunshu.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, '逃脱 ' + Math.round((x.flee || 0) * 100) + '% · 减伤 ' + Math.round((x.guard || 0) * 100) + '%');
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('切换', 'btn-small', function () {
           Engine.setDunshu(S, t);
           sfx('good');
@@ -5759,6 +5815,7 @@
           renderTechPage();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         wrap.appendChild(row);
       });
     }
@@ -6015,6 +6072,27 @@
       card.appendChild(p); card.appendChild(row);
       ov.style.display = 'flex';
     });
+  }
+  /* 功法遗忘按钮（功法页 / 角色面板功法共用）：二次确认 → Engine.forgetTech。
+     已装备项不会进入传入列表；费用随次数递增（见 Engine.forgetCost）。 */
+  function forgetTechBtn(t, x) {
+    const b = document.createElement('button');
+    b.textContent = '遗忘';
+    b.className = 'btn-small btn-forget';
+    b.onclick = function () {
+      const cost = Engine.forgetCost(S);
+      uiConfirm('确认遗忘【' + x.name + '】？\n\n本次耗费灵石 ' + cost + '（当前 ' + Math.max(0, Math.round(S.stone || 0)) +
+        '）。\n遗忘费用随次数递增：20 起、每次 +20、封顶 500，且不可撤销。已装备的功法须先切换或卸下。',
+        { ok: '遗忘', cancel: '取消', okDanger: true }).then(function (yes) {
+        if (!yes) return;
+        const r = Engine.forgetTech(S, t);
+        if (!r.ok) { log(r.msg, 'bad'); return; }
+        sfx('good'); log(r.msg, 'good'); Engine.saveState(S); refresh();
+        if (typeof renderTechPage === 'function') renderTechPage();
+        if (typeof renderCharTech === 'function') renderCharTech();
+      });
+    };
+    return b;
   }
 
   function openSaveModal(fromGame) {
@@ -6846,6 +6924,12 @@
     const eqParts = [];
     if (es.hpMax) eqParts.push('气血上限+' + es.hpMax);
     if (es.atk) eqParts.push('攻击+' + es.atk);
+    if (es.def) eqParts.push('防御+' + es.def);
+    if (es.critPct) eqParts.push('暴击+' + es.critPct + '%');
+    if (es.atkSpd) eqParts.push('攻速+' + es.atkSpd + '%');
+    if (es.recover) eqParts.push('回复+' + es.recover);
+    if (es.mpPct) eqParts.push('法力上限+' + es.mpPct + '%');
+    if (es.hpPct) eqParts.push('气血上限+' + es.hpPct + '%');
     if (es.wu) eqParts.push('悟性+' + es.wu);
     if (es.ti) eqParts.push('体魄+' + es.ti);
     if (es.cult) eqParts.push('修炼+' + Math.round(es.cult * 100) + '%');
@@ -7066,7 +7150,7 @@
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
       currentRow.style.borderColor = '#a8792a';
-      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">修炼 +' + Math.round((currentXinfa.mult - 1) * 100) + '%</span>' +
+      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentXinfa.grade] + '">[' + currentXinfa.name + ']</b> <span class="dim">' + techEffSummary(currentXinfa) + '</span>' +
         '<br><span class="dim">' + esc(currentXinfa.desc) + '</span></div>';
       techList.appendChild(currentRow);
     } else {
@@ -7076,17 +7160,17 @@
       techList.appendChild(emptyRow);
     }
     
-    const xinfa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa' && t !== eq.xinfa; });
+    const xinfa = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'xinfa' && t !== eq.xinfa; }));
     if (xinfa.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
       switchTitle.textContent = '可切换心法：';
       switchTitle.style.marginTop = '8px';
       techList.appendChild(switchTitle);
-      
+
       xinfa.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, '修炼 +' + Math.round((x.mult - 1) * 100) + '%');
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('切换', 'btn-small', function () {
           Engine.setXinfa(S, t);
           sfx('good');
@@ -7094,6 +7178,7 @@
           renderCharTech();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         techList.appendChild(row);
       });
     }
@@ -7112,7 +7197,7 @@
         const row = document.createElement('div');
         row.className = 'formula-row';
         row.style.borderColor = '#a8792a';
-        row.innerHTML = '<div><b style="color:var(--text)">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">威力 ' + x.dmg + '× 攻击 · 耗灵 ' + (x.cost || 0) + '</span>' +
+        row.innerHTML = '<div><b style="color:var(--text)">[已装备]</b> <b style="color:' + GRADE_COLOR[x.grade] + '">[' + x.name + ']</b> <span class="dim">' + techEffSummary(x) + '</span>' +
           '<br><span class="dim">' + esc(x.desc) + '</span></div>';
         const b = mkBtn('卸下', 'btn-small', function () {
           Engine.toggleShufa(S, t);
@@ -7130,7 +7215,7 @@
       techList.appendChild(emptyRow);
     }
     
-    const shufa = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa' && (eq.shufa || []).indexOf(t) < 0; });
+    const shufa = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'shufa' && (eq.shufa || []).indexOf(t) < 0; }));
     if (shufa.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
@@ -7140,7 +7225,7 @@
       
       shufa.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, (x.slow ? '缚敌之霜' : '威力 ' + x.dmg + '× 攻击') + ' · 耗灵 ' + (x.cost || 0));
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('装备', 'btn-small', function () {
           const ok = Engine.toggleShufa(S, t);
           if (!ok) {
@@ -7152,6 +7237,7 @@
           renderCharTech();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         techList.appendChild(row);
       });
     }
@@ -7167,7 +7253,7 @@
       const currentRow = document.createElement('div');
       currentRow.className = 'formula-row';
       currentRow.style.borderColor = '#a8792a';
-      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">逃脱 ' + Math.round((currentDunshu.flee || 0) * 100) + '% · 减伤 ' + Math.round((currentDunshu.guard || 0) * 100) + '%</span>' +
+      currentRow.innerHTML = '<div><b style="color:var(--text)">[当前]</b> <b style="color:' + GRADE_COLOR[currentDunshu.grade] + '">[' + currentDunshu.name + ']</b> <span class="dim">' + techEffSummary(currentDunshu) + '</span>' +
         '<br><span class="dim">' + esc(currentDunshu.desc) + '</span></div>';
       techList.appendChild(currentRow);
     } else {
@@ -7177,17 +7263,17 @@
       techList.appendChild(emptyRow);
     }
     
-    const dunshu = S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu' && t !== eq.dunshu; });
+    const dunshu = Engine.sortTechsByGrade(S.techs.filter(function (t) { return TECHNIQUES[t] && TECHNIQUES[t].cls === 'dunshu' && t !== eq.dunshu; }));
     if (dunshu.length) {
       const switchTitle = document.createElement('p');
       switchTitle.className = 'dim';
       switchTitle.textContent = '可切换遁术：';
       switchTitle.style.marginTop = '8px';
       techList.appendChild(switchTitle);
-      
+
       dunshu.forEach(function (t) {
         const x = TECHNIQUES[t];
-        const row = mkRow(x, '逃脱 ' + Math.round((x.flee || 0) * 100) + '% · 减伤 ' + Math.round((x.guard || 0) * 100) + '%');
+        const row = mkRow(x, techEffSummary(x));
         const b = mkBtn('切换', 'btn-small', function () {
           Engine.setDunshu(S, t);
           sfx('good');
@@ -7195,6 +7281,7 @@
           renderCharTech();
         });
         row.appendChild(b);
+        row.appendChild(forgetTechBtn(t, x));
         techList.appendChild(row);
       });
     }
@@ -7647,6 +7734,11 @@
         if (c.craft) { const ck = CRAFT_KINDS.filter(function (k) { return k.id === c.craft; })[0]; req += '｜百艺 ' + (ck ? ck.name : c.craft) + ' Lv' + c.minLv; }
         // 守敌数值与实战同一口径（Engine.commissionEnemy），不在 UI 里另算
         if (c.enemy) { const foe = Engine.commissionEnemy(S, c); req += '｜守敌 攻 ' + foe.atk + ' 血 ' + foe.hp; }
+        // 六维门槛未达 → 卡片标红提示（门槛已在 Engine.commissionCanAccept 前置校验，
+        //   杜绝「打完守敌胜利、却因属性不足结算不了」的空打）
+        const lack = Engine.commissionCheckFail(S, c);
+        if (lack.length) req += '｜<span style="color:#b23a2e">未达：'
+          + lack.map(function (k) { return (Engine.SIX_NAMES[k] || k) + ' ≥ ' + c.check[k]; }).join('、') + '</span>';
         const rw = '灵石 ' + c.stone[0] + '~' + c.stone[1] + (c.gongye ? ('　功业 ' + c.gongye[0] + '~' + c.gongye[1]) : '');
         h += '<div class="ct-card"><div class="ct-card-h"><b>' + c.name + '</b><span class="ct-tier">免行动点</span></div>'
           + '<div class="ct-sub">' + req + '</div><div class="ct-desc">奖励：' + rw + '</div>'
@@ -7847,20 +7939,40 @@
       }
     });
   }
-  /* 传功胜：本阶三选一亲传面板 */
+  /* 传功胜：本阶三选一亲传面板（复用「雾中奇遇」同款卡片 UI，并展示真实效果） */
   function showMasterPick(opts) {
-    let h = '<h3>师父传功 · 择一亲传</h3><p class="dim">长老见你进境可喜，许你自本门此阶功法中择一亲传。</p><div class="ct-grid">';
+    const box = openPanel('');
+    const title = document.createElement('h3'); title.textContent = '师父传功 · 择一亲传'; title.style.marginBottom = '8px';
+    box.appendChild(title);
+    const desc = document.createElement('p'); desc.className = 'dim';
+    desc.textContent = '长老见你进境可喜，许你自本门此阶功法中择一亲传。';
+    desc.style.marginBottom = '16px';
+    box.appendChild(desc);
     opts.forEach(function (id) {
       const t = TECHNIQUES[id];
-      h += '<div class="ct-card" data-tech="' + id + '"><div class="ct-card-h"><b>' + (t ? t.name : id) + '</b>'
-        + (t ? '<span class="ct-tier">' + t.grade + '</span>' : '') + '</div>'
-        + '<div class="ct-desc">' + (t ? (t.desc || '') : '') + '</div></div>';
-    });
-    h += '</div>';
-    const box = openPanel(h);
-    box.querySelectorAll('[data-tech]').forEach(function (c) {
-      c.onclick = function () {
-        const id = c.getAttribute('data-tech');
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid var(--line);background:var(--panel2);padding:12px;margin-bottom:12px;border-radius:8px;cursor:pointer;transition:border-color .15s;';
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      const b = document.createElement('b'); b.style.fontSize = '16px'; b.textContent = t ? t.name : id;
+      const span = document.createElement('span');
+      span.style.cssText = 'font-size:12px;border:1px solid #6a6a7a;padding:2px 6px;border-radius:4px;color:#aaa;';
+      span.textContent = (t ? t.grade : '') + '阶';
+      head.appendChild(b); head.appendChild(span);
+      card.appendChild(head);
+      const p = document.createElement('p');
+      p.style.cssText = 'font-size:13px;color:#8a8a9a;margin:0 0 6px;';
+      p.textContent = (t && t.desc) ? t.desc : '未知的功法。';
+      card.appendChild(p);
+      if (t) {
+        const eff = document.createElement('div');
+        eff.style.cssText = 'font-size:12px;color:#1d7a55;margin:0;';
+        eff.textContent = techEffSummary(t);
+        card.appendChild(eff);
+      }
+      card.onmouseenter = function () { card.style.borderColor = '#1d7a55'; };
+      card.onmouseleave = function () { card.style.borderColor = 'var(--line)'; };
+      card.onclick = function () {
         const r = Engine.sectMasterResolve(S, true, id);
         let line = '你择【' + (TECHNIQUES[id] ? TECHNIQUES[id].name : id) + '】亲传';
         if (r.tech) line += '，已录入识海';
@@ -7869,6 +7981,7 @@
         sectMsg(line, 'good');   // 关闭选技弹窗后，结果落在宗门页内 + 主界面日志留痕
         refresh(); renderSect();
       };
+      box.appendChild(card);
     });
   }
   /* ---------- P5 游历地图 ---------- */
@@ -8096,6 +8209,48 @@
     const shown = isPct ? (Math.round(Math.abs(v) * 100) + '%') : String(Math.abs(v));
     return (v < 0 ? '-' : '+') + shown;
   }
+  /* 功法真实效果 → 可读中文串（心法修炼倍率 + 附加属性；术法威力/耗灵/五行机制；遁术逃脱/减伤）。
+     图鉴、传功择一亲传、功法页共用，确保「描述对应真实效果」。 */
+  function techEffSummary(t) {
+    if (!t) return '';
+    const parts = [];
+    if (t.cls === 'xinfa') {
+      parts.push('修炼 ×' + t.mult);
+      if (t.atkMul) parts.push('攻击+' + Math.round(t.atkMul * 100) + '%');
+      if (t.defMul) parts.push('防御+' + Math.round(t.defMul * 100) + '%');
+      if (t.critPct) parts.push('暴击+' + Math.round(t.critPct * 100) + '%');
+      if (t.hpMul) parts.push('气血上限+' + Math.round(t.hpMul * 100) + '%');
+      if (t.mpMul) parts.push('法力上限+' + Math.round(t.mpMul * 100) + '%');
+      if (t.thorns) parts.push('反伤+' + Math.round(t.thorns * 100) + '%');
+      if (t.guard) parts.push('减伤+' + Math.round(t.guard * 100) + '%');
+      if (t.hpMax) parts.push('固定气血+' + t.hpMax);
+      if (t.atkSpd) parts.push('攻速+' + Math.round(t.atkSpd * 100) + '%');
+      if (t.spellMul) parts.push('法术伤害+' + Math.round(t.spellMul * 100) + '%');
+      if (t.craftTimeReduce) parts.push('炼丹-' + t.craftTimeReduce + '年');
+    } else if (t.cls === 'shufa') {
+      if (t.dmg) parts.push('威力 ' + t.dmg + '×攻击');
+      if (t.cost) parts.push('耗灵 ' + t.cost);
+      if (t.element && t.element !== '无') parts.push(t.element + '系');
+      if (t.stun) parts.push((t.element === '水' ? '冻结' : '眩晕') + ' ' + Math.round(t.stun * 100) + '%');
+      if (t.dotBurn) parts.push('灼烧 ' + t.dotBurn + '层');
+      if (t.dotPoison) parts.push('中毒 ' + t.dotPoison + '层');
+      if (t.disaster) parts.push('伐灾 ' + t.disaster + '层');
+      if (t.heal) parts.push('治疗 ' + Math.round(t.heal * 100) + '%');
+      if (t.mpRestore) parts.push('回灵 ' + Math.round(t.mpRestore * 100) + '%');
+      if (t.lifesteal) parts.push('吸血 ' + Math.round(t.lifesteal * 100) + '%');
+      if (t.buff) {
+        const dur = function (k) { return t.buff[k + 'Dur'] ? t.buff[k + 'Dur'] : (t.buff.duration || 0); };
+        if (t.buff.critUp) parts.push('暴击+' + t.buff.critUp + '%' + (dur('critUp') ? '(' + dur('critUp') + '回合)' : ''));
+        if (t.buff.atkUp) parts.push('攻击+' + t.buff.atkUp + '%' + (dur('atkUp') ? '(' + dur('atkUp') + '回合)' : ''));
+        if (t.buff.defUp) parts.push('防御+' + t.buff.defUp + '%' + (dur('defUp') ? '(' + dur('defUp') + '回合)' : ''));
+      }
+      if (t.debuff && t.debuff.atkDown) parts.push('敌攻击-' + t.debuff.atkDown + '%' + (t.debuff.duration ? '(' + t.debuff.duration + '回合)' : ''));
+    } else if (t.cls === 'dunshu') {
+      if (t.flee) parts.push('逃脱 ' + Math.round(t.flee * 100) + '%');
+      if (t.guard) parts.push('减伤 ' + Math.round(t.guard * 100) + '%');
+    }
+    return parts.join(' · ');
+  }
   function effText(eff) {
     if (!eff) return '';
     const parts = [];
@@ -8141,7 +8296,7 @@
     if (type === 'techs') {
       const t = TECHNIQUES[id]; if (!t) return null;
       const cls = TECH_CLS[t.cls] || t.cls || '功法';
-      return { ico: '📜', name: t.name, grade: t.grade, meta: cls + (t.element ? ' · ' + t.element : ''), desc: t.desc, eff: t.mult ? ('修炼 ×' + t.mult) : '' };
+      return { ico: '📜', name: t.name, grade: t.grade, meta: cls + (t.element ? ' · ' + t.element : ''), desc: t.desc, eff: techEffSummary(t) };
     }
     if (type === 'npcs') {
       const n = NPCS[id]; if (!n) return null;

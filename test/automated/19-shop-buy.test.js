@@ -24,6 +24,14 @@ function md5(p) {
 }
 
 // 极简 ZIP 读取：按中央目录定位条目并解压（Node 无内置 unzip，避免引入依赖）
+// 文件名版本化（js/ui.179.js 等）破 CDN 缓存；包内实际文件名带版本号，但内容与未版本化源码逐字节一致，
+// 故匹配时除精确后缀外，也接受「base.NNN.js」版本化变体。
+function zipNameMatches(name, suffix) {
+  if (name.endsWith(suffix)) return true;
+  const base = suffix.slice(0, -3); // 去掉 '.js'：'/js/ui' → 匹配 '.../js/ui.179.js'
+  const re = new RegExp(base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.\\d+\\.js$');
+  return re.test(name);
+}
 function readZipEntry(zipPath, suffix) {
   let buf;
   try { buf = fs.readFileSync(zipPath); } catch (e) { return null; }
@@ -43,7 +51,7 @@ function readZipEntry(zipPath, suffix) {
     const commentLen = buf.readUInt16LE(off + 32);
     const localOff = buf.readUInt32LE(off + 42);
     const name = buf.slice(off + 46, off + 46 + nameLen).toString('utf8');
-    if (name.endsWith(suffix)) {
+    if (zipNameMatches(name, suffix)) {
       const lnLen = buf.readUInt16LE(localOff + 26);
       const lxLen = buf.readUInt16LE(localOff + 28);
       const dataOff = localOff + 30 + lnLen + lxLen;

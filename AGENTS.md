@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~19-*.test.js` | 自动套件（361 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~19-*.test.js` | 自动套件（362 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 经 `tools/_engine_loader` 真加载 `Engine.*`（#60 起不再手抄镜像）；敌人基线 `enemyStats` 亦已改走引擎（#75）。改引擎公式时模拟器自动跟随，无需手抄同步 |
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~19，当前 361/361 全过
+node test/automated/run.js     # 依次跑 01~19，当前 362/362 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -104,7 +104,7 @@ node test/automated/run.js     # 依次跑 01~19，当前 361/361 全过
 | `08-death-omen.test.js` | 11 | 五劫主线（年表 / 劫主角色卡 / 立绘占位 / 噩兆玉符倒计时与裂纹 / 渡劫档位 / 隐藏线） |
 | `09-achievements.test.js` | 13 | 成就判定（境界用 `s.idx` / 渡劫用 `s.tribPassed` / **文案「总数」与数据表动态对账** / **文案「阈值」与引擎开关点双侧夹逼**） |
 | `10-year-end.test.js` | 4 | 年末结算（气血与灵力回满 / 岁增 / 行动点重置） |
-| `11-dead-config.test.js` | 37 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费） |
+| `11-dead-config.test.js` | 38 | 死配置实装（命格 / 心法 / 法术字段必须被引擎消费；**厚土之体 defMul 死配置回归**：type:'attr' 命格的 defMul:0.05 必须被 getDestinyAttrMult 读取（去掉 type==='combat' 限制，与 tribBonus 同类），面板防御同向抬升且不污染 atkMul 通道） |
 | `12-boss-element.test.js` | 17 | BOSS 五行与法术适配（生克四档 / 无属性减伤 / 镜像属性 / 施毒施控 / 伐灾免控 / 治疗全额 / 护盾递减 / DoT 封顶） |
 | `13-tools-reinc.test.js` | 2 |
 | `14-tutorial.test.js` | 7 | 新手引导系统（聚光灯分步高亮 / 可跳过 / **分阶段**：标题阶段 2 步[开始+轮回阁] 自动播 · 进入游戏 basics 3 步[修炼·角色·游历，游历末附「秘境/宗门/百艺逐步敞开」提示] · 第 2 年 secret[秘境] · 第 5 年 sect[宗门·百艺]；步骤完整性 / 上下步 / 跳过写阶段标记 / autoTitle+onEnterGame / onYear(2,5)+非 2/5 年不触发 / replay **+ 仙门赶考 exam[聚光灯指向行动栏宗门 · 可跳过 · 跳过即永久静默 · 第 5 年 sect 不再重复宗门步]**） | **镜像工具回归 + `tools/` 陈旧写法静态扫描**（`tools/reinc_validate.js` 必须 exit 0：引擎公式对齐 + 读 `DEDAO_轮回结算重做_方案.md` 断言表内数字。该脚本曾把 `s.broken` 当渡劫次数、漏 `endMul`，整列算偏且自己的过期断言长期报 ❌ 无人看） |
@@ -112,7 +112,7 @@ node test/automated/run.js     # 依次跑 01~19，当前 361/361 全过
 | `16-treasure-unlock.test.js` | 4 | 法宝栏槽位解锁（**有效值口径**：`maxTreasure` 与 `treasureSlotUnlockText` 必须用 `effAttr` 的道心/神识（基础+命格+法宝），与角色面板一致；原始值达标、**法宝/命格加成使有效值达标**两类均解锁、加成封顶各 +3） |
 | `17-sect-lecture.test.js` | 11 | 宗门讲法 / 师父传功（v5 实装回归：9 门新宗门法术、心法攻速/反伤修订、五行心法额外效果 getter 接线、讲法随机给本阶技+保底修为、传功切磋胜败结算、讲法↔传功共享年计数、池空降级、阶位映射） |
 | `18-daily-login.test.js` | 13 | 每日登录礼（账号级 `meta.daily`：7 天奖励 `[2,10,10,10,11,12,24]`=79 点、首次/同日去重/Δ=1 递增、**连续 7 天累计 79**、满勤后归零开新一轮、Δ=2 补签扣 5 点且每周期限 1 次、点数不足不扣点、Δ≥3 直接重置、**时间倒流不发放不写 last**、meta 往返、旧档无 daily 兼容） |
-| `19-shop-buy.test.js` | 8 | 坊市购买 & 包体同步（2026-09-23 用户实测 BUG 回归：**传商品对象成交且灵石正确扣减不 NaN**；**非法入参[下标/undefined/null/缺 price/负价/NaN 价]一律拒绝且失败必带 msg**（防日志区打出 undefined）；**脏灵石兜底**（stone=NaN/null 补偿 1000、真 0 不动）；**货架按年缓存**（年内含已售标记不重掷、跨年才重掷，修「买一件就换货」）；**包体守卫**：4 个 dist 副本 data/engine/ui.js 与源码字节一致；**源码守卫**：引擎导出 `shopStockYearly`、UI 禁传下标、禁裸 `log(r.msg)`；**zip 守卫**：3 个 TapTap 上传包内 `js/ui.js` 与源码一致且含修复；**包内实测**：直接从 zip 取 data/engine.js 用 vm 真跑购买，断言灵石非 NaN、`lines` 无 undefined、年内不重掷、脏档补偿 1000） |
+| `19-shop-buy.test.js` | 8 | 坊市购买 & 包体同步（2026-09-23 用户实测 BUG 回归：**传商品对象成交且灵石正确扣减不 NaN**；**非法入参[下标/undefined/null/缺 price/负价/NaN 价]一律拒绝且失败必带 msg**（防日志区打出 undefined）；**脏灵石兜底**（stone=NaN/null 补偿 1000、真 0 不动）；**货架按年缓存**（年内含已售标记不重掷、跨年才重掷，修「买一件就换货」）；**包体守卫**：4 个 dist 副本 data/engine/ui.js 与源码字节一致；**源码守卫**：引擎导出 `shopStockYearly`、UI 禁传下标、禁裸 `log(r.msg)`；**zip 守卫**：3 个 TapTap 上传包内 `js/ui.NNN.js`（版本化文件名）与源码字节一致且含修复；**包内实测**：直接从 zip 取 data/engine.js 用 vm 真跑购买，断言灵石非 NaN、`lines` 无 undefined、年内不重掷、脏档补偿 1000） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。

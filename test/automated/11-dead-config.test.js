@@ -205,6 +205,22 @@ module.exports = async function build() {
     t.note('命格 attr.dao 与 effect.tribBonus 两条都生效，且都汇总进 breakInfo.base');
   });
 
+  S.case('新命格 effect：厚土之体 defMul（绿阶·type:attr 的防御 +5% 不再被 type 限制挡死）', (t) => {
+    const s = bare('厚土 defMul');
+    t.eq(E.getDestinyAttrMult(s, 'def'), 1.0, '无命格：防御倍率基准确为 1.0');
+    const def0 = E.getDefense(s);
+    s.destinies = ['houtu'];
+    E.refreshStats(s);
+    // 核心回归点：type:'attr' 命格携带的 defMul 必须被读取（此前被 type==='combat' 限制挡死 = 永远 1.0）
+    t.ok(Math.abs(E.getDestinyAttrMult(s, 'def') - 1.05) < 1e-9,
+      '厚土之体（type:attr）effect.defMul:0.05 必须生效，不再被 type 限制挡死（实际 ' + E.getDestinyAttrMult(s, 'def') + '）');
+    // 面板防御应高于无命格时（厚土之体 ti+2 与 defMul 5% 同向抬升防御）
+    t.ok(E.getDefense(s) > def0, '面板防御应高于无命格时（' + def0 + ' → ' + E.getDefense(s) + '）');
+    // 不污染其他倍率通道
+    t.eq(E.getDestinyAttrMult(s, 'atk'), 1.0, '厚土之体不影响 atkMul 通道');
+    t.note('与 09-18 修掉的 tribBonus（天命之子/天道宠儿，同为 type:attr）同类：getDestinyAttrMult 去掉 type===\'combat\' 限制');
+  });
+
   /* ---------------------------------------------------------------- */
   /* 3. 旧命格战斗向：critDmgBoost / execute                            */
   /* ---------------------------------------------------------------- */

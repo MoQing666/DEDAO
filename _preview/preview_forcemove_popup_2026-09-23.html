@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEDAO · 体力不支弹框与图标位示意（2026-09-23）</title>
+<style>
+  :root{
+    --paper:#f4efe4; --paper2:#fbf8f1; --ink:#2b2620; --dim:#7a7266;
+    --line:#d9d0be; --warn:#b23a2e; --gold:#a8792a; --green:#1d7a55;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:#e9e3d6;color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Noto Serif CJK SC",serif;line-height:1.7}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .note{color:var(--dim);font-size:13px;margin-bottom:22px;
+    border-left:3px solid var(--gold);padding-left:10px}
+  h2{font-size:16px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+  .cap{font-size:12px;color:var(--dim);margin:8px 0 0}
+
+  /* --- 秘境节点（对照 ui.js nodeHtml 的真实结构） --- */
+  .adv-row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:14px 0}
+  .adv-node{width:86px;text-align:center;border:1px solid var(--line);border-radius:8px;
+    padding:8px 4px;background:var(--paper2);position:relative}
+  .adv-node.current{border-color:var(--gold);box-shadow:0 0 0 2px rgba(168,121,42,.18)}
+  .adv-node.selectable{border-color:var(--green);background:#f2f8f4}
+  .n-icon{font-size:26px;line-height:1.2}
+  .n-name{font-size:12px;color:var(--dim);margin-top:2px}
+  .n-badge{font-size:11px;color:#fff;background:var(--green);border-radius:3px;
+    margin:4px 6px 0;padding:1px 0}
+  .n-badge.lock{background:#9a9386}
+  .slot{font-size:11px;color:var(--gold);margin-top:4px;letter-spacing:.5px}
+
+  /* --- HUD 提示栏 --- */
+  .hint{background:#efe9dc;border:1px dashed var(--line);border-radius:6px;
+    padding:10px 12px;font-size:13px;color:#5c544a}
+
+  /* --- 章节弹框（对照 showChapter 渲染结构） --- */
+  .chapter{background:var(--paper2);border:1px solid var(--line);border-radius:8px;
+    padding:16px 18px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .ch-title{font-size:17px;font-weight:600;text-align:center;margin-bottom:12px}
+  .ch-line{font-size:14px;margin:8px 0}
+  .ch-line.sub{font-size:13px;color:#5c544a}
+  .ch-choices{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .choice{text-align:left;border:1px solid var(--line);border-radius:6px;background:var(--paper);
+    padding:10px 12px;font-size:14px;font-family:inherit;cursor:default}
+  .choice .n{font-weight:600}
+  .choice .d{font-size:12px;color:var(--dim);margin-top:3px}
+  .choice.go{border-color:var(--green)}
+  .choice.retreat{border-color:var(--warn)}
+  .cost{color:var(--warn);font-weight:600}
+
+  /* --- 日志 --- */
+  .log{background:#2b2620;color:#e8e0d0;border-radius:6px;padding:10px 12px;font-size:13px}
+  .log p{margin:4px 0}
+  .log .bad{color:#e8907f}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:center}
+  th{background:#efe9dc}
+  td.ok{color:var(--green);font-weight:600}
+  td.no{color:var(--warn);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>体力不支 · 弹框与图标位示意</h1>
+  <p class="note">
+    按 <code>js/ui.js</code> 真实文案与 <code>nodeHtml / showChapter</code> 的真实结构还原的示意图（<b>非游戏截图</b>）。
+    用于确认「图标位」与弹框呈现是否正确；数值均取自本次回归实测。
+  </p>
+
+  <h2>① 秘境节点结构 —— 图标位在哪</h2>
+  <div class="card">
+    <div class="adv-row">
+      <div class="adv-node current">
+        <div class="n-icon">◎</div>
+        <div class="n-name">入口</div>
+        <div class="slot">↑ n-icon（图标位）</div>
+      </div>
+      <div class="adv-node selectable">
+        <div class="n-icon">⚔</div>
+        <div class="n-name">遭遇战</div>
+        <div class="n-badge">可往</div>
+      </div>
+      <div class="adv-node selectable">
+        <div class="n-icon">☾</div>
+        <div class="n-name">静室歇脚</div>
+        <div class="n-badge">可往</div>
+      </div>
+      <div class="adv-node">
+        <div class="n-icon">☯</div>
+        <div class="n-name">雾中奇遇</div>
+        <div class="n-badge lock">未启</div>
+      </div>
+    </div>
+    <p class="cap">
+      节点结构 = <code>.n-icon</code>（类型图标：⚔遭遇战 / ☾静室 / ☯奇遇 / ▣宝箱 / ❀灵草 / ▲矿脉 / ◇坊市 / ☠精英·Boss）
+      + <code>.n-name</code>（类型名）+ <code>.n-badge</code>（可往 / 未启）。
+      图标随节点类型取自 <code>ADV_NODES</code>，<b>不随体力状态变化</b>——体力耗尽只改变下方提示栏文案与点击后的行为。
+    </p>
+  </div>
+
+  <h2>② 体力耗尽时的地图提示栏</h2>
+  <div class="card">
+    <div class="hint">
+      体力已尽——点前方节点将以寿元「强行前行」（本秘境第 1 次折寿 · <span class="cost">-1</span> 年寿元；与折寿强搜共用递增阶梯 1/2/4/8/16 封顶）。想收手可点右下角【强行撤离】。
+    </div>
+  </div>
+
+  <h2>③ 首次体力不支 —— 弹「体力不支」框（仅此一次）</h2>
+  <div class="card">
+    <div class="chapter">
+      <div class="ch-title">体力不支</div>
+      <div class="ch-line">你气力将尽，双腿如灌了铅。前方仍有路，只是再迈一步，怕是要拿寿元去换。</div>
+      <div class="ch-line sub">（以寿元强行前行：本秘境第 1 次折寿，需 <span class="cost">-1</span> 年寿元。代价与「折寿强搜」共用同一递增阶梯 1→2→4→8→16 年封顶，本次之后每折一次都更贵，再折需 <span class="cost">-2</span> 年）</div>
+      <div class="ch-line sub">（此说明每次入秘境只出现一次：此后点前方节点将直接折寿前行，不再询问；想收手可点右下角【强行撤离】。）</div>
+      <div class="ch-choices">
+        <div class="choice go">
+          <div class="n">以寿元强行前行</div>
+          <div class="d">第 1 次 · <span class="cost">-1</span> 年寿元（下次 <span class="cost">-2</span>；代价序列 1/2/4/8/16 封顶）</div>
+        </div>
+        <div class="choice retreat">
+          <div class="n">【强行撤离】</div>
+          <div class="d">失去部分收获（灵石草铁 -50%）</div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">两个选项位：①以寿元强行前行　②【强行撤离】。弹框本身<b>无图标</b>（<code>showChapter</code> 只有 title + 正文行 + 选项，不带 icon 参数）。</p>
+  </div>
+
+  <h2>④ 此后再点前方节点 —— 不再弹框，只留一行日志</h2>
+  <div class="card">
+    <div class="log">
+      <p class="bad">你强行动用本源，以命换力，寿元 -2。</p>
+      <p class="bad">你咬牙折寿前行（强行前行 · 本秘境第 2 次折寿，-2 年寿元），又深入了一步。</p>
+      <p class="bad">（再折寿一次需 -4 年寿元；与折寿强搜同一递增阶梯 1/2/4/8/16 封顶）</p>
+    </div>
+    <p class="cap">静默折寿：无弹框、无二次询问，只打「寿元 -N」；想收手随时点右下角【强行撤离】。</p>
+  </div>
+
+  <h2>⑤ 阶梯实测（强行前行逐次扣寿）</h2>
+  <div class="card">
+    <table>
+      <tr><th>折寿次数</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+      <tr><td>扣寿（年）</td><td>1</td><td>2</td><td>4</td><td>8</td><td>16</td><td>16</td><td>16</td></tr>
+      <tr><td>折后余寿</td><td>53</td><td>51</td><td>47</td><td>39</td><td>23</td><td>7</td><td>0</td></tr>
+    </table>
+    <p class="cap">
+      第 5 次起封顶 16 年不再上涨；第 7 次余寿归零 → <b>寿元耗尽结档</b>。
+      弹框预告值恒等于真实扣减值。与折寿强搜共用计数：先做 1 次强搜后，强行前行代价立即 1→2。
+    </p>
+  </div>
+
+  <h2>⑥ 宗门任务「秘境探勘」结算实测</h2>
+  <div class="card">
+    <table>
+      <tr><th>神识</th><th>接取按钮</th><th>胜战结算</th><th>本年次数</th><th>奖励</th></tr>
+      <tr><td>9（未达 ≥10）</td><td class="no">置灰 · 标红「未达：神识 ≥ 10」</td><td class="no">不结算</td><td>不消耗</td><td>无</td></tr>
+      <tr><td>10（达标）</td><td class="ok">接取</td><td class="ok">成功</td><td>扣 1（剩 2/3）</td><td>灵石 +716、功业 +30</td></tr>
+      <tr><td>20（达标）</td><td class="ok">接取</td><td class="ok">成功</td><td>扣 1（剩 2/3）</td><td>灵石 +527、功业 +29</td></tr>
+    </table>
+    <p class="cap">修复前：神识不足也能接取，打赢后却被静默拒绝 → 无奖励、不扣次数、面板直接弹回。</p>
+  </div>
+
+</div>
+</body>
+</html>

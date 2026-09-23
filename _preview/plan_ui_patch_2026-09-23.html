@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEDAO · 界面修补方案（2026-09-23）</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { margin: 0; background: #efe7d6; }
+  body { font-family: -apple-system, "Microsoft YaHei", sans-serif; }
+  .doc { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 24px; color: #1a1a1a; margin: 0 0 4px; letter-spacing: 2px; }
+  .sub { color: #6b6250; font-size: 13px; margin-bottom: 24px; }
+  h2 { font-size: 17px; color: #1a1a1a; margin: 34px 0 10px; padding-left: 10px;
+       border-left: 4px solid #a8792a; letter-spacing: 1px; }
+  h3 { font-size: 14px; color: #4a4a4a; margin: 18px 0 8px; font-weight: 600; }
+  .card { background: #faf6ec; border: 1px solid rgba(168,121,42,.30); border-radius: 10px;
+          padding: 16px 18px; margin: 12px 0; }
+  .card.warn { border-color: #c0395f; background: #fdf3f5; }
+  .card.ok   { border-color: #1d7a55; background: #f2f9f5; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  th, td { border: 1px solid #e3d6b8; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f2e9d6; color: #4a4a4a; font-weight: 600; }
+  code { background: #efe6d2; padding: 1px 5px; border-radius: 3px; font-size: 12.5px; color: #6b4a12; }
+  .bad  { color: #c0395f; font-weight: 600; }
+  .good { color: #1d7a55; font-weight: 600; }
+  .dim2 { color: #7a7260; font-size: 12.5px; }
+  ul { margin: 6px 0; padding-left: 20px; font-size: 13.5px; line-height: 1.75; color: #2a2a2a; }
+  .ba { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .ba-col { flex: 1 1 320px; min-width: 300px; }
+  .ba-tag { font-size: 12px; color: #6b6250; margin-bottom: 6px; letter-spacing: 1px; }
+  .ba-tag b { color: #1a1a1a; }
+  .stage { border: 1px dashed rgba(168,121,42,.55); border-radius: 8px; padding: 12px;
+           background: #fdfaf2; }
+  .stage.dark { background: #f2ead8; }
+  /* 复用游戏真实类名做「同款」渲染 */
+  .formula-row { font-size: 13px; }
+  .formula-row .mrow { display: flex; gap: 8px; align-items: center; }
+  .choice-btn { font-size: 14px; line-height: 1.6; }
+  .mini-modal { position: static; background: transparent; display: block; }
+  .mini-modal .modal-inner { max-width: none; max-height: none; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px;
+           border: 1px solid rgba(168,121,42,.42); color: #6b6250; margin-left: 6px; }
+  .kbd { font-size: 12px; background: #efe6d2; border: 1px solid #d8c9a5; border-radius: 4px;
+         padding: 0 5px; color: #6b4a12; }
+  .note { font-size: 12.5px; color: #7a7260; line-height: 1.7; margin-top: 8px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px;
+          background:#efe6d2; color:#6b4a12; margin-right:6px; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <h1>DEDAO · 界面修补方案</h1>
+  <div class="sub">2026-09-23 · 7 项诉求拆成「2 项实装检测 + 5 项界面改动」 · 本稿只做方案与示意，未改任何项目源码</div>
+
+  <!-- ===================== 检测结论 ===================== -->
+  <h2>一、检测结论（只读对账，可复跑）</h2>
+
+  <div class="card ok">
+    <h3 style="margin-top:0">检测 ① 命格 · 战斗相关效果 → 基本已实装，仅 1 处死配置</h3>
+    <p class="dim2" style="margin:4px 0 8px">46 个命格（白10 / 绿10 / 蓝10 / 紫7 / 金9；attr 类 24 个、combat 类 22 个）逐字段对账：
+      战斗字段共 20 种，其中 <span class="good">19 种都有引擎读取通道</span>。</p>
+    <table>
+      <tr><th>通道</th><th>字段</th><th>状态</th></tr>
+      <tr>
+        <td><code>getDestinyBonus(s,key)</code><br><span class="dim2">无 type 限制</span></td>
+        <td>critRate、dodgeRate、counterRate、firstStrike、lifesteal、recoverPct、thorns、
+            controlImmune、extraAttack、executeBonus、swordCritRate、noElemSpellMul、tribBonus</td>
+        <td class="good">全部生效</td>
+      </tr>
+      <tr>
+        <td><code>getDestinyAttrBonus(s,attr)</code><br><span class="dim2">六维，无 type 限制</span></td>
+        <td>wu / ti / dun / shen / dao / ling</td>
+        <td class="good">全部生效</td>
+      </tr>
+      <tr>
+        <td><code>applyDestinyYearly</code><br><span class="dim2">年度通道</span></td>
+        <td>stonePerYear、wuPerYear(+Cap)、tiPerYear(+Cap)</td>
+        <td class="good">全部生效</td>
+      </tr>
+      <tr>
+        <td><code>getDestinyAttrMult(s,attr)</code><br><span class="dim2" style="color:#c0395f">⚠ 硬性要求 dest.type === 'combat'</span></td>
+        <td>atkMul（6 条 · 全 combat）、defMul（7 条 · <b>6 combat + 1 attr</b>）</td>
+        <td class="bad">1 条死配置</td>
+      </tr>
+    </table>
+    <p style="margin:10px 0 4px;font-size:13.5px"><span class="bad">❌ 唯一问题</span>：
+      <b>厚土之体</b>（<code>houtu</code>，绿阶 · <code>type:'attr'</code>）带 <code>effect:{ defMul: 0.05 }</code>，
+      但读取它的 <code>getDestinyAttrMult()</code>（<code>engine.js:914</code>）写了
+      <code>dest.type === 'combat'</code> 才认 ——
+      所以「防御 +5%」在命格面板 / 图鉴里<b>会给玩家看到</b>，实战里<b>永不生效</b>。</p>
+    <p class="dim2" style="margin:4px 0 0">
+      这与 2026-09-18 修掉的那批 <code>tribBonus</code>（天命之子 / 天道宠儿，同为 attr 类）是同一类 bug。
+      <br>修法三选一：① 去掉 <code>engine.js:914</code> 的 type 限制（推荐，与 tribBonus 同手法，一次修完所有 attr 类武器字段）；
+      ② 把厚土之体 <code>type</code> 改成 <code>'combat'</code>；③ 把 <code>defMul</code> 换成六维 <code>attr:{ti:2}</code> 之外再加 <code>def</code> 加成。
+      <br>脚本：<code>node _probe/audit_destiny_combat.js</code>（新增，只读）。
+    </p>
+  </div>
+
+  <div class="card ok">
+    <h3 style="margin-top:0">检测 ② 功法（102 门）是否实装 → 效果全实装，但<span class="bad">文案缺 3 处</span></h3>
+    <p class="dim2" style="margin:4px 0 8px">逐字段对账 <code>TECHNIQUES</code>（心法 37 / 法术 50 / 遁术 15）：</p>
+    <ul>
+      <li><b>心法 12 个附加效果全部有 getter 且全部被调用</b>：<code>mult</code>、<code>hpMax</code>(固定气血)、<code>hpMul</code>、<code>mpMul</code>、<code>atkMul</code>、<code>defMul</code>、<code>critPct</code>、<code>atkSpd</code>、<code>spellMul</code>、<code>craftTimeReduce</code>、<code>guard</code>、<code>thorns</code> —— 无死效果。</li>
+      <li><b>法术</b>（<code>dmg/cost/buff/debuff/stun/dotBurn/dotPoison/disaster/heal/mpRestore/lifesteal/element</code>）全部走唯一结算入口 <code>applySpellEffects()</code>，含 buff 的 <code>*Dur</code> 单独持续回合 —— 无死效果。</li>
+      <li><b>遁术</b><code>flee</code> / <code>guard</code> 生效（<code>guard</code> 走与心法同一条减伤通道）。</li>
+    </ul>
+    <table>
+      <tr><th>#</th><th>文案缺失位置</th><th>现状</th><th>建议</th></tr>
+      <tr>
+        <td class="bad">1</td>
+        <td><b>师父传功 · 择一亲传面板</b><br><code>ui.js:7851 showMasterPick()</code></td>
+        <td>只渲染 <b>名称 + 品质标签 + 一句 desc</b>。<br>没有「心法/法术/遁术」的类型，也没有任何数值。</td>
+        <td>改用与<b>雾中奇遇</b>同样的选择页（见改动 ④），补齐 <code>[类型] + 数值</code>。</td>
+      </tr>
+      <tr>
+        <td class="bad">2</td>
+        <td><b>图鉴 · 功法 tab</b><br><code>ui.js:8144 codexInfo('techs')</code></td>
+        <td><code>eff: t.mult ? '修炼 ×'+t.mult : ''</code> —— 法术 / 遁术的 <code>eff</code> <b>恒为空串</b>，102 门里只有 37 个心法有内容显示。</td>
+        <td>按 cls 分支：心法→修炼 ×N；法术→威力 N× 攻击 · 耗灵 N · 特效；遁术→逃脱 N% · 减伤 N%。</td>
+      </tr>
+      <tr>
+        <td class="bad">3</td>
+        <td><b>功法页「可装备法术」行</b><br><code>ui.js:5707</code> 与 <code>ui.js:7143</code>（两处重复）</td>
+        <td><code>x.slow ? '缚敌之霜' : '威力 '+x.dmg+'× 攻击'</code> —— 全仓库<b>没有任何功法带 <code>slow</code> 字段</b>，这是旧机制残留的死分支。</td>
+        <td>删掉该分支，直接显示威力/耗灵（否则将来数据一改就再无人维护）。</td>
+      </tr>
+    </table>
+    <p class="note"><b>顺带口径建议</b>：<code>护山心经</code> 的 desc 只写了「反伤 5%」，漏了 <code>guard 0.10</code>（减伤 10%）与 <code>hpMax +50</code>；
+      <code>石壁遁 / 影遁术</code> 的 desc 只有风味句、不写「逃脱 60% · 减伤 10%」——
+      这就是你截图里「石壁遁 石壁护身，固若金汤」和「护山心经 护山大阵，固若金汤」看着一模一样的原因。
+      建议统一为：<b>desc 只放风味文案，数值一律由「选择页 / 功法页 / 图鉴」的 stat 行渲染</b>，避免两处手工同步。
+      （本方案不改 desc 文本，只让数值行补齐。）</p>
+  </div>
+
+  <!-- ===================== 改动 ===================== -->
+  <h2>二、五项改动方案</h2>
+
+  <!-- ① 突破文案 -->
+  <h3>改动 ①  突破按钮文案：修为满时不再显示 98%</h3>
+  <div class="card">
+    <div class="ba">
+      <div class="ba-col">
+        <div class="ba-tag">现状 <b>（before）</b></div>
+        <div class="stage">
+          <div class="year-row" style="display:flex;gap:8px">
+            <button class="btn-break" style="flex:2">突破（修为未满）</button>
+            <button class="btn-year" style="flex:1">下一年</button>
+          </div>
+          <div class="year-row" style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-break ready" style="flex:2">破境突破 98%</button>
+            <button class="btn-year" style="flex:1">下一年</button>
+          </div>
+          <p class="note" style="margin-top:10px">上面是修为未满；下面是修为已满（渡劫加成堆满 → 被 <code>TRIB_CAP</code> 封顶 98%）。
+          玩家看不到「已满」这件事，只看到一个虚高的 98%。</p>
+        </div>
+      </div>
+      <div class="ba-col">
+        <div class="ba-tag">改后 <b>（after）</b></div>
+        <div class="stage">
+          <div class="year-row" style="display:flex;gap:8px">
+            <button class="btn-break" style="flex:2">突破（修为未满）</button>
+            <button class="btn-year" style="flex:1">下一年</button>
+          </div>
+          <div class="year-row" style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-break ready" style="flex:2">突破（修为已满）</button>
+            <button class="btn-year" style="flex:1">下一年</button>
+          </div>
+          <div class="year-row" style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-break ready" style="flex:2">渡劫 · 金丹劫</button>
+            <button class="btn-year" style="flex:1">下一年</button>
+          </div>
+          <p class="note" style="margin-top:10px">第三行是<b>大境界渡劫</b>：保持原样不动（它以劫境实战决胜，本就不该显示裸概率）。</p>
+        </div>
+      </div>
+    </div>
+    <table>
+      <tr><th>项</th><th>内容</th></tr>
+      <tr><td>落点</td><td><code>ui.js:243-254</code>（<code>refresh()</code> 内的按钮文案段）</td></tr>
+      <tr><td>改法</td><td><code>breakLabel = '突破（修为已满）'</code>；<b>只删按钮里的概率</b>，不动引擎。概率仍在突破弹窗内展示（<code>ui.js:2307-2310</code> 已有「成功率：N%」/「渡劫成功率：N%（此劫以实战决胜负…）」两行），信息不丢。</td></tr>
+      <tr><td>附带</td><td><code>·下次必成</code>（<code>breakFails≥2</code> 保底提示）保留：<code>「突破（修为已满） · 下次必成」</code>。</td></tr>
+      <tr><td>影响面</td><td>纯 UI 文案，1 处；无存档 / 结算影响。</td></tr>
+    </table>
+  </div>
+
+  <!-- ② 功法页：遗忘 + 排序 -->
+  <h3>改动 ②  功法页：切换左侧加【遗忘】（二次确认）+ 默认按品质从高到低排序</h3>
+  <div class="card">
+    <div class="ba">
+      <div class="ba-col">
+        <div class="ba-tag">现状 <b>（before）</b>　<span class="dim2">顺序＝<code>S.techs</code> 数组顺序（＝获知顺序，杂乱）</span></div>
+        <div class="stage">
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[黄]</b> <b>[吐纳术]</b> <span class="dim2">修炼 +10%</span><br><span class="dim2">最基础的吐纳之法，引气入体。</span></span><span style="margin-left:auto"><button class="btn-small">切换</button></span></div></div>
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[天]</b> <b>[混沌诀]</b> <span class="dim2">修炼 +130%</span><br><span class="dim2">混沌初开，万法归宗。</span></span><span style="margin-left:auto"><button class="btn-small">切换</button></span></div></div>
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[玄]</b> <b>[长春功]</b> <span class="dim2">修炼 +50%</span><br><span class="dim2">生机绵绵，如草木长春，气血上限 +10%。</span></span><span style="margin-left:auto"><button class="btn-small">切换</button></span></div></div>
+        </div>
+      </div>
+      <div class="ba-col">
+        <div class="ba-tag">改后 <b>（after）</b>　<span class="dim2">品质降序：天 → 地 → 玄 → 黄 → 仙（按需）</span></div>
+        <div class="stage">
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[天]</b> <b>[混沌诀]</b> <span class="dim2">修炼 +130%</span><br><span class="dim2">混沌初开，万法归宗。</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn-small">遗忘</button><button class="btn-small">切换</button></span></div></div>
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[玄]</b> <b>[长春功]</b> <span class="dim2">修炼 +50%</span><br><span class="dim2">生机绵绵，如草木长春，气血上限 +10%。</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn-small">遗忘</button><button class="btn-small">切换</button></span></div></div>
+          <div class="formula-row"><div class="mrow"><span><b class="dim2">[黄]</b> <b>[吐纳术]</b> <span class="dim2">修炼 +10%</span><br><span class="dim2">最基础的吐纳之法，引气入体。</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="btn-small">遗忘</button><button class="btn-small">切换</button></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>二次确认（复用全局 <code>uiConfirm</code>，不动原生 confirm）</h3>
+    <div class="stage dark" style="max-width:420px">
+      <p style="font-size:14px;margin:4px 0 12px;color:#1a1a1a">遗忘后将<b>永久失去《混沌诀》</b>，且不可找回（已投入的功法不会返还任何资源）。确定遗忘？</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn-main" style="width:auto;flex:1;margin:0">确定遗忘</button>
+        <button class="btn-main ghost" style="width:auto;flex:1;margin:0">取消</button>
+      </div>
+    </div>
+
+    <table>
+      <tr><th>项</th><th>内容</th></tr>
+      <tr><td>落点</td><td>两个功法页各 3 段列表，<b>共 6 处循环</b>：<br>
+        · <code>ui.js:5599 renderTechPage()</code> — 心法 <code>5651</code> / 法术 <code>5705</code> / 遁术 <code>5752</code><br>
+        · <code>ui.js:7075 renderCharTech()</code>（角色面板·功法 tab）— 心法 <code>7087</code> / 法术 <code>7141</code> / 遁术 <code>7188</code></td></tr>
+      <tr><td>按钮位置</td><td>插在 <code>切换 / 装备</code> <b>左侧</b>：<code>[遗忘][切换]</code>、<code>[遗忘][装备]</code>。<br>已装备的那一项<b>不给遗忘按钮</b>（心法是当前心法、法术在法术位、遁术是当前遁术），避免「把自己身上的功法删了」的诡异状态。</td></tr>
+      <tr><td>排序</td><td>三段列表的 <code>S.techs.filter(...)</code> 末尾统一加 <code>.sort(byGradeDesc)</code>，<code>GRADE_ORDER = ['黄','玄','地','天','仙']</code>（引擎已有该常量，按索引降序）。同品质保持稳定序（可再按 <code>mult</code> 或 <code>dmg</code> 二级排序）。</td></tr>
+      <tr><td>引擎新增</td><td><code>Engine.forgetTech(s, id)</code>（约 12 行）：<br>
+        · 已装备 → 先自动卸下（心法置 <code>null</code>／从 <code>shufa</code> 数组移除／遁术置 <code>null</code>）<br>
+        · 从 <code>s.techs</code> 移除（不存在则返回 <code>{ok:false,msg}</code>）<br>
+        · <code>refreshStats</code> → <code>saveState</code> → 返回 <code>{ok:true,msg,unworn:bool}</code>（文案要区分「顺带卸下」）<br>
+        · ⚠ 必须重算派生：<code>refreshStats</code> 已覆盖（<code>techMult</code>、气血/法力上限、六维）</td></tr>
+      <tr><td>文案</td><td>确认框：<code>遗忘后将永久失去《X》，且不可找回。确定遗忘？</code>（<code>okDanger:true</code>）<br>成功日志：<code>你斩去【X】的记忆，从此不再修习此道。</code>（若顺带卸下：<code>……（已自动卸下）</code>）</td></tr>
+      <tr><td>风险</td><td>遗忘【万剑归宗】这类命格加成依赖的功法 → 命格 <code>techTypeBonus{xinfa}</code> 走的是「当前装备心法」，无副作用。<br>遗忘后若门派池重新可获取（<code>sectTeachPool</code> 过滤 <code>s.techs</code>）→ <b>遗忘门派功法后可再次从讲法/传功取回</b>，这是符合预期的自洽行为，不额外拦截。</td></tr>
+    </table>
+  </div>
+
+  <!-- ③ 装备加成 -->
+  <h3>改动 ③  角色 · 属性：装备加成补齐全量</h3>
+  <div class="card">
+    <div class="ba">
+      <div class="ba-col">
+        <div class="ba-tag">现状 <b>（before）</b></div>
+        <div class="stage">
+          <div class="attr-section"><span class="dim2">气血上限+120，攻击+62，悟性+2，体魄+1，修炼+5%</span></div>
+          <p class="note">一件「[地]昆仑玄铁甲 <code>def:42 / hpPct:34</code>」穿上后，防御与气血上限% 一个字都不显示。</p>
+        </div>
+      </div>
+      <div class="ba-col">
+        <div class="ba-tag">改后 <b>（after）</b></div>
+        <div class="stage">
+          <div class="attr-section"><span class="dim2">气血上限+120（+34%），攻击+62，防御+42，暴击+8%，攻速+10%，回复+12，法力上限+26%，悟性+2，体魄+1，修炼+5%</span></div>
+          <p class="note">按「基础值 → 百分比 → 特殊」分组，用中文顿号分隔；为 0 的一律不显示（保持现有行为）。</p>
+        </div>
+      </div>
+    </div>
+    <table>
+      <tr><th>项</th><th>内容</th></tr>
+      <tr><td>落点</td><td>两处同样代码：<code>ui.js:3814-3820</code>（属性页）与 <code>ui.js:6846-6852</code>（角色面板）。</td></tr>
+      <tr><td>引擎已算、UI 漏显示</td><td><code>equipStats()</code>（<code>engine.js:510-556</code>）返回 10 个字段，UI 只显示了 5 个。<br>
+        <span class="bad">漏掉</span>：<code>def</code>（防御）、<code>critPct</code>（暴击%）、<code>atkSpd</code>（攻速%）、<code>recover</code>（回复）、<code>mpPct</code>（法力上限%）、<code>hpPct</code>（气血上限%）。</td></tr>
+      <tr><td>数据侧确认</td><td>装备 <code>main</code> 词条实际存在 <code>def / mpPct / hpPct / recover / critPct / atkSpd / atk / atk2</code>；附魔池 <code>AFFIX_POOLS</code> 也有 <code>def / critPct / atkSpd / recover / mpPct / hpPct</code>。所以缺的不是数据，是显示。</td></tr>
+      <tr><td>不需要改</td><td>六维只展示 <code>wu/ti</code>（装备本来只给这两维，<code>dun/shen/dao/ling</code> 由法宝给，属于「法宝加成」不是装备）。</td></tr>
+      <tr><td>建议顺手</td><td>抽一个 <code>equipSumText(es)</code> 复用两处，避免第 3 次复制粘贴时再漏字段（现在两处逐字符相同，已经是最危险的状态）。</td></tr>
+    </table>
+  </div>
+
+  <!-- ④ 师父传功选择页 -->
+  <h3>改动 ④  师父传功 · 择一亲传 → 改用与「雾中奇遇」相同的选择页</h3>
+  <div class="card">
+    <p class="dim2" style="margin-top:0">「雾中奇遇」（秘境 event 节点 = 残魂传承，<code>ui.js:1726 advResolveRemnantSoul()</code>）走的是章节层
+      <code>showChapter(title, lines, {choices})</code> → <code>showChoices()</code> 渲染 <code>.choice-btn</code>，
+      每个选项带 <b>[类型] + 风味 desc + 数值</b>。师父传功却是自建的 <code>.ct-grid</code> 卡片（<code>ui.js:7851</code>），信息量少一半。</p>
+    <div class="ba">
+      <div class="ba-col">
+        <div class="ba-tag">现状 <b>（before）</b>　<span class="dim2">＝你截图里的样子</span></div>
+        <div class="stage">
+          <div class="ct-grid">
+            <div class="ct-card"><div class="ct-card-h"><b>护山心经</b><span class="ct-tier">玄</span></div><div class="ct-desc">护山大阵，固若金汤，反伤 5%。</div></div>
+            <div class="ct-card"><div class="ct-card-h"><b>缚魔阵</b><span class="ct-tier">玄</span></div><div class="ct-desc">缚魔大阵，压制敌势（攻击 -15%），并有几率定身（20% 眩晕）。</div></div>
+            <div class="ct-card"><div class="ct-card-h"><b>石壁遁</b><span class="ct-tier">玄</span></div><div class="ct-desc">石壁护身，固若金汤。</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="ba-col">
+        <div class="ba-tag">改后 <b>（after）</b>　<span class="dim2">章节层选择页，与残魂传承同款</span></div>
+        <div class="stage">
+          <button class="choice-btn">亲传【护山心经】
+[心法] 护山大阵，固若金汤，反伤 5%。
+修炼 +50% · 气血上限 +50 · 减伤 10% · 反伤 5%</button>
+          <button class="choice-btn">习得【缚魔阵】
+[法术] 缚魔大阵，压制敌势（攻击 -15%），并有几率定身（20% 眩晕）。
+威力 3.0× 攻击 · 耗灵 75</button>
+          <button class="choice-btn">修习【石壁遁】
+[遁术] 石壁护身，固若金汤。
+逃脱 60% · 减伤 10%</button>
+          <button class="choice-btn disabled">婉言谢绝
+长老的传授留待来年。</button>
+        </div>
+      </div>
+    </div>
+    <table>
+      <tr><th>项</th><th>内容</th></tr>
+      <tr><td>落点</td><td>重写 <code>ui.js:7850-7873 showMasterPick(opts)</code>，内部改为 <code>showChapter(...)</code> + <code>choices</code>；<code>ui.js:7838</code> 的调用点不变。</td></tr>
+      <tr><td>选项文案生成</td><td>抽一个共用函数 <code>techChoiceText(id)</code>（心法→「修炼 +N%」+ 附加效果；法术→「威力 N× 攻击 · 耗灵 N」；遁术→「逃脱 N% · 减伤 N%」），<b>残魂传承也改成调它</b>，从此两处文案永不分叉。</td></tr>
+      <tr><td>结算不变</td><td>仍走 <code>Engine.sectMasterResolve(S, true, id)</code>（<code>engine.js:3962</code>）：亲传 1 门 + 保底修为 = 当前境界 20%，<code>sectTeachYear = 1</code>。<b>不改数值</b>。</td></tr>
+      <tr><td>保留退出</td><td>补一个「婉言谢绝」选项 —— 原卡片版可以点右上【关闭】白嫖查看不出手，章节版必须留等价出口（不学、不消耗本年次数）。</td></tr>
+      <tr><td>顺带</td><td>宗门页「师父传功」行（<code>ui.js:7546</code>）与讲法共享 1 次/年的提示保持不变。</td></tr>
+    </table>
+  </div>
+
+  <!-- ⑤ 静室 -->
+  <h3>改动 ⑤  秘境 · 静室：页面增高 + 撤离字号对齐</h3>
+  <div class="card">
+    <p style="margin-top:0;font-size:13.5px"><b>撤离字号为什么小？</b>根因找到了：静室按钮写了
+      <code>className = 'btn-main ghost adv-retreat'</code>（<code>ui.js:1537</code>），而
+      <code>css/style.css:1380</code> 有一条全局规则
+      <code>.adv-retreat { padding: 5px 12px; font-size: 12px; }</code> ——
+      这条本是给秘境 HUD 右上角那个小号「强行撤离」按钮（<code>index.html:560</code>）用的，
+      静室复用同一个类名就被一起压到 12px，而打坐/调息是 <code>.btn-main</code> 的 16px。</p>
+    <div class="ba">
+      <div class="ba-col">
+        <div class="ba-tag">现状 <b>（before）</b>　<span class="dim2">撤离 12px · 弹窗贴底、内容只占半屏</span></div>
+        <div class="stage dark">
+          <div class="mini-modal"><div class="modal-inner panel">
+            <div class="modal-head"><span></span><button class="btn-small">关闭</button></div>
+            <h3>静室歇脚</h3>
+            <p class="dim2" style="font-size:13px">当前：气血 820/1200，灵力 140/300，秘境体力 32。打坐回血 60%、调息回满灵力（双修气血30%+灵力回满），或恢复秘境体力 10。</p>
+            <button class="btn-main" style="margin:6px 0">打坐（回血 60%）</button>
+            <button class="btn-main" style="margin:6px 0">调息（回满灵力）</button>
+            <button class="btn-main" style="margin:6px 0">双修（气血30%+灵力回满）</button>
+            <button class="btn-main" style="margin:6px 0">养精蓄锐（秘境体力 +10）</button>
+            <button class="btn-main ghost adv-retreat" style="margin:6px 0">撤离（保住收获）</button>
+          </div></div>
+        </div>
+      </div>
+      <div class="ba-col">
+        <div class="ba-tag">改后 <b>（after）</b>　<span class="dim2">全部 16px 等宽等高 · 弹窗加高</span></div>
+        <div class="stage dark">
+          <div class="mini-modal"><div class="modal-inner panel" style="min-height:420px">
+            <div class="modal-head"><span></span><button class="btn-small">关闭</button></div>
+            <h3>静室歇脚</h3>
+            <p class="dim2" style="font-size:13px">当前：气血 820/1200，灵力 140/300，秘境体力 32。打坐回血 60%、调息回满灵力（双修气血30%+灵力回满），或恢复秘境体力 10。</p>
+            <button class="btn-main" style="margin:7px 0">打坐（回血 60%）</button>
+            <button class="btn-main" style="margin:7px 0">调息（回满灵力）</button>
+            <button class="btn-main" style="margin:7px 0">双修（气血30%+灵力回满）</button>
+            <button class="btn-main" style="margin:7px 0">养精蓄锐（秘境体力 +10）</button>
+            <button class="btn-main ghost" style="margin:7px 0">撤离（保住收获）</button>
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <table>
+      <tr><th>项</th><th>内容</th></tr>
+      <tr><td>字号</td><td>把 <code>ui.js:1537</code> 的类名从 <code>btn-main ghost adv-retreat</code> 改为 <code>btn-main ghost rest-retreat</code>（或直接 <code>btn-main ghost</code>）→ 继承 <code>.btn-main</code> 的 <b>16px / padding 12px</b>，与打坐四行完全一致。<br><code>index.html:560</code> 那个 HUD 小按钮<b>保持 <code>.adv-retreat</code> 不动</b>。</td></tr>
+      <tr><td>增高</td><td>给静室弹窗加一个专属类 <code>modal-rest</code>：<code>#modal.modal-rest .modal-inner { min-height: 46dvh; max-height: 92dvh; }</code>（沿用文件末尾已有的 <code>dvh</code> 兜底写法）。<br>效果：内容不足时也占住将近半屏，不再「贴底一小坨」；超长时可滚动。</td></tr>
+      <tr><td>兼容</td><td><code>.adv-retreat</code> 除 HUD 外只有这一处误用（<code>ui.js:6508</code> 只是给 HUD 按钮绑 onclick），改名不会波及别处。</td></tr>
+      <tr><td>可选加码</td><td>若你想更彻底：把静室从弹窗改成独立页面（像秘境地图那样铺满）。这会牵动 <code>advAdvanceToMap()</code> 的返回路径与秘境遮罩层级，<b>建议先做上面的小改，看效果再决定</b>。</td></tr>
+    </table>
+  </div>
+
+  <!-- ===================== 待确认 ===================== -->
+  <h2>三、待你拍板的 3 件事</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><span class="pill">决策 1</span><b>厚土之体的 defMul 死配置要不要顺手修？</b>　推荐改 <code>engine.js:914</code>（去掉 <code>type==='combat'</code> 限制），一次修完所有 attr 类的武器字段。这是引擎改动，会进 46 个命格的结算路径 —— 需要跑全量 358 用例验证。</li>
+      <li><span class="pill">决策 2</span><b>遗忘要不要「返还资源」或加冷却（如每世 3 次）？</b>　默认方案：<b>无返还、无次数限制</b>（遗忘只是清理已学的低阶功法，让功法页干净）。若你想要限制，我加一个 <code>s.forgetLeft</code>。</li>
+      <li><span class="pill">决策 3</span><b>静室是「加高弹窗」还是「改成独立整页」？</b>　默认方案是加高（<code>min-height:46dvh</code>），改动小、不影响秘境返回路径。</li>
+    </ul>
+    <p class="note" style="margin-top:12px">改动清单落地顺序建议：③（装备加成，纯显示，零风险）→ ⑤（静室，独立小改）→ ①（突破文案）→ ②（遗忘+排序，需新增引擎 API）→ ④（传功选择页，需抽共用文案函数）→ 决策 1 的引擎修正（最后做，跑全量回归）。</p>
+  </div>
+
+</div>
+</body>
+</html>

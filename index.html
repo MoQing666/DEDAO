@@ -215,6 +215,10 @@
     <div class="panel">
       <div class="screen-head"><h2>宗门</h2></div>
       <div class="screen-body" id="sect-body"></div>
+      <!-- 宗门页内反馈条：道庭讲法 / 师父传功的结果必须落在这里，
+           旧写法只写主界面日志，玩家留在本页看不到任何结果，观感即「点了没生效」（2026-09-23）。
+           注意：本元素必须留在 #sect-body **之外**，renderSect 重绘 body.innerHTML 时才不会被冲掉。 -->
+      <div class="sect-msg" id="sect-msg" style="display:none"></div>
     </div>
     <div class="gear-footer">
       <button id="sect-back" class="btn-main">返回修行</button>

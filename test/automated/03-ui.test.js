@@ -2197,12 +2197,15 @@ module.exports = async function build() {
     if (real.length) t.fail('断签重置领取流程报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
-  /* 灵石显示守卫（2026-09-23）：灵石为 0 必须显示「0」，坏值（null/缺字段）不得让格子空白。 */
-  S.case('灵石显示：灵石 0 时 HUD 显示「0」，坏值存档（null/缺字段）经兜底后也显示「0」不空白', async (t) => {
-    for (const mutate of [
-      (raw) => { raw.stone = 0; },
-      (raw) => { raw.stone = null; },
-      (raw) => { delete raw.stone; }
+  /* 灵石显示守卫（2026-09-23）：灵石为 0 必须显示「0」，坏值（null/缺字段）不得让格子空白。
+     ⚠ 2026-09-23 线上事故后改口径：旧包「购买传下标」BUG 让线上玩家灵石变成 null，
+     若兜底归零等于让玩家为 BUG 买单，故脏值在 HUD 上一律显示补偿值 1000；
+     只有真正 0 灵石的存档才显示「0」。 */
+  S.case('灵石显示：真 0 显示「0」，坏值存档（null/缺字段）显示补偿值「1000」且绝不空白', async (t) => {
+    for (const [label, mutate, expect] of [
+      ['真 0 灵石', (raw) => { raw.stone = 0; }, '0'],
+      ['stone=null（线上污染档）', (raw) => { raw.stone = null; }, '1000'],
+      ['缺 stone 字段', (raw) => { delete raw.stone; }, '1000']
     ]) {
       // battleSave() 返回缓存对象，这里浅拷贝后再改，避免污染其他用例
       const raw = Object.assign({}, await battleSave());
@@ -2213,9 +2216,10 @@ module.exports = async function build() {
       await advanceChapters(win, doc);
       await new Promise(r => setTimeout(r, 180));
       const el = doc.getElementById('h-stone');
-      t.ok(!!el, '主界面应有 #h-stone 灵石格');
+      t.ok(!!el, '主界面应有 #h-stone 灵石格（' + label + '）');
       if (!el) continue;
-      t.eq((el.textContent || '').trim(), '0', '灵石坏值/0 时 HUD 应显示「0」，实际 ' + JSON.stringify(el.textContent));
+      t.eq((el.textContent || '').trim(), expect,
+        label + ' 时 HUD 应显示「' + expect + '」，实际 ' + JSON.stringify(el.textContent));
       // 引擎层读档治愈由 02 模块「灵石坏值兜底」用例覆盖；此处只回归玩家可见的 HUD 显示行为。
     }
   });

@@ -286,8 +286,11 @@ module.exports = async function build() {
 
   /* 灵石坏值兜底（2026-09-23）：旧档 stone=null / 缺字段 / 数字字符串曾导致 HUD 灵石整格空白
      （textContent = null/undefined → ''），且首次灵石收益 undefined+50=NaN → 存档固化为 null。
-     三层守卫：loadState 归零 / saveState 防 NaN 固化 / applyOps 坏值先归零。 */
-  S.case('灵石坏值兜底：null/缺字段读档归 0，数字字符串转数字，applyOps 后必为有限数字且文案不再撒谎', (t) => {
+     三层守卫：loadState 补偿 / saveState 防 NaN 固化 / applyOps 先修复。
+     ⚠ 补偿值 1000（2026-09-23 线上事故后定）：旧包「购买传下标」BUG 把线上玩家灵石写成 null，
+     若兜底归零等于让玩家为 BUG 买单，故脏值一律补偿 STONE_DIRTY_FALLBACK=1000。
+     仅对「非有限数」生效——真正 0 灵石的存档仍是 0，不得被拔高。 */
+  S.case('灵石坏值兜底：null/缺字段读档补偿 1000，数字字符串转数字，真 0 保持 0，applyOps 后必为有限数字且文案不再撒谎', (t) => {
     const mk = (mut) => {
       const g = createGameContext({ seed: 99 });
       const E3 = g.get('Engine');
@@ -298,17 +301,21 @@ module.exports = async function build() {
       g.localStorage.setItem('dedao_save', JSON.stringify(raw));
       return { E: E3, g };
     };
-    // a) stone=null → 归 0
+    // a) stone=null（线上旧 BUG 污染的档，JSON 里的 NaN）→ 补偿 1000
     let r = mk(raw => { raw.stone = null; });
     let s = r.E.loadState();
-    t.eq(s.stone, 0, 'stone=null 读档后应为 0，实际 ' + JSON.stringify(s.stone));
+    t.eq(s.stone, 1000, 'stone=null 读档后应补偿为 1000（不得归零，玩家不该为 BUG 买单），实际 ' + JSON.stringify(s.stone));
     let out = r.E.applyOps(s, { stone: 50 });
-    t.eq(s.stone, 50, 'null 兜底后 +50 应为 50，实际 ' + JSON.stringify(s.stone));
+    t.eq(s.stone, 1050, 'null 补偿 1000 后 +50 应为 1050，实际 ' + JSON.stringify(s.stone));
     t.ok(out.some(x => /灵石 \+50/.test(x)), '收益文案应含「灵石 +50」');
-    // b) 缺 stone 字段 → 归 0
+    // b) 缺 stone 字段 → 补偿 1000
     r = mk(raw => { delete raw.stone; });
     s = r.E.loadState();
-    t.eq(s.stone, 0, '缺 stone 字段读档后应为 0，实际 ' + JSON.stringify(s.stone));
+    t.eq(s.stone, 1000, '缺 stone 字段读档后应补偿为 1000，实际 ' + JSON.stringify(s.stone));
+    // b2) 真 0 灵石不得被拔高（兜底只对脏值生效）
+    r = mk(raw => { raw.stone = 0; });
+    s = r.E.loadState();
+    t.eq(s.stone, 0, 'stone=0 是合法值，读档后必须仍是 0（不得被补偿成 1000），实际 ' + JSON.stringify(s.stone));
     // c) 数字字符串 → 转数字
     r = mk(raw => { raw.stone = '80'; });
     s = r.E.loadState();
@@ -319,7 +326,7 @@ module.exports = async function build() {
     s.stone = NaN;
     r.E.saveState(s);
     const rawBack = JSON.parse(r.g.localStorage.getItem('dedao_save'));
-    t.ok(rawBack.stone === 0, 'NaN 写档后存档里应为 0（不得固化为 null），实际 ' + JSON.stringify(rawBack.stone));
+    t.eq(rawBack.stone, 1000, 'NaN 写档后存档里应为补偿值 1000（不得固化为 null），实际 ' + JSON.stringify(rawBack.stone));
   });
 
   /* ---------- 丹药 ---------- */
@@ -568,6 +575,55 @@ module.exports = async function build() {
     t.ok(r.ok, '购买应成功');
     t.gte(s.materials[matRows[0].mat.key] || 0, 1, '买到的灵材应入分级材料库');
     t.ok(s.stone < 1000, '购买应扣灵石');
+  });
+
+  /* 回归：购买入参守卫（2026-09-23 用户实测 BUG —— 「购买直接失败 + 灵石 NaN」）
+     ui.js 游历·流动商贩旧写法把「数组下标」当商品对象传进引擎：
+       Engine.buyStock(S, +b.getAttribute('data-i'))
+     下标是 number → si.price 为 undefined → `s.stone -= undefined` → 灵石变 NaN；
+     且 si.sold/si.art/si.give 全读空，钱扣了、货拿不到，只留一行 undefined 日志。
+     引擎侧现在直接拦下非法入参，本用例守住这条防线（调用形态另在 01 静态守卫）。 */
+  S.case('购买入参守卫：传下标（旧 UI 写法）不得污染灵石（回归 2026-09-23）', (t) => {
+    const s = E.startLife('坊市守卫');
+    E.commitStart(s, TALENTS[0].id);
+    s.stone = 500;
+    const r = E.buyStock(s, 0);      // 旧写法：传下标
+    t.eq(r.ok, false, '传下标应被引擎拒绝，不得「假成功」');
+    t.ok(!!r.msg, '拒绝时必须给出可提示玩家的原因');
+    t.eq(s.stone, 500, '灵石不得被扣除');
+    t.ok(Number.isFinite(s.stone), '灵石必须仍是有限数（旧写法此处会变 NaN）');
+    const r2 = E.buyStock(s, null);
+    t.eq(r2.ok, false, '传 null 应被拒绝');
+    const r3 = E.buyStock(s, { id: 'x', name: '缺价货', price: undefined });
+    t.eq(r3.ok, false, '缺价格字段的货品应被拒绝');
+    t.eq(s.stone, 500, '以上三次异常调用后灵石仍应为 500');
+  });
+
+  /* 回归：流动商贩货架「每年一换」（2026-09-23 用户要求）
+     旧逻辑每次打开商店、乃至每次购买都重掷货架，玩家买到一半货就换了货，已售标记也丢。 */
+  S.case('流动商贩货架每年一换：年内稳定（含已售标记），跨年重新进货', (t) => {
+    const s = E.startLife('坊市年货');
+    E.commitStart(s, TALENTS[0].id);
+    s.stone = 5000;
+    const a = E.shopStockYearly(s);
+    t.ok(Array.isArray(a) && a.length > 0, '应生成货架');
+    t.ok(a.every(function (x) { return Number.isFinite(x.price) && x.price > 0; }), '货架每项都应有有限的正价格');
+    t.eq(E.shopStockYearly(s) === a, true, '同一年内重复取货架应返回同一数组（不得重掷）');
+    const target = a.filter(function (x) { return x.mat; })[0];
+    t.ok(!!target, '货架应含灵材');
+    const r = E.buyStock(s, target);
+    t.eq(r.ok, true, '购买应成功');
+    t.ok((r.lines || []).some(function (l) { return /^支出灵石 \d+$/.test(l); }),
+      '成交行应含「支出灵石 N」（旧写法会输出「支出灵石 undefined」），实际：' + JSON.stringify(r.lines));
+    t.eq(target.sold, true, '商品应标记已售');
+    t.eq(E.shopStockYearly(s) === a, true, '购买后同年货架不得重掷');
+    t.eq(target.sold, true, '购买后已售标记应保留到年末');
+    t.eq(E.buyStock(s, target).ok, false, '已售商品不得重复购买');
+    s.year = (s.year || 1) + 1;
+    const b = E.shopStockYearly(s);
+    t.ok(b !== a, '跨年后应重新进货');
+    t.eq(s.shop.year, s.year, '货架缓存年份应更新为新年份');
+    t.ok(b.every(function (x) { return Number.isFinite(x.price) && x.price > 0; }), '新年货架价格同样合法');
   });
 
   S.case('出售装备：同名只卖一件，已穿戴的不受影响', (t) => {

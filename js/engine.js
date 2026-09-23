@@ -12,6 +12,28 @@ const Engine = (function () {
      强制以新版本重开，避免老结构存档被误读导致崩溃 / 异常。 */
   const SAVE_VERSION = 1;
 
+  /* 灵石脏值补偿（2026-09-23 线上事故）
+   *   旧包「购买传下标」BUG 把玩家灵石写成 NaN，JSON 固化后变成 null：
+   *   HUD 灵石一格显示为空白、一切灵石消费被静默拦死、再收益也仍是 NaN。
+   *   新版本读到「非有限数」时一律补偿为 1000，而不是归零——归零等于让玩家为 BUG 买单。
+   *   ⚠ 只对脏值生效：真正 0 灵石的存档不受影响（0 是有限数）。 */
+  const STONE_DIRTY_FALLBACK = 1000;
+
+  /* 灵石兜底唯一入口：有限数原样返回；数字字符串转成数字；
+     null/undefined/NaN/空串 → 补偿 STONE_DIRTY_FALLBACK。
+     注意 Number(null) === 0，故 null 必须显式判为脏值，不能交给 Number() 兜。 */
+  function repairStone(s) {
+    if (!s || typeof s !== 'object') return STONE_DIRTY_FALLBACK;
+    if (typeof s.stone === 'number' && Number.isFinite(s.stone)) return s.stone;
+    if (s.stone === null || s.stone === undefined || s.stone === '') {
+      s.stone = STONE_DIRTY_FALLBACK;
+      return s.stone;
+    }
+    const n = Number(s.stone);
+    s.stone = Number.isFinite(n) ? n : STONE_DIRTY_FALLBACK;
+    return s.stone;
+  }
+
   /* ---------------- 档案 ---------------- */
   function defaultMeta() {
     return {
@@ -223,7 +245,8 @@ const Engine = (function () {
         // 灵石兜底（2026-09-23）：旧档/异常档可能缺 stone、为 null（运行期 NaN 被 JSON 固化的产物）或数字字符串。
         // 不兜底的后果：HUD 灵石一格显示为空白（textContent = null/undefined → ''），
         // 且首次灵石收益 undefined+50=NaN → 存档再固化为 null，空白永久化、所有灵石消费被静默拦死。
-        if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
+        // 线上被旧 BUG 污染的档（stone=null）在此一次性补偿为 1000，而非归零。
+        repairStone(s);
         if (!s.destinies) s.destinies = [];
         if (!s.destinySlots) s.destinySlots = 1;
         if (!s.equip) s.equip = { head: null, body: null, weapon: null, accessory: null, treasure: [] };
@@ -280,8 +303,8 @@ const Engine = (function () {
     if (s && typeof s === 'object') {
       s.__saveVersion = SAVE_VERSION;  // 盖上当前存档版本戳
       // 灵石写档守卫（2026-09-23）：NaN 会被 JSON.stringify 固化为 null，读档后灵石一格空白。
-      // 与 loadState 兜底、applyOps 归零三层配合，确保存档里的 stone 永远是有限数字。
-      if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
+      // 与 loadState 兜底、applyOps 三层配合，确保存档里的 stone 永远是有限数字（脏值补偿为 1000）。
+      repairStone(s);
     }
     try { localStorage.setItem(slotKey(slot), JSON.stringify(s)); } catch (e) {}
     if (slot != null) { try { localStorage.setItem(LS_SAVE, JSON.stringify(s)); } catch (e) {} }
@@ -545,6 +568,7 @@ const Engine = (function () {
       duantiEff: 0, duantiShenEff: 0, duantiMax: 0, craftEff: 0,
       farmEff: 0, mineEff: 0, stoneYearPct: 0,
       doubleCult: 0, doubleDmg: 0,
+      daoCritMul: 0, shenAtkMul: 0, lingMpMul: 0, dunSpdMul: 0,
       cultTwice: false,
       modeBonus: { normal: 0, focus: 0, seclusion: 0 },
       craftKind: {}
@@ -553,7 +577,7 @@ const Engine = (function () {
       const a = ARTIFACTS[id];
       if (!a || !a.effect) return;
       const e = a.effect;
-      ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiShenEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct', 'atkSpd', 'doubleCult', 'doubleDmg'].forEach(function (k) {
+      ['wu', 'ti', 'dun', 'shen', 'dao', 'ling', 'atk', 'hpMax', 'def', 'critPct', 'dodgePct', 'defPct', 'atkPct', 'cult', 'stealPct', 'defToAtk', 'tiHpBonus', 'duantiEff', 'duantiShenEff', 'duantiMax', 'craftEff', 'farmEff', 'mineEff', 'stoneYearPct', 'atkSpd', 'doubleCult', 'doubleDmg', 'daoCritMul', 'shenAtkMul', 'lingMpMul', 'dunSpdMul'].forEach(function (k) {
         if (e[k]) st[k] += e[k];
       });
       if (e.modeBonus) {
@@ -617,7 +641,7 @@ const Engine = (function () {
     m += s.hpMaxBonus || 0;
     m += equipStats(s).hpMax;
     m += artifactStats(s).hpMax;
-    m += getXinfaHpMax(s);   // 当前装备心法的固定气血（玄天门系：护山心经/天罡心法/玄武真经）
+    m += getXinfaHpMax(s);   // 当前装备心法的固定气血（玄天宗系：护山心经/天罡心法/玄武真经）
     m = Math.round(m * (1 + getXinfaHpMul(s)));   // 木系五行心法：气血上限 %（qingmu/changchun/yimu/qinglong）
     // 装备「血量上限 %」词条
     m = Math.round(m * (1 + (equipStats(s).hpPct || 0) / 100));
@@ -633,7 +657,7 @@ const Engine = (function () {
   }
   function calcAtk(s) {
     let a = 10 + bigIdxOf(s) * 15;
-    a += effAttr(s, 'shen') * 5; // 神识挂钩攻击：1点+5攻击
+    a += effAttr(s, 'shen') * 5 * (1 + (artifactStats(s).shenAtkMul || 0)); // 神识挂钩攻击：1点+5攻击；焚神残剑在此基础上×1.5
     a += effAttr(s, 'ling') * 5; // 灵力挂钩攻击：1点+5攻击（灵力同时关系灵力条上限）
     if (s.talents.indexOf('kejian') >= 0) a *= 1.2;
     const eff = linggenTrait(s);
@@ -744,7 +768,7 @@ const Engine = (function () {
   /* ---------------- 属性基础 ---------------- */
   function calcMpMax(s) {
     // 灵力条上限（统一口径）：灵力=1 时 20，此后每点 +20 → mpMax = 20 + (灵-1)×20
-    let m = 20 + Math.max(0, effAttr(s, 'ling') - 1) * 20;
+    let m = 20 + Math.max(0, effAttr(s, 'ling') - 1) * 20 * (1 + (artifactStats(s).lingMpMul || 0)); // 灵力转法力上限：灵海池令每点灵力转化量×1.5（常量 20 不动）
     const eff = linggenTrait(s);
     if (eff && eff.mpMax) m += eff.mpMax;
     m = Math.round(m * (1 + (equipStats(s).mpPct || 0) / 100));
@@ -924,9 +948,9 @@ const Engine = (function () {
   function getXinfaAtkMul(s) { const t = xinfaCur(s); return (t && t.atkMul) || 0; }
   /* 心法法术伤害加成（太虚剑典 spellMul 0.10 / 剑魂心经 0.05） */
   function getXinfaSpellMul(s) { const t = xinfaCur(s); return (t && t.spellMul) || 0; }
-  /* 心法常驻减伤（玄天门系 guard：玄天心法 5% … 玄武真经 20%），与护盾 buff 同通道累加 */
+  /* 心法常驻减伤（玄天宗系 guard：玄天心法 5% … 玄武真经 20%），与护盾 buff 同通道累加 */
   function getXinfaGuard(s) { const t = xinfaCur(s); return (t && t.guard) || 0; }
-  /* 心法固定气血（玄天门系 hpMax：护山心经 +50 / 天罡心法 +100 / 玄武真经 +150） */
+  /* 心法固定气血（玄天宗系 hpMax：护山心经 +50 / 天罡心法 +100 / 玄武真经 +150） */
   function getXinfaHpMax(s) { const t = xinfaCur(s); return (t && t.hpMax) || 0; }
   /* 心法减伤（玄武真经 reduceDmg 0.05）：当前装备心法提供的百分比减伤 */
   function getXinfaReduceDmg(s) { const t = xinfaCur(s); return (t && t.reduceDmg) || 0; }
@@ -937,9 +961,9 @@ const Engine = (function () {
     if (kind === '丹' && t.sect === 'dpxia') return t.craftTimeReduce;
     return 0;
   }
-  /* 心法常驻额外效果（五行心法 / 青云剑宗攻速 / 玄天门反伤 等本轮新增字段） */
+  /* 心法常驻额外效果（五行心法 / 青云剑宗攻速 / 玄天宗反伤 等本轮新增字段） */
   function getXinfaAtkSpd(s) { const t = xinfaCur(s); return (t && t.atkSpd) || 0; }   // 攻速（青云剑宗系，百分点→几率额外攻击一次）
-  function getXinfaThorns(s) { const t = xinfaCur(s); return (t && t.thorns) || 0; }    // 反伤（玄天门系，受伤反弹比例）
+  function getXinfaThorns(s) { const t = xinfaCur(s); return (t && t.thorns) || 0; }    // 反伤（玄天宗系，受伤反弹比例）
   function getXinfaCritPct(s) { const t = xinfaCur(s); return (t && t.critPct) || 0; }  // 暴击率（金系五行心法）
   function getXinfaMpMul(s) { const t = xinfaCur(s); return (t && t.mpMul) || 0; }      // 法力上限%（水系五行心法）
   function getXinfaHpMul(s) { const t = xinfaCur(s); return (t && t.hpMul) || 0; }      // 气血上限%（木系五行心法）
@@ -948,11 +972,11 @@ const Engine = (function () {
   /* 有效六维 = 基础值 + 命格属性加成 + 法宝六维加成 */
   function effAttr(s, k) { return (s[k] || 0) + getDestinyAttrBonus(s, k) + ((s.artAttr && s.artAttr[k]) || 0); }
   /* 暴击率：神识×1%（×天眼通 shenMul）×命格 + 道心×2% + 装备 + 法宝 */
-  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100 + getXinfaCritPct(s); }
+  function getCritRate(s) { return effAttr(s, 'shen') * 0.01 * (talentApply(s, 'shenMul') || 1) + effAttr(s, 'dao') * 0.02 * (1 + (artifactStats(s).daoCritMul || 0)) + getDestinyBonus(s, 'critRate') + (s.critPct || 0) + artifactStats(s).critPct + (equipStats(s).critPct || 0) / 100 + getXinfaCritPct(s); }
   /* 闪避率：遁速×2%（×风驰电掣 dunMul）+ 命格闪避 + 法宝 */
   function getDodgeRate(s) { return effAttr(s, 'dun') * 0.02 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'dodgeRate') + (s.dodgePct || 0) + artifactStats(s).dodgePct; }
   /* 攻速（几率额外攻击一次）：遁速×1%（×dunMul）+ 命格额外攻击 + 装备攻速 + 疾风连击 doubleHit */
-  function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + getXinfaAtkSpd(s) + talentApply(s, 'doubleHit'); }
+  function getExtraAtkChance(s) { return effAttr(s, 'dun') * 0.01 * (talentApply(s, 'dunMul') || 1) * (1 + (artifactStats(s).dunSpdMul || 0)) + getDestinyBonus(s, 'extraAttack') + (equipStats(s).atkSpd || 0) / 100 + (artifactStats(s).atkSpd || 0) / 100 + getXinfaAtkSpd(s) + talentApply(s, 'doubleHit'); }
   /* 回复（吸血）：体魄×1% + 命格 recoverPct（回复）+ 命格 lifesteal（吸血）+ 装备回复词条
      ⚠ 下限 0：仙命【九天玄体】起首次引入**负体魄**（ti-1）。开局六维恒为 1，故当下 effAttr(ti)≥0、
        结果非负；但一旦再出现第二个「减体魄」来源（剧情/新命格），负值会让吸血变成**自残**
@@ -1155,8 +1179,9 @@ const Engine = (function () {
         case 'hp': s.hp += v; out.push('气血 ' + (v > 0 ? '+' : '') + v); break;
         case 'stone': {
           let sv = v;
-          // 坏值先归零（2026-09-23）：s.stone 为 null/undefined 时直接 += 会得到 NaN/null，文案却报「灵石 +50」
-          if (!Number.isFinite(s.stone)) s.stone = Number(s.stone) || 0;
+          // 坏值先修复（2026-09-23）：s.stone 为 null/undefined 时直接 += 会得到 NaN/null，文案却报「灵石 +50」
+          // 线上被旧 BUG 污染的档（null）在此补偿为 1000，而非归零。
+          repairStone(s);
           if (s.talents.indexOf('fuyuan') >= 0 && sv > 0) sv = Math.round(sv * 1.10);
           s.stone += sv;
           out.push('灵石 ' + (sv > 0 ? '+' : '') + sv);
@@ -1393,6 +1418,10 @@ const Engine = (function () {
     if (e.daoAtkPct) p.push('每点道心攻击' + pct(e.daoAtkPct) + '(上限' + pct(e.daoCap || 0.30) + ')');
     if (e.lowHpAtk) p.push('血越低攻击越高(上限' + pct(e.lowCap || 0.40) + ')');
     if (e.defToAtk) p.push('防御×' + e.defToAtk + '转攻击');
+    if (e.daoCritMul) p.push('道心转暴击' + pct(e.daoCritMul));
+    if (e.shenAtkMul) p.push('神识转攻击' + pct(e.shenAtkMul));
+    if (e.lingMpMul) p.push('灵力转法力上限' + pct(e.lingMpMul));
+    if (e.dunSpdMul) p.push('遁速转攻速' + pct(e.dunSpdMul));
     if (e.scale) p.push('每' + e.scale.per + e.scale.res + '，' + (e.scale.stat === 'defPct' ? '防御' : '攻击') + pct(e.scale.perPoint) + '(上限' + pct(e.scale.cap || 1) + ')');
     if (a.stack) p.push('每击杀1敌+' + a.stack.per + '(上限+' + a.stack.cap + ')');
     return p.join('、');
@@ -2235,7 +2264,7 @@ const Engine = (function () {
           b.hp = Math.min(b.hpMax, b.hp + hl);
           out.push('魔化吸血，『' + b.name + '』气血 +' + hl + '。');
         }
-        // 反伤效果（玩家天赋 + 心法：玄天门系 thorns）
+        // 反伤效果（玩家天赋 + 心法：玄天宗系 thorns）
         const thorns = getDestinyBonus(s, 'thorns') + getXinfaThorns(s);
         if (thorns > 0) {
           const thornDmg = Math.round(d * thorns);
@@ -3620,7 +3649,35 @@ const Engine = (function () {
     return stock;
   }
   function biOfSafe(s) { return bigIdxOf(s); }
+
+  /* 流动商贩货架 · 每年一换（2026-09-23 新增）
+   *   旧逻辑：每次打开商店、乃至每次「购买」都会重新调用 shopStock()（内含大量 Math.random），
+   *   玩家端表现是「买一件，货架就换了」（用户反馈：「购买的时候商店自动刷新了」），
+   *   刚买的货品立刻从货架上消失、已售标记也丢失，无法继续在同一把货里挑。
+   *   现按年份把货架缓存进存档 s.shop.stock：年内（含已售标记）保持不变，跨年后年份不匹配才重新进货。
+   *   ⚠ 秘境内的「荒野坊市」不适用本缓存——它的货架随节点由 advResolve 一次性生成，
+   *     故该分支仍直接调用无缓存的 shopStock()，保持「一节点一货架」的原设计。 */
+  function shopStockYearly(s) {
+    const y = s.year || 1;
+    const cached = s.shop && Array.isArray(s.shop.stock) ? s.shop.stock : null;
+    if (s.shop && s.shop.year === y && cached && cached.length) {
+      // 脏数据防御：缓存项缺 price 会让 buyStock 算出 NaN 灵石（见 buyStock 顶部守卫），发现即整架重掷
+      const dirty = cached.some(function (it) { return !it || typeof it !== 'object' || !Number.isFinite(it.price); });
+      if (!dirty) return cached;
+    }
+    s.shop = { year: y, stock: shopStock(s) };
+    saveState(s);
+    return s.shop.stock;
+  }
   function buyStock(s, si) {
+    // 入参守卫（2026-09-23）：曾出现调用方误把「数组下标」当商品对象传入
+    // （ui.js 游历·流动商贩旧写法 `buyStock(S, +b.getAttribute('data-i'))`）。
+    // 下标是 number，`si.price` 为 undefined → `s.stone -= undefined` → 灵石变 NaN 且商品拿不到，
+    // 全程无报错、只留一行 undefined 日志，极难排查。此处直接拦下，杜绝脏价格进入灵石结算。
+    if (!si || typeof si !== 'object' || !Number.isFinite(si.price) || si.price < 0) {
+      return { ok: false, msg: '货品信息异常，未能成交。' };
+    }
+    repairStone(s);   // 灵石脏值兜底（与 loadState/saveState/applyOps 同一防线，脏值补偿 1000）
     if (si.sold) return { ok: false, msg: '此物已被买走。' };
     if (si.art && ownsArt(s, si.art)) return { ok: false, msg: '此法宝已在囊中，无须重金再购。' };
     if (s.stone < si.price) return { ok: false, msg: '灵石不足。' };
@@ -4143,7 +4200,7 @@ const Engine = (function () {
       + talentApply(s, 'trib')
       + getDestinyBonus(s, 'tribBonus')
       + ((s.talents && s.talents.indexOf('dujie') >= 0) ? 0.1 : 0)  // 旧档遗留命格「天劫不侵」（现版 TALENTS 已无此 id，仅兼容老存档）
-      + (s.sect === 'xuantian' ? 0.05 : 0)                          // 玄天门师门护持
+      + (s.sect === 'xuantian' ? 0.05 : 0)                          // 玄天宗师门护持
       + effAttr(s, 'dao') * 0.01;
     if (!nxt) {
       // 元婴后期（境界表最后一段）→ 飞升天劫
@@ -5861,7 +5918,8 @@ const Engine = (function () {
     grantEquipChecked: grantEquipChecked,
     isXianAdventureAvailable: isXianAdventureAvailable,
     advUnlocked: advUnlocked, markAdvClear: markAdvClear, advNextOf: advNextOf,
-    shopStock: shopStock, buyStock: buyStock, sellMaterial: sellMaterial,
+    shopStock: shopStock, shopStockYearly: shopStockYearly, buyStock: buyStock, sellMaterial: sellMaterial,
+    repairStone: repairStone, STONE_DIRTY_FALLBACK: STONE_DIRTY_FALLBACK,
     startCraft: startCraft, accelerateCraft: accelerateCraft,
     giveGift: giveGift, talkNpc: talkNpc, drawXianyuan: drawXianyuan, seekNpcXianyuan: seekNpcXianyuan,
     npcUnlocked: npcUnlocked, favorOf: favorOf, favorTier: favorTier,

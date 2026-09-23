@@ -125,7 +125,7 @@ const TECHNIQUES = {
   dx_xinfa2: { name: '火灵心经', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'dpxia', atkMul: 0.05, desc: '丹火通灵，威力初显。' },
   dx_xinfa3: { name: '丹道真解', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'dpxia', atkMul: 0.10, craftTimeReduce: 1, desc: '丹道大成，炼丹如神。' },
   dx_xinfa4: { name: '九转丹典', cls: 'xinfa', grade: '天', mult: 2.30, sect: 'dpxia', atkMul: 0.15, craftTimeReduce: 1, desc: '九转金丹，道法自然。' },
-  // --- 宗门心法：玄天门 ---
+  // --- 宗门心法：玄天宗 ---
   xt_xinfa1: { name: '玄天心法', cls: 'xinfa', grade: '黄', mult: 1.20, sect: 'xuantian', guard: 0.05, desc: '阵法护体，初入门墙。' },
   xt_xinfa2: { name: '护山心经', cls: 'xinfa', grade: '玄', mult: 1.50, sect: 'xuantian', guard: 0.10, hpMax: 50, thorns: 0.05, desc: '护山大阵，固若金汤，反伤 5%。' },
   xt_xinfa3: { name: '天罡心法', cls: 'xinfa', grade: '地', mult: 1.80, sect: 'xuantian', guard: 0.15, hpMax: 100, thorns: 0.10, desc: '天罡正气，万邪不侵，反伤 10%。' },
@@ -203,7 +203,7 @@ const TECHNIQUES = {
   lianhuo:   { name: '炼火真诀', cls: 'shufa', grade: '玄', element: '火', sect: 'dpxia', dmg: 3.0, cost: 75, buff: { atkUp: 10, duration: 3 }, dotBurn: 1, desc: '炼火真诀，攻伐加护，并点燃敌身（灼烧叠 1 层）。' },
   jiuzhuan:  { name: '九转丹火', cls: 'shufa', grade: '地', element: '火', sect: 'dpxia', dmg: 4.0, cost: 115, dotBurn: 2, heal: 0.10, desc: '九转丹火，灼烧强化（叠 2 层），并治愈自身 10% 气血。' },
   honglian:  { name: '红莲丹劫', cls: 'shufa', grade: '天', element: '火', sect: 'dpxia', dmg: 4.5, cost: 175, dotBurn: 3, desc: '红莲业火，灼烧九幽（叠 3 层，上限 8）。' },
-  // 玄天门（土 / 阵守）
+  // 玄天宗（土 / 阵守）
   yanci:     { name: '岩刺诀',   cls: 'shufa', grade: '黄', element: '土', sect: 'xuantian', dmg: 2.0, cost: 40, stun: 0.15, desc: '岩刺破土，敌身形一滞（15% 眩晕）。' },
   fumo:      { name: '缚魔阵',   cls: 'shufa', grade: '玄', element: '土', sect: 'xuantian', dmg: 3.0, cost: 75, debuff: { atkDown: 15, duration: 3 }, stun: 0.20, desc: '缚魔大阵，压制敌势（攻击 -15%），并有几率定身（20% 眩晕）。' },
   tiangang_zhen: { name: '天罡镇压', cls: 'shufa', grade: '地', element: '土', sect: 'xuantian', dmg: 4.0, cost: 115, stun: 0.60, desc: '天罡镇压，敌动弹不得（60% 眩晕）。' },
@@ -224,7 +224,7 @@ const TECHNIQUES = {
   dx_dun2:   { name: '烟火遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'dpxia', desc: '烟雾弥漫，遁入无形。' },
   dx_dun3:   { name: '丹火遁',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'dpxia', desc: '丹火护体，浴火而遁。' },
   dx_dun4:   { name: '浴火遁',   cls: 'dunshu', grade: '天', flee: 1.00, guard: 0.20, sect: 'dpxia', desc: '浴火重生，焚身遁形。' },
-  // --- 玄天门遁术 ---
+  // --- 玄天宗遁术 ---
   xt_dun1:   { name: '土遁术',   cls: 'dunshu', grade: '黄', flee: 0.40, sect: 'xuantian', desc: '借土遁形，遁地无形。' },
   xt_dun2:   { name: '石壁遁',   cls: 'dunshu', grade: '玄', flee: 0.60, guard: 0.10, sect: 'xuantian', desc: '石壁护身，固若金汤。' },
   xt_dun3:   { name: '阵遁术',   cls: 'dunshu', grade: '地', flee: 0.80, guard: 0.15, sect: 'xuantian', desc: '阵法传送，瞬息千里。' },
@@ -258,7 +258,7 @@ const ARTIFACTS = {
   zhoutian_xingpan: { name: '周天星盘', type: '辅', grade: '地', desc: '星落谷深处仍在缓缓转动的星盘，周天星力倒灌。', effect: { wu: 1 } },
   huixin_jian:     { name: '清净明心剑', type: '辅', grade: '天', desc: '山中隐士暗层抽出的无鞘斑驳旧剑：「心明，则剑利。」', effect: { daoAtkPct: 0.005, daoCap: 0.30 } },
   /* —— B 战力类（9） —— */
-  zhanxian_feidao: { name: '斩仙飞刀', type: '攻', grade: '天', desc: '插在仙人喉头三寸的小刀，人散千年刀犹鸣。', effect: { atkPct: 0.05 } },
+  zhanxian_feidao: { name: '斩仙飞刀', type: '攻', grade: '天', desc: '插在仙人喉头三寸的小刀，人散千年刀犹鸣。', effect: { atkPct: 0.10 } },
   bumie_jinshen:   { name: '不灭金身', type: '守', grade: '仙', desc: '山巅罡风淬硬的肉身，伤痕里凝着万法不侵的意。', effect: { hpMax: 200, def: 5 } },
   shixue_zhu:      { name: '嗜血珠',   type: '攻', grade: '地', desc: '魔修以精血祭炼的血珠，杀机越盛锋芒越利。', effect: { atk: 15 }, stack: { on: 'kill', stat: 'atk', per: 1, cap: 20 } },
   yuzhi_motong:    { name: '预知魔瞳', type: '辅', grade: '天', desc: '浮空岛观星台嵌着的干涸眼珠，盯着你也在看你。', effect: { critPct: 0.10 } },
@@ -270,7 +270,7 @@ const ARTIFACTS = {
   /* —— C 修炼速度类（3） —— */
   juling_art:      { name: '聚灵珠',     type: '辅', grade: '地', desc: '老乞丐仙风道骨所赠：「当年那顿烧鸡，今日来还。」灵珠悬顶，天地灵气自聚。', effect: { cult: 0.05 } },
   daolv_tongxin_pei: { name: '道侣同心佩', type: '辅', grade: '地', desc: '林婉儿所赠半环玉佩：「我不在时，它替我陪你修炼。」', effect: { cult: 0.10 } },
-  changsheng_yusui: { name: '长生玉髓', type: '辅', grade: '仙', desc: '西王母桃核所化温润玉髓：「贪心的人，倒比聪明的人走得远。」', effect: { cult: 0.05 } },
+  changsheng_yusui: { name: '长生玉髓', type: '辅', grade: '仙', desc: '西王母桃核所化温润玉髓：「贪心的人，倒比聪明的人走得远。」', effect: { cult: 0.20 } },
   /* —— D 不同程度修炼类（3） —— */
   jingshi_yupai:   { name: '静室玉牌', type: '辅', grade: '玄', desc: '闭关修炼 +10%。宗门所发：「闭关时挂上它，杂念会少些。」刻着「静心」二字。', effect: { modeBonus: { seclusion: 0.10 } } },
   wuchen_putuan:   { name: '无尘蒲团', type: '辅', grade: '地', desc: '古刹老僧所推之蒲团：「坐的是一个空，去空一空。」', effect: { modeBonus: { seclusion: 0.20 } } },
@@ -283,7 +283,7 @@ const ARTIFACTS = {
   /* —— E 百艺经验类 + F 时间/资源缩放类 → 游历商人（9） —— */
   shennong_chu:    { name: '神农锄',   type: '辅', grade: '玄', desc: '万年药园刨出的锈锄，撒把草籽都能长出灵药。', effect: { farmEff: 0.30 } },
   xunkuang_luopan: { name: '寻矿罗盘', type: '辅', grade: '玄', desc: '认矿不认人的罗盘，滴血便指地脉最肥处。', effect: { mineEff: 0.30 } },
-  jubao_pen:       { name: '聚宝盆',   type: '辅', grade: '玄', desc: '放一枚进去，它非得再添半枚的奇盆。', effect: { stoneYearPct: 0.05 } },
+  jubao_pen:       { name: '聚宝盆',   type: '辅', grade: '天', desc: '放一枚进去，它非得再添半枚的奇盆。', effect: { stoneYearPct: 0.05 } },
   dandao_chuancheng: { name: '丹道传承', type: '辅', grade: '地', desc: '丹霞谷流出的丹经，抄的人死了字还活着。', effect: { craftKind: { alchemy: 1 } } },
   jiangshan_chui:  { name: '匠神锤',   type: '辅', grade: '地', desc: '悬在担侧的小锤，不认的人抡都抡不动。', effect: { craftKind: { forge: 1 } } },
   baiyi_tianshu:   { name: '百艺天书', type: '辅', grade: '天', desc: '吞了太多别的纸的薄书，灵田丹器诸艺皆清几分。', effect: { craftEff: 0.20 } },
@@ -297,7 +297,7 @@ const ARTIFACTS = {
      2026-09-14 迁至此处：由 advBossBonus 按 grade 落入对应阶位秘境随机池
      （每层最多 3 件普通法宝；黄→黄级秘境、玄→黄/玄级、地→玄/地级）。 —— */
   gutang_pinganpai:  { name: '古檀平安牌', type: '守', grade: '黄', desc: '老檀木所刻，讨个吉利。', effect: { hpMax: 15 } },
-  zhenhun_moyu:      { name: '镇魂墨玉',   type: '守', grade: '玄', desc: '墨玉一枚，静心凝神。',   effect: { hpMax: 40, atk: 16 } },
+  zhenhun_moyu:      { name: '镇魂墨玉',   type: '守', grade: '玄', desc: '墨玉一枚，镇魂凝神，道心所注皆成杀机。', effect: { daoCritMul: 0.5 } },
   jingang_xiangmoyin:{ name: '金刚降魔印', type: '攻', grade: '地', desc: '万佛铸印，降魔护身。',   effect: { hpMax: 90, atk: 26, wu: 1 } },
   /* —— I 灵物类法宝（4）—— 秘境专属：BOSS「秘藏二选一」的选项一 + 深探掉落。
      旧版灵物是独立道具（只能完美突破、不显示在法宝栏），现本质改为法宝：
@@ -306,7 +306,14 @@ const ARTIFACTS = {
   shangpin_lingjing: { name: '上品灵晶', type: '灵', grade: '黄', spirit: true, desc: '【灵物】秘藏灵物·蕴含纯净灵气的晶石，贴身而温，气血自壮。', effect: { hpMax: 100 } },
   shangpin_yaodan:   { name: '上品妖丹', type: '灵', grade: '玄', spirit: true, desc: '【灵物】秘藏灵物·千年妖兽凝聚的内丹，妖力未散，生机沛然。', effect: { hpMax: 300 } },
   dongxu_micui:      { name: '洞虚秘淬', type: '灵', grade: '地', spirit: true, desc: '【灵物】秘藏灵物·洞天深处孕育的神秘液体，含而未发，静中生灵。', effect: { doubleCult: 0.3 } },
-  mohex_suibian:     { name: '魔核碎片', type: '灵', grade: '天', spirit: true, desc: '【灵物】秘藏灵物·魔祖核心碎裂的碎片，杀机犹在，出手见血。', effect: { doubleDmg: 0.5 } }
+  mohex_suibian:     { name: '魔核碎片', type: '灵', grade: '天', spirit: true, desc: '【灵物】秘藏灵物·魔祖核心碎裂的碎片，杀机犹在，出手见血。', effect: { doubleDmg: 0.5 } },
+  /* —— K 转系数类新法宝（3）→ 秘境 BOSS 随机掉落（与既有法宝同口径，自动入池） ——
+     效果语义：在「源属性 → 目标属性」的基础换算公式上 ×(1+系数)（即 +50%）。
+     焚神残剑(玄)神识转攻击 / 灵海池(天)灵力转法力上限 / 纷飞桃花(玄)遁速转攻速。
+     引擎结算点：calcAtk / calcMpMax / getExtraAtkChance；描述生成：artEffectText。 —— */
+  fenshen_can:    { name: '焚神残剑', type: '攻', grade: '玄', desc: '残剑一缕焚神之火，神识所及皆成锋芒。', effect: { shenAtkMul: 0.5 } },
+  linghai_chi:    { name: '灵海池',   type: '辅', grade: '天', desc: '一方灵海凝池，灵力化潮，法力自盈。', effect: { lingMpMul: 0.5 } },
+  fenfei_taohua:  { name: '纷飞桃花', type: '辅', grade: '玄', desc: '桃花纷飞处，步履生风，出手更疾。', effect: { dunSpdMul: 0.5 } }
 };
 
 /* ---------------- 秘境BOSS 法宝掉落分层 ----------------
@@ -613,7 +620,7 @@ function findBackground(id) {
 const SECTS = {
   qingyunjian: { name: '青云剑宗', desc: '剑修云集，剑气纵横三千里。' , effect: { atkMul: 0.10 }, perk: '每十载宗门大比，胜者得灵石' },
   dpxia:      { name: '丹霞谷',   desc: '以丹入道，谷中灵田千顷。' ,    effect: { alchemyMul: 0.20 }, perk: '每十载分得灵丹十枚' },
-  xuantian:   { name: '玄天门',   desc: '重守御，善阵法，护山罩如金钟。', effect: { cultMul: 0.10, hpMax: 100 }, perk: '师门阵法定你心，修炼有加护' }
+  xuantian:   { name: '玄天宗',   desc: '重守御，善阵法，护山罩如金钟。', effect: { cultMul: 0.10, hpMax: 100 }, perk: '师门阵法定你心，修炼有加护' }
 };
 
 /* ---------------- 渡劫文案 ---------------- */
@@ -874,12 +881,14 @@ const MAINLINE = [
   { id: 'ml_2_0', idx: 2, title: '仙门收徒', chapter: true, noSect: true,
     lines: [
       '你修行多年，灵气渐凝，已近炼气之巅，离筑基不过一步之遥。',
-      '这一日山道上人流如织——竟是青云剑宗、丹霞谷、玄天门三座仙门同开收徒大典，各立碑石，广纳有缘。',
+      '这一日山道上人流如织——竟是青云剑宗、丹霞谷、玄天宗三座仙门同开收徒大典，各立碑石，广纳有缘。',
       '碑前立着规矩：「凡入我门者，必先过【入宗考验】——武骨（悟性）、道心、实战三关，验得方录为正式弟子。不考验者，纵是天才亦不得入门。」',
       '你望着三碑，心中了然：这仙门，须凭本事叩开。'
     ],
     choices: [
-      { t: '赴仙门应考', effect: {}, lines: ['你整了整衣冠，朝仙门行去。执事弟子迎上前：「可是来应考的？随我来。」（于底部栏【宗门】择一仙门，过入宗考验。）'] },
+      // tutorial：选项级引导标记（2026-09-23）。选「赴考」才弹「仙门赶考」聚光灯指向【宗门】；
+      // 选「婉拒」不弹——那时玩家自己说了要再游几年。由 ui.js choose() 收集、playMainlineChain 的 done() 触发。
+      { t: '赴仙门应考', effect: {}, tutorial: 'exam', lines: ['你整了整衣冠，朝仙门行去。执事弟子迎上前：「可是来应考的？随我来。」（于行动栏【宗门】择一仙门，过入宗考验。）'] },
       { t: '再游历几年（婉拒）', effect: { stone: 50 }, lines: ['你稽首告退。仙门碑石高耸，你却想再多走几年人间——反正规矩在那，随时可考。'] }
     ] },
   // 与 ml_2_0 共用同一检测点：needSect（须已入宗）+ afterSectYear（**入宗后的下一年**才播）
@@ -2796,8 +2805,8 @@ const SECT_EVENTS = {
   xuantian: [
     { id: 'xt_shanmen', title: '玄天·入门壮行', chapter: true, weight: 8, min: 0, max: 0, once: true,
       lines: [
-        '玄天门山门立在万丈罡风崖上，石阶每一级都比人还高。',
-        '"入我玄天门，先过三关：一步一叩，风淬骨，雷洗澡。"守门长老的声音像洪钟。',
+        '玄天宗山门立在万丈罡风崖上，石阶每一级都比人还高。',
+        '"入我玄天宗，先过三关：一步一叩，风淬骨，雷洗澡。"守门长老的声音像洪钟。',
         '山上传来师兄们的呼喝声，正是暮课演法。'
       ],
       choices: [
@@ -2817,7 +2826,7 @@ const SECT_EVENTS = {
     { id: 'xt_gangfeng', title: '玄天·罡风淬体', chapter: true, weight: 6, min: 1, max: 3, once: true,
       lines: [
         '罡风崖的风，能把石笋削成针。',
-        '凡谷修士都不敢在此久留，玄天门却把每一名弟子都扔进来"洗"一遍。',
+        '凡谷修士都不敢在此久留，玄天宗却把每一名弟子都扔进来"洗"一遍。',
         '你盘坐崖口，风刃如刀，一刀刀削去你的浮躁。'
       ],
       choices: [
@@ -2826,8 +2835,8 @@ const SECT_EVENTS = {
       ] },
     { id: 'xt_leichi', title: '玄天·雷池淬体', chapter: true, weight: 5, min: 2, max: 3, once: true,
       lines: [
-        '玄天门的雷池，是老祖用一截九天落雷引来的。',
-        '池中雷光如蛇，凡人近身即灰飞烟灭。而玄天门的规矩是——要么下水，要么下山。',
+        '玄天宗的雷池，是老祖用一截九天落雷引来的。',
+        '池中雷光如蛇，凡人近身即灰飞烟灭。而玄天宗的规矩是——要么下水，要么下山。',
         '你深吸一口气，一步踏入雷池。'
       ],
       choices: [
@@ -2838,7 +2847,7 @@ const SECT_EVENTS = {
       ] },
     { id: 'xt_zhenshou', title: '玄天·天关镇守', chapter: true, weight: 5, min: 2, max: 3, once: true,
       lines: [
-        '北境天关告急，黑潮初现。玄天门受命镇守天门关。',
+        '北境天关告急，黑潮初现。玄天宗受命镇守天门关。',
         '你随军行至关下，看见关墙上密密麻麻的旧剑痕与名字——那是历代守关人的遗愿。',
         '守关的老将军拍了拍你的肩："站稳了，小道士。关在，人在。"'
       ],
@@ -2939,10 +2948,10 @@ const ACHIEVEMENTS = {
   mingbo:      { cat:'收集', name:'命格博览',  desc:'集齐全部四十六个命格。', pts:15 },
   chu_fabao:   { cat:'收集', name:'初得法宝',  desc:'拥有第一件法宝。', pts:1 },
   fabao_cang:  { cat:'收集', name:'法宝收藏',  desc:'拥有十五件法宝。', pts:3 },
-  // ⚠ 文案里的「四十七 / 四十六 / 四 / 五 / 四」等**总数**必须与数据表一致 ——
-  //   ARTIFACTS 47 件（其中仙阶 4、灵物 4）、DESTINIES 46 个、秘境 5 处（常规 4）。
+  // ⚠ 文案里的「五十 / 四十六 / 四 / 五 / 四」等**总数**必须与数据表一致 ——
+  //   ARTIFACTS 50 件（其中仙阶 4、灵物 4）、DESTINIES 46 个、秘境 5 处（常规 4）。
   //   由 test/09-achievements.test.js「成就文案总数一致」用例动态守卫，改数据后文案必须同步。
-  fabao_da:    { cat:'收集', name:'法宝大成',  desc:'拥有全部四十七件法宝。', pts:10 },
+  fabao_da:    { cat:'收集', name:'法宝大成',  desc:'拥有全部五十件法宝。', pts:10 },
   xianqi:      { cat:'收集', name:'仙器临世',  desc:'拥有任一件仙阶法宝。', pts:3 },
   xianqi_man:  { cat:'收集', name:'仙器满堂',  desc:'拥有全部四件仙阶法宝。', pts:6 },
   chu_dao:     { cat:'收集', name:'初习道法',  desc:'习得第一部功法（心法/术法/遁术）。', pts:1 },
@@ -3631,13 +3640,13 @@ const SECT_COMBAT = {
       lines: ['宗门封印出现裂隙，魔物趁虚而入。你挺身而出，填补裂隙。'] },
     { id: 'xt_xm7', title: '降妖·天魔化身', min: 6, max: 8,
       enemy: { name: '天魔化身', line: '一尊虚幻的魔影凝聚成形，魔气冲天，连大阵都在颤抖。', atk: 130, hp: 580, loot: { stone: 420, iron: 15 }, techChance: 0.3 },
-      lines: ['天魔分出一缕化身侵入玄天门，宗门大阵全力运转。你被选为斩魔之人。'] },
+      lines: ['天魔分出一缕化身侵入玄天宗，宗门大阵全力运转。你被选为斩魔之人。'] },
     { id: 'xt_xm8', title: '降妖·阴兵过境', min: 6, max: 8,
       enemy: { name: '阴兵将领', line: '一名身披黑甲的阴将立于万军之前，手中长戟泛着幽光。', atk: 120, hp: 700, loot: { stone: 380, iron: 12 }, equipChance: 0.3 },
       lines: ['阴兵过境，生人回避。你以法阵开路，正面迎击阴兵大军。'] },
     { id: 'xt_xm9', title: '降妖·域外天魔', min: 6, max: 8,
       enemy: { name: '域外天魔', line: '一道漆黑的裂缝撕开天幕，一只不可名状的巨眼从中窥视。', atk: 140, hp: 650, loot: { stone: 500, iron: 20 }, techChance: 0.4 },
-      lines: ['域外天魔撕裂虚空入侵，玄天门全员戒备。你以命为引，布下封魔大阵。'] }
+      lines: ['域外天魔撕裂虚空入侵，玄天宗全员戒备。你以命为引，布下封魔大阵。'] }
   ]
 };
 

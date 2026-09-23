@@ -40,6 +40,13 @@
       { target: 'btn-explore', title: '秘境 · 第 2 年开启',
         body: '第 2 年到了，秘境就此向你敞开！进入层层深入的秘境夺宝，是灵材法术与装备的主要来源。一年可进入一次，途中可随时在【静室】安全撤离（全收获）或右下角【强行撤离】保住一半收获。' }
     ],
+    // 仙门赶考（2026-09-23）：主线【仙门收徒】播完后立刻弹，聚光灯指向行动栏【宗门】。
+    // 与主线的挂载见 data.js 的 ml_2_0.tutorial / ui.js playMainlineChain 的 done()。
+    // 玩家点「结束引导」（或看完最后一步）→ finish() 写标记 → 永久不再提示。
+    exam: [
+      { target: 'btn-sect', goto: 'game', title: '仙门赶考 · 赴考之路',
+        body: '三座仙门同开收徒大典，就在眼前——点这里【宗门】择一门派赴考。\n\n入宗考验三关：武骨（悟性）、道心、实战。实战为硬门槛，败则今年不录，来年仍可再考，不必急于一时。' }
+    ],
     sect: [
       { target: 'btn-sect', goto: 'sect', title: '宗门 · 第 5 年接触',
         body: '第 5 年，是时候接触宗门了，先通过属性和战斗的入宗试炼，之后可以点这里接取宗门任务换取资源与声望；拜入宗门后还会开启【百艺】。' },
@@ -88,7 +95,12 @@
   }
 
   function buildList(stage) {
-    return (STAGES[stage] || []).slice();
+    const list = (STAGES[stage] || []).slice();
+    // 「仙门赶考」引导已播过 → 第 5 年宗门引导不再重复高亮宗门入口，只留百艺步
+    if (stage === 'sect' && done('exam')) {
+      return list.filter(function (st) { return st.target !== 'btn-sect'; });
+    }
+    return list;
   }
 
   function start(stage, force) {
@@ -189,7 +201,7 @@
   // _debugSteps：扁平化全部阶段步骤，供自动化测试校验步骤完整性
   var ALL = [];
   STAGES.title.forEach(function (s) { var o = {}; for (var k in s) o[k] = s[k]; o.group = 'title'; ALL.push(o); });
-  ['basics', 'secret', 'sect'].forEach(function (g) {
+  ['basics', 'secret', 'exam', 'sect'].forEach(function (g) {
     STAGES[g].forEach(function (s) { var o = {}; for (var k in s) o[k] = s[k]; o.group = 'game'; ALL.push(o); });
   });
 

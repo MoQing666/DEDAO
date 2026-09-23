@@ -280,10 +280,11 @@ module.exports = async function build() {
   S.case('法宝系统：47 件完整 & 全链路挂载 & 数值单位校验', (t) => {
     const ART = get('ARTIFACTS') || {};
     const ids = Object.keys(ART);
-    // 47 = 剧情26 + 商店13 + 山河1 + 灵物4 + 秘境掉落护身类3
-    //   （2026-09-13 灵物由独立道具改制成法宝；2026-09-14 古檀平安牌/镇魂墨玉/金刚降魔印
-    //     由 EQUIPS.treasure 迁入 —— 该槽不进秘境随机池，挂在那里玩家永远拿不到）
-    t.eq(ids.length, 47, `法宝应为 47 件（剧情26+商店13+山河1+灵物4+秘境3），实际 ${ids.length}`);
+    // 50 = 剧情26 + 商店13 + 山河1 + 灵物4 + 秘境掉落类6
+    //   （秘境掉落护身三宝 古檀平安牌/镇魂墨玉/金刚降魔印 + 2026-09-23 新增三件转系数法宝
+    //      焚神残剑/灵海池/纷飞桃花；2026-09-13 灵物由独立道具改制成法宝；
+    //      2026-09-14 古檀平安牌/镇魂墨玉/金刚降魔印由 EQUIPS.treasure 迁入）
+    t.eq(ids.length, 50, `法宝应为 50 件（剧情26+商店13+山河1+灵物4+秘境6），实际 ${ids.length}`);
     // 灵物类法宝：4 件，必须带 spirit:true（否则会被随机法宝池抽走）
     const spiritArts = ids.filter(id => ART[id].spirit);
     t.eq(spiritArts.length, 4, `灵物类法宝应为 4 件，实际 ${spiritArts.length}`);
@@ -307,7 +308,7 @@ module.exports = async function build() {
     if (left.length) t.fail(`EQUIPS.treasure 仍残留: ${left.join(', ')}（应迁至 ARTIFACTS 或删除）`);
     t.note(`秘境掉落护身三宝: ${advDrop.map(id => ART[id] && ART[id].name + '(' + ART[id].grade + ')').join(' / ')}`);
 
-    const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiShenEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale','atkSpd','doubleCult','doubleDmg'];
+    const effKeys = ['wu','ti','dun','shen','dao','ling','atk','hpMax','def','critPct','dodgePct','defPct','atkPct','cult','stealPct','defToAtk','tiHpBonus','duantiEff','duantiShenEff','duantiMax','craftEff','farmEff','mineEff','stoneYearPct','cultTwice','modeBonus','craftKind','daoAtkPct','lowHpAtk','scale','atkSpd','doubleCult','doubleDmg','daoCritMul','shenAtkMul','lingMpMul','dunSpdMul'];
     const pctFields = ['critPct','dodgePct','defPct','atkPct','cult','stealPct','daoAtkPct','craftEff','tiHpBonus','duantiEff','duantiShenEff','farmEff','mineEff','stoneYearPct','doubleCult','doubleDmg'];
     const noEffect = [], empty = [], badPct = [];
     for (const id of ids) {
@@ -423,6 +424,84 @@ module.exports = async function build() {
     t.ok(iStam > 0 && iRet > iStam, '「' + RET + '」应排在「养精蓄锐」之后（原「不再停留」的位置）');
     t.eq(code.split(RET).length - 1, 1, '「' + RET + '」应只出现一次（不得与旧按钮并存）');
     t.ok(code.indexOf("advFinish('撤离')") > 0, '静室撤离应走 advFinish(\'撤离\') —— 完整收货分支');
+  });
+
+  /* 守卫：商店购买必须以「商品对象」调用 buyStock（2026-09-23 用户实测 BUG）
+     旧写法 `Engine.buyStock(S, +b.getAttribute('data-i'))` 把下标（number）当商品传进引擎：
+     引擎里 si.price 为 undefined → `s.stone -= undefined` → 灵石变 NaN（截图即「灵石 NaN」），
+     商品还拿不到、只留一行 undefined 日志，玩家端表现「购买直接失败」。
+     本用例守调用形态；引擎侧入参守卫另在 02 用例守。 */
+  S.case('流动商贩购买：必须以商品对象调用 buyStock（禁止传下标 / 禁止读不存在的 msg）', (t) => {
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const at = code.indexOf('function travelShop');
+    t.ok(at > 0, '应存在 travelShop（游历·流动商贩）入口');
+    // 截取函数体：到下一个同缩进（两空格）的 function 声明为止
+    const nxt = code.indexOf('\n  function ', at + 10);
+    const body = code.slice(at, nxt > 0 ? nxt : at + 3000);
+    // ⚠ 注意：`log(r.msg, r.ok ? ...)` 在 ui.js 里是通用写法（多数引擎动作确实返回 msg），
+    //   只有商店这一处是错的 —— 所以断言必须收在 travelShop 函数体内，不能全局扫。
+    t.ok(!/buyStock\(\s*S\s*,\s*\+/.test(body),
+      '不得把 data-i 下标直接传给 buyStock（会把 si.price 读成 undefined → 灵石 NaN）');
+    t.ok(/stock\[\s*\+[^\]]*data-i[^\]]*\]/.test(body),
+      '应取 stock[+data-i] 得到商品对象后再传入 buyStock');
+    t.ok(body.indexOf('log(r.msg, r.ok') < 0,
+      '不得以 log(r.msg, r.ok ? ...) 输出购买结果 —— buyStock 成功路径只返回 lines/gains，msg 为 undefined');
+    t.ok(/r\.lines/.test(body), '成交结果应逐行输出 r.lines');
+    t.ok(/shopStockYearly/.test(body), '货架应走 Engine.shopStockYearly（每年一换），不再每次进店重掷');
+    const E = get('Engine');
+    t.eq(typeof E.shopStockYearly, 'function', '引擎应导出 shopStockYearly（货架每年一换）');
+  });
+
+  /* 守卫：仙门赶考引导（2026-09-23）
+     主线【仙门收徒】选「赴仙门应考」→ 剧情关闭后弹聚光灯指向行动栏【宗门】，可跳过且永久静默。
+     挂三点：data 选项带 tutorial / ui choose 收集 / playMainlineChain 的 done() 触发且与 onYear 互斥。 */
+  S.case('仙门赶考引导挂载：选项带 tutorial、choose 收集、剧情关闭后触发且与年份引导互斥', (t) => {
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    // ① 数据侧：赴考选项必须带 tutorial 标记，且【婉拒】选项不得带（玩家自己说再游几年，不该弹赴考）
+    const mlAt = dataJs.indexOf("id: 'ml_2_0'");
+    t.ok(mlAt > 0, '应存在主线 ml_2_0（仙门收徒）');
+    const mlBody = dataJs.slice(mlAt, mlAt + 1400);
+    // 注意：选项体内嵌 `effect: {}` 等花括号，不能用 [^}]* 截断，改用限长跨字符匹配
+    t.ok(/t:\s*'赴仙门应考'[\s\S]{0,200}?tutorial:\s*'exam'/.test(mlBody),
+      '「赴仙门应考」选项应带 tutorial:\'exam\'（赴考才引导）');
+    const dAt = mlBody.indexOf('再游历几年（婉拒）');
+    t.ok(dAt > 0 && !/tutorial/.test(mlBody.slice(dAt, dAt + 220)),
+      '「婉拒」选项不得带 tutorial（玩家自己说再游几年，不该劝人赴考）');
+    t.ok(mlBody.indexOf('底部栏【宗门】') < 0, '文案「底部栏【宗门】」已过时（宗门入口在行动栏），须为「行动栏【宗门】」');
+    // ② ui 侧：choose() 收集标记
+    const chAt = code.indexOf('function choose(c)');
+    t.ok(chAt > 0, '应存在 choose(c)（章节选项处理器）');
+    t.ok(/if\s*\(\s*c\.tutorial\s*\)\s*pendingTutorial\s*=\s*c\.tutorial/.test(code.slice(chAt, chAt + 400)),
+      'choose() 应收集 c.tutorial 到 pendingTutorial');
+    // ③ 触发点：在 playMainlineChain 的 done() 内，且与 onYear 互斥
+    const pmAt = code.indexOf('function playMainlineChain');
+    const pmBody = code.slice(pmAt, pmAt + 1200);
+    t.ok(/pendingTutorial[\s\S]{0,300}Tutorial\.start\(/.test(pmBody),
+      'playMainlineChain 应在剧情关闭后触发 pendingTutorial 引导');
+    t.ok(/started\s*=\s*!!window\.Tutorial\.start\(tg,\s*false\)/.test(pmBody),
+      '应以 start(stage, false) 触发（已看过则静默 → 永久不再提示）');
+    t.ok(/if\s*\(!started\)\s*window\.Tutorial\.onYear\(/.test(pmBody),
+      '引导与年份引导必须互斥，避免两次 start 互相覆盖');
+  });
+
+  /* 守卫：三个商人页（宗门商人 / 游历流动商贩 / 秘境荒野坊市）都必须展示当前灵石，
+     且一律走 Engine.repairStone —— 旧档脏值（null/NaN）须自愈为 1000，不得显示空白。 */
+  S.case('商人页灵石展示：宗门/游历/秘境三处均显示「灵石可用」且统一走 repairStone', (t) => {
+    const code = uiJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    const shops = [
+      { name: '宗门商人', at: code.indexOf('function sectDoShop') },
+      { name: '游历·流动商贩', at: code.indexOf('function travelShop') },
+      { name: '秘境·荒野坊市', at: code.indexOf('function advShop') }
+    ];
+    for (const sp of shops) {
+      t.ok(sp.at > 0, '应存在 ' + sp.name + ' 入口');
+      const body = code.slice(sp.at, sp.at + 2600);
+      t.ok(/灵石可用/.test(body), sp.name + ' 应展示「灵石可用：X」');
+      t.ok(/repairStone\(S\)/.test(body), sp.name + ' 灵石应走 Engine.repairStone（脏值自愈为 1000，不空白）');
+      // 裸 S.stone 参与显示/比较是脏值源头：显示与比价两处都不得出现
+      t.ok(!/'灵石可用：'\s*\+\s*S\.stone/.test(body), sp.name + ' 不得用裸 S.stone 渲染灵石（脏值会显示空白）');
+      t.ok(!/S\.stone\s*<\s*x?\.?si\.price/.test(body), sp.name + ' 不得用裸 S.stone 做「灵石不足」比较');
+    }
   });
 
   /* 守卫：六维面板文案只说「一共加了多少」

@@ -157,8 +157,8 @@
     }
 
     // 行动/灵石显示。灵石守卫（2026-09-23）：灵石为 0 必须显示「0」；
-    // null/undefined/NaN 一律显示 0，禁止空白（旧档坏值曾导致灵石一格整块空白，见 engine.loadState 兜底）。
-    if ($('h-stone')) $('h-stone').textContent = (S.stone || 0);
+    // null/undefined/NaN 一律禁止空白，且统一补偿为 1000（线上旧 BUG 污染的档在此自愈，见 engine.repairStone）。
+    if ($('h-stone')) $('h-stone').textContent = (S ? Engine.repairStone(S) : 0);
     if ($('h-actions-left')) $('h-actions-left').textContent = S.actionsLeft;
     // 年龄/寿元显示
     if ($('h-age-val')) $('h-age-val').textContent = S.age;
@@ -387,6 +387,9 @@
   }
   function choose(c) {
     return new Promise(function (resolve) {
+      // 选项自带引导标记（如【赴仙门应考】→ exam）：先存下，等本章剧情关闭后由 playMainlineChain 的 done() 弹出，
+      // 避免遮罩盖在剧情弹窗上。详见 ml_2_0 的 choices[0].tutorial。
+      if (c.tutorial) pendingTutorial = c.tutorial;
       if (c.fight) {
         var fb = c.fight;
         var spec = fb;
@@ -1785,19 +1788,23 @@
     const title = document.createElement('h3');
     title.textContent = '荒野坊市';
     box.appendChild(title);
+    // 灵石统一走 repairStone（2026-09-23）：旧档脏值（null/undefined/NaN）在此自愈为 1000，
+    // 既不显示空白，也不让「灵石不足」的比较被脏值误导。
+    const stoneNow = function () { return Engine.repairStone(S); };
     const tip = document.createElement('p');
     tip.className = 'dim';
-    tip.textContent = '灵石可用：' + S.stone;
+    tip.textContent = '灵石可用：' + stoneNow();
     box.appendChild(tip);
     const rows = [];
     const syncRows = function () {
-      tip.textContent = '灵石可用：' + S.stone;
+      const stone = stoneNow();
+      tip.textContent = '灵石可用：' + stone;
       rows.forEach(function (x) {
         const btn = x.btn;
         if (x.si.sold) { btn.disabled = true; btn.textContent = '已售'; return; }
         if (x.si.owned) { btn.disabled = true; btn.textContent = '已拥有'; return; }
-        btn.disabled = S.stone < x.si.price;
-        btn.textContent = S.stone >= x.si.price ? '购买' : '灵石不足';
+        btn.disabled = stone < x.si.price;
+        btn.textContent = stone >= x.si.price ? '购买' : '灵石不足';
       });
     };
     const closeShop = function () {
@@ -1811,8 +1818,9 @@
       const info = document.createElement('div');
       info.innerHTML = '<b>' + esc(si.name) + '</b><br><span class="dim">' + si.price + ' 灵石</span>';
       const btn = document.createElement('button');
-      btn.textContent = si.owned ? '已拥有' : (S.stone >= si.price ? '购买' : '灵石不足');
-      btn.disabled = si.owned || S.stone < si.price;
+      const afford0 = stoneNow() >= si.price;   // 脏值自愈后再比较，避免 null 参与大小判断
+      btn.textContent = si.owned ? '已拥有' : (afford0 ? '购买' : '灵石不足');
+      btn.disabled = si.owned || !afford0;
       btn.onclick = function () {
         if (si.sold) return;
         const r = Engine.buyStock(S, si);
@@ -2426,7 +2434,7 @@
   function sectJoinFlow() {
     return showChapter('仙门开山 · 择门应考', [
       '筑基功成，灵压外溢——三座仙门的飞行舟同时降临城头。',
-      '青云剑宗的弟子踏剑而行，剑气纵横；丹霞谷的长老袖中飞出万千灵草；玄天门的山门化作金光巨罩，罩住半座城。',
+      '青云剑宗的弟子踏剑而行，剑气纵横；丹霞谷的长老袖中飞出万千灵草；玄天宗的山门化作金光巨罩，罩住半座城。',
       '碑上规矩依旧：入我门者，先过【入宗考验】。你筑基之身，即便投奔，亦须应考方录为正式弟子。',
       '（若愿投奔，且观你想入哪一门——应考须往宗门页。）'
     ], {
@@ -2436,7 +2444,7 @@
           lines: ['你踏剑舟而上，舟上老剑修睨你一眼："剑心尚可，就是穷。先去演武场，过了考验再说。"（你已意属青云，可往【宗门】应考。）'] },
         { t: '意属【丹霞谷】：丹成九转，天上人间', effect: { sect: 'dpxia' },
           lines: ['袖中藏炉的长老领你入谷，满谷药香，药童作揖。"欲修丹道，先过考验，考过了我亲自教你。"（你已意属丹霞，可往【宗门】应考。）'] },
-        { t: '意属【玄天门】：稳扎稳打，守得云开见月明', effect: { sect: 'xuantian' },
+        { t: '意属【玄天宗】：稳扎稳打，守得云开见月明', effect: { sect: 'xuantian' },
           lines: ['金光巨罩裂开一道门户，门中洪钟般的声音道："入我门者先守十年山——也要先应考。"（你已意属玄天，可往【宗门】应考。）'] },
         { t: '婉拒：独来独往，方是自在', effect: {},
           lines: ['你遥遥一礼，转身走入人潮。三座飞行舟的阴影掠过城头——自由，也是要自己扛的。'] }
@@ -2565,6 +2573,9 @@
 
   // T4：年初主线连播。当前主线播完后用 Engine.moreMainline 探测下一条，
   // 使同一新年内已达 idx 的多条主线可依次连播（死劫/大比后仍能触发，不互相挤占）。
+  // 剧情选项携带的引导标记（如「赴仙门应考」→ exam），由 choose() 写入、playMainlineChain 的 done() 消费
+  var pendingTutorial = null;
+
   function playMainlineChain() {
     const ml = S.pendingMainline;
     if (!ml) { afterAction(); return; }
@@ -2575,7 +2586,18 @@
       if (Engine.moreMainline(S)) { playMainlineChain(); return; }
       afterAction();
       // 教程在「本年主线剧情跑完之后」开始（用户要求），不再于年初打断剧情
-      if (window.Tutorial) window.Tutorial.onYear(S.year);
+      if (window.Tutorial) {
+        // ① 剧情选项携带的引导（仙门赶考 → 指向宗门）：此时剧情弹窗已关闭，聚光灯能正确框住行动栏按钮。
+        //    走 start(stage, false) → 已看过（跳过过）则静默，实现「永久不再提示」。
+        // ② 与年份引导互斥：同一年只弹一个，避免两个 start() 互相覆盖。
+        let started = false;
+        if (pendingTutorial) {
+          const tg = pendingTutorial;
+          pendingTutorial = null;
+          started = !!window.Tutorial.start(tg, false);
+        }
+        if (!started) window.Tutorial.onYear(S.year);
+      }
     };
     if (ml.fight) {
       showChapter(ml.title, ml.lines, { subtitle: '主线剧情' }).then(function () {
@@ -3871,7 +3893,7 @@
     // 灵石显示
     var stoneD = document.createElement('div');
     stoneD.className = 'bag-item';
-    stoneD.innerHTML = '<b>灵石</b> ×' + (S.stone || 0);
+    stoneD.innerHTML = '<b>灵石</b> ×' + Engine.repairStone(S);
     matGrid.appendChild(stoneD);
     if (!matGrid.children.length) matGrid.innerHTML = '<p class="dim">无灵材</p>';
     body.appendChild(matGrid);
@@ -4801,7 +4823,7 @@
       // 灵石显示
       var stoneD = document.createElement('div');
       stoneD.className = 'bag-item';
-      stoneD.innerHTML = '<b>灵石</b> ×' + (S.stone || 0);
+      stoneD.innerHTML = '<b>灵石</b> ×' + Engine.repairStone(S);
       matGrid.appendChild(stoneD);
       if (!matGrid.children.length) matGrid.innerHTML = '<p class="dim">无灵材</p>';
       box.appendChild(matGrid);
@@ -5901,7 +5923,9 @@
     const stLoaded = STAGES[S.idx];
     logSection('第 ' + S.year + ' 年 · ' + S.age + ' 岁');
     log('你自旧日的一缕光阴中苏醒，行囊未动，前路未断。');
-    log('（当前：' + S.name + ' · ' + (stLoaded ? (stLoaded.sym + ' ' + stLoaded.realm + ' ' + stLoaded.sub) : '') + (S.sect ? ' · ' + S.sect : '') + '）', 'dim');
+    // 门派名必须走 SECTS 中文名（2026-09-23 用户反馈：日志里出现英文 id「xuantian」）
+    const sectName = (S.sect && SECTS[S.sect]) ? SECTS[S.sect].name : '';
+    log('（当前：' + S.name + ' · ' + (stLoaded ? (stLoaded.sym + ' ' + stLoaded.realm + ' ' + stLoaded.sub) : '') + (sectName ? ' · ' + sectName : '') + '）', 'dim');
     refresh();
     if (S.adv && S.adv.status === 'running') {
       log('（秘境中的冒险随这一世一同定格，你平安撤回。）', 'dim');
@@ -7429,9 +7453,28 @@
     '飞升': '渡劫功成，白日飞升，超脱轮回。'
   };
   /* ---------- P4 宗门 ---------- */
+  /* 宗门页内反馈：写在页内 #sect-msg（同时补一条主界面日志留痕）。
+     ⚠ 宗门页（#screen-sect）与游历页同理 —— 页内没有日志区，从本页触发的提示若只走 log()
+     就等于石沉大海，玩家端表现是「点了没反应 / 没生效」（2026-09-23 用户反馈：道庭讲法、
+     师父传功交互后看不到结果）。凡本页触发的字符串提示都必须走这个函数。
+     注：#sect-msg 挂在 #sect-body 之外，renderSect() 重绘 body.innerHTML 不会冲掉它。 */
+  function sectMsg(text, kind) {
+    const el = $('sect-msg');
+    if (el) {
+      el.textContent = text;
+      el.className = 'sect-msg' + (kind && kind !== 'dim' ? ' ' + kind : '');
+      el.style.display = 'block';
+    }
+    log(text, kind || 'dim');
+  }
+  function sectMsgClear() {
+    const el = $('sect-msg');
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
+  }
   function openSect() {
     if (!S || S.dead) return;
     showScreen('sect');
+    sectMsgClear();
     renderSect();
     $('sect-back').onclick = function () { showScreen('game'); refresh(); };
   }
@@ -7722,7 +7765,8 @@
   function sectDoShop() {
     const list = Engine.sectGoods(S);
     let h = '<h3>宗门商人</h3>'
-      + '<p class="dim" style="margin:2px 0 10px">当前可用灵石：<b style="color:var(--text)">' + (S.stone || 0) + '</b> 枚</p>'
+      // 文案与游历·流动商贩、秘境·荒野坊市统一为「灵石可用：X」（2026-09-23）
+      + '<p class="dim" style="margin:2px 0 10px">灵石可用：<b style="color:var(--text)">' + Engine.repairStone(S) + '</b></p>'
       + '<div class="ct-grid">';
     list.forEach(function (g) {
       let nm = g.ref;
@@ -7757,11 +7801,11 @@
   }
   /* 道庭讲法：随机得一门本阶宗门功法 + 保底修为（不耗行动点，每年与传功共享 1 次） */
   function doSectLecture() {
-    if (S.sectTeachYear) { log('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
-    if (!S.sect) { log('你尚未加入宗门，无法听讲的法。', 'bad'); return; }
+    if (S.sectTeachYear) { sectMsg('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
+    if (!S.sect) { sectMsg('你尚未加入宗门，无法听讲的法。', 'bad'); return; }
     const res = Engine.sectLecture(S);
-    if (res.used) { log('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
-    if (res.error) { log(res.error, 'bad'); return; }
+    if (res.used) { sectMsg('今年已听过讲法或受过传功，来年方得再行。', 'dim'); return; }
+    if (res.error) { sectMsg(res.error, 'bad'); return; }
     let line = '道庭讲法：长老妙语连珠，你颇有所悟。';
     if (res.tech) {
       const t = TECHNIQUES[res.tech];
@@ -7770,25 +7814,25 @@
       line += ' 本门此阶功法你已尽数掌握，长老遂授你一场修为体悟。';
     }
     line += ' 保底修为 +' + res.qi + '。';
-    log(line, 'good');
-    refresh();
+    sectMsg(line, 'good');
+    refresh(); renderSect();   // 重绘宗门页：「道庭讲法 / 师父传功」本年已用 → 按钮同步置灰
   }
   /* 师父传功：与长老切磋（战力=本阶秘境 10 层精英）；
      胜则本阶三选一亲传，败则随机一门 + 保底修为（不耗行动点，每年与讲法共享 1 次） */
   function doSectMaster() {
-    if (S.sectTeachYear) { log('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
-    if (!S.sect) { log('你尚未加入宗门，无法受传功。', 'bad'); return; }
+    if (S.sectTeachYear) { sectMsg('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
+    if (!S.sect) { sectMsg('你尚未加入宗门，无法受传功。', 'bad'); return; }
     const mp = Engine.sectMasterPrep(S);
-    if (mp.used) { log('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
-    if (mp.error) { log(mp.error, 'bad'); return; }
+    if (mp.used) { sectMsg('今年已受过传功或听过讲法，来年方得再行。', 'dim'); return; }
+    if (mp.error) { sectMsg(mp.error, 'bad'); return; }
     openBattle(mp.spec, { title: '师父传功·切磋' }).then(function (r) {
-      if (r.fled) { log('你借机遁走，传功作罢。', 'dim'); return; }
+      if (r.fled) { sectMsg('你借机遁走，传功作罢。', 'dim'); renderSect(); return; }
       if (r.win) {
         const opts = Engine.sectMasterOptions(S);
         if (!opts.length) {
           const lr = Engine.sectMasterResolve(S, false, null);
-          log('切磋得胜！然本门此阶功法你已尽数掌握，长老遂赐一番修为体悟。保底修为 +' + lr.qi + '。', 'good');
-          refresh();
+          sectMsg('切磋得胜！然本门此阶功法你已尽数掌握，长老遂赐一番修为体悟。保底修为 +' + lr.qi + '。', 'good');
+          refresh(); renderSect();
           return;
         }
         showMasterPick(opts);
@@ -7798,8 +7842,8 @@
         if (lr.tech) { const t = TECHNIQUES[lr.tech]; line += '赐你【' + (t ? t.name : lr.tech) + '】'; }
         else line += '授你一场修为体悟';
         line += '。保底修为 +' + lr.qi + '。';
-        log(line, 'good');
-        refresh();
+        sectMsg(line, 'good');
+        refresh(); renderSect();
       }
     });
   }
@@ -7821,9 +7865,9 @@
         let line = '你择【' + (TECHNIQUES[id] ? TECHNIQUES[id].name : id) + '】亲传';
         if (r.tech) line += '，已录入识海';
         line += '。修为亦得精进，保底修为 +' + r.qi + '。';
-        log(line, 'good');
         closeModal();
-        refresh();
+        sectMsg(line, 'good');   // 关闭选技弹窗后，结果落在宗门页内 + 主界面日志留痕
+        refresh(); renderSect();
       };
     });
   }
@@ -7907,22 +7951,44 @@
     if (typeof r === 'string') { travelMsg(r); refresh(); return; }
     if (r) { showScreen('game'); runEvent(r); }
   };
+  /* 游历 · 流动商贩（2026-09-23 修复，用户实测 BUG）
+   *   ① 旧写法把「数组下标」当商品对象传进引擎：`Engine.buyStock(S, +b.getAttribute('data-i'))`。
+   *      下标是 number，引擎里 `si.price` 为 undefined → `s.stone -= undefined` → 灵石变 NaN；
+   *      同时 `si.sold/si.art/si.give` 全部读空，钱扣了、货拿不到，玩家端就是「购买直接失败 + 灵石 NaN」。
+   *      此处改为取 `stock[i]` 传商品对象本身（与秘境坊市 advShop 的写法一致）。
+   *   ② 旧写法 `log(r.msg)`：buyStock 返回的是 { ok, lines, gains }，没有 msg 字段 →
+   *      即便购买成功也只渲染一行「undefined」（截图里那五行 undefined 即此）。
+   *      改为成功时逐行输出 r.lines、失败时输出 r.msg。
+   *   ③ 旧写法每次进店、每次购买都重掷货架（shopStock 内含大量随机）——玩家买到一半货就换了。
+   *      改用 Engine.shopStockYearly：货架按年缓存进存档，年内不变（含已售标记），跨年才重新进货。 */
   function travelShop() {
-    const stock = Engine.shopStock(S);
+    const stock = Engine.shopStockYearly(S);
     if (!stock || !stock.length) { openPanel('<h3>流动商贩</h3><p class="dim">货担空空，下次再来吧。</p><div style="margin-top:10px;"><button class="btn-main" data-close="1">返回</button></div>'); return; }
-    let h = '<h3>流动商贩</h3><div class="ct-grid">';
+    const stone = Engine.repairStone(S);   // 灵石脏值统一自愈为 1000，不参与脏值比较与显示
+    let h = '<h3>流动商贩</h3><p class="dim">本年货担 · 每年一换　灵石可用：' + stone + '</p><div class="ct-grid">';
     stock.forEach(function (it, i) {
       const price = it.price;
-      const owned = !!it.owned;
-      const btnTxt = owned ? '已拥有' : (S.stone < price ? '灵石不足' : '购买');
+      // owned 每次重绘实时重算：年内把某件法宝买走后，货架上其余项不会被误标「已拥有」
+      const owned = it.art ? Engine.ownsArt(S, it.art) : !!it.owned;
+      const sold = !!it.sold;
+      const afford = stone >= price;
+      const btnTxt = sold ? '已售' : (owned ? '已拥有' : (afford ? '购买' : '灵石不足'));
       h += '<div class="ct-card"><div class="ct-card-h"><b>' + it.name + '</b></div>'
         + '<div class="ct-desc">' + (it.desc || '灵材') + '　售价 ' + price + ' 灵石</div>'
-        + '<button class="btn-small buy-stock" data-i="' + i + '"' + ((owned || S.stone < price) ? ' disabled' : '') + '>' + btnTxt + '</button></div>';
+        + '<button class="btn-small buy-stock" data-i="' + i + '"' + ((sold || owned || !afford) ? ' disabled' : '') + '>' + btnTxt + '</button></div>';
     });
     h += '</div>';
     const box = openPanel(h);
     box.querySelectorAll('.buy-stock').forEach(function (b) {
-      b.onclick = function () { const r = Engine.buyStock(S, +b.getAttribute('data-i')); log(r.msg, r.ok ? 'good' : 'bad'); refresh(); travelShop(); };
+      b.onclick = function () {
+        const si = stock[+b.getAttribute('data-i')];   // ← 传商品对象，不再传下标
+        if (!si) return;
+        const r = Engine.buyStock(S, si);
+        if (!r.ok) log(r.msg || '购买失败。', 'bad');
+        else (r.lines || []).forEach(function (l) { log(l, 'good'); });
+        refresh();
+        travelShop();   // 年内重绘：货架不再重掷，已购项显示「已售」
+      };
     });
   }
 

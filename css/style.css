@@ -1531,8 +1531,10 @@ button:disabled { opacity: .4; cursor: default; }
 .tn-name { color: var(--text); font-size: 15px; font-weight: 400; margin: 4px 0; }
 .tn-desc { font-size: 13px; font-weight: 400; color: var(--dim); }
 /* 游历页内反馈条（页内提示，替代「写进主界面日志」——游历页看不到日志）
-   2026-09-14：点「探寻仙缘」在无仙缘之人 / 行动点不足时曾经「点了没反应」。 */
-.travel-msg {
+   2026-09-14：点「探寻仙缘」在无仙缘之人 / 行动点不足时曾经「点了没反应」。
+   2026-09-23：宗门页（道庭讲法 / 师父传功）复用同一套样式 —— 这两项旧写法只写主界面
+   日志，玩家点完留在宗门页看不到任何结果，观感就是「点了没生效」。 */
+.travel-msg, .sect-msg {
   flex: none;
   margin-top: 10px;
   padding: 9px 11px;
@@ -1545,8 +1547,8 @@ button:disabled { opacity: .4; cursor: default; }
   color: var(--text);
   word-break: break-word;
 }
-.travel-msg.bad { border-left-color: var(--bad); color: #c0402a; }
-.travel-msg.good { border-left-color: var(--good); color: #1d7a55; }
+.travel-msg.bad, .sect-msg.bad { border-left-color: var(--bad); color: #c0402a; }
+.travel-msg.good, .sect-msg.good { border-left-color: var(--good); color: #1d7a55; }
 .dabi-foe { background: rgba(224,96,74,.1); border: 1px solid rgba(224,96,74,.4); border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 13px; }
 /* ===== 宗门大比 · 一条直线 5 连战（秘境化阶梯） ===== */
 .dabi-ladder { position: relative; margin: 12px 0 4px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }

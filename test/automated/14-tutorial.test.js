@@ -48,7 +48,7 @@ module.exports = async function build() {
   const re = /id="([^"]+)"/g;
   while ((m = re.exec(htmlRaw))) ids.add(m[1]);
 
-  S.case('分阶段步骤数据完整性：target 存在、group 合法、文案非空；标题 2 步 / 游戏 6 步', (t) => {
+  S.case('分阶段步骤数据完整性：target 存在、group 合法、文案非空；标题 2 步 / 游戏 7 步', (t) => {
     const dom = makeDom();
     const steps = dom.window.Tutorial._debugSteps;
     let titleN = 0, gameN = 0;
@@ -60,7 +60,7 @@ module.exports = async function build() {
       if (s.group === 'title') titleN++; else gameN++;
     }
     t.eq(titleN, 2, '标题阶段步数应为 2（开始 + 轮回阁）');
-    t.eq(gameN, 6, '游戏阶段步数应为 6（修炼/角色/游历 + 秘境 + 宗门/百艺）');
+    t.eq(gameN, 7, '游戏阶段步数应为 7（修炼/角色/游历 + 秘境 + 仙门赶考 + 宗门/百艺）');
   });
 
   S.case('标题阶段可启动且步数 = 2，进度 1/2', async (t) => {
@@ -116,6 +116,48 @@ module.exports = async function build() {
     doc.querySelector('.tut-skip').click();
     await tick();
     t.eq(w.Tutorial.onEnterGame(), false, 'basics 已看应不再自动播');
+  });
+
+  /* 仙门赶考引导（2026-09-23）：主线【仙门收徒】选「赴仙门应考」后，
+     聚光灯指向行动栏【宗门】，可跳过；跳过后写标记 → 永久不再提示；
+     且第 5 年 sect 阶段不再重复高亮宗门入口（只剩百艺步）。 */
+  S.case('仙门赶考 exam：聚光灯指向【宗门】、可跳过、跳过即永久静默、第 5 年 sect 不再重复宗门步', async (t) => {
+    const dom = makeDom();
+    const w = dom.window, doc = w.document;
+    w.localStorage.removeItem('dedao_tut_exam');
+    w.localStorage.removeItem('dedao_tut_sect');
+
+    const steps = w.Tutorial._debugSteps.filter((s) => s.group === 'game');
+    const exam = steps.filter((s) => /赶考|赴考/.test(s.title || ''));
+    t.eq(exam.length, 1, '应恰有 1 步仙门赶考引导，实际 ' + exam.length);
+    t.eq(exam[0] && exam[0].target, 'btn-sect', '赶考引导目标应为行动栏【宗门】btn-sect');
+
+    // 启动
+    t.eq(w.Tutorial.start('exam', true), true, 'exam 阶段应可启动');
+    await tick();
+    t.eq(doc.getElementById('tutorial-overlay').style.display, 'block', '赶考遮罩应显示');
+    t.ok(/赶考|赴考/.test(doc.querySelector('.tut-title').textContent), '标题应点明赶考');
+    // 注：jsdom 无布局引擎，getBoundingClientRect() 恒为 0 → 聚光灯会被降级为居中卡片，
+    // 故此处只校验「走聚光灯分支」这一结构性事实，可见性由真实浏览器保证。
+    t.ok(!exam[0].noSpot, '赶考步应走聚光灯分支（不得标 noSpot）—— 复用现有方框，不另加箭头');
+    t.ok(!!doc.querySelector('.tut-spot'), '应存在聚光灯元素 .tut-spot');
+    t.ok(!!doc.querySelector('.tut-skip'), '应提供「结束引导」按钮供玩家跳过');
+
+    // 跳过 → 写标记
+    doc.querySelector('.tut-skip').click();
+    await tick();
+    t.eq(doc.getElementById('tutorial-overlay').style.display, 'none', '跳过后遮罩应隐藏');
+    t.eq(w.Tutorial.done('exam'), true, '跳过后应写标记 dedao_tut_exam');
+    t.eq(w.Tutorial.start('exam', false), false, '已看过 → 非强制调用应静默（永久不再提示）');
+
+    // 第 5 年 sect：因 exam 已播，去掉宗门步，只剩百艺
+    const sectList = w.Tutorial._debugSteps.filter((s) => s.group === 'game' && /百艺|宗门 · 第 5/.test(s.title || ''));
+    t.ok(sectList.length >= 2, 'sect 阶段原始数据应含宗门步与百艺步');
+    t.eq(w.Tutorial.start('sect', true), true, 'sect 阶段应可启动');
+    await tick();
+    t.ok(/百艺/.test(doc.querySelector('.tut-title').textContent) ||
+         !/宗门 · 第 5/.test(doc.querySelector('.tut-title').textContent),
+      'exam 已播 → sect 首步不应再重复高亮宗门入口');
   });
 
   S.case('年末 onYear：第 2 年触发秘境、第 5 年触发宗门百艺；replay 强制复习 basics', async (t) => {

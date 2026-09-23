@@ -31,6 +31,7 @@ const MODULES = [
   ['16-treasure-unlock.test.js', '法宝栏槽位解锁（有效值口径）'],
   ['17-sect-lecture.test.js', '宗门讲法 / 师父传功（v5 实装回归）'],
   ['18-daily-login.test.js', '每日登录礼（7 天递增 / 断签重置 / 补签 / 时间倒流保护）'],
+  ['19-shop-buy.test.js', '坊市购买 & 包体同步（NaN/undefined 回归 + dist/zip 守卫）'],
 ];
 
 function bar(pass, fail) {

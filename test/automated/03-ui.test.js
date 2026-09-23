@@ -1286,6 +1286,53 @@ module.exports = async function build() {
     if (real.length) t.fail('宗门页交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
+  // === 回归 2026-09-23（用户反馈：「宗门里讲法和师父的内容，交互后看不到结果，
+  //     以为没生效」）：宗门页与游历页同理 —— 页内没有日志区，只写 log() 就等于
+  //     石沉大海。断言结果必须落在页内 #sect-msg，且该元素在 renderSect() 重绘
+  //     body.innerHTML 之后仍然存活（故它必须挂在 #sect-body 之外）。 ===
+  S.case('宗门页反馈：道庭讲法结果落页内 #sect-msg（重绘后仍在）+ 用后按钮置灰 + 日志留痕', async (t) => {
+    const a = await boot();
+    await enterGame(a.win, a.doc, '宗门反馈');
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    if (!raw) { t.fail('未取得存档'); return; }
+    raw.sect = 'xuantian'; raw.sectRank = '内门'; raw.sectTeachYear = 0;
+    const { win, doc, errors } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 200));
+    await advanceChapters(win, doc);
+    click(win, 'btn-sect');
+    await new Promise(r => setTimeout(r, 220));
+
+    const msgEl = doc.getElementById('sect-msg');
+    t.ok(!!msgEl, '宗门页必须存在页内反馈条 #sect-msg（否则讲法/传功结果无处显示）');
+    if (!msgEl) return;
+    const hidden = /display:\s*none/.test(msgEl.getAttribute('style') || '');
+    t.eq(hidden, true, '初始应隐藏（未交互前不应有残留文案）');
+    // 关键结构：反馈条不得位于 #sect-body 之内，否则 renderSect() 重绘会把它冲掉
+    t.ok(!doc.getElementById('sect-body').contains(msgEl), '#sect-msg 必须在 #sect-body 之外（renderSect 重绘不能冲掉它）');
+
+    const lec = doc.querySelector('#sect-body [data-act="sect-lecture"]');
+    t.ok(!!lec && !lec.disabled, '「道庭讲法」按钮应可点');
+    lec.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 280));
+
+    // 读取发生在 doSectLecture → refresh() → renderSect()（重绘）之后：
+    // 能读到内容即同时证明「页内可见」与「重绘不清空」两件事。
+    const txt = msgEl.textContent || '';
+    t.ok(/道庭讲法/.test(txt), '页内应给出讲法结果（实：' + txt.slice(0, 70) + '）');
+    t.ok(/保底修为 \+\d+/.test(txt), '结果应含保底修为数值（实：' + txt.slice(0, 70) + '）');
+    t.ok(!/display:\s*none/.test(msgEl.getAttribute('style') || ''), '结果条应真正显示出来');
+    const logTxt = (doc.getElementById('log') || {}).textContent || '';
+    t.ok(/道庭讲法/.test(logTxt), '主界面日志应同步留痕（两处都要有，缺一不可）');
+
+    const lec2 = doc.querySelector('#sect-body [data-act="sect-lecture"]');
+    t.ok(!!lec2 && lec2.disabled, '本年用过后「道庭讲法」按钮应同步置灰');
+    const master2 = doc.querySelector('#sect-body [data-act="sect-master"]');
+    t.ok(!!master2 && master2.disabled, '讲法与传功共享年计数：用其一后「师父传功」也应置灰');
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('宗门页反馈交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
   // === 回归 2026-09-13：新账号开局可自由选择 0–9 劫（不再受「历史最高」封顶） ===
   S.case('进入页劫数自由选择：新账号可选 0–9 劫，所选劫数生效到本世', async (t) => {
     const a = await boot(); // 全新账号（meta.maxJie = 0）

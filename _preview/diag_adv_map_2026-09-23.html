@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>秘境走图「此路不通」诊断报告 · 2026-09-23</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0f14; color: #e8e2d4;
+    font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    line-height: 1.7; padding: 32px 20px 56px;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  h1 { font-size: 25px; letter-spacing: 2px; color: #e8c983; font-weight: 600; }
+  .sub { color: #7d8291; font-size: 13px; margin-top: 6px; letter-spacing: .5px; }
+  .rule { height: 1px; background: linear-gradient(90deg, #c8a35a55, transparent); margin: 20px 0 26px; }
+  .verdict {
+    border: 1px solid #2f6b4a; background: linear-gradient(135deg, #12291f, #0f1a16);
+    border-radius: 10px; padding: 18px 22px; margin-bottom: 26px;
+  }
+  .verdict .tag {
+    display: inline-block; font-size: 12px; letter-spacing: 1px;
+    background: #2f6b4a; color: #d6f5e4; padding: 2px 10px; border-radius: 20px; margin-bottom: 10px;
+  }
+  .verdict p { font-size: 15px; }
+  .verdict b { color: #7ee0a8; }
+  h2 {
+    font-size: 16px; color: #c8a35a; letter-spacing: 1px;
+    margin: 30px 0 14px; padding-left: 11px; border-left: 3px solid #c8a35a;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card {
+    background: #141821; border: 1px solid #232a36; border-radius: 9px; padding: 15px 17px;
+  }
+  .card.bad { border-color: #6b3535; background: #1d1417; }
+  .card .h { font-size: 13px; color: #8e93a3; letter-spacing: .5px; margin-bottom: 8px; }
+  .kv { font-size: 13.5px; font-family: ui-monospace, Consolas, monospace; }
+  .kv .k { color: #7d8291; }
+  .ok { color: #7ee0a8; } .no { color: #f08a8a; } .warn { color: #e8c983; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 6px; }
+  th, td { text-align: left; padding: 9px 11px; border-bottom: 1px solid #232a36; }
+  th { color: #8e93a3; font-weight: 500; font-size: 12.5px; letter-spacing: .5px; }
+  td.num { font-family: ui-monospace, Consolas, monospace; }
+  ol { margin-left: 20px; font-size: 14px; }
+  ol li { margin-bottom: 11px; }
+  code {
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    background: #1c212c; color: #e8c983; padding: 1px 6px; border-radius: 4px;
+  }
+  .note { font-size: 13px; color: #8e93a3; margin-top: 9px; }
+  .foot { margin-top: 34px; font-size: 12.5px; color: #5f6472; text-align: center; letter-spacing: .5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>秘境走图「此路不通」诊断报告</h1>
+  <div class="sub">jsdom 端到端卡住问题 · 只读探针复核 · 2026-09-23</div>
+  <div class="rule"></div>
+
+  <div class="verdict">
+    <span class="tag">结论</span>
+    <p>旧问题<b>已闭环：游戏无 bug</b>。卡住是探针缺了三处覆盖层处理，导致越过未关闭的界面去点了<b>旧渲染</b>的高亮节点。<br>
+    引擎层 200 局 / 10200 步 / 200 次抵达 Boss，<b>0 失败</b>；UI 层对账<b>零「此路不通」</b>、DOM 高亮与引擎 <code>advNextChoices</code> <b>始终一致</b>。</p>
+  </div>
+
+  <h2>一、卡住的真实机理（时序错位）</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="h">iter4 · 移动前 —— 一致 ✓</div>
+      <div class="kv">
+        <div><span class="k">引擎当前</span> c0_0</div>
+        <div><span class="k">引擎应高亮</span> ["c1_0"]</div>
+        <div><span class="k">DOM 实际高亮</span> ["c1_0"]</div>
+        <div><span class="k">点击</span> c1_0 → <span class="ok">移动成功 c0_0 → c1_0</span></div>
+      </div>
+    </div>
+    <div class="card bad">
+      <div class="h">iter5 · 移动后 —— 旧地图（覆盖层还开着）</div>
+      <div class="kv">
+        <div><span class="k">引擎当前</span> c1_0（已前进）</div>
+        <div><span class="k">引擎应高亮</span> ["c2_0","c2_1"]</div>
+        <div><span class="k">DOM 实际高亮</span> <span class="no">["c1_0"]（陈旧）</span></div>
+        <div><span class="k">点击</span> c1_0 → <span class="no">此路不通</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    <code>advMove</code> 成功后地图<b>不会立即重渲染</b>：须先开中间界面（章节 / 弹层 / 战斗），关闭后走
+    <code>advAdvanceToMap()</code> 才 <code>renderAdvMap()</code>。这些中间界面都是<b>全屏遮罩</b>，
+    玩家根本点不到下面的旧地图 —— 所以真实游玩不会遇到。<b>设计如此，非缺陷。</b>
+  </p>
+
+  <h2>二、探针缺的三处覆盖层处理（已修）</h2>
+  <ol>
+    <li><b>章节选项在 <code>#chapter-choices</code></b> —— <code>#chapter-actions</code> 本身是一个 <code>&lt;button&gt;</code> 而非容器；带选项的章节（残魂传承 / 秘地探查 / 体力不支）会把「继续」<code>display:none</code>。只点「继续」＝ 永远点不掉。</li>
+    <li><b>静室 / 坊市 / 秘藏走 <code>#modal</code></b>，不是章节遮罩 → 必须单独处理。且<b>绝不能点含「撤离 / 撤退 / 收手」的按钮</b>（会直接结束秘境）；全是撤离类时只点 <code>#modal-close</code>。</li>
+    <li><b>战斗按钮是 <code>#b-atk / #b-spell / #b-guard / #b-flee</code></b>，位于 <code>.battle-btns</code>；<b>不存在 <code>#battle-actions</code></b>（原先按容器找按钮，取到空数组 → 死循环）。</li>
+  </ol>
+
+  <h2>三、决定性验证：hook 引擎真函数做对账</h2>
+  <p class="note" style="margin-bottom:12px">
+    <code>Engine</code> 是顶层 <code>const</code>（IIFE），<b>不挂 window</b> → 用 <code>win.eval('Engine')</code> 取；
+    改<b>方法属性</b>即可拦截（ui.js 闭包引用同一对象）。每次点击前用 UI 那份存档现算 <code>advNextChoices</code> 与 DOM 高亮比对。
+  </p>
+  <table>
+    <tr><th>验证项</th><th>规模</th><th>结果</th></tr>
+    <tr><td>引擎层连通性长跑</td><td class="num">200 局 / 10200 步</td><td class="ok">0 失败（200 次抵达 Boss）</td></tr>
+    <tr><td>UI 层点击可达性</td><td class="num">全部点击</td><td class="ok">0 次「此路不通」</td></tr>
+    <tr><td>DOM 高亮 vs 引擎 advNextChoices</td><td class="num">每次点击前</td><td class="ok">始终一致，0 次不一致</td></tr>
+    <tr><td>诊断探针 <code>diag_adv_move</code></td><td class="num">4 项断言</td><td class="ok">4 / 4 通过</td></tr>
+  </table>
+
+  <h2>四、全量回归</h2>
+  <table>
+    <tr><th>套件</th><th>结果</th></tr>
+    <tr><td>全量 <code>node test/automated/run.js</code>（19 模块）</td><td class="num ok">362 / 362 通过</td></tr>
+    <tr><td>定点探针（折寿阶梯 + 委托结算）</td><td class="num ok">22 / 22 通过</td></tr>
+    <tr><td>包内实测（4 个发布包 vm 真跑）</td><td class="num ok">24 / 24 通过</td></tr>
+    <tr><td><code>sync_dist.py --check</code></td><td class="num ok">4 副本 + 3 zip 与源码一致</td></tr>
+  </table>
+  <p class="note">本轮<b>未改动任何游戏源码</b>，仅新增只读诊断脚本 <code>_probe/diag_adv_move_2026-09-23.js</code>，故 dist 无需重新同步。</p>
+
+  <div class="foot">DEDAO 得道 · 只读诊断 · 未改源码</div>
+</div>
+</body>
+</html>

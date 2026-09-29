@@ -1,6 +1,6 @@
 # DEDAO 得道 — Agent 指南（项目宪法）
 
-> 最后更新：2026-09-17（变更日志 #85）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
+> 最后更新：2026-09-24（变更日志 #88）。本文档是项目的事实来源（source of truth），每次大规模改动后必须刷新。
 > **体例**：§一~§十八为「稳定规则」，改完直接改正文；§十九为「变更日志」，只追加不重写。
 
 ## 零、文件导航（去哪找什么）
@@ -21,7 +21,7 @@
 
 | 路径 | 说明 |
 |---|---|
-| `test/automated/run.js` + `01~19-*.test.js` | 自动套件（362 例），新套件须登记 `MODULES` |
+| `test/automated/run.js` + `01~19-*.test.js` | 自动套件（367 例），新套件须登记 `MODULES` |
 | `test/automated/_harness.js` | node `vm` 沙箱，`createGameContext()` → `G.get('Engine')` |
 | `test/reports/` | 测试报告（固定写本仓库，不进发布包） |
 | `tools/player_sim.js` | 经 `tools/_engine_loader` 真加载 `Engine.*`（#60 起不再手抄镜像）；敌人基线 `enemyStats` 亦已改走引擎（#75）。改引擎公式时模拟器自动跟随，无需手抄同步 |
@@ -86,7 +86,7 @@ python -m http.server 8080 --bind 127.0.0.1   # 端口 8080（常用）
 ## 四、测试
 存在**自动化测试套件**（非"无框架"，旧文档已过时）：
 ```bash
-node test/automated/run.js     # 依次跑 01~19，当前 362/362 全过
+node test/automated/run.js     # 依次跑 01~19，当前 367/367 全过
 ```
 > **表的「例数」与上面这行总数都由 `01-static-data.test.js` 的
 > 「AGENTS.md 测试模块表用例数与实际一致」用例自动对账** —— 改测试不同步此表会直接报红。
@@ -96,7 +96,7 @@ node test/automated/run.js     # 依次跑 01~19，当前 362/362 全过
 |---|---:|---|
 | `01-static-data.test.js` | 34 | 静态数据一致性 & 引用完整性（含宗门商品单货币结构、法宝文案「++」守卫、六维面板文案守卫、**事件 effect 键 ⊆ applyOps 白名单**守卫、**手机端滚动适配在位性**守卫、**AGENTS.md 模块表计数对账**守卫、**DEDAO_项目简介.md 对外口径对账**守卫、**已删字段「突破次数」不得复活**守卫、**法术大表 dmg/cost 与 data.js 逐条对账**守卫、**好感度星星空心/金色两处渲染一致**守卫、**流动商贩购买调用形态（禁传下标 / 禁读不存在的 msg）**守卫、**子页面返回按钮统一为底部 btn-main「返回修行」（宗门/仙缘/游历等，不得再留顶部 btn-small ghost「返回」）**守卫、**仙门赶考引导挂载（选项带 tutorial / choose 收集 / 剧情关闭后触发且与年份引导互斥）**守卫、**商人页灵石展示（宗门/游历/秘境三处均「灵石可用」且一律走 repairStone，禁裸 S.stone 渲染与比价）**守卫） |
 | `02-engine-sim.test.js` | 62 | 引擎单元 & 长时模拟（宗门商人单货币、入宗考验门禁（**实战为硬门槛：实战败即便悟性/道心达标也判杂役、不得入宗**；**试炼路线 3 层敌人 + 演武教头 BOSS**）、杂役筑基、百艺播种/挖矿、秘境双通道解锁、法宝效率分离、踏风履攻速、**商店购买入参守卫（传下标不得污染灵石 → NaN）**、**流动商贩货架每年一换（年内含已售标记稳定、跨年重掷）**、山河探索池/每年上限、**宗门任务年上限**、**大比十年一届/五层/境界缩放**、**主线门禁 noSect/afterSectYear**、**effect.trib 真正计入渡劫率**、**阵法被动心得速率与阈值**、**EVENTS 金丹/元婴守敌重平衡为秘境第 10 层精英（enemyBoss 与 Engine.enemyGen 同源、炼气/筑基保持写死弱值）**、**宗门任务六维门槛前移（秘境探勘神识≥10 接取前置、未达标即拒且不空打、达标胜战必结算）**） |
-| `03-ui.test.js` | 58 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数自由选择 0–9 劫**、**轮回塔 +/- 步进按钮真实可点且可返还**、**秘境第 1 年未解锁/第 2 年自动开放**守卫；**战斗胜利 / 秘境离开结算一次性显示（instant）**守卫、**自定义弹窗浅色主题（不得回退暗色硬编码 #1c1726）**、**存档·读档面板显式「取消」按钮**守卫、**游历地图「红尘练心」节点→开页→练心扣行动点→计数→返回游历**守卫、**游历「悟性→道心」重平衡端到端落地（道心事件落到 #st-dao HUD、结算文案不再写悟性）**守卫、**EVENTS 金丹 elite 守敌运行期命中秘境第 10 层精英数值（遭遇战敌方血量与 Engine.enemyGen 同源）**守卫、**止恶战斗胜利无属性奖励则道心 +0.5 端到端落地（结算文案「道心 +0.5」+ #st-dao HUD 真实 +0.5）**守卫、**每日登录礼面板端到端（未领取开机自动弹 7 格、领取后 +2 点且标题按钮转「已领取」；断签 Δ=2 补签三按钮、Δ≥3 重置仍可领）**守卫、**宗门页内反馈（道庭讲法/师父传功结果必须落页内 #sect-msg，且该条在 renderSect 重绘后仍在、用后讲法与传功按钮同步置灰、主界面日志双留痕）**守卫） |
+| `03-ui.test.js` | 60 | UI / DOM 层（jsdom；灵力上限 10/50/30、宗门禁 UI、秘境地图几何、**宗门页菜单三项副标题**、**百艺「阵法」板块**、**进入页劫数锁死（初始0劫、通关解锁下一劫）**、**轮回塔 +/- 步进按钮真实可点且可返还**、**秘境第 1 年未解锁/第 2 年自动开放**守卫；**战斗胜利 / 秘境离开结算一次性显示（instant）**守卫、**自定义弹窗浅色主题（不得回退暗色硬编码 #1c1726）**、**存档·读档面板显式「取消」按钮**守卫、**游历地图「红尘练心」节点→开页→练心扣行动点→计数→返回游历**守卫、**游历「悟性→道心」重平衡端到端落地（道心事件落到 #st-dao HUD、结算文案不再写悟性）**守卫、**EVENTS 金丹 elite 守敌运行期命中秘境第 10 层精英数值（遭遇战敌方血量与 Engine.enemyGen 同源）**守卫、**止恶战斗胜利无属性奖励则道心 +0.5 端到端落地（结算文案「道心 +0.5」+ #st-dao HUD 真实 +0.5）**守卫、**每日登录礼面板端到端（未领取开机自动弹 7 格、领取后 +2 点且标题按钮转「已领取」；断签 Δ=2 补签三按钮、Δ≥3 重置仍可领）**守卫、**宗门页内反馈（道庭讲法/师父传功结果必须落页内 #sect-msg，且该条在 renderSect 重绘后仍在、用后讲法与传功按钮同步置灰、主界面日志双留痕）**守卫） |
 | `04-adventure.test.js` | 43 | 秘境重构（50 层×每层 3 节点 / 保底 2 出边 / 无交叉线 / 隐藏滚动条 / 地图视口固定 4 行 / **体力 2行动=40·3行动=75** / 探索度达标任意深度直达 Boss / 死路兜底 / 产出分层 / 坊市购丹 / 折寿强搜 / 初入秘境灵力回满 / 残魂考验=精英战 / 灵石掉落量级 / **装备掉落品阶由秘境等级钳制（randomEquip 不越阶）** / **黄级秘境（高境界玩家）宝箱·敌人·Boss 永不出上品** / **玄级秘境奇遇法术与黄级严格区分（不重叠、各自限阶）** / **秘境功法池严格按本阶派生（黄=黄/玄=玄/地=地/天=天，绝不串阶或越阶）** / **秘境装备掉落率三调** / 仙魔浩劫 BGM 指向 / **秘藏二选一全规则** / 灵物不进随机法宝池 / **秘境「剩余法宝 N」口径与选项数** / **红尘练心：每次耗 1 行动点随机淬炼道心 0.5/1/1·每大境界上限 10·突破重置** / **游历事件池「悟性」奖励整体重平衡为「道心」** / **强行前行沿用折寿强搜同一递增阶梯 1→2→4→8→16（共用 a.forceN，不再固定 -1 年）；体力不支说明每秘境仅弹一次，之后静默折寿只打 -N 岁寿元；折寿耗尽即结档**） |
 | `05-xianyuan.test.js` | 10 | 仙缘 NPC 缘法（解锁门槛 / 好感分级 / 冷却 / 上限 / 机缘本世一次性 / 池空不扣行动点 / **日常小事白名单**） |
 | `06-travel.test.js` | 3 | 游历 3 选 1（三桩际遇 / 每年上限 / 年末归零） |
@@ -112,7 +112,7 @@ node test/automated/run.js     # 依次跑 01~19，当前 362/362 全过
 | `16-treasure-unlock.test.js` | 4 | 法宝栏槽位解锁（**有效值口径**：`maxTreasure` 与 `treasureSlotUnlockText` 必须用 `effAttr` 的道心/神识（基础+命格+法宝），与角色面板一致；原始值达标、**法宝/命格加成使有效值达标**两类均解锁、加成封顶各 +3） |
 | `17-sect-lecture.test.js` | 11 | 宗门讲法 / 师父传功（v5 实装回归：9 门新宗门法术、心法攻速/反伤修订、五行心法额外效果 getter 接线、讲法随机给本阶技+保底修为、传功切磋胜败结算、讲法↔传功共享年计数、池空降级、阶位映射） |
 | `18-daily-login.test.js` | 13 | 每日登录礼（账号级 `meta.daily`：7 天奖励 `[2,10,10,10,11,12,24]`=79 点、首次/同日去重/Δ=1 递增、**连续 7 天累计 79**、满勤后归零开新一轮、Δ=2 补签扣 5 点且每周期限 1 次、点数不足不扣点、Δ≥3 直接重置、**时间倒流不发放不写 last**、meta 往返、旧档无 daily 兼容） |
-| `19-shop-buy.test.js` | 8 | 坊市购买 & 包体同步（2026-09-23 用户实测 BUG 回归：**传商品对象成交且灵石正确扣减不 NaN**；**非法入参[下标/undefined/null/缺 price/负价/NaN 价]一律拒绝且失败必带 msg**（防日志区打出 undefined）；**脏灵石兜底**（stone=NaN/null 补偿 1000、真 0 不动）；**货架按年缓存**（年内含已售标记不重掷、跨年才重掷，修「买一件就换货」）；**包体守卫**：4 个 dist 副本 data/engine/ui.js 与源码字节一致；**源码守卫**：引擎导出 `shopStockYearly`、UI 禁传下标、禁裸 `log(r.msg)`；**zip 守卫**：3 个 TapTap 上传包内 `js/ui.NNN.js`（版本化文件名）与源码字节一致且含修复；**包内实测**：直接从 zip 取 data/engine.js 用 vm 真跑购买，断言灵石非 NaN、`lines` 无 undefined、年内不重掷、脏档补偿 1000） |
+| `19-shop-buy.test.js` | 11 | 坊市购买 & 包体同步（2026-09-23 用户实测 BUG 回归：**传商品对象成交且灵石正确扣减不 NaN**；**非法入参[下标/undefined/null/缺 price/负价/NaN 价]一律拒绝且失败必带 msg**（防日志区打出 undefined）；**脏灵石兜底**（stone=NaN/null 补偿 1000、真 0 不动）；**货架按年缓存**（年内含已售标记不重掷、跨年才重掷，修「买一件就换货」）；**包体守卫**：4 个 dist 副本 data/engine/ui.js 与源码字节一致；**源码守卫**：引擎导出 `shopStockYearly`、UI 禁传下标、禁裸 `log(r.msg)`；**zip 守卫**：3 个 TapTap 上传包内 `js/ui.NNN.js`（版本化文件名）与源码字节一致且含修复；**包内实测**：直接从 zip 取 data/engine.js 用 vm 真跑购买，断言灵石非 NaN、`lines` 无 undefined、年内不重掷、脏档补偿 1000；**HTML 包体守卫**（2026-09-24 线上事故「代码是新的、玩家看到的却是旧的」：`sync_dist.py` 原来**把 HTML 排除在真源同步外** → ① 只抬戳不抄内容，根的结构改动永远进不了 dist（`#sect-msg` 4 副本全缺）② 根 `index.html` 的 `?v=` 恒为 168 从不抬，玩家最常用的「覆盖仓库根」路径永远命中旧缓存。现断言 **dist 7 个入口页与根真源字节一致**（含 PC 包 `index.html` 的真源是根 `index_pc.html`，非 index.html；含 `DEDAO_release/index_pc.html`）、H5 与 PC 系入口页均含 `#sect-msg`/`#travel-msg` 页内反馈条、根 `index.html` 脚本戳统一、3 个 zip 内 `index.html` 与 dist 入口页一致（防 zip 未重建传旧包）、`sync_dist.py` 保留 `HTML_MAP`/`bump_root_html`/`strip_stamps`；**发布包组成守卫**（2026-09-24 续，与 HTML 守卫同病根——「发布物的集合」没和「部署目标的集合」对齐：`tools/build_release.sh` 白名单漏 `index_pc.html` → 线上 PC 页永远停在旧版。现断言 `DEDAO_release` 含 `index.html`/`index_pc.html`/`manifest.json`/`sw.js` + `css`/`js`/`assets` 目录、**JS/CSS 文件名集合与仓库根完全一致**（防新增源文件漏加进清单）、不含开发目录与 `.md` 文档、3 个商店包不含 `assets/img/_src`（AI 原图 ~72MB）、`sync_dist.py` 的 `HTML_MAP` 与 `build_release.sh` 白名单都必须声明 `index_pc.html`）；**共享 boot 未判空绑定守卫**（2026-09-24 高危 BUG：`js/ui.js` 共享 `boot()` 内 `$('hongchen-back').onclick = …` **未判空**，而该元素/`#screen-hongchen` 只在 `index.html` → PC 页 `null.onclick` 抛 TypeError → **boot() 后半段约 100 行、19 处绑定整体静默失效**（设置/角色/储物袋/宗门/弹窗关闭/暂停继续/秘境说明·撤离…，且 `ui_pc.js` 顶部状态条靠 `clickBtn('btn-xxx-bottom')` 代理这些绑定，一并失效；页面不白屏故极难发现）。已修：① 该行改 `if ($('hongchen-back'))` 判空（与同文件 `if ($('btn-break'))` / `if ($('hud-settings'))` 既有写法一致，H5 行为不变）② `#screen-hongchen` 补进 `index_pc.html`。现断言**启动路径（`boot()`）内所有未判空 `$('id').prop` 引用的元素，在 `index.html` 与 `index_pc.html` 两个入口页都存在**（只查 boot —— 行动态函数里的未判空引用异常被局限在单个处理器内，且有 `renderXxx()` 里「先 innerHTML 建出来再绑」的合法写法，全查会误报；实测两侧共 30 处引用 0 误报）；报红时点名 id + 行号 + 缺哪个页 + 修法。另：3 个商店包与 `DEDAO_release` 均不得含 `assets/img/_src`（AI 原图 ~72MB，`DEDAO_release` 已从 84M 清到 13M）） |
 
 **沙箱要点**：引擎跑在 node `vm` 里且用 `fakeMath = Object.create(Math)`，测试中钉死随机必须改 `G.sandbox.Math.random`（改 Node 侧 `Math.random` **无效**）；新测试文件必须以 `return S;` 结尾，并在 `run.js` 的 `MODULES` 登记，否则报 `Cannot read properties of undefined (reading 'run')`。
 - 旧 `test/dedao_*.js` 为历史脚本，**不在自动套件内**（部分因中文标签损坏无法运行），改动时不要依赖它们。
@@ -1750,3 +1750,130 @@ if (ev.id && !ev.repeat && s.seen[ev.id]) return false;   // 无 id 的事件不
 - **对账连动**：`02` 55→**57**、`03` 47→**48** → 总数 295→**298**（`AGENTS.md` 模块表 + `DEDAO_项目简介.md` 三处计数）。
 - **版本**：`?v=161 → ?v=162`、`dedao-v195 → dedao-v196`（`index.html` / `index_pc.html` / `sw.js`）；两份 dist 副本已 `cp` 同步。
 - **验证**：全量 **298/298**（主目录 + `dist/DEDAO_release` + `dist/taptap/dedao` 三份各 298/298）。
+
+### #86 — 发布管线补上「HTML 也走真源同步」+ 根戳抬升 + HTML 包体守卫（2026-09-24）
+
+- **起因**：玩家反馈「当前 h5 包体全是老东西」。`curl` 线上实测：`js/engine.js` / `js/ui.js` 内容**都是新的**，
+  但 `index.html` 的资源戳**仍停在 `?v=168`** —— 内容新 + URL 不变 = 浏览器与 SW 直接复用旧缓存，**这是纯粹的第 5 类缺陷**：
+  不是代码没更新，而是**更新推不到玩家**。
+- **根因（两个同源缺陷，都在 `tools/sync_dist.py`）**：它把 HTML **排除在真源同步之外** ——
+  1. **只抬戳、不抄内容**：对 dist 的 `index.html` 只做「遗留哈希命名归一 + `?v= +1`」，**从不把根 `index.html` 的内容抄进副本**。
+     于是根的结构改动**永远进不了 dist** —— 2026-09-23 新增的 `#sect-msg`（宗门页反馈条）在 4 个副本里**全缺**。
+     最坏后果：按既定流程「用 `dist/DEDAO_release/` 覆盖仓库根」会把线上新结构**打回旧版**。
+  2. **根戳从不抬**：抬戳只抬 dist 的 HTML，**根 `index.html` 的戳恒为 168**。而玩家/用户最常用的上传路径恰恰是
+     「覆盖仓库根」→ URL 不变 → 回访者（含已缓存的老玩家）看不到任何新内容。
+- **修法**：
+  - 新增 `HTML_MAP`：`dist 入口页 → 根内真源`，**HTML 与 JS 同等对待**（根是唯一真源，dist 入口页是根的副本）。
+    ⚠ 各副本入口页的真源**并不统一** —— `taptap/dedao-pc/index.html` 是 PC 版页面（`body.pc` + `style_pc.css` + `ui_pc.js`），
+    真源是根 **`index_pc.html`**。若盲目一律抄 `index.html`，**会直接毁掉 PC 包**。
+    只覆盖**已存在**的入口页，不新建文件（保持各包体组成不变）。
+  - 新增 `bump_root_html()`：**根 `index.html` / `index_pc.html` 一起抬戳**（缺陷 2）。同步后
+    `md5(根 index.html) == md5(dist/<各副本>/index.html)`，两处上传路径都能强制刷新。
+  - `normalize_and_bump()` 扩到**样式**（`<link ... href="css/*.css?v=N">`）：早先只抬脚本，样式改动永远命中旧缓存（同一类病）。
+  - `--check` 改为**结构对账**（`strip_stamps()` 归一戳号后比对），输出「结构一致 N / 不一致 M」+ 首个差异行；
+    並修掉 `--check` 的两个假信号：以前**每次都必报**「缓存戳需抬升」（`normalize_and_bump` 对 dist 必然 +1，比对永远不等），
+    以及 zip 段因**文本模式读把 CRLF 折成 LF** 而误报「陈旧」——`read_text()`/`write_text()` 已改**二进制读写**保字节保真
+    （本仓库行尾是 CRLF，文本模式会改行尾 + 让 zip 原始字节与读出内容永远不等）。
+  - **补齐根 `index_pc.html` 的「每日登录礼」按钮**：PC 包入口本来就有、根 `index.html` 也有，只有根 `index_pc.html` 漏了；
+    不补齐则同步会**把 PC 版这个按钮削掉**。（绑定是判空的 `if (el)`，缺元素不崩，只是少个按钮。）
+- **守卫（19 号套件 +1 例，8→9）**：`HTML 包体守卫` ——
+  ① 6 个 dist 入口页与根真源**字节一致**（锚 `REPO` 而非 `ROOT`，因 dist 副本既无 `dist/` 也无 `tools/`）；
+  ② `#sect-msg` **点名断言**（那次漏的就是它，报红时一眼看出漏哪个元素）；
+  ③ 根 `index.html` 的脚本戳**必须统一**（历史 BUG：恒 168 从不变化）；
+  ④ 3 个 zip 内 `index.html` 与 dist 入口页一致（防「改了源码但 zip 没重建」→ TapTap 传旧包）；
+  ⑤ 源码守卫：`sync_dist.py` 保留 `HTML_MAP` / `bump_root_html` / `strip_stamps`（防重构误删）。
+  **变异验证**：故意改坏 `dist/DEDAO_release/index.html` 的 `#sect-msg` → 报红 2 条断言；把 `bump_root_html` 改名 → 报红 1 条；均已复原。
+- **对账连动**：`19` 8→**9** → 总数 362→**363**（`AGENTS.md` 模块表 + `DEDAO_项目简介.md` 三处计数）。
+- **版本**：根 `index.html` `?v=168 → 171`、`index_pc.html` `?v=163 → 166`（每次 sync 各 +1）；dist 6 个入口页同步为同戳。
+- **遗留（未改，待确认）**：PC 页（`index_pc.html`）仍无 `#sect-msg` / `#travel-msg` 页内反馈条 → PC 版仍存在
+  「宗门/游历页点了没反应」的观感问题（`sectMsg()` 有 `log()` 兜底，不崩，只是主界面日志在该页看不见）。属内容改动，未擅自实施。
+
+### #87 — 发布包补上 PC 入口页 + PC 页补齐页内反馈条 + 发布包组成守卫（2026-09-24 续）
+
+- **起因**：用户回「入包，补，实装」——把 #86 遗留的两项一次做实（PC 页入包 + 补反馈条）。
+- **新发现（L6，与 #86 同一病根的第三处）**：`dist/DEDAO_release/` 是「**覆盖到静态站根目录**」用的包，
+  但它的构建方是 `tools/build_release.sh`，运行时白名单是 `cp index.html manifest.json sw.js "$OUT/"` —— **漏了 `index_pc.html`**；
+  而线上根目录**确实有**这张 PC 页（实测 HTTP 200）。后果：**无论同步多少次、覆盖多少次 release 包，线上 PC 页永远是旧的**
+  （内容与 `?v=` 都停在旧号）。这正是 #86 那条「发布盲区」的**第三个出口**：
+  L5 是「HTML 不进真源同步」，L6 是「**发布包的组成**没和**要部署的仓库根**对齐」。
+- **修法**：
+  1. `tools/sync_dist.py`：`HTML_MAP['DEDAO_release']` 补 `('index_pc.html','index_pc.html')`；
+     并把「只覆盖已存在的入口页」改为「**HTML_MAP 即口径 —— 声明了却缺失则补齐**」（`--check` 下报「❌ 缺失」）。
+  2. `tools/build_release.sh`：运行时白名单补 `index_pc.html`（否则下次重建 release 又会把它删掉）。
+  3. `index_pc.html`：#screen-sect 补 `#sect-msg`、#screen-travel 补 `#travel-msg`（照 `index.html` 同位置，
+     均挂在 `#xxx-body` **之外**，避免 `renderSect()`/`renderTravel()` 重绘 body 时被冲掉）。
+     → PC 版「宗门/游历页点了没反应」的观感问题一并消除。
+  4. `--check` 报告口径：zip 段标题按模式显示「重建 / 校验」（原在 `--check` 下也印「重建」，误导读者）。
+- **守卫（19 号套件 +1 例，9→10）**：
+  - `HTML 包体守卫` 的入口页清单 6→**7**（新增 `DEDAO_release/index_pc.html`），
+    并新增断言：4 个 **PC 系入口页**都必须含 `#sect-msg` / `#travel-msg`。
+  - 新增 **`发布包组成守卫`**（新不变量：不是「内容是否同步」，而是「**组成**是否等于可部署的仓库根」）——
+    ① `DEDAO_release` 必须含 `index.html`/`index_pc.html`/`manifest.json`/`sw.js` + `css`/`js`/`assets` 目录；
+    ② `js`/`css` 文件名集合与仓库根**完全一致**（防「新增源文件忘加进同步清单」，历史上 `tutorial.js` 就漏过）；
+    ③ 不含开发目录（`test`/`tools`/`dist`/`_probe`/`_preview`/`node_modules`/`dedao-backend`/`.git`）与顶层 `.md`；
+    ④ 3 个商店包不含 `assets/img/_src`（AI 原图 ~72MB，运行时不引用）；
+    ⑤ 源码守卫：`sync_dist.py` 的 `HTML_MAP` **与** `build_release.sh` 的白名单都必须声明 `index_pc.html`。
+    **变异验证**：删除 `dist/DEDAO_release/index_pc.html` → 2 例报红、4 条点名断言；白名单改回旧写法 → 报红 1 条；
+    往 release 塞 `AGENTS.md` → 报红 1 条；均已复原（并借「补齐」路径复原，顺带验证了 L6 修法本身）。
+- **对账连动**：`19` 9→**10** → 总数 363→**364**（`AGENTS.md` 模块表 + `DEDAO_项目简介.md` 三处计数）。
+- **版本**：根 `index.html` `?v=171 → 174`、`index_pc.html` `?v=166 → 169`；dist **7 个**入口页同步为同戳。
+- **仍未处置（新发现，未擅自执行）**：`dist/DEDAO_release/assets/img/_src` 里留着一份 **~72MB** 的 AI 原图副本
+  （与仓库根那份逐字节相同 34/34，游戏运行时不引用、`build_release.sh` 也显式 `rm -rf` 剔除，但当前 release 目录里还在），
+  会让 release 从 13MB 涨到 84MB。清理由用户确认后执行（19 号守卫已加提示行）。
+
+### #88 — PC 页启动被一行 null.onclick 打断（19 处绑定静默失效）+ 清理 72MB 原图 + boot 绑定守卫（2026-09-24 续）
+
+- **起因**：用户确认「入包，补，实装」后做收尾审查，顺手比对两个入口页的 id 集合，**挖到一个真实高危 BUG**
+  （不是「PC 页少元素」那么轻，而是**共享启动函数被打断**）。
+- **根因**：`js/ui.js:6539`（在共享 `boot()` 内，`boot()` = 6462–6645 行）
+  `$('hongchen-back').onclick = function () { … }` **未判空**；而 `#hongchen-back` / `#screen-hongchen` /
+  `#hongchen-body` **只存在于 `index.html`** → PC 页 `null.onclick` 抛
+  `TypeError: Cannot set properties of null (setting 'onclick')` →
+  **`boot()` 后半段约 100 行、19 处绑定整体不执行**：
+  `t-settings` / `t-load` / `t-tutorial` / `modal-close` / `modal` / `btn-char-bottom` / `btn-bag-bottom` /
+  `btn-npc-bottom` / `btn-settings-bottom` / `btn-sect` / `ach-back` / `codex-back` / `tech-back` /
+  `favor-back` / `adv-info` / `adv-retreat` / `pause-resume` / `pause-exit` / `hud-settings`。
+- **症状**：PC 版**能开工**（`t-new` 在崩溃点之前已绑定）→ 玩家不易察觉，但进游戏后**一半按钮点了没反应**；
+  且 `ui_pc.js` 的顶部状态条靠 `clickBtn('btn-xxx-bottom')` 代理触发这些绑定 → **PC 顶部一排入口一并失效**。
+  已上传的 `dedao-pc-h5.zip` 受影响。**页面不白屏**，所以这个 bug 能长期潜伏。
+- **修法**：
+  1. `js/ui.js:6539` → `if ($('hongchen-back')) $('hongchen-back').onclick = …;`
+     —— 与同文件既有写法一致（`if ($('btn-break'))` 6529、`if ($('t-tutorial'))` 6547、`if ($('hud-settings'))` 6555；
+     6545 起的注释甚至写明「PC 版无 #hud-settings，绑定必须判空」）。**同一约定漏了这一处**，H5 行为不变。
+  2. `index_pc.html` 补 `#screen-hongchen`（含 `#hongchen-body` / `#hongchen-back`，照 `index.html` 同结构）
+     → PC 版「红尘练心」可用（改前从游历页点进去没反应）。
+- **定位方法（可复用）**：① 扫 `ui.js` 所有未判空 `$('id').prop` 引用 ② 与每个入口页的静态 id 集合对账
+  ③ 判「先建后用」还是「必须来自 HTML」——**看该绑定所在函数内、绑定行之前有没有 `innerHTML` 赋值**
+  （`renderCreatePage`/`renderCultivate` 里属前者，安全）；只有落在 **`boot()`** 里的才致命。
+  **用 jsdom 真启动两页做决定性验证**（`_probe/diag_pc_boot_2026-09-24.js`）：
+  修前 PC 页抽样 10 按钮 **10/10 未绑定** + `Cannot set properties of null`；修后与 H5 一致 **6/6 通过**。
+- **判定纪律（差点补错）**：`h-avatar` / `hud-settings` / `btn-ach-hud` / `btn-codex-hud` 在 PC 页缺席是**刻意设计**
+  （PC 用另一套顶部入口 + `clickBtn()` 代理靶点，绑定处本就判空）→ **不算缺陷，不该乱补**。
+  入口页之间「元素少了」不等于缺陷，必须逐个判「刻意缺席 vs 漏了」，再用真启动测行为定责。
+- **守卫（19 号套件 +1 例，10→11）**：`共享 boot 未判空绑定守卫` —— 断言**启动路径（`boot()`）内所有未判空
+  `$('id').prop` 引用的元素，在 `index.html` 与 `index_pc.html` 两页都存在**；报红点名 id + 行号 + 缺哪个页 + 修法；
+  另有 `refs.length ≥ 20` 兜底（防正则失效导致守卫空转）。
+  只查 `boot()`：行动态函数里的未判空引用异常被局限在单个处理器内，且有「先 innerHTML 建出来再绑」的合法写法，
+  全查会误报 —— 实测两侧共 30 处引用 **0 误报**。
+  **变异验证**：在 `boot()` 里植入 `$('hud-settings').textContent = '设置'`（未判空、PC 页无此元素）
+  → 报红并点名 `hud-settings（ui.js:6530）` + 缺 `index_pc.html`；已复原（md5 校验）。
+- **打包清理（用户确认后执行）**：`rm -rf dist/DEDAO_release/assets/img/_src`
+  （34 文件 ~72MB，与仓库根逐字节相同 34/34、运行时不引用、`build_release.sh` 本就声明剔除）
+  → `DEDAO_release` **84MB → 13MB**，与 3 个 TapTap 包（各 13MB）一致。根目录原件保留。
+  19 号守卫该提示行升级为**硬断言**（商店包 + release 均不得含 `assets/img/_src`）。
+- **对账连动**：`19` 10→**11** → 总数 364→**365**（`AGENTS.md` 模块表 + `DEDAO_项目简介.md` 三处计数）。
+- **版本**：根 `index.html` `?v=174 → 175`、`index_pc.html` `?v=169 → 170`；dist **7 个**入口页同步为同戳；
+  `js/ui.js` 已同步进 4 副本 + 3 个 zip。
+
+### #89 — 劫数锁死·渐进解锁（初始 0 劫，通关解锁下一劫）（2026-09-29）
+- **需求**：劫系统从"进游戏前自由选 0~9 劫"改为**渐进解锁**——初始锁死 0 劫，通关（飞升 OR 道之路结局 OR 五劫尽渡，任一达成）后由结算页解锁下一劫。
+- **实现**：
+  - `Engine.defaultMeta()` 新增 `unlockedJie: 0`（已解锁最高可选题数，初始 0）。
+  - 进入页 `showEnterPage()` 的劫数上限从硬编码 `9` 改为读 `m.unlockedJie`，旧档无该字段时用 `m.maxJie` 兜底（老玩家保留已通关水平，纯新玩家从 0 劫起）；`enter-jie-plus` 达上限自动禁用 → 锁死生效。
+  - 进入页 `renderEnterPage()` 复用现有 `enter-jie-status` 展示「已解锁 0~N 劫，通关解锁下一劫」（不新增 HTML 元素）。
+  - 结算页触发条件加「五劫尽渡」：`canJie = nextJie > currentJie && (hasFeisheng || hasDaolu || fivePassed)`；解锁时写 `m.unlockedJie = max(m.unlockedJie, nextJie)`。
+- **测试**：`03-ui` 删旧「进入页自由选 0~9 劫」用例、新增 3 例（锁死初始 0 劫 / `unlockedJie=1` 可点到 1 劫 / `unlockedJie=9` 可连点到 9 劫）→ `03-ui` **58→60**。
+- **顺带修**：`17` 模块 `makeState()` 补 `s.sectRank='外门'`（此前跳过入宗流程、`sectPassed` 拦截讲法/传功致 11 例全红）→ 现在 **11/11 通过**。
+- **文档**：总数 365→**367**（`AGENTS.md` 模块表 `03-ui` 60 + 两处计数口径、`DEDAO_项目简介.md` 三处计数同步）。
+- **版本/发布**：`sync_dist.py` 抬根 `?v=`（index 177 / pc 172）、4 副本 + 3 zip 同步；`_probe/build_tap_clean.py` `NEW_V` 181/166/181 重建版本化 zip（CDN 破缓存）。
+- **已知未闭环（非本需求引入，工作树既有，待单独修）**：`02` 入宗考验 `applySectTrial` 定级写回 / 锻体 `duantiShenEff`、`04` 秘境敌人强度绑定玩家战力、以及 `19` HTML 包体守卫因「版本化 zip 内入口页 ↔ 未版本化 dist 入口页」结构不一致报红——均为 uncommitted 既有改动或 build 管线张力，非本次劫数改动所致。

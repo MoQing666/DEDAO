@@ -478,6 +478,24 @@
         resolve({ pick: c, win: true, lines: ['你决定' + (c.sectAct === 'combat' ? '降妖除魔' : '聆听道法') + '。'] });
         return;
       }
+      if (c.joinSect) {
+        const r = Engine.joinSect(S, c.joinSect);
+        const lines = (c.lines || []).slice();
+        if (r.ok) {
+          const sn = (S.sect && SECTS[S.sect]) ? SECTS[S.sect].name : '';
+          lines.push('你正式入籍【' + sn + '】，身份定为【' + r.rank + '】' + (r.gift ? ('，功业 +' + r.gift) : '（功业无增）') + '。');
+        } else {
+          lines.push(r.msg || '未能入门。');
+        }
+        resolve({ pick: c, win: true, lines: lines });
+        return;
+      }
+      if (c.leaveSect) {
+        S.sect = null; Engine.saveState(S);
+        const lines = (c.lines || []).slice();
+        resolve({ pick: c, win: true, lines: lines });
+        return;
+      }
       const gains = c.effect ? Engine.applyOps(S, c.effect) : [];
       const lines = (c.lines || []).slice();
       gains.forEach(function (g) { lines.push(g); });
@@ -1331,6 +1349,43 @@
     }
     showChapter(a.trialTitle || '试炼', [(a.setting || '')].concat(guide), { subtitle: '试炼体力 ' + a.stamina + ' / ' + a.staminaMax }).then(renderAdvMap);
   }
+  // —— 入宗考验结算：评分 ≠ 入门（2026-09-25 v6）——
+  //   应考只评分+记年；是否入门由玩家在「三选一」中显式决定。尝试 ≠ 入门。
+  function showSectTrialResult(win) {
+    const g = Engine.applySectTrial(S, win);   // 评分 + 记年，不写 sectRank
+    Engine.saveState(S);
+    const alreadyIn = Engine.sectPassed(S);      // 已是正式弟子（重考情形）
+    const wu = Math.round(Engine.effAttr(S, 'wu')), dao = Math.round(Engine.effAttr(S, 'dao'));
+    const title = win ? '入宗试炼 · 功成' : '入宗试炼 · 受挫';
+    const lines = [];
+    if (win) lines.push('演武教头收矛大笑：「好小子，有种！这一关，你过了。」');
+    else lines.push('演武教头摇了摇头：「火候未到，回去再练练吧。」');
+    lines.push('三关观人——武骨（悟性 ' + wu + '）、道心（道心 ' + dao + '）、实战（' + (win ? '胜' : '未过') + '）。');
+    // 已是正式弟子：重考不影响名分，不弹三选一
+    if (alreadyIn) {
+      lines.push('你已有【' + S.sectRank + '】之位，此番考评不影响名分。');
+      showChapter(title, lines).then(function () { refresh(); renderSect(); });
+      return;
+    }
+    const choices = [];
+    if (g.canJoin) {
+      if (g.provisional) {
+        choices.push({ t: '以记名弟子入门（外门档·功业无增）', joinSect: g,
+          lines: ['你败于教头之手，然武骨道心尚可。宗门许你记名入籍——实战一课未过，功业与品秩皆无从谈起，来年可再考转正。'] });
+      } else {
+        choices.push({ t: '即刻入门', joinSect: g,
+          lines: ['执事弟子引你入籍，自今日起便是【' + (S.sect ? SECTS[S.sect].name : '') + '】正式弟子。'] });
+      }
+    }
+    choices.push({ t: '暂不入门 · 来年再考', lines: ['你辞了入籍之仪，仍是待考之身。来年演武场再见。'] });
+    choices.push({ t: '离去 · 另投他门', leaveSect: true, lines: ['你长揖而去。天下之大，未必只有这一处仙门。'] });
+    const subtitle = g.provisional ? '实战未过 · 仅记名可入'
+      : (g.canJoin ? '实战已过的入籍抉择' : '资质未达 · 仅可再考或离去');
+    showChapter(title, lines, { subtitle: subtitle, choices: choices }).then(function () {
+      log('入宗试炼' + (win ? '通过' : '未过') + '，评定【' + (g.rank || '未达资格') + '】', win ? 'good' : 'bad');
+      refresh(); renderSect();
+    });
+  }
   // —— 试炼 BOSS 战（入宗考验 / 死劫 共用的决战结算）——
   function fightTrialBoss(bossNode) {
     const a = S.adv;
@@ -1344,17 +1399,8 @@
       $('screen-game').classList.remove('explore-active');
       if (typeof AudioManager !== 'undefined') AudioManager.playBgm('game');
       if (br.win) {
-        if (kind === 'sect') {
-          const r = Engine.applySectTrial(S, true);
-          Engine.saveState(S);
-          showChapter('入宗试炼 · 功成', [
-            '演武教头收矛大笑：「好小子，有种！入我门墙，当得起。」',
-            '三关观人——武骨（悟性 ' + Math.round(Engine.effAttr(S, 'wu')) + '）、道心（道心 ' + Math.round(Engine.effAttr(S, 'dao')) + '）、实战（胜），评定身份：【' + r.rank + '】' + (r.gift ? ('，功业 +' + r.gift) : '') + '。'
-          ]).then(function () {
-            log('入宗试炼通过，身份定为【' + r.rank + '】', 'good');
-            refresh(); renderSect();
-          });
-        } else if (kind === 'hidden') {
+        if (kind === 'sect') { showSectTrialResult(true); }
+        else if (kind === 'hidden') {
           // 隐藏线通关：打破轮回（轮回点 ×1.5）
           S.hiddenWin = true;
           S.endReason = '打破轮回';
@@ -1387,23 +1433,8 @@
           });
         }
       } else {
-        if (kind === 'sect') {
-          const r = Engine.applySectTrial(S, false);
-          Engine.saveState(S);
-          // 2026-09-17：实战是入宗硬门槛 —— 败则不入宗（杂役）。若此前已具更高身份，
-          //   applySectTrial 会走「不高更低降级」分支（changed=false），名分不受影响。
-          const held = (r && r.changed === false && r.rank && r.rank !== '杂役');
-          const tail = held
-            ? '你已有【' + r.rank + '】之位，此番落败不影响名分。'
-            : '实战为入宗硬门槛——不敌则不入宗，暂列【' + (S.sectRank || '杂役') + '】，来年可再来。';
-          showChapter('入宗试炼 · 受挫', [
-            '演武教头摇了摇头：「火候未到，回去再练练吧。」',
-            tail
-          ]).then(function () {
-            log('入宗试炼实战未过，' + (held ? '身份仍为【' + r.rank + '】' : '暂列【' + (S.sectRank || '杂役') + '】'), 'bad');
-            refresh(); renderSect();
-          });
-        } else if (kind === 'hidden') {
+        if (kind === 'sect') { showSectTrialResult(false); }
+        else if (kind === 'hidden') {
           S.dead = true;
           S.endReason = '轮回之外陨落';
           Engine.saveState(S);
@@ -2892,7 +2923,9 @@
     const nextJieData = JIE_DATA[nextJie];
     const hasFeisheng = !!(M.achievements && M.achievements.feisheng);
     const hasDaolu = !!(M.achievements && M.achievements.daolu);
-    const canJie = nextJie > currentJie && (hasFeisheng || hasDaolu);
+    // 解锁下一劫：达成飞升 / 道之路结局，或五劫尽渡（任一即可，2026-09-29）
+    const fivePassed = !!(S.omen && S.omen.allPassed);
+    const canJie = nextJie > currentJie && (hasFeisheng || hasDaolu || fivePassed);
     const jieDisabledReason = !canJie ? (hasFeisheng || hasDaolu ? '已达九劫' : '需要达成飞升或道之路结局') : '';
     const btnRow = document.createElement('div');
     btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:12px;';
@@ -2908,6 +2941,7 @@
     btnJie.onclick = function () {
       var m = Engine.loadMeta();
       m.nextJie = nextJie;
+      if (canJie) m.unlockedJie = Math.max(m.unlockedJie || 0, nextJie);
       Engine.saveMeta(m);
       Engine.clearState();
       showScreen('game');
@@ -3087,7 +3121,9 @@
     // 劫数自由选择（2026-09-13 用户定稿）：开局即可选 0–9 劫，不再受「历史最高劫数」封顶。
     // maxJie（历史最高）仍保留在结算页作为成就展示；JIE_DATA 难度、命格金池、隐藏线（6劫+）等
     // 均按玩家所选劫数生效，选高劫=主动提升难度。
-    const maxJie = 9;
+    // 劫数锁死（2026-09-29）：初始只能选 0 劫，通关（飞升/得道/五劫尽渡）后由结算页解锁下一劫。
+    // 旧档无 unlockedJie 时，用历史最高 maxJie 兜底（老玩家保留已通关水平）；纯新玩家从 0 劫起。
+    const maxJie = Math.max(0, (m.unlockedJie != null ? m.unlockedJie : (m.maxJie || 0)));
     // 「应劫轮回（X劫）」预设：结算页应劫写入 meta.nextJie 后，进入页默认落在该劫（仍可自由改）。
     enterState.jie = Math.min(maxJie, m.nextJie || 0);
     enterState.selected = [];
@@ -3146,12 +3182,15 @@
     $('enter-jie-minus').disabled = (jie <= 0);
     $('enter-jie-plus').disabled = (jie >= maxJie);
 
-    // 解锁内容
+    // 解锁内容（当前劫的额外解锁）
     const unlockParts = [];
     // 2026-09-14：3 劫起开局六维由 1 提到 2（与「我命由我」同阈值，见 Engine.startLife）
     if (jie >= 3) unlockParts.push('3劫起开局六维 +1、解锁「我命由我」命格栏+1');
     if (jie >= 6) unlockParts.push('+1锁定槽');
-    $('enter-jie-status').textContent = unlockParts.length ? unlockParts.join('、') : '无额外解锁';
+    let statusText = unlockParts.length ? unlockParts.join('、') : '无额外解锁';
+    // 劫数锁死进度（2026-09-29）：复用现有 enter-jie-status 展示，不新增 HTML 元素
+    statusText += (maxJie >= 9) ? ' ｜ 全劫已解锁' : ' ｜ 已解锁 0~' + maxJie + ' 劫，通关解锁下一劫';
+    $('enter-jie-status').textContent = statusText;
 
     // 轮回点奖励
     const rpGain = jie * 3 + (jie >= 3 ? 1 : 0) + (jie >= 6 ? 2 : 0);
@@ -6536,7 +6575,13 @@
     $('crafts-gear').onclick = function () { sfx('click'); openGear(); };
     $('crafts-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('duanti-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
-    $('hongchen-back').onclick = function () { sfx('click'); showScreen('travel'); renderTravel(); };
+    // ⚠ 必须判空：`#hongchen-back` 只在 index.html 里有（`#screen-hongchen` 是 H5 版独有的页），
+    //   PC 版 index_pc.html 没有该元素。2026-09-24 修：本行原先未判空 → PC 页 `null.onclick`
+    //   抛 TypeError → **boot() 后半段（本行之后约 100 行 / 19 处绑定）整体不执行**，
+    //   表现为「PC 版能开工，但设置/角色/储物袋/宗门/弹窗关闭/暂停继续/秘境撤离 等按钮点了没反应」
+    //   （ui_pc.js 的顶部状态条靠 clickBtn('btn-xxx-bottom') 代理这些绑定，一并失效）。
+    //   与同文件既有写法一致（见 `if ($('btn-break'))`、`if ($('t-tutorial'))`、`if ($('hud-settings'))`）。
+    if ($('hongchen-back')) $('hongchen-back').onclick = function () { sfx('click'); showScreen('travel'); renderTravel(); };
     $('tech-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('favor-back').onclick = function () { sfx('click'); showScreen('game'); refresh(); };
     $('modal-close').onclick = function () { sfx('click'); closeModal(); };

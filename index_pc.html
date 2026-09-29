@@ -9,8 +9,8 @@
   <link rel="manifest" href="manifest.json">
   <title>得道飞升模拟器 · PC测试版（异世轮回录式）</title>
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/TsangerYuYangT-W05.woff2">
-  <link rel="stylesheet" href="css/style.css?v=163">
-  <link rel="stylesheet" href="css/style_pc.css?v=163">
+  <link rel="stylesheet" href="css/style.css?v=172">
+  <link rel="stylesheet" href="css/style_pc.css?v=172">
   <script>
     // 暂时禁用SW，调试后恢复
     // if ('serviceWorker' in navigator) {
@@ -60,6 +60,7 @@
         <button id="t-continue" class="btn-main ghost">继续征途</button>
         <button id="t-load" class="btn-main ghost">存档 · 读档</button>
         <button id="t-rebirth" class="btn-main ghost">轮回塔（天赋）</button>
+        <button id="t-daily" class="btn-main ghost">每日登录礼</button>
         <button id="t-settings" class="btn-main ghost">设置</button>
         <button id="t-tutorial" class="btn-main ghost">新手引导</button>
       </div>
@@ -202,6 +203,11 @@
     <div class="panel">
       <div class="screen-head"><h2>宗门</h2><button class="btn-small ghost" id="sect-back">返回</button></div>
       <div class="screen-body" id="sect-body"></div>
+      <!-- 宗门页内反馈条：道庭讲法 / 师父传功的结果必须落在这里，
+           旧写法只写主界面日志，玩家留在本页看不到任何结果，观感即「点了没生效」（2026-09-23）。
+           注意：本元素必须留在 #sect-body **之外**，renderSect 重绘 body.innerHTML 时才不会被冲掉。
+           （2026-09-24 补：PC 页 #screen-sect 此前缺此元素与 #travel-msg，与 H5 版不一致） -->
+      <div class="sect-msg" id="sect-msg" style="display:none"></div>
     </div>
   </div>
 
@@ -210,6 +216,10 @@
     <div class="panel">
       <div class="screen-head"><h2>游历 · 山河图</h2><button class="btn-small ghost" id="travel-back">返回</button></div>
       <div class="screen-body" id="travel-body"></div>
+      <!-- 游历页内反馈条：本页是静态地图、没有日志区，任何提示（行动点不足 / 尚无可寻访之人 /
+           今年已探寻过 …）都必须写在这里，否则玩家「点了没反应」（2026-09-14 用户反馈）。
+           （2026-09-24 补：PC 页 #screen-travel 此前缺此元素） -->
+      <div class="travel-msg" id="travel-msg" style="display:none"></div>
     </div>
   </div>
 
@@ -396,6 +406,20 @@
     </div>
     <div class="gear-footer">
       <button id="duanti-back" class="btn-main">返回修行</button>
+    </div>
+  </div>
+
+  <!-- ============ 红尘练心页（2026-09-24 补：此前只有 index.html 有，PC 版从游历页点进去会没反应） ============ -->
+  <div class="screen" id="screen-hongchen" style="display:none" data-bg="assets/img/bg/bg_duanti.png">
+    <div class="panel gear-head">
+      <h2 class="tower-title">红尘练心</h2>
+      <p class="dim">入红尘历练心智——以人间为炉，以悲欢为火，淬一身清明道心。</p>
+    </div>
+    <div class="panel">
+      <div id="hongchen-body"></div>
+    </div>
+    <div class="gear-footer">
+      <button id="hongchen-back" class="btn-main">返回游历</button>
     </div>
   </div>
 
@@ -588,11 +612,11 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=163"></script>
-  <script src="js/engine.js?v=163"></script>
-  <script src="js/audio.js?v=163"></script>
-  <script src="js/ui.js?v=163"></script>
-  <script src="js/tutorial.js?v=163"></script>
-  <script src="js/ui_pc.js?v=163"></script>
+  <script src="js/data.js?v=172"></script>
+  <script src="js/engine.js?v=172"></script>
+  <script src="js/audio.js?v=172"></script>
+  <script src="js/ui.js?v=172"></script>
+  <script src="js/tutorial.js?v=172"></script>
+  <script src="js/ui_pc.js?v=172"></script>
 </body>
 </html>

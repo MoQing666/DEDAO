@@ -2,21 +2,28 @@
  */
 const fs = require('fs');
 const path = require('path');
-// 解析 jsdom：优先环境变量，其次隔离工作区，最后全局
+/* 解析 jsdom：优先项目自身 node_modules（`npm install` 后即命中），
+ * 其次 JSDOM_PATH 环境变量。两者都拿不到就直接抛错——宁可响亮失败，
+ * 也不要静默跳过一整个 UI 套件。
+ *
+ * 变更记录（2026-09-25）：此处曾硬编码本机隔离工作区路径
+ * `C:\Users\Lenovo\.workbuddy\...\node_modules\jsdom`，换机 / 上 CI 必挂，已移除。
+ */
 let JSDOM, VirtualConsole, ResourceLoader;
 (function () {
-  const base = process.env.USERPROFILE || path.join('C:', 'Users', process.env.USERNAME || '');
-  const candidates = [
-    process.env.JSDOM_PATH,
-    path.join(base, '.workbuddy', 'binaries', 'node', 'workspace', 'node_modules', 'jsdom'),
-    'jsdom',
-  ].filter(Boolean);
-  if (fs.existsSync(path.join(base, '.workbuddy', 'binaries', 'node', 'workspace', 'node_modules'))) {
-    module.paths.push(path.join(base, '.workbuddy', 'binaries', 'node', 'workspace', 'node_modules'));
+  const tried = [];
+  for (const c of ['jsdom', process.env.JSDOM_PATH].filter(Boolean)) {
+    try {
+      ({ JSDOM, VirtualConsole, ResourceLoader } = require(c));
+      return;
+    } catch (e) {
+      tried.push(c + ' → ' + String(e.message).split('\n')[0]);
+    }
   }
-  for (const c of candidates) {
-    try { ({ JSDOM, VirtualConsole, ResourceLoader } = require(c)); return; } catch (e) { /* 继续尝试 */ }
-  }
+  throw new Error(
+    '未找到 jsdom，UI 套件无法运行。请先执行 npm install（或设置 JSDOM_PATH 指向 jsdom 所在目录）。\n' +
+    '  已尝试：\n    - ' + tried.join('\n    - ')
+  );
 })();
 const { ROOT, Suite } = require('./_harness');
 
@@ -1333,49 +1340,81 @@ module.exports = async function build() {
     if (real.length) t.fail('宗门页反馈交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
-  // === 回归 2026-09-13：新账号开局可自由选择 0–9 劫（不再受「历史最高」封顶） ===
-  S.case('进入页劫数自由选择：新账号可选 0–9 劫，所选劫数生效到本世', async (t) => {
-    const a = await boot(); // 全新账号（meta.maxJie = 0）
+  // === 回归 2026-09-29：劫数锁死（初始 0 劫，通关才解锁下一劫） ===
+  S.case('进入页劫数锁死：新账号初始只能选 0 劫，+ 到解锁上限即禁用', async (t) => {
+    const a = await boot(); // 全新账号（meta 无 unlockedJie，maxJie=0 → 解锁上限 0）
     const { win, doc } = a;
     click(win, 't-new');
     await new Promise(r => setTimeout(r, 200));
-    t.eq(visible(doc, 'screen-enter'), true, '新账号应进入「天命抉择」页');
+    t.eq(visible(doc, 'screen-enter'), true, '应进入「天命抉择」页');
     const plus = doc.getElementById('enter-jie-plus');
     const minus = doc.getElementById('enter-jie-minus');
-    t.ok(plus && !plus.disabled, '初始 0 劫时「+」应可用（旧版新账号被 maxJie=0 封死）');
+    const jieName = doc.getElementById('enter-jie-name');
+    const status = doc.getElementById('enter-jie-status');
+    t.ok(plus && plus.disabled, '初始 0 劫且未解锁更高劫时「+」应禁用（锁死）');
+    t.ok(minus && minus.disabled, '初始 0 劫时「-」也应禁用（已是下限）');
+    t.ok(/0劫/.test(jieName ? jieName.textContent : ''), '初始应显示 0 劫（实：' + (jieName && jieName.textContent) + '）');
+    t.ok(/已解锁 0~0 劫/.test(status ? status.textContent : ''), '进度提示应显示「已解锁 0~0 劫」（实：' + (status && status.textContent) + '）');
+    // 尝试连点 + 仍锁死在 0 劫
     for (let i = 0; i < 9; i++) {
       plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-      await new Promise(r => setTimeout(r, 25));
+      await new Promise(r => setTimeout(r, 20));
     }
-    const jieName = doc.getElementById('enter-jie-name');
-    t.ok(/9劫/.test(jieName ? jieName.textContent : ''), '应可连点到 9 劫（实：' + (jieName && jieName.textContent) + '）');
-    t.ok(plus.disabled, '到 9 劫后「+」应禁用');
-    t.ok(minus && !minus.disabled, '9 劫时「-」应可用');
-    // 以 9 劫开局 → 本世 jie=9（难度倍率/命格金池/隐藏线阈值均按所选劫数）
-    const input = doc.getElementById('enter-name-input');
-    input.value = '九劫君'; input.dispatchEvent(new win.Event('input', { bubbles: true }));
+    t.ok(/0劫/.test(jieName ? jieName.textContent : ''), '连点 + 后仍为 0 劫（锁死生效，实：' + (jieName && jieName.textContent) + '）');
+    // 选满命格后以 0 劫开局 → 本世 jie=0
     const pool = doc.getElementById('enter-destiny-pool');
-    if (pool && pool.children.length) {
-      pool.children[0].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
-    }
+    if (pool) { for (let i = 0; i < pool.children.length; i++) pool.children[i].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win })); }
     await new Promise(r => setTimeout(r, 60));
-    // 命格未选满（9劫 3选2，此处只选了 1 个）：首次点「开始」只提醒，不真正开局
     click(win, 'enter-start');
-    await new Promise(r => setTimeout(r, 120));
-    const hintEl = doc.getElementById('enter-name-hint');
-    t.ok(/还有\s*1\s*个命格可选/.test(hintEl ? hintEl.textContent : ''),
-      '命格未选满时应给出提醒（实：' + (hintEl && hintEl.textContent) + '）');
-    const titleEl = doc.getElementById('enter-destiny-title');
-    t.ok(/已选\s*1\/2/.test(titleEl ? titleEl.textContent : ''),
-      '天命标题应实时显示已选/可选（实：' + (titleEl && titleEl.textContent) + '）');
-    let rawMid = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
-    t.ok(!(rawMid && rawMid.jie === 9), '首次点击只提醒，不应写入本世存档');
-    click(win, 'enter-start');   // 再点一次：确认开始
     await new Promise(r => setTimeout(r, 250));
     const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
-    t.ok(!!(raw && raw.jie === 9), '所选 9 劫应写入本世存档（实：' + (raw && raw.jie) + '）');
+    t.ok(!!(raw && raw.jie === 0), '所选 0 劫应写入本世存档（实：' + (raw && raw.jie) + '）');
     const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
-    if (real.length) t.fail('劫数选择交互报错: ' + real.slice(0, 3).join(' ;; '));
+    if (real.length) t.fail('劫数锁死交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('劫数解锁上限生效：meta.unlockedJie=1 时进入页可点到 1 劫', async (t) => {
+    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 1, unlockedJie: 1 });
+    const a = await boot({ seed: { dedao_meta: metaSeed } });
+    const { win, doc } = a;
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    const plus = doc.getElementById('enter-jie-plus');
+    const jieName = doc.getElementById('enter-jie-name');
+    const status = doc.getElementById('enter-jie-status');
+    t.ok(plus && !plus.disabled, 'unlockedJie=1 时「+」应可用（可解锁到 1 劫）');
+    plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 30));
+    t.ok(/1劫/.test(jieName ? jieName.textContent : ''), '应可点到 1 劫（实：' + (jieName && jieName.textContent) + '）');
+    t.ok(plus.disabled, '到 1 劫后「+」应禁用（达解锁上限）');
+    t.ok(/已解锁 0~1 劫/.test(status ? status.textContent : ''), '进度提示应显示「已解锁 0~1 劫」（实：' + (status && status.textContent) + '）');
+    const pool = doc.getElementById('enter-destiny-pool');
+    if (pool) { for (let i = 0; i < pool.children.length; i++) pool.children[i].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win })); }
+    await new Promise(r => setTimeout(r, 60));
+    click(win, 'enter-start');
+    await new Promise(r => setTimeout(r, 250));
+    const raw = JSON.parse(a.win.localStorage.getItem('dedao_save') || 'null');
+    t.ok(!!(raw && raw.jie === 1), '所选 1 劫应写入本世存档（实：' + (raw && raw.jie) + '）');
+    const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('解锁上限交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('劫数解锁上限边界：meta.unlockedJie=9 时可连点到 9 劫', async (t) => {
+    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 9, unlockedJie: 9 });
+    const a = await boot({ seed: { dedao_meta: metaSeed } });
+    const { win, doc } = a;
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    const plus = doc.getElementById('enter-jie-plus');
+    const jieName = doc.getElementById('enter-jie-name');
+    for (let i = 0; i < 9; i++) {
+      plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 20));
+    }
+    t.ok(/9劫/.test(jieName ? jieName.textContent : ''), 'unlockedJie=9 时应可连点到 9 劫（实：' + (jieName && jieName.textContent) + '）');
+    t.ok(plus.disabled, '到 9 劫后「+」应禁用');
+    const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('全解锁交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   // === 回归 2026-09-13：百艺「阵法」板块（研习改名 + 内容归位 + 不再重复追加） ===

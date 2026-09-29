@@ -37,7 +37,7 @@ const Engine = (function () {
   /* ---------------- 档案 ---------------- */
   function defaultMeta() {
     return {
-      points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
+      points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0, unlockedJie: 0,
       daily: { last: '', streak: 0, total: 0, patch: 0 }
     };
   }
@@ -2747,7 +2747,7 @@ const Engine = (function () {
    * kind: 'sect'（入宗考验，boss 按境界缩放） | 'death'（死劫，boss 按死劫缩放） */
   function startTrial(s, kind, opts) {
     opts = opts || {};
-    if (kind === 'sect') { s.hp = s.hpMax; s.mp = s.mpMax; } // 入宗试炼前回满血蓝
+    // 入宗试炼进战不再回满血蓝：回满已收口到 joinSect（入门确认后才补满，保证「尝试≠入门」有真实代价）
     // 劫境主题：死劫 / 渡劫 / 隐藏线 各自提供 地图列数、节点池、环境文案
     let theme = null, title = opts.title || '';
     if (kind === 'death') {
@@ -3939,7 +3939,7 @@ const Engine = (function () {
   }
   function sectSocial(s) {
     // 宗门交游（行动点·1点）：消费 SECT_SOCIAL，剑峰习剑等 once 事件仅出现一次
-    if (!s.sect) return '你尚未加入宗门。';
+    if (!sectPassed(s)) return '你尚未通过入宗考验，无缘交游。';
     if (!canAction(s, 1)) return false;
     const bi = bigIdxOf(s);
     const pool = (SECT_SOCIAL[s.sect] || []).filter(function (ev) {
@@ -3952,7 +3952,7 @@ const Engine = (function () {
     return ev;
   }
   function sectCombat(s) {
-    if (!s.sect) return '你尚未加入宗门。';
+    if (!sectPassed(s)) return '你尚未通过入宗考验，无缘降妖。';
     if (!canAction(s, 1)) return false;
     const bi = bigIdxOf(s);
     const pool = SECT_COMBAT[s.sect].filter(function (ev) {
@@ -3984,7 +3984,7 @@ const Engine = (function () {
   /* 道庭讲法（选 1 · 不耗行动点 · 每年与传功共享 1 次）
      随机给 1 个本等级未习得宗门技；保底修为 = 当前境界 10%。 */
   function sectLecture(s) {
-    if (!s.sect) return { error: '你尚未加入宗门。' };
+    if (!sectPassed(s)) return { error: '你尚未通过入宗考验，无缘听讲。' };
     if (s.sectTeachYear) return { used: true };
     const pool = sectTeachPool(s);
     let tid = null;
@@ -3998,7 +3998,7 @@ const Engine = (function () {
   /* 师父传功·前置（切磋战斗准备，不耗行动点）
      返回 10 层精英战力的师父 spec；年限在战斗结算时才扣。 */
   function sectMasterPrep(s) {
-    if (!s.sect) return { error: '你尚未加入宗门。' };
+    if (!sectPassed(s)) return { error: '你尚未通过入宗考验，无缘传功。' };
     if (s.sectTeachYear) return { used: true };
     const sectName = (SECTS[s.sect] && SECTS[s.sect].name) || '宗门';
     const spec = enemyGen(s, 'elite', 10, s.advType || 'huang');
@@ -4171,7 +4171,7 @@ const Engine = (function () {
       return { ok: false, msg: MATERIALS[costKey].name + '不足，需要 ' + costAmount + ' 株' };
     }
     s.materials[costKey] -= costAmount;
-    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (s.sect === 'dpxia' ? 0.2 : 0));
+    const chance = Math.min(0.92, 0.7 + (s.wu - 5) * 0.01 + (sectPassed(s) && s.sect === 'dpxia' ? 0.2 : 0));
     if (Math.random() < chance) {
       s.elixirs[f.out] = (s.elixirs[f.out] || 0) + 1;
       grantCraftExp(s, 'liandan', 1); // 炼丹制作成功即积累丹道心得（主升级路径之一）
@@ -4252,7 +4252,7 @@ const Engine = (function () {
       + talentApply(s, 'trib')
       + getDestinyBonus(s, 'tribBonus')
       + ((s.talents && s.talents.indexOf('dujie') >= 0) ? 0.1 : 0)  // 旧档遗留命格「天劫不侵」（现版 TALENTS 已无此 id，仅兼容老存档）
-      + (s.sect === 'xuantian' ? 0.05 : 0)                          // 玄天宗师门护持
+      + (sectPassed(s) && s.sect === 'xuantian' ? 0.05 : 0)          // 玄天宗师门护持（须正式入宗）
       + effAttr(s, 'dao') * 0.01;
     if (!nxt) {
       // 元婴后期（境界表最后一段）→ 飞升天劫
@@ -4415,9 +4415,12 @@ const Engine = (function () {
   }
 
   /* ---------------- 渡劫：人劫（心魔/强敌） · 天劫（对战劫身） ---------------- */
+  // 2026-09-25 v6 反解系数（基于 v5 基线反解，tools/_probe_v6_newbie.js 第6节可一键刷新）：
+  //   心魔/天劫原系数在抬基线后全线必输（渡劫卡死游戏）。天劫按境界查表重定；心魔按设计保留（用户要求不变）。
+  const TIANJIE_SCALE = [null, { atk: 0.69, hp: 0.59 }, { atk: 0.65, hp: 0.56 }, { atk: 0.64, hp: 0.55 }]; // 索引 = bigIdx（1 筑基 / 2 金丹 / 3 元婴）
   function xinmoSpec(s) {
     const bi = bigIdxOf(s);
-    // 心魔：锚定玩家当前境界(bi)；旧: atk=s.atk*1.05 / hp=s.atk*(5+bi)*1.15 → hp 用基线.atk
+    // [2026-09-25] 心魔系数按设计保留，未随天劫反解；抬基线后由丹药/淬炼/法宝等增益承压（用户要求保持不变）。
     const st = enemyStats(bi, 1.05, (5 + bi) * 1.15, 1, { hpRef: 'atk' });
     return {
       name: '心魔 · 执念化形',
@@ -4430,13 +4433,11 @@ const Engine = (function () {
     };
   }
   function tianjieSpec(s, trib) {
-    const bi = bigIdxOf(s);
-    const isYuan = trib === '元婴';
-    const name = isYuan ? '天劫化身 · 紫霄神霄双雷形' : '天劫化身 · 九天应元之形';
-    // 天劫：锚定玩家当前境界(bi)；旧: atk=s.atk*(1.1/1.05) / hp=s.hpMax*(0.95/0.72)
-    const atkMul = isYuan ? 1.1 : 1.05;
-    const hpMul = isYuan ? 0.95 : 0.72;
-    const st = enemyStats(bi, atkMul, hpMul, 1);
+    // 天劫仅筑基及以上触发，bigIdx 夹到 [1,3] 防越界
+    const bi = Math.max(1, Math.min(3, bigIdxOf(s)));
+    const sc = TIANJIE_SCALE[bi] || TIANJIE_SCALE[3];
+    const name = (trib === '元婴') ? '天劫化身 · 紫霄神霄双雷形' : '天劫化身 · 九天应元之形';
+    const st = enemyStats(bi, sc.atk, sc.hp, 1);
     return {
       name: name,
       line: '劫云滚滚而下，天雷凝作一具人形，掌中握着整片翻涌的雷霆。它无声地看着你——这一关，没有退路。',
@@ -4884,7 +4885,7 @@ const Engine = (function () {
     const artY = artifactStats(s);
     if (artY.stoneYearPct) { const add = Math.round(s.stone * artY.stoneYearPct); s.stone += add; s.lastYearStoneBonus = add; }
     let fenglu = null;
-    if (s.sect && SECT_FENGLU[s.sect]) {
+    if (sectPassed(s) && SECT_FENGLU[s.sect]) {
       const f = SECT_FENGLU[s.sect];
       const parts = [];
       if (f.stone) { s.stone += f.stone; parts.push('灵石 +' + f.stone); }
@@ -5673,44 +5674,56 @@ const Engine = (function () {
   }
   function realmIdx(name) { return BIG_REALMS.indexOf(name); }
 
-  // —— 入宗考验（§6.5）——
-  // sectTrial：纯评分计算，返回 { rank, gift, A, B, C }（不写状态）
-  function sectTrial(s, win) {
+  // —— 入宗考验（§6.5，2026-09-25 v6 重设计）——
+  // 设计要点：评分 ≠ 入门。只有玩家显式点【入门】才写 sectRank / 发功业 / 开福利（尝试 ≠ 入门）。
+  //   gradeSectTrial：纯评分，不写任何状态；applySectTrial：评分 + 记年（每年 1 次）；joinSect：唯一状态写入口。
+  //   C=实战胜；A=悟性≥8；B=道心≥8。实战不过(C=0) 但 A||B → 评【记名弟子·外门档】(provisional)，可显式入门，次年补考转正。
+  function gradeSectTrial(s, win) {
     const A = effAttr(s, 'wu') >= 8, B = effAttr(s, 'dao') >= 8, C = win;
-    let rank, gift = 0;
-    // 2026-09-17 修复「实战未过却入了宗」：实战（胜一场）是入宗的**硬门槛**。
-    //   旧逻辑是「三选二」评分 —— 实战败(¬C)但悟性/道心达标(A 或 B)时，
-    //   仍会命中 (A&&B) 或 (A||B||C) 评成【内门/外门】→ 玩家没打赢照样正式入宗
-    //   （用户报「并没有挑战入宗成功但入宗了」）。
-    //   现改为：实战不过 → 一律【杂役】（未入宗）；实战胜后再按武骨/道心定档。
-    //   —— 门禁语义与 UI 文案（"实战为入宗硬门槛"）保持一致。
-    if (!C) { rank = '杂役'; gift = 0; }
-    else if (A && B) { rank = '真传'; gift = 100; }
-    else if (A || B) { rank = '内门'; gift = 50; }
-    else { rank = '外门'; gift = 0; }
-    return { rank: rank, gift: gift, A: A, B: B, C: C };
+    let rank = null, gift = 0, canJoin = false, provisional = false;
+    if (C) {
+      // 实战为入宗硬门槛（2026-09-17 修复「没赢却入宗」）：胜后再按武骨/道心定档
+      if (A && B) { rank = '真传'; gift = 100; }
+      else if (A || B) { rank = '内门'; gift = 50; }
+      else { rank = '外门'; gift = 0; }
+      canJoin = true;
+    } else if (A || B) {
+      // 实战未过但武骨/道心达标：仅记名弟子（外门档）可入门，实战加分点消失
+      rank = '外门'; gift = 0; provisional = true; canJoin = true;
+    }
+    // 其余（C=0 且 ¬A¬B）：rank=null，canJoin=false → 不具备入门资格，只能再考或离去
+    return { rank: rank, gift: gift, A: A, B: B, C: C, canJoin: canJoin, provisional: provisional };
   }
-  // applySectTrial：执行入宗考验并写入地位。杂役/未考 → 按评分定级；已过更高档则不高更低降级。
-  // 每年限应考 1 次：s.lastTrialYear 记录当年已考（无论成败），跨年 reset 由年份自然失效。
+  // applySectTrial：应考 = 评分 + 记年（每年限 1 次），但【不写 sectRank / 不发功业】。
+  //   是否入门由 UI 调用 joinSect 显式决定。应考失败也会记年（杂役不可连续刷考）。
   function applySectTrial(s, win) {
     if (s.lastTrialYear === s.year) {
-      return { ok: false, rank: s.sectRank || null, gift: 0, passed: sectPassed(s), changed: false, blocked: true, msg: '今年已应考过入宗考验，来年再来吧。' };
+      const g = gradeSectTrial(s, win);
+      return Object.assign({ ok: false, blocked: true, changed: false, passed: sectPassed(s) }, g,
+        { msg: '今年已应考过入宗考验，来年再来吧。' });
     }
-    const r = sectTrial(s, win);
-    const prevIdx = sectRankIndex(s.sectRank);           // 杂役/未考 = -1
+    s.lastTrialYear = s.year;                            // 本年度已应考（无论成败）
+    const g = gradeSectTrial(s, win);
+    return Object.assign({ ok: true, changed: true, passed: sectPassed(s) }, g);
+  }
+  // joinSect：唯一的状态写入口（福利全在这里发，且只在这里发）。评分 ≠ 入门的硬保证。
+  function joinSect(s, r) {
+    if (!r || !r.canJoin) return { ok: false, msg: '未达入门资格。' };
+    const firstJoin = !sectPassed(s);
+    const prevIdx = sectRankIndex(s.sectRank);           // 杂役/未考/记名 = -1 或 0
     const newIdx = sectRankIndex(r.rank);
     if (prevIdx >= 0 && prevIdx > newIdx) {
-      return { ok: true, rank: s.sectRank, gift: 0, passed: true, changed: false, msg: '你已是【' + s.sectRank + '】，无须再考。' };
+      return { ok: true, rank: s.sectRank, changed: false, msg: '你已是【' + s.sectRank + '】，无须再考。' };
     }
-    s.lastTrialYear = s.year;                            // 无论成败，本年度已应考（杂役不可连续刷考）
-    const firstJoin = !sectPassed(s) && sectRankIndex(r.rank) >= 0;   // 本次是否「首度正式入宗」
     s.sectRank = r.rank;
-    // 记录入宗年份：主线门禁 afterSectYear（初入宗门 / 百艺初窥 = 入宗次年才播）依赖它
-    if (firstJoin && !s.sectJoinYear) s.sectJoinYear = s.year;
-    if (r.gift) addGongye(s, r.gift);
+    // 记名转正：清除记名标记，补发对应档功业 50%（真传→50 / 内门→25 / 外门→0）
+    let gift = r.gift || 0;
+    if (s.sectProvisional) { s.sectProvisional = false; gift = Math.round(gift * 0.5); }
+    if (firstJoin && !s.sectJoinYear) s.sectJoinYear = s.year;   // 主线门禁 afterSectYear 依赖
+    if (gift) addGongye(s, gift);
+    s.hp = s.hpMax; s.mp = s.mpMax;   // 入门确认后回满血蓝（尝试≠入门：应考时不回满）
     ensureTechEquip(s); refreshStats(s); saveState(s);
-    const passed = s.sectRank !== '杂役';
-    return { ok: true, rank: r.rank, gift: r.gift, passed: passed, changed: true, msg: '入宗考验评定为【' + r.rank + '】' + (r.gift ? ('，功业 +' + r.gift) : '') + '。' };
+    return { ok: true, rank: r.rank, gift: gift, changed: true };
   }
 
   // —— 委托框架（§6.2，宗门/游历共用）——
@@ -5783,7 +5796,7 @@ const Engine = (function () {
 
   // —— 练神峰 / 聚灵潭（§6.8）——
   function sectTrain(s, type) {
-    if (!s.sect) return { ok: false, msg: '尚未拜入宗门。' };
+    if (!sectPassed(s)) return { ok: false, msg: '尚未通过入宗考验，无缘修炼。' };
     if (type !== 'shen' && type !== 'ling') return { ok: false, msg: '类型无效。' };
     if (!canAction(s, 2)) return { ok: false, msg: '行动点不足（需 2）。' };
     if (!s.sectTrain) s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
@@ -6030,7 +6043,7 @@ const Engine = (function () {
     craftStudy: craftStudy,
     tryRankUp: tryRankUp, sectYearPromote: sectYearPromote, sectPassed: sectPassed, realmIdx: realmIdx,
     RANK_REALM_MAX: RANK_REALM_MAX,
-    sectTrial: sectTrial, applySectTrial: applySectTrial,
+    rollAffixes: rollAffixes, gradeSectTrial: gradeSectTrial, applySectTrial: applySectTrial, joinSect: joinSect,
     commissionAvailable: commissionAvailable, commissionCanAccept: commissionCanAccept, commissionComplete: commissionComplete,
     commissionCheckFail: commissionCheckFail, SIX_NAMES: SIX_NAMES,
     commissionEnemy: commissionEnemy, commissionYearLeft: commissionYearLeft,

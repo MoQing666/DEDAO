@@ -17,6 +17,7 @@ module.exports = async function build() {
     const s = E.startLife('宗门测试');
     E.commitStart(s, TALENTS[0].id);
     s.sect = 'qingyunjian';
+    s.sectRank = '外门';       // 已通过入宗考验（最低正式阶），否则 sectLecture/传功会被 sectPassed 拦截
     s.idx = 3;                 // 筑基 → 玄阶
     s.techs = ['qy_xinfa1'];    // 仅已习本宗黄阶心法
     s.advType = 'huang';

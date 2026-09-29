@@ -38,7 +38,8 @@ const Engine = (function () {
   function defaultMeta() {
     return {
       points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0, unlockedJie: 0,
-      daily: { last: '', streak: 0, total: 0, patch: 0 }
+      daily: { last: '', streak: 0, total: 0, patch: 0 },
+      notice: { readVer: 0, lastDate: '' }
     };
   }
 
@@ -77,6 +78,31 @@ const Engine = (function () {
       total: Number(d.total) > 0 ? Math.floor(Number(d.total)) : 0,
       patch: d.patch ? 1 : 0
     };
+  }
+
+  /* ---------------- 更新公告（账号级 / 跨存档） ----------------
+   * 口径：沿用本地自然日判定，但与「每日」无关——
+   * 只要存在 ver > 已读 ver 的公告（即新版本更新），玩家任意一次登录都会弹，读过即停。
+   * 这同时满足「每次更新后、玩家首次（含每日首次）登录弹出」的需求。
+   */
+  function noticeLatestVer() {
+    let v = 0;
+    if (Array.isArray(NOTICES)) for (const n of NOTICES) { const nv = Number(n && n.ver) || 0; if (nv > v) v = nv; }
+    return v;
+  }
+  function noticeUnread() {
+    const m = loadMeta();
+    const rv = (m.notice && Number(m.notice.readVer) > 0) ? Math.floor(Number(m.notice.readVer)) : 0;
+    if (!Array.isArray(NOTICES)) return [];
+    return NOTICES.filter(function (n) { return (Number(n && n.ver) || 0) > rv; });
+  }
+  function noticeMarkRead() {
+    const m = loadMeta();
+    if (!m.notice || typeof m.notice !== 'object') m.notice = { readVer: 0, lastDate: '' };
+    m.notice.readVer = noticeLatestVer();
+    m.notice.lastDate = todayStr();
+    saveMeta(m);
+    return m.notice.readVer;
   }
 
   /* 只读查询：不写档、不发奖，供 UI 渲染 */
@@ -5949,6 +5975,8 @@ const Engine = (function () {
     DAILY_REWARDS: DAILY_REWARDS, PATCH_COST: PATCH_COST, DAILY_CYCLE: DAILY_CYCLE,
     todayStr: todayStr, diffDays: diffDays, normDaily: normDaily,
     dailyStatus: dailyStatus, dailyClaim: dailyClaim,
+    // —— 更新公告 ——
+    noticeLatestVer: noticeLatestVer, noticeUnread: noticeUnread, noticeMarkRead: noticeMarkRead,
     cleanupLegacySaves: cleanupLegacySaves, clearAllSaves: clearAllSaves, isLegacySave: isLegacySave, SAVE_VERSION: SAVE_VERSION,
     ensureTechEquip: ensureTechEquip, equippedShufa: equippedShufa, techMult: techMult,
     setXinfa: setXinfa, setDunshu: setDunshu, toggleShufa: toggleShufa,

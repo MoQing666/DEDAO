@@ -6333,6 +6333,7 @@
     const jieInfo = nextJie > 0 ? ' · ' + nextJie + '劫轮回' : '';
     $('t-points').textContent = M.points ? '轮回点累计 ' + M.points + jieInfo : (jieInfo ? jieInfo.slice(3) : '');
     dailyBtnSync();
+    noticeBtnSync();
   }
 
   /* ---------------- 每日登录礼（账号级 / 跨存档） ----------------
@@ -6450,6 +6451,59 @@
     openDailyPanel(afterClose);
     return true;
   }
+
+  /* ---------------- 更新公告（账号级 / 跨存档） ---------------- */
+  function noticeBtnSync() {
+    const b = $('t-notice'); if (!b) return;
+    let unread = 0;
+    try { unread = Engine.noticeUnread().length; } catch (e) { return; }
+    if (unread > 0) { b.classList.add('has-new'); b.textContent = '📢 公告（' + unread + '）'; }
+    else { b.classList.remove('has-new'); b.textContent = '📢 公告'; }
+  }
+  function openNoticePanel(afterClose, onlyUnread) {
+    const ov = $('modal'); const box = $('modal-body');
+    if (!ov || !box) return;
+    const list = (onlyUnread ? Engine.noticeUnread() : (Array.isArray(NOTICES) ? NOTICES.slice().reverse() : []));
+    function close() {
+      ov.style.display = 'none'; ov.onclick = null; closeModal();
+      if (onlyUnread && list.length) { try { Engine.noticeMarkRead(); } catch (e) {} noticeBtnSync(); }
+      if (afterClose) { const f = afterClose; afterClose = null; f(); }
+    }
+    function render() {
+      box.innerHTML = '';
+      const h = document.createElement('h3'); h.textContent = onlyUnread ? '更新公告' : '历史公告'; box.appendChild(h);
+      if (!list.length) {
+        const p = document.createElement('p'); p.className = 'dim'; p.textContent = '暂无公告'; box.appendChild(p);
+      }
+      for (const n of list) {
+        const item = document.createElement('div'); item.className = 'notice-item';
+        const t = document.createElement('h4');
+        t.textContent = n.title || '公告';
+        if (n.date) { const d = document.createElement('span'); d.className = 'notice-date'; d.textContent = n.date; t.appendChild(d); }
+        item.appendChild(t);
+        const body = (Array.isArray(n.body) ? n.body : []);
+        for (const line of body) {
+          const p = document.createElement('p'); p.textContent = line; item.appendChild(p);
+        }
+        box.appendChild(item);
+      }
+      const acts = document.createElement('div'); acts.className = 'daily-acts';
+      const kb = document.createElement('button'); kb.className = 'btn-main'; kb.textContent = '知道了';
+      kb.onclick = function () { sfx('click'); close(); };
+      acts.appendChild(kb); box.appendChild(acts);
+    }
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) close(); };
+    render();
+  }
+  function autoNoticePanel(afterClose) {
+    let list;
+    try { list = Engine.noticeUnread(); } catch (e) { return false; }
+    if (!list || !list.length) return false;
+    openNoticePanel(afterClose, true);
+    return true;
+  }
+
   function actContinue(opts) {
     opts = opts || {};
     S = Engine.loadState();
@@ -6528,7 +6582,11 @@
       tutPlayed = true;
       if (window.Tutorial) window.Tutorial.autoTitle();
     }
-    if (!autoDailyPanel(playTitleTutorial)) playTitleTutorial();
+    // 公告接在「每日登录礼关闭之后」触发：每日礼未弹则公告也不弹（避免与每日礼测试/真实「已领每日礼的当日刷新」冲突）。
+    // 仍满足需求——每次更新后、玩家每日首次登录（通常尚未领每日礼）时，每日礼关闭后即弹出未读公告。
+    if (!autoDailyPanel(function () { if (!autoNoticePanel(playTitleTutorial)) playTitleTutorial(); })) {
+      playTitleTutorial();
+    }
     
     // 自动激活音频
     if (typeof AudioManager !== 'undefined') {
@@ -6550,6 +6608,7 @@
     $('t-continue').onclick = function () { sfx('click'); actContinue(); };
     $('t-rebirth').onclick = function () { sfx('click'); renderRebirth(); showScreen('rebirth'); };
     if ($('t-daily')) $('t-daily').onclick = function () { sfx('click'); openDailyPanel(); };
+    if ($('t-notice')) $('t-notice').onclick = function () { sfx('click'); openNoticePanel(null, false); };
     $('rb-back').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };
     $('btn-reborn').onclick = function () { sfx('click'); actReborn(); };
     $('btn-end-title').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };

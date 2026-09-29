@@ -1603,6 +1603,38 @@ module.exports = async function build() {
     t.note('速率口径：每 6 激活年 1 点心得；激活年/年 = 聚灵阵(Lv1=1/Lv2=1.5/Lv3=2) + 五行阵(任一=1)');
   });
 
+  /* ---------- 更新公告（账号级 / 跨存档） ---------- */
+  S.case('公告：未读判定与已读推进', (t) => {
+    // 用独立 context，避免污染主 G 的 localStorage 桩
+    const G2 = createGameContext({ seed: 20260905 });
+    const E2 = G2.get('Engine');
+    for (const k of ['noticeLatestVer', 'noticeUnread', 'noticeMarkRead']) {
+      t.ok(typeof E2[k] === 'function', `Engine 缺少公告接口: ${k}`);
+    }
+    const NOTICES = G2.get('NOTICES') || [];
+    t.ok(Array.isArray(NOTICES) && NOTICES.length >= 1, 'NOTICES 应至少 1 条');
+    const latest = E2.noticeLatestVer();
+    t.ok(latest >= 1, '最新公告 ver 应 >= 1');
+
+    // 初始（readVer=0）：全部未读
+    t.eq(E2.noticeUnread().length, NOTICES.length, '初始应全部未读');
+
+    // 标记已读后：未读清空，且 readVer 推进到最新、写入 meta
+    const rv = E2.noticeMarkRead();
+    t.eq(rv, latest, 'markRead 应返回最新 ver');
+    t.eq(E2.noticeUnread().length, 0, '已读后未读应为 0');
+    const m = E2.loadMeta();
+    t.eq(m.notice.readVer, latest, 'meta.notice.readVer 应已落盘');
+
+    // readVer 落后于最新：应再次出现未读（对应「下次更新」场景）
+    if (latest >= 1) {
+      const m2 = E2.loadMeta();
+      m2.notice.readVer = latest - 1;
+      E2.saveMeta(m2);
+      t.gte(E2.noticeUnread().length, 1, 'readVer 落后时应有未读');
+    }
+  });
+
   return S;
 };
 

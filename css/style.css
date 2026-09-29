@@ -160,6 +160,17 @@ button:disabled { opacity: .4; cursor: default; }
 .title-points { color: var(--text); margin: 10px 0; }
 .title-btns { max-width: 280px; margin: 0 auto; }
 .title-tip { color: var(--dim); margin-top: 22px; font-size: 12px; letter-spacing: 2px; }
+/* 标题页公告入口：位置小、低调；有未读公告时高亮 + 红点 */
+.notice-btn { display: block; margin: 10px auto 0; background: none; border: 1px solid var(--line); color: var(--dim); font-size: 12px; padding: 4px 14px; border-radius: 14px; cursor: pointer; position: relative; letter-spacing: 1px; }
+.notice-btn:hover { color: var(--text); border-color: var(--text); }
+.notice-btn.has-new { color: var(--gold, #e8c15a); border-color: var(--gold, #e8c15a); }
+.notice-btn.has-new::after { content: ''; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: #e2483a; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+/* 公告弹窗内容 */
+.notice-item { border-bottom: 1px dashed var(--line); padding: 10px 0; }
+.notice-item:last-child { border-bottom: none; }
+.notice-item h4 { margin: 0 0 4px; font-size: 15px; color: var(--gold, #e8c15a); }
+.notice-item .notice-date { color: var(--dim); font-size: 11px; margin-left: 8px; }
+.notice-item p { margin: 4px 0 0; font-size: 13px; line-height: 1.7; color: var(--text); }
 
 /* ---------------- HUD ---------------- */
 .hud { background: var(--panel); border: 2px solid var(--line); padding: 8px 10px; margin-bottom: 8px; box-shadow: 4px 4px 0 rgba(120,90,50,.08); }

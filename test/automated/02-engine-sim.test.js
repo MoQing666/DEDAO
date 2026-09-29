@@ -712,6 +712,7 @@ module.exports = async function build() {
     E.commitStart(s, TALENTS[0].id);
     const SECTS0 = G.get('SECTS') || {};
     s.sect = Object.keys(SECTS0)[0];
+    s.sectRank = '外门';                       // 已过入宗考验（sectPassed=true）才能修炼
     s.actionsLeft = 20;
     s.shen = 0; s.ling = 0;
     s.sectTrain = { shenByRealm: {}, lingByRealm: {} };
@@ -805,60 +806,71 @@ module.exports = async function build() {
     t.eq(r.ok, false, '杂役不可购买');
   });
 
-  S.case('入宗考验：通过按评分定级写回 / 全败成杂役 / 每年限考一次', (t) => {
+  S.case('入宗考验：通过按评分定级（返回 rank/canJoin）/ 全败不成正式身份 / 每年限考一次', (t) => {
     const s = E.startLife('考验');
     E.commitStart(s, TALENTS[0].id);
     const SECTS0 = G.get('SECTS') || {};
     s.sect = Object.keys(SECTS0)[0];
-    // 全败：悟性/道心低且实战败 → 杂役
+    // 全败：悟性/道心低且实战败 → 不成正式身份（rank=null, canJoin=false）
+    // ⚠ applySectTrial 只评分+记年，**不写 sectRank**（由 UI 调 joinSect 显式入门），
+    //    故以返回的 grade.rank / canJoin 判定，而非 s.sectRank。
     s.wu = 1; s.dao = 1;
     let r = E.applySectTrial(s, false);
-    t.eq(s.sectRank, '杂役', '全败应成杂役');
-    t.eq(r.passed, false, '杂役 passed=false');
+    t.eq(r.rank, null, '全败应不成正式身份（rank=null）');
+    t.eq(r.canJoin, false, '全败 canJoin=false');
+    t.eq(r.passed, false, '全败 passed=false（尚未入门）');
     // 每年限考一次：同年再考（即使实战胜）→ 拦截，不得刷过
     const y0 = s.year;
     r = E.applySectTrial(s, true);
     t.eq(r.ok, false, '同年重考应被拦截');
     t.eq(r.blocked, true, '同年重考应标记 blocked');
-    t.eq(s.sectRank, '杂役', '被拦截后身份不得变更（防刷过）');
-    // 跨年 → 实战胜一场 → 至少外门
+    // 防刷过：拦截分支只重算 grade、不写任何状态（sectRank 仍为 null）→ 仍视为未入宗。
+    // ⚠ 引擎 blocked 分支会用本次 win 重算 grade.rank（非保留上次），故不断言 rank===null；
+    //   真正的不变量是「passed=false / 状态零变化」，即无法靠重考刷成正式弟子。
+    t.eq(r.passed, false, '被拦截后不得视为已入宗（passed=false，防刷过）');
+    // 跨年 → 实战胜一场（武骨/道心皆无）→ 至少外门
     s.year = y0 + 1;
     r = E.applySectTrial(s, true);
     t.eq(r.blocked, undefined, '跨年重考不应 blocked');
-    t.ok(['外门', '内门', '真传'].indexOf(s.sectRank) >= 0, '实战胜应评得正式身份，实为 ' + s.sectRank);
-    t.eq(E.sectPassed(s), true, '正式身份应 sectPassed=true');
+    t.eq(r.rank, '外门', '实战胜(武骨/道心皆无)应评外门，实为 ' + r.rank);
+    t.eq(r.canJoin, true, '实战胜应可入门（canJoin=true）');
     // 高阶定级：悟性/道心高 + 实战胜 → 真传
     const s2 = E.startLife('考验2'); E.commitStart(s2, TALENTS[0].id);
     s2.sect = Object.keys(SECTS0)[0]; s2.wu = 10; s2.dao = 10;
     const r2 = E.applySectTrial(s2, true);
-    t.eq(s2.sectRank, '真传', '三项俱足应评真传，实为 ' + s2.sectRank);
-    t.eq(E.sectPassed(s2), true, '真传 sectPassed=true');
+    t.eq(r2.rank, '真传', '三项俱足应评真传，实为 ' + r2.rank);
+    t.eq(r2.canJoin, true, '真传 canJoin=true');
   });
 
   /* === 回归 2026-09-17：入宗考验「实战硬门槛」 ===
      用户报「并没有挑战入宗成功但入宗了」。根因：旧 sectTrial 是「A/B/C 三选二」评分——
      实战败(¬C) 但悟性/道心达标(A 或 B) 时仍命中 (A&&B)/(A||B||C) → 评成【内门/外门】
-     → 玩家没打赢照样正式入宗。现改为：实战不过一律【杂役】，实战胜再按武骨/道心定档。 */
-  S.case('入宗考验硬门槛：实战未过即便悟性/道心达标也不得入宗', (t) => {
+     → 玩家没打赢照样正式入宗。现改为：实战不过一律不得正式入宗——
+     但武骨/道心达标者可得【记名弟子·外门档】(provisional, canJoin=true)，次年补考转正；
+     实战胜后再按武骨/道心定档（真传/内门/外门）。applySectTrial 只评分，不写 sectRank。 */
+  S.case('入宗考验硬门槛：实战未过即便悟性/道心达标也不得正式入宗（仅记名外门档可入门）', (t) => {
     const s = E.startLife('门槛');
     E.commitStart(s, TALENTS[0].id);
     const SECTS0 = G.get('SECTS') || {};
     s.sect = Object.keys(SECTS0)[0];
     s.wu = 12; s.dao = 12;                       // 武骨/道心双高，但实战败
     const r = E.applySectTrial(s, false);
-    t.eq(s.sectRank, '杂役', '实战败（即便悟性/道心达标）应判杂役，实为 ' + s.sectRank);
-    t.eq(r.passed, false, '实战败 passed 必须为 false');
+    t.eq(r.rank, '外门', '实战败(但武骨/道心达标)仅可记名外门档，实为 ' + r.rank);
+    t.eq(r.provisional, true, '记名弟子应为 provisional');
+    t.eq(r.canJoin, true, '记名外门档可入门（canJoin=true）');
+    t.eq(r.passed, false, '实战败 passed 必须为 false（尚未正式入宗）');
     t.eq(E.sectPassed(s), false, '实战败不得视为正式入宗');
     // 反证：跨年实战胜 → 双高评真传
     s.year = s.year + 1;
     const r2 = E.applySectTrial(s, true);
-    t.eq(s.sectRank, '真传', '实战胜 + 武骨/道心皆备应评真传，实为 ' + s.sectRank);
-    t.eq(E.sectPassed(s), true, '实战胜后应正式入宗');
+    t.eq(r2.rank, '真传', '实战胜 + 武骨/道心皆备应评真传，实为 ' + r2.rank);
+    t.eq(r2.canJoin, true, '真传可入门');
     // 仅实战胜、武骨/道心皆无 → 外门（不再有「悟性单项即可外门」）
     const s2 = E.startLife('门槛2'); E.commitStart(s2, TALENTS[0].id);
     s2.sect = Object.keys(SECTS0)[0]; s2.wu = 1; s2.dao = 1;
-    E.applySectTrial(s2, true);
-    t.eq(s2.sectRank, '外门', '仅实战过关应评外门，实为 ' + s2.sectRank);
+    const r2b = E.applySectTrial(s2, true);
+    t.eq(r2b.rank, '外门', '仅实战过关应评外门，实为 ' + r2b.rank);
+    t.eq(r2b.canJoin, true, '仅实战过关可入外门');
   });
 
   /* === 回归 2026-09-17：入宗试炼降难度 ===

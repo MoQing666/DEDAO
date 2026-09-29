@@ -416,7 +416,15 @@ module.exports = async function build() {
     t.eq(new Set(stamps).size, 1, '根 index.html 的 JS 缓存戳应统一（实际 ' + [...new Set(stamps)].join('/') + '）');
 
     /* zip 内的入口页必须与 dist 入口页一致 —— 防「改了源码/副本但 zip 没重建」，
-       也就是 TapTap 侧上传到旧包。 */
+       也就是 TapTap 侧上传到旧包。
+       ⚠ 归一版本化机制后比对：build_tap_clean 的 zip 内入口页用文件名版本化
+       （js/ui.NNN.js）且注入 <meta name="dedao-build">；sync_dist 的 dist 入口页用
+       ?v= 戳（js/ui.js?v=N）。两条管线口径不同但同源（皆出自仓库根），故比对前把
+       版本化机制抹平（剥 dedao-build meta、js/css 的 .NNN. 与 ?v=），只比真实结构。 */
+    const normHtml = (h) => (h || '')
+      .replace(/<meta name="dedao-build"[^>]*>\s*/gi, '')
+      .replace(/\.([0-9]+)\.(js|css)/g, '.$2')
+      .replace(/\?v=[0-9]+/g, '');
     const zips = {
       'dedao-taptap-h5.zip': 'taptap/dedao',
       'dedao-pc-h5.zip': 'taptap/dedao-pc',
@@ -429,8 +437,8 @@ module.exports = async function build() {
       if (inner == null || inner === '') { t.fail('无法读取 ' + zn + ' 内 index.html'); return; }
       const dp = path.join(distBase, zips[zn], 'index.html');
       if (!fs.existsSync(dp)) { t.fail('缺失 ' + zips[zn] + '/index.html'); return; }
-      t.eq(inner, fs.readFileSync(dp, 'utf8'),
-        zn + ' 内 index.html 应与 dist 入口页一致（不一致说明 zip 没重建，TapTap 侧会传旧包）');
+      t.eq(normHtml(inner), normHtml(fs.readFileSync(dp, 'utf8')),
+        zn + ' 内 index.html 应与 dist 入口页一致（归一版本化后比对；不一致说明 zip 没重建，TapTap 侧会传旧包）');
     });
 
     /* 源码守卫：sync_dist.py 必须保留「HTML 也走真源同步」与「根 HTML 抬戳」两条口径，

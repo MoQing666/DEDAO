@@ -81,7 +81,25 @@ function createGameContext(opts = {}) {
   const get = (name) => {
     try { return vm.runInContext(name, ctx); } catch (e) { return undefined; }
   };
-  return { ctx, sandbox, localStorage: store, get, loaded, seed };
+
+  /* ---------- 测试缝（2026-09-25 新增） ----------
+   * 在沙箱里挂 `window.__TEST__`，把「推进到指定进度」做成可复用 API。
+   * 属于增强项：装不上（比如只加载了 data.js）也不影响既有测试。
+   */
+  let curSeed = seed;
+  const reseed = (n) => {
+    curSeed = (n >>> 0) || 1;
+    fakeMath.random = makeRandom(curSeed);   // Math 是 Object.create(Math)，可直接改写 random
+  };
+  let seam = null;
+  try {
+    if (get('Engine')) {
+      seam = require('./_seam').createSeam({ get, reseed, seed: curSeed });
+      sandbox.__TEST__ = seam;
+    }
+  } catch (e) { /* 测试缝失败不阻断测试 */ }
+
+  return { ctx, sandbox, localStorage: store, get, loaded, seed, __TEST__: seam, reseed };
 }
 
 /* ---------- 极简 document 桩（引擎层用不到 DOM，仅防崩） ---------- */

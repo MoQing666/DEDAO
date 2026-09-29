@@ -1080,9 +1080,9 @@ module.exports = async function build() {
       t.ok(advMapRule[0].indexOf('--adv-row-h') > 0, '.adv-map 高度须消费 --adv-row-h（行高口径单一来源）');
       t.ok(!/flex:\s*1\s+1\s+auto/.test(advMapRule[0]), '.adv-map 不应再是 flex:1 自适应高度（长屏会露 9 行）');
     }
-    // 两个入口页的秘境 HUD 必须一致（index_pc.html 有独立副本）
-    // 注意：发布包 dist/DEDAO_release 按白名单打包，不含 PC 副本 index_pc.html；
-    //       副本不存在时跳过该项（主版本仍强制校验），避免「发布包缺 PC 页」被误判为回归。
+    // 两个入口页的秘境 HUD 必须一致（index_pc.html 有独立副本）。
+    // 2026-09-24 起各发布副本都含 index_pc.html（L6：发布包组成与部署根对齐），
+    // 故主版本与发布包两条路径都会真正校验；文件缺失时仍跳过以免误判为回归。
     const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     t.ok(idx.indexOf('adv-hp-bar') > 0, 'index.html 的秘境 HUD 应含实时气血条（替代原说明按钮）');
     const pcPath = path.join(ROOT, 'index_pc.html');
@@ -1090,7 +1090,7 @@ module.exports = async function build() {
       const idxPc = fs.readFileSync(pcPath, 'utf8');
       t.ok(idxPc.indexOf('adv-hp-bar') > 0, 'index_pc.html 的秘境 HUD 应含实时气血条');
     } else {
-      t.note('当前目标目录无 index_pc.html（发布包白名单不含 PC 副本），已跳过 PC 一致性校验');
+      t.note('当前目标目录无 index_pc.html，已跳过 PC 一致性校验');
     }
     t.ok(idx.indexOf("整备 · 携带丹药") < 0 && ui.indexOf("整备 · 携带丹药") < 0, '「携带丹药」整备页应已彻底删除');
   });

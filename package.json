@@ -1,0 +1,18 @@
+{
+  "name": "dedao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "《得道》H5 修仙文字游戏 —— 原生 JS / 无打包器。本文件仅为测试依赖与脚本而存在，不参与游戏运行。",
+  "scripts": {
+    "test": "node test/automated/run.js",
+    "sync:pull": "node tools/sync_ci.js pull",
+    "sync:push": "node tools/sync_ci.js push",
+    "sync:status": "node tools/sync_ci.js status"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  }
+}

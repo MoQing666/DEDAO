@@ -10,7 +10,10 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 
 # 运行时白名单
-cp index.html manifest.json sw.js "$OUT/"
+# ⚠ 2026-09-24：必须含 index_pc.html —— 本包是「覆盖静态站根目录」用的，而线上根目录有
+#   这张 PC 页；漏了它则线上 index_pc.html 永远停在旧版（HTTP 200 但内容/戳都是旧的）。
+#   新增入口页时，这里与 tools/sync_dist.py 的 HTML_MAP 要同步改（19 号「发布包组成守卫」会报红）。
+cp index.html index_pc.html manifest.json sw.js "$OUT/"
 cp -r css js assets "$OUT/"
 
 # 剔除 AI 原图（_src 为生成源，不进发布包；只发布处理后成品）

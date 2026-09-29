@@ -31,6 +31,14 @@ const EXPOSE = [
   'ADVENTURE_CONFIG', 'REINCARNATION', 'REINC_TALENT', 'INIT_EXP', 'INIT_POINTS',
   'NEED', 'JIE_DATA', 'DEATH_SCALES', 'DEATH_EVENTS', 'SECTS', 'SECT_GOODS',
   'FORMULAS', 'EQUIPS', 'TALENTS', 'MONSTER_POOL', 'TRIB_BOSSES', 'CODEX',
+  /* 2026-09-25 追加：难度调参需读写五行阵，经济测算需材料/灵田/丹药表 */
+  'WUXING_ARRAY', 'WUXING_ORDER', 'MATERIALS', 'FIELD_SEEDS', 'FIELD_GRADE_MAP',
+  'ELIXIRS', 'DEATH_IDX_REALM', 'ADVENTURE_GRADES', 'SECT_RANKS',
+  /* 难度基线（可变引用，供调参脚本就地改写后再调 Engine.enemyStats / enemyGen） */
+  'ENEMY_REALM_BASE', 'DEATH_REALM_BASE',
+  /* 2026-09-25 追加：装备真实数值 = 模板 main + 随机词条 aff；另需掉落 tier 区间与 BOSS 法宝带 */
+  'AFFIX_POOLS', 'AFFIX_BY_SLOT', 'REALM_TIER_RANGE', 'BOSS_TREASURE_BAND',
+  'SECT_DABI', 'HIDDEN_BOSS', 'TRIB_BOSSES',
 ];
 
 function makeStore() {

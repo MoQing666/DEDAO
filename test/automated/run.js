@@ -6,9 +6,17 @@
 const fs = require('fs');
 const path = require('path');
 
-// 让测试能找到隔离工作区里的 jsdom
-const WS = path.join('C:', 'Users', 'Lenovo', '.workbuddy', 'binaries', 'node', 'workspace', 'node_modules');
-if (fs.existsSync(WS) && !module.paths.includes(WS)) module.paths.push(WS);
+/* jsdom 解析：优先项目自身的 node_modules（`npm install` 后即命中）。
+ * 兜底：JSDOM_PATH 环境变量，指向 jsdom 所在的 node_modules 目录。
+ *
+ * 变更记录（2026-09-25）：此处曾把 jsdom 路径硬编码到本机隔离工作区
+ * `C:\Users\Lenovo\.workbuddy\binaries\node\workspace\node_modules`，
+ * 换机 / 上 CI / 交给他人运行必然失败，已移除。
+ */
+if (process.env.JSDOM_PATH) {
+  const p = path.resolve(process.env.JSDOM_PATH);
+  if (!module.paths.includes(p)) module.paths.push(p);
+}
 
 const { ROOT } = require('./_harness');
 

@@ -1450,11 +1450,14 @@ const DEATH_IDX_REALM = [0, 1, 1, 2, 3];
 
 // 通用敌人固定境界基准（= 该境界「正常发育玩家」的参考攻/血，见 tools/player_sim.js 第7节实测）
 // 秘境 / 入宗考验 / 死劫 / 心魔 / 天劫 全部共用这一套基线，不再随玩家自身攻/血缩放。
+// 2026-09-25 v5 基线：玩家变强（装备/淬炼/法宝）后按 depth9 校准同步抬高，修复「越玩越简单」。
+//   hp 显著上调（元婴 +448%），atk 略降。被秘境/入宗考验/死劫/心魔/天劫共用；
+//   抬基线后心魔与天劫需各自重定系数（见 engine.js XINMO_SCALE / TIANJIE_SCALE）。
 const ENEMY_REALM_BASE = [
-  { atk: 171, hp: 1100 },  // 0 炼气
-  { atk: 339, hp: 1508 },  // 1 筑基
-  { atk: 489, hp: 2319 },  // 2 金丹
-  { atk: 502, hp: 2629 }   // 3 元婴
+  { atk: 214, hp: 1746 },  // 0 炼气
+  { atk: 469, hp: 3658 },  // 1 筑基
+  { atk: 738, hp: 8821 },  // 2 金丹
+  { atk: 1290, hp: 14396 } // 3 元婴
 ];
 // 死劫复用同一基线（向后兼容旧字段名）
 const DEATH_REALM_BASE = ENEMY_REALM_BASE;
@@ -1600,7 +1603,7 @@ E('jiyuan', {
   ],
   choices: [
     { t: '挥剑斩之："吾道自在我心！"', 
-      fight: { name: '心魔化身', atk: 0, hp: 300, loot: { art: 'mingxin_jing' } },
+      fight: { name: '心魔化身', atk: 500, hp: 5000, loot: { art: 'mingxin_jing' } },
       lines: ['你闭眼，再睁眼，一剑而出——那人影碎成漫天光点。原来一切皆是虚妄。你道心愈发坚定。'] },
     { t: '盘膝不动，与之相望一炷香',
       effect: { wu: 1 },
@@ -3130,7 +3133,7 @@ const AFFIX_POOLS = {
 const AFFIX_BY_SLOT = {
   weapon:    ['attack', 'defense', 'crit', 'atkSpd'],
   head:      ['attack', 'defense', 'mpPct'],
-  body:      ['attack', 'defense', 'recover'],
+  body:      ['attack', 'defense', 'recover', 'hpPct'],
   accessory: ['attack', 'crit', 'atkSpd', 'mpPct']
 };
 

@@ -1,0 +1,39 @@
+name: test
+
+# DEDAO 全量自动化测试（引擎直驱 + jsdom DOM 层）
+# 依赖：npm ci（仅 jsdom，无其它运行时依赖）
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # ⚠ 不可低于 22.22.2：jsdom 30 的 engines 是 ^22.22.2 || ^24.15.0 || >=26
+        node-version: ['22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: 安装测试依赖
+        run: npm ci || npm install
+
+      - name: 运行全量测试
+        run: npm test
+
+      - name: 归档测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-node-${{ matrix.node-version }}
+          path: test/reports/
+          if-no-files-found: ignore

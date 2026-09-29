@@ -2582,8 +2582,14 @@ const Engine = (function () {
     const ed = Math.min(Math.max(depth || 1, 1), 20);
     // ✅ 固定敌人属性：取自 ENEMY_REALM_BASE[秘境阶位]，按有效深度 + 精英/Boss 系数缩放，
     //    绝不挂钩玩家自身攻/血（旧版「atk←玩家hpMax / hp←玩家atk」被判定为设计失误，已移除）。
-    //    深度系数：首层 0.25、每层 +0.04、第 20 层封顶 ≈1.01（0.25 + 19×0.04）—— 开荒到深层的成长更平缓、不陡增。
-    const depthFactor = 0.25 + (ed - 1) * 0.04;
+    //    深度系数（2026-09-29 两段式，测算见 DEDAO_难度调参测算_深度曲线_2026-09-29.md）：
+    //    d1-9 保持 0.04/层不动（护住 d9 张力比 1.25）；d10 起改 0.010/层并整体 ×0.90
+    //    （原线性 d20 封顶 1.01 → 现 0.612）。修复「正常玩家 depth15+ 必输」（张力比 0.5/0.29 → 1.25）。
+    //    ×0.90 折叠进第二段而非改 ENEMY_REALM_BASE[3]：基线被死劫/心魔/天劫/大比/魔祖仙帝共用，
+    //    折叠进曲线后这些系统零外溢，无需逐个反补偿。
+    const depthFactor = ed <= 9
+      ? 0.25 + (ed - 1) * 0.04
+      : (0.57 + (ed - 9) * 0.010) * 0.90;
     const tierMul = elite ? 1.4 : 1;
     const bossMul = boss ? 2.2 : 1;
     const sc = enemyStats(bi, depthFactor * tierMul * bossMul, depthFactor * tierMul * bossMul, jieDiff);

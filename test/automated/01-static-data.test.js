@@ -724,6 +724,34 @@ module.exports = async function build() {
       '）+ tools/ ' + nTools + ' 个脚本（仓库根）');
   });
 
+  /* cultCost 影子成本模型（2026-09-29 删除，测试可信度体检 M22 变异存活挖出）：
+     cultivate 实际按 cultModes 扣点（普通 1 / 潜心 2 / 闭关 3），cultCost（idx≥6=2）不在结算
+     链路，唯一使用点 ui.js 按钮判定曾致金丹期+ 剩 1 行动点时按钮误灰。守卫不得复活：
+     js/ 与 tools/ 代码不得再引用 Engine.cultCost / cultCost 导出。 */
+  S.case('已删除的 cultCost 影子成本模型不得复活（js/ 与 tools/ 无引用、引擎无导出）', (t) => {
+    const REPO2 = path.join(__dirname, '..', '..');
+    function stripComments(src) {
+      return src
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+        .replace(/[;)}\]]\s*\/\/[^\n]*/g, '');
+    }
+    const hits = [];
+    const scan = (label, dir) => {
+      if (!fs.existsSync(dir)) return;
+      fs.readdirSync(dir).forEach(function (f) {
+        if (!/\.js$/.test(f) || f === 'engine.js') return; // engine.js 单独验证导出
+        const code = stripComments(fs.readFileSync(path.join(dir, f), 'utf8'));
+        if (/cultCost/.test(code)) hits.push(label + '/' + f);
+      });
+    };
+    scan('js', path.join(ROOT, 'js'));
+    scan('tools', path.join(REPO2, 'tools'));
+    t.ok(hits.length === 0, 'cultCost 被重新引用：' + hits.join(' | ') +
+      '（修炼扣点走 cultModes 1/2/3，按钮入口按最便宜模式 1 点放行，勿再引入影子模型）');
+    if (engineJs) t.ok(!/cultCost\s*:/.test(engineJs), 'engine.js 不得再导出 cultCost');
+  });
+
   /* ---------- 法术大表：文档里的 dmg / cost 必须与 data.js 逐条一致 ---------- */
   /* 为什么非加不可：这份文档的 cost 列**已经漂移过一次**——
      原先整列抄成 15/13/14… 而 data.js 是 40/35/35…，约 2.5× 系统性偏差，41 行全错，

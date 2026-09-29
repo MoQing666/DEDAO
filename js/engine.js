@@ -781,7 +781,9 @@ const Engine = (function () {
     if (s.idx >= 9) n++;
     return n + (artifactStats(s).apBonus || 0);
   }
-  function cultCost(s) { return s.idx >= 6 ? 2 : 1; }
+  /* cultCost 已于 2026-09-29 删除：它是脱离结算链路的影子成本模型（cultivate 实际按
+     cultModes 扣点 1/2/3），唯一使用点 ui.js 按钮判定曾因此误灰按钮。
+     见 _probe/mutation_driver3.py 的 M22 变异存活记录与测试可信度体检报告。 */
 
   function useElixir(s, id) {
     const e = ELIXIRS[id];
@@ -5963,7 +5965,7 @@ const Engine = (function () {
     sectMasterPrep: sectMasterPrep, sectMasterOptions: sectMasterOptions, sectMasterResolve: sectMasterResolve,
     getXinfaAtkSpd: getXinfaAtkSpd, getXinfaThorns: getXinfaThorns, getXinfaCritPct: getXinfaCritPct,
     getXinfaMpMul: getXinfaMpMul, getXinfaHpMul: getXinfaHpMul, getXinfaDefMul: getXinfaDefMul, gradeOfBig: gradeOfBig,
-    cultCost: cultCost, actionPoints: actionPoints,
+    actionPoints: actionPoints,
     endYear: endYear, checkYearEvents: checkYearEvents, moreMainline: moreMainline, fateBattle: fateBattle,
     endLife: endLife, useElixir: useElixir,
     runEvent: runEvent, applyOps: applyOps,

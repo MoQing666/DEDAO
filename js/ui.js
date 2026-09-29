@@ -220,7 +220,10 @@
 
     const cultTimes = S.cultTimes || 0, cultMax = S.cultMax || 1;
     $('btn-cult-label').textContent = (cultTimes >= cultMax) ? '修炼（本年已修）' : '修炼';
-    $('btn-cult').classList.toggle('disabled', (cultTimes >= cultMax) || !Engine.canAction(S, Engine.cultCost(S)) || S.qi >= Engine.requireNeed(S));
+    // 2026-09-29：按钮禁用口径修正——cultivate 实际扣点按 cultModes（普通 1 / 潜心 2 / 闭关 3），
+    // 旧 cultCost（idx≥6=2）是脱离结算链路的影子模型，曾致金丹期+ 剩 1 行动点时按钮误灰。
+    // 入口判定按最便宜模式（1 点）放行，选了贵模式点数不足由 cultivate 返回提示。
+    $('btn-cult').classList.toggle('disabled', (cultTimes >= cultMax) || !Engine.canAction(S, 1) || S.qi >= Engine.requireNeed(S));
     $('btn-social').classList.toggle('disabled', !Engine.canAction(S, 1));
     // 锻体：进入页面不耗行动点；未解锁时按钮仍可点（给引导提示）
     const duantiOn = !!(S.flags && S.flags.duanti);

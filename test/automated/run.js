@@ -69,7 +69,17 @@ function bar(pass, fail) {
     let S;
     try { S = await builder(); }
     catch (e) { console.log(`\n[构建失败] ${file}: ${e.message}`); continue; }
+    const _before = report.length;
     await S.run(report);
+    // 实时进度：每模块跑完立即打印，避免「静默长跑」被误判为卡死
+    const _mod = report.slice(_before);
+    const _mp = _mod.filter(r => r.pass).length;
+    for (const r of _mod) {
+      console.log(`  ${r.pass ? '✓' : '✗'} ${r.title}  (${r.ms}ms)`);
+      r.messages.slice(0, 3).forEach(m => console.log(`      ✗ ${m}`));
+      if (r.error) console.log(`      ⚠ 异常: ${r.error}`);
+    }
+    console.log(`── ${label}: ${_mp}/${_mod.length} ──`);
   }
 
   /* ---------- 控制台输出 ---------- */

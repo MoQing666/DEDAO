@@ -75,9 +75,13 @@ module.exports = async function build() {
   S.case('index.html 定义的元素 ID 均被使用（无死元素）', (t) => {
     const htmlIds = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
     const allJs = uiJs + engineJs + audioJs;
+    // 2026-09-29 补最小断言（测试可信度体检：此前仅 note，属「永绿」用例）——
+    // 守护扫描本身在跑（id 表非空、体量在位），防 ui.js 加载失败时零输入假通过。
+    t.gte(htmlIds.size, 100, 'index.html 的元素 ID 应 ≥100 个（实际 ' + htmlIds.size + '，扫描可能失效）');
+    t.gte(allJs.length, 100000, 'js 三件套源码体量异常（扫描输入可能为空）');
     const unused = [...htmlIds].filter(id => !allJs.includes(`'${id}'`) && !allJs.includes(`"${id}"`));
     t.note(`未被引用的 ID ${unused.length} 个: ${unused.slice(0, 12).join(', ')}`);
-    // 仅提示，不作失败（部分为纯样式容器）
+    // 未引用 ID 仅提示不作失败（部分为纯样式容器）
   });
 
   S.case('HTML 中引用的资源文件均存在', (t) => {
@@ -94,10 +98,16 @@ module.exports = async function build() {
   /* ---------- 3. 移动端 / 小游戏宿主风险扫描 ---------- */
   S.case('未使用 alert / confirm / prompt（小游戏宿主会阻塞，移植风险）', (t) => {
     const all = { 'js/ui.js': uiJs, 'js/engine.js': engineJs };
+    let total = 0;
     for (const [f, code] of Object.entries(all)) {
+      // 2026-09-29 补最小断言（测试可信度体检：此前仅 warn，属「永绿」用例）——
+      // 守护扫描输入非空；命中数升为硬断言（当前 0 命中，未来新增一律红）。
+      t.gte(code.length, 50000, f + ' 源码体量异常（扫描输入可能为空）');
       const hits = [...code.matchAll(/\b(alert|confirm|prompt)\s*\(/g)].map(m => m[1]);
-      if (hits.length) t.warn(`${f} 使用了 ${[...new Set(hits)].join('/')} 共 ${hits.length} 处 —— WebView 内嵌（抖音/华为/TapTap）时可能阻塞宿主线程，上线前需替换为自定义弹窗`);
+      total += hits.length;
+      if (hits.length) t.note(`${f} 使用了 ${[...new Set(hits)].join('/')} 共 ${hits.length} 处 —— WebView 内嵌（抖音/华为/TapTap）时可能阻塞宿主线程，上线前需替换为自定义弹窗`);
     }
+    t.eq(total, 0, 'ui.js / engine.js 不得使用原生 alert/confirm/prompt（小游戏宿主会阻塞），实有 ' + total + ' 处');
   });
 
   S.case('未硬编码 Windows 绝对路径', (t) => {

@@ -1643,7 +1643,7 @@ module.exports = async function build() {
     // ⚠ 引擎跑在 vm 沙箱，用的是沙箱自己的 Math —— 必须覆盖沙箱 Math.random（宿主桩无效）
     const SandMath = G3.get('Math');
     const SandOrig = SandMath.random;
-    // 强制「献祭」分支：第一次 random 须 ≥0.67；atkOrDef 第二次 random<0.5 攻击 / ≥0.5 防御
+    // 祭坛只保留「献祭」单一效果：仅 atkOrDef 一次 random（<0.5 攻击+1 / ≥0.5 防御+1）
     function run(seq) {
       let i = 0; SandMath.random = () => seq[Math.min(i++, seq.length - 1)];
       const before = { lifeMax: s.lifeMax, extraAtk: s.extraAtk || 0, flatDef: s.flatDef || 0 };
@@ -1651,12 +1651,12 @@ module.exports = async function build() {
       SandMath.random = SandOrig;
       return { before, r };
     }
-    let o = run([0.9, 0.1]); // 攻击 +1 分支
+    let o = run([0.1]); // atkOrDef<0.5 → 攻击 +1 分支
     t.eq(s.lifeMax, o.before.lifeMax - 2, '献祭后寿元上限应 -2，实际 -' + (o.before.lifeMax - s.lifeMax));
     t.eq((s.extraAtk || 0) - o.before.extraAtk, 1, 'atk 分支应 攻击 +1');
     t.eq((s.flatDef || 0) - o.before.flatDef, 0, 'atk 分支防御增量应为 0');
     t.ok(/寿元 -2/.test((o.r.lines || []).join('')), '结算文案应含「寿元 -2」');
-    o = run([0.9, 0.9]); // 防御 +1 分支
+    o = run([0.9]); // atkOrDef≥0.5 → 防御 +1 分支
     t.eq((s.extraAtk || 0) - o.before.extraAtk, 0, 'def 分支攻击增量应为 0');
     t.eq((s.flatDef || 0) - o.before.flatDef, 1, 'def 分支应 防御 +1');
   });

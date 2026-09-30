@@ -3102,29 +3102,16 @@ const Engine = (function () {
       return { type: 'plain', lines: lines };
     }
     if (node.type === 'altar') {
+      // 2026-09-30（二次调整）：祭坛只保留「献祭」单一效果，删除血祭 / 灵石祭分支。
       const lines = ['一座不知年月的祭坛。坛面凹下去一块，像是专门等着放点什么进去。'];
-      const roll = Math.random();
-      if (roll < 0.34) {
-        const lose = Math.max(1, Math.round(s.hpMax * 0.2));
-        s.hp = Math.max(1, s.hp - lose);
-        s.dao += 1; s.wu += 0.5;
-        lines.push('你割开掌心，把血按在坛面上。');
-        lines.push('（气血 -' + lose + '，道心 +1，悟性 +0.5：血祭换来的清明，最是刻骨。）');
-      } else if (roll < 0.67 && (s.stone || 0) >= 80) {
-        s.stone -= 80;
-        s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.45));
-        lines.push('你倾出八十灵石，灵石在坛上化为一蓬清光，沁入四肢百骸。');
-        lines.push('（灵石 -80，气血大幅回复：钱能买命，买不了道。）');
-      } else {
-        s.lifeMax -= 2;
-        s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.3));
-        // 2026-09-30 强度调整：献祭不再固定 +3 攻击，改为「攻击 +1 或 防御 +1」随机（防御复用现有 flatDef 平防字段）
-        const atkOrDef = Math.random() < 0.5;
-        if (atkOrDef) s.extraAtk = (s.extraAtk || 0) + 1;
-        else s.altarDef = (s.altarDef || 0) + 1;   // 防御 +1（持久字段，recalcLinggenBonus 不会覆盖）
-        lines.push('你咬破舌尖，将两年寿元抹进坛中。');
-        lines.push('（寿元 -2 年，' + (atkOrDef ? '攻击 +1' : '防御 +1') + '，气血回复三成：这笔买卖，你自己都觉得疯。）');
-      }
+      s.lifeMax -= 2;
+      s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.3));
+      // 献祭：寿元 -2 年 + 气血回复三成 +（攻击 +1 或 防御 +1 随机）。防御用持久字段 altarDef。
+      const atkOrDef = Math.random() < 0.5;
+      if (atkOrDef) s.extraAtk = (s.extraAtk || 0) + 1;
+      else s.altarDef = (s.altarDef || 0) + 1;   // 防御 +1（持久字段，recalcLinggenBonus 不会覆盖）
+      lines.push('你咬破舌尖，将两年寿元抹进坛中。');
+      lines.push('（寿元 -2 年，' + (atkOrDef ? '攻击 +1' : '防御 +1') + '，气血回复三成：这笔买卖，你自己都觉得疯。）');
       refreshStats(s); saveState(s);
       return { type: 'plain', lines: lines };
     }

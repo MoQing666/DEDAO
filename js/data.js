@@ -3730,12 +3730,15 @@ const JULING_ARRAY = [
 ];
 
 /* ---------------- 五行阵（§5.2，战斗光环） ---------------- */
+// 五行阵加成（2026-09-30 下调）：旧表 Lv5 火/水/木/土高达 +40%、金 +20%，明显溢出战斗平衡。
+// 现统一压到 Lv5（满级）火/水/木/土 +20%、金（暴击） +10%，其余等级等比减半，使阵法仍是「锦上添花」而非「数值碾压」。
+// 消耗（启动 100 / 每年 50）与阵法等级无关，见 engine.js WUXING_DEPLOY_STONE / WUXING_YEAR_STONE。
 const WUXING_ARRAY = {
-  fire:  { name: '火阵', attr: 'atk',    cn: '攻击',     pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  metal: { name: '金阵', attr: 'critPct', cn: '暴击',     pctByLv: [0, 0.05, 0.08, 0.12, 0.16, 0.20] },
-  water: { name: '水阵', attr: 'mpMax',  cn: '法力上限', pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  wood:  { name: '木阵', attr: 'hpMax',  cn: '气血上限', pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] },
-  earth: { name: '土阵', attr: 'def',    cn: '防御',     pctByLv: [0, 0.10, 0.16, 0.24, 0.32, 0.40] }
+  fire:  { name: '火阵', attr: 'atk',    cn: '攻击',     pctByLv: [0, 0.04, 0.08, 0.12, 0.16, 0.20] },
+  metal: { name: '金阵', attr: 'critPct', cn: '暴击',     pctByLv: [0, 0.02, 0.04, 0.06, 0.08, 0.10] },
+  water: { name: '水阵', attr: 'mpMax',  cn: '法力上限', pctByLv: [0, 0.04, 0.08, 0.12, 0.16, 0.20] },
+  wood:  { name: '木阵', attr: 'hpMax',  cn: '气血上限', pctByLv: [0, 0.04, 0.08, 0.12, 0.16, 0.20] },
+  earth: { name: '土阵', attr: 'def',    cn: '防御',     pctByLv: [0, 0.04, 0.08, 0.12, 0.16, 0.20] }
 };
 const WUXING_ORDER = ['fire', 'metal', 'water', 'wood', 'earth'];
 

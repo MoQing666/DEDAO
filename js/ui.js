@@ -3121,12 +3121,13 @@
 
   function showEnterPage() {
     const m = Engine.loadMeta();
-    // 劫数自由选择（2026-09-13 用户定稿）：开局即可选 0–9 劫，不再受「历史最高劫数」封顶。
-    // maxJie（历史最高）仍保留在结算页作为成就展示；JIE_DATA 难度、命格金池、隐藏线（6劫+）等
-    // 均按玩家所选劫数生效，选高劫=主动提升难度。
-    // 劫数锁死（2026-09-29）：初始只能选 0 劫，通关（飞升/得道/五劫尽渡）后由结算页解锁下一劫。
-    // 旧档无 unlockedJie 时，用历史最高 maxJie 兜底（老玩家保留已通关水平）；纯新玩家从 0 劫起。
-    const maxJie = Math.max(0, (m.unlockedJie != null ? m.unlockedJie : (m.maxJie || 0)));
+    // 劫数门禁（2026-09-30 改）：开局可选劫数 = max(按累计轮回点给的劫, 通关解锁的劫)
+    //   · 按累计轮回点（老玩家凭历史积累直接高劫起手）：每 100 点 +1 劫，封顶 3 劫（≥300 点即 3 劫起）。
+    //   · 通关解锁（unlockedJie，3 劫以上递进通道）：飞升/道之路/五劫尽渡后由结算页解锁下一劫。
+    //   两条通道取较大值，故老玩家最高可 3 劫起手，且达成结局后仍能继续向更高劫数递进。
+    //   旧档无 unlockedJie 时，用历史最高 maxJie 兜底；纯新玩家从 0 劫起。
+    const jieByPoints = Math.min(3, Math.floor((m.points || 0) / 100));
+    const maxJie = Math.max(jieByPoints, (m.unlockedJie != null ? m.unlockedJie : (m.maxJie || 0)));
     // 「应劫轮回（X劫）」预设：结算页应劫写入 meta.nextJie 后，进入页默认落在该劫（仍可自由改）。
     enterState.jie = Math.min(maxJie, m.nextJie || 0);
     enterState.selected = [];
@@ -3179,6 +3180,7 @@
   function renderEnterPage(maxJie) {
     const jie = enterState.jie;
     const jieName = JIE_DATA[jie] ? JIE_DATA[jie].name : '凡尘';
+    const m = Engine.loadMeta();
 
     // 轮回信息
     $('enter-jie-name').textContent = jieName + '（' + jie + '劫）';
@@ -3191,8 +3193,21 @@
     if (jie >= 3) unlockParts.push('3劫起开局六维 +1、解锁「我命由我」命格栏+1');
     if (jie >= 6) unlockParts.push('+1锁定槽');
     let statusText = unlockParts.length ? unlockParts.join('、') : '无额外解锁';
-    // 劫数锁死进度（2026-09-29）：复用现有 enter-jie-status 展示，不新增 HTML 元素
-    statusText += (maxJie >= 9) ? ' ｜ 全劫已解锁' : ' ｜ 已解锁 0~' + maxJie + ' 劫，通关解锁下一劫';
+    // 劫数门禁进度（2026-09-30 改）：双通道——0~3 劫按累计轮回点解锁，4 劫起需通关解锁
+    if (maxJie >= 9) {
+      statusText += ' ｜ 全劫已解锁';
+    } else {
+      const pts = m.points || 0;
+      const ptsJie = Math.min(3, Math.floor(pts / 100));
+      let hint;
+      if (ptsJie < 3) {
+        const need = 100 - (pts % 100);
+        hint = '再得 ' + need + ' 轮回点可解锁下一劫（当前按轮回点 ' + ptsJie + ' 劫）';
+      } else {
+        hint = '轮回点劫数已封顶（3劫），更高劫需通关解锁';
+      }
+      statusText += ' ｜ 可挑战 0~' + maxJie + ' 劫 ｜ ' + hint;
+    }
     $('enter-jie-status').textContent = statusText;
 
     // 轮回点奖励
@@ -3201,7 +3216,7 @@
 
     // 计算抽取/选择数量（唯一口径 = Engine.destinyCounts，与《进入页面重做方案》§1.2 一致）
     // 抽取固定 3（原「大千命格」已删除）；可选 = 1 + 我命由我 + 劫数加成（3劫+ 额外 +1）
-    const meta = Engine.loadMeta();
+    const meta = m;   // 复用上方已加载的 meta，避免重复读档
     const reinc = meta.reinc || {};
     const counts = Engine.destinyCounts(jie);
     enterState.pickCount = counts.pick;
@@ -5665,16 +5680,24 @@
       const on = !!(S.array && S.array.wuxing && S.array.wuxing[key]);
       const pct = Math.round((w.pctByLv[zhenfaLv] || 0) * 100);
       // 灵石消耗：开启一次 100（启动）、每阵每年维持 50；与阵法等级无关（引擎 WUXING_DEPLOY_STONE / WUXING_YEAR_STONE）
-      const b = document.createElement('button'); b.className = 'btn-small' + (on ? ' ghost' : '');
-      b.textContent = w.name + '（' + (on ? '开' : '关') + ' +' + pct + '% ' + w.cn + (on ? ' · 50/年' : ' · 开需100灵石') + '）';
-      b.onclick = function () { const r = Engine.wuxingToggle(S, key); log((r.ok ? (r.on ? '开启' : '关闭') : r.msg), r.ok ? 'good' : 'bad'); refresh(); renderBaiyiStudy(body); };
+      // 2026-09-30 改：按钮文案稳定为「阵名 · 属性 +X%（开/关 · 消耗）」；ON 用稳定绿色高亮、OFF 中性灰，明暗主题均清晰可读。
+      const b = document.createElement('button');
+      b.className = 'btn-small';
+      if (on) {
+        b.style.cssText = 'border:1px solid #2e9e7b;color:#2e9e7b;background:rgba(46,158,123,0.14);';
+        b.textContent = w.name + ' · ' + w.cn + ' +' + pct + '%（开 · 50灵石/年）';
+      } else {
+        b.style.cssText = 'border:1px solid var(--line,#444);color:var(--text,#ddd);';
+        b.textContent = w.name + ' · ' + w.cn + ' +' + pct + '%（关 · 开需100灵石）';
+      }
+      b.onclick = function () { const r = Engine.wuxingToggle(S, key); log(r.msg, r.ok ? 'good' : 'bad'); refresh(); renderBaiyiStudy(body); };
       wg.appendChild(b);
     });
     sec.appendChild(wg);
     const zfTip = document.createElement('p');
     zfTip.className = 'dim';
     zfTip.style.cssText = 'margin:8px 0 0;font-size:12px;';
-    zfTip.textContent = '五行阵开启耗灵石 100（启动），每阵每年维持 50（断供自动关阵）；阵法升级不改变消耗。布置着（洞府·聚灵阵 / 本页五行阵开启任一）将于每年岁末自动累积阵道心得：单阵约 60 年臻化境（Lv5），聚灵阵与五行阵并行约 30 年。';
+    zfTip.textContent = '五行阵开启耗灵石 100（一次性启动），每阵每年维持 50（断供自动关阵）；消耗与阵法等级无关。加成随阵法等级提升，于每场战斗持续生效（当前阵法 Lv' + zhenfaLv + '）。布置任意阵法（洞府·聚灵阵或本页五行阵）将于每年岁末自动累积阵道心得。';
     sec.appendChild(zfTip);
     body.appendChild(sec);
 

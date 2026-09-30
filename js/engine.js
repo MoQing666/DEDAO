@@ -2583,7 +2583,10 @@ const Engine = (function () {
      敌人属性 = ENEMY_REALM_BASE[tier].atk/.hp × atkMul/hpMul × JIE_DATA[jie].diff(叠劫)
      玩家自身 atk/hp 不参与缩放 → 命格/装备/天赋的数值优势可真实转化。
      - atkRef:'hp' 时 atk 取基线.hp（旧逻辑以 s.hpMax 为基准的场合）
-     - hpRef:'atk' 时 hp 取基线.atk（旧逻辑以 s.atk 为基准的场合） */
+     - hpRef:'atk' 时 hp 取基线.atk（旧逻辑以 s.atk 为基准的场合）
+     - 2026-09-30：新增全局敌血倍率 ENEMY_HP_MUL（默认 2.0），血量在此前基础上再翻 2 倍起，
+       攻不变。用于「大幅强化敌人（血量翻 2 倍起）」需求；单常量可控、可回退。 */
+  const ENEMY_HP_MUL = 2.0;   // 全局敌血倍率（攻不受影响）。调难度只动这一行。
   function enemyStats(tier, atkMul, hpMul, jieDiff, opts) {
     const base = (ENEMY_REALM_BASE && ENEMY_REALM_BASE[tier]) ? ENEMY_REALM_BASE[tier] : (ENEMY_REALM_BASE ? ENEMY_REALM_BASE[ENEMY_REALM_BASE.length - 1] : { atk: 10, hp: 180 });
     const jd = jieDiff || 1;
@@ -2592,7 +2595,7 @@ const Engine = (function () {
     const hBase = (o.hpRef === 'atk') ? base.atk : base.hp;
     return {
       atk: Math.max(1, Math.round(aBase * atkMul * jd)),
-      hp: Math.max(1, Math.round(hBase * hpMul * jd))
+      hp: Math.max(1, Math.round(hBase * hpMul * jd * ENEMY_HP_MUL))
     };
   }
   function enemyGen(s, tag, depth, advType) {
@@ -5607,6 +5610,9 @@ const Engine = (function () {
     if (!s.array) s.array = { juling: { level: 0, paid: false }, wuxing: {} };
     if (!s.array.wuxing) s.array.wuxing = {};
     const turningOn = !s.array.wuxing[key];
+    // 阵法等级 → 当前实际加成（与 UI 实时显示一致，避免「日志与界面数字对不上」）
+    const zlv = Math.max(1, (s.craft && s.craft.zhenfa && s.craft.zhenfa.lv) || 1);
+    const zpct = Math.round((WUXING_ARRAY[key].pctByLv[zlv] || 0) * 100);
     if (turningOn) {
       if ((s.stone || 0) < WUXING_DEPLOY_STONE) {
         return { ok: false, msg: '灵石不足，无法开启' + WUXING_ARRAY[key].name + '（启动需 ' + WUXING_DEPLOY_STONE + '）。' };
@@ -5616,8 +5622,9 @@ const Engine = (function () {
     s.array.wuxing[key] = turningOn;
     refreshStats(s); saveState(s);
     return { ok: true, on: turningOn, name: WUXING_ARRAY[key].name,
-      msg: (turningOn ? ('开启' + WUXING_ARRAY[key].name + '（耗灵石 ' + WUXING_DEPLOY_STONE + '，每年维持 ' + WUXING_YEAR_STONE + '）')
-                      : ('关闭' + WUXING_ARRAY[key].name)) };
+      msg: (turningOn
+        ? ('开启' + WUXING_ARRAY[key].name + '（' + WUXING_ARRAY[key].cn + ' +' + zpct + '%，启动耗 ' + WUXING_DEPLOY_STONE + ' 灵石，每年维持 ' + WUXING_YEAR_STONE + '）')
+        : ('关闭' + WUXING_ARRAY[key].name)) };
   }
   // 五行阵·岁末维持：每开启的阵扣 WUXING_YEAR_STONE；断供则关该阵。
   function wuxingYearEnd(s) {

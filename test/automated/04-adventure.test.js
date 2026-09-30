@@ -979,8 +979,8 @@ module.exports = async function build() {
     if (spec) {
       // 敌人单次伤害不得超过玩家半血，否则必然被秒杀
       t.lte(spec.atk, s.hpMax * 0.5, '敌人攻击超过玩家半血（会直接秒杀新档）');
-      // 玩家应能在合理回合内击杀
-      t.lte(spec.hp / Math.max(1, s.atk), 25, '敌人血量过高，无法在合理回合内击杀（再平衡后基线抬高，留合理余量）');
+      // 玩家应能在合理回合内击杀（2026-09-30：敌血全局 ×2 后，回合阈值由 25 放宽到 50，反映「血量翻 2 倍」的预期难度）
+      t.lte(spec.hp / Math.max(1, s.atk), 50, '敌人血量过高，无法在合理回合内击杀（敌血×2 后基线抬高，留合理余量）');
       t.note('敌 atk=' + spec.atk + ' hp=' + spec.hp + ' ｜ 玩家 hpMax=' + s.hpMax + ' atk=' + s.atk);
     }
   });

@@ -1342,7 +1342,10 @@ module.exports = async function build() {
 
   // === 回归 2026-09-29：劫数锁死（初始 0 劫，通关才解锁下一劫） ===
   S.case('进入页劫数锁死：新账号初始只能选 0 劫，+ 到解锁上限即禁用', async (t) => {
-    const a = await boot(); // 全新账号（meta 无 unlockedJie，maxJie=0 → 解锁上限 0）
+    // 预置 meta：points=0 且 _bonus20 已领（中和「首登 +100 轮回点」福利，使点数确定 = 0）。
+    // 按点门禁 floor(0/100)=0 → 0 劫；无通关解锁（unlockedJie=0）→ 解锁上限 0，应锁死在 0 劫。
+    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0, unlockedJie: 0, _bonus20: true });
+    const a = await boot({ seed: { dedao_meta: metaSeed } });
     const { win, doc } = a;
     click(win, 't-new');
     await new Promise(r => setTimeout(r, 200));
@@ -1354,7 +1357,7 @@ module.exports = async function build() {
     t.ok(plus && plus.disabled, '初始 0 劫且未解锁更高劫时「+」应禁用（锁死）');
     t.ok(minus && minus.disabled, '初始 0 劫时「-」也应禁用（已是下限）');
     t.ok(/0劫/.test(jieName ? jieName.textContent : ''), '初始应显示 0 劫（实：' + (jieName && jieName.textContent) + '）');
-    t.ok(/已解锁 0~0 劫/.test(status ? status.textContent : ''), '进度提示应显示「已解锁 0~0 劫」（实：' + (status && status.textContent) + '）');
+    t.ok(/可挑战 0~0 劫/.test(status ? status.textContent : ''), '进度提示应显示「可挑战 0~0 劫」（实：' + (status && status.textContent) + '）');
     // 尝试连点 + 仍锁死在 0 劫
     for (let i = 0; i < 9; i++) {
       plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
@@ -1374,7 +1377,7 @@ module.exports = async function build() {
   });
 
   S.case('劫数解锁上限生效：meta.unlockedJie=1 时进入页可点到 1 劫', async (t) => {
-    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 1, unlockedJie: 1 });
+    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 1, unlockedJie: 1, _bonus20: true });
     const a = await boot({ seed: { dedao_meta: metaSeed } });
     const { win, doc } = a;
     click(win, 't-new');
@@ -1387,7 +1390,7 @@ module.exports = async function build() {
     await new Promise(r => setTimeout(r, 30));
     t.ok(/1劫/.test(jieName ? jieName.textContent : ''), '应可点到 1 劫（实：' + (jieName && jieName.textContent) + '）');
     t.ok(plus.disabled, '到 1 劫后「+」应禁用（达解锁上限）');
-    t.ok(/已解锁 0~1 劫/.test(status ? status.textContent : ''), '进度提示应显示「已解锁 0~1 劫」（实：' + (status && status.textContent) + '）');
+    t.ok(/可挑战 0~1 劫/.test(status ? status.textContent : ''), '进度提示应显示「可挑战 0~1 劫」（实：' + (status && status.textContent) + '）');
     const pool = doc.getElementById('enter-destiny-pool');
     if (pool) { for (let i = 0; i < pool.children.length; i++) pool.children[i].dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win })); }
     await new Promise(r => setTimeout(r, 60));
@@ -1400,7 +1403,7 @@ module.exports = async function build() {
   });
 
   S.case('劫数解锁上限边界：meta.unlockedJie=9 时可连点到 9 劫', async (t) => {
-    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 9, unlockedJie: 9 });
+    const metaSeed = JSON.stringify({ points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 9, unlockedJie: 9, _bonus20: true });
     const a = await boot({ seed: { dedao_meta: metaSeed } });
     const { win, doc } = a;
     click(win, 't-new');
@@ -1415,6 +1418,31 @@ module.exports = async function build() {
     t.ok(plus.disabled, '到 9 劫后「+」应禁用');
     const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
     if (real.length) t.fail('全解锁交互报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  // === 2026-09-30：劫数门禁新增「按累计轮回点」通道（每 100 点 +1 劫，封顶 3 劫；与通关解锁并行取较大值） ===
+  S.case('劫数门禁·按累计轮回点解锁（250 点 → 达 2 劫，未通关也能开，封顶不越 3）', async (t) => {
+    // 老玩家凭历史累计轮回点直接高劫起手：points=250 → floor(250/100)=2（非通关解锁，unlockedJie=0）。
+    // _bonus20:true 中和「首登 +100」福利，使累计点数确定 = 250（不被首登福利再 +100 干扰）。
+    const metaSeed = JSON.stringify({ points: 250, lives: 1, reinc: {}, achievements: {}, flown: false, maxJie: 0, unlockedJie: 0, _bonus20: true });
+    const a = await boot({ seed: { dedao_meta: metaSeed } });
+    const { win, doc } = a;
+    click(win, 't-new');
+    await new Promise(r => setTimeout(r, 200));
+    const plus = doc.getElementById('enter-jie-plus');
+    const jieName = doc.getElementById('enter-jie-name');
+    const status = doc.getElementById('enter-jie-status');
+    t.ok(plus && !plus.disabled, '累计 250 轮回点（≥200）应解锁到 2 劫，「+」可用');
+    plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 30));
+    plus.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 30));
+    t.ok(/2劫/.test(jieName ? jieName.textContent : ''), '应可点到 2 劫（实：' + (jieName && jieName.textContent) + '）');
+    t.ok(plus.disabled, '到 2 劫后「+」应禁用（点劫封顶于累计值，250 点不给 3 劫）');
+    t.ok(/可挑战 0~2 劫/.test(status ? status.textContent : ''), '进度提示应显示「可挑战 0~2 劫」（实：' + (status && status.textContent) + '）');
+    t.ok(/再得 50 轮回点可解锁下一劫/.test(status ? status.textContent : ''), '应提示再得 50 点解锁 3 劫（实：' + (status && status.textContent) + '）');
+    const real = a.errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext/i.test(e));
+    if (real.length) t.fail('按轮回点解锁交互报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   // === 回归 2026-09-13：百艺「阵法」板块（研习改名 + 内容归位 + 不再重复追加） ===
@@ -2102,12 +2130,15 @@ module.exports = async function build() {
     const ctx = await enterAdvBattle(1);
     if (ctx.err) { t.fail('未能进入战斗层：' + ctx.err); return; }
     const { win, doc, errors } = ctx;
-    // 连点普攻直到战斗层关闭（胜/逃/败任一结局）
+    // 连点出手直到战斗层关闭（胜/逃/败任一结局）。
+    // 玩家已装备「火球术 + 岩甲术」：优先施放火球术（爆发 + 攻击增益）压低敌血，
+    // 灵力不足/法术冷却时退化为普攻，确保（即便敌血已翻 2 倍）仍能取胜以验证胜利结算渲染。
     let closed = false;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 120; i++) {
       if (visible(doc, 'battle') !== true) { closed = true; break; }
-      click(win, 'b-atk');
-      await new Promise(r => setTimeout(r, 25));
+      const casted = await castSpell(win, doc, /火球术/);
+      if (!casted) { click(win, 'b-atk'); }
+      await new Promise(r => setTimeout(r, 30));
     }
     t.ok(closed, '战斗应在有限回合内结束（胜利结算出现）');
     t.eq(visible(doc, 'chapter'), true, '战斗结束后应弹出结算章节');

@@ -145,6 +145,22 @@ async function boot(opts = {}) {
           if (opts.seed[k] != null) win.localStorage.setItem(k, opts.seed[k]);
         });
       }
+      // 冻结「游戏内今天」为 opts.now（YYYY-MM-DD），使依赖真实日期的用例（每日/国庆登录礼）
+      // 与运行环境解耦——否则在 国庆 窗口（10/1~10/7）内跑，开机自动弹窗会被 国庆礼抢占，
+      // 导致每日登录礼用例在真实 国庆日 假红。仅当显式传 now 时才冻结。
+      if (opts.now) {
+        const _RealDate = win.Date;
+        const _fixedMs = new _RealDate(opts.now + 'T00:00:00').getTime();
+        function _FakeDate(a, b, c, d, e, f, g) {
+          if (arguments.length === 0) return new _RealDate(_fixedMs);
+          return new _RealDate(a, b, c, d, e, f, g);
+        }
+        _FakeDate.now = function () { return _fixedMs; };
+        _FakeDate.parse = _RealDate.parse;
+        _FakeDate.UTC = _RealDate.UTC;
+        _FakeDate.prototype = _RealDate.prototype;
+        win.Date = _FakeDate;
+      }
       win.alert = () => {};
       win.confirm = () => true;
       win.prompt = () => '自动化测试';
@@ -2216,14 +2232,16 @@ module.exports = async function build() {
   });
 
   /* ---------- 每日登录礼：标题页按钮 + 自动弹面板（端到端） ---------- */
-  function todayStr() {
-    const d = new Date(); const m = d.getMonth() + 1, dd = d.getDate();
-    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
-  }
+  // 固定一个「非国庆窗口」的基准日，使每日登录礼用例与运行环境真实日期解耦
+  // （国庆窗口为 10/1~10/7；基准日选在窗口外，避免开机自动弹窗被国庆礼抢占导致假红）
+  const TEST_TODAY = '2026-09-15';
+  function todayStr() { return TEST_TODAY; }
   function daysAgoStr(n) {
-    const d = new Date(); d.setDate(d.getDate() - n);
-    const m = d.getMonth() + 1, dd = d.getDate();
-    return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+    const p = TEST_TODAY.split('-');
+    const dt = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+    dt.setUTCDate(dt.getUTCDate() - n);
+    const y = dt.getUTCFullYear(), m = dt.getUTCMonth() + 1, dd = dt.getUTCDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
   }
   function seedMeta(daily, points) {
     return JSON.stringify({
@@ -2233,7 +2251,7 @@ module.exports = async function build() {
   }
 
   S.case('每日登录礼：标题页按钮存在，当日已领取时不弹面板且文案为「已领取」', async (t) => {
-    const { win, doc } = await boot({ seed: { dedao_meta: seedMeta({ last: todayStr(), streak: 3, total: 3, patch: 0 }) } });
+    const { win, doc } = await boot({ seed: { dedao_meta: seedMeta({ last: todayStr(), streak: 3, total: 3, patch: 0 }) }, now: TEST_TODAY });
     const btn = doc.getElementById('t-daily');
     t.ok(!!btn, '标题页应有 #t-daily 每日登录礼按钮');
     if (btn) {
@@ -2248,7 +2266,7 @@ module.exports = async function build() {
   });
 
   S.case('每日登录礼：未领取时开机自动弹面板，7 格齐全，领取后 +2 点且按钮转「已领取」', async (t) => {
-    const { win, doc, errors } = await boot({ seed: { dedao_meta: seedMeta(undefined) } });
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: seedMeta(undefined) }, now: TEST_TODAY });
     const modal = doc.getElementById('modal');
     t.ok(modal && !/display:\s*none/.test(modal.getAttribute('style') || ''), '当日未领取时应自动弹面板');
     t.eq(doc.querySelectorAll('#modal-body .daily-cell').length, 7, '面板应渲染 7 个格子');
@@ -2276,7 +2294,8 @@ module.exports = async function build() {
      导致「领取 / 补签 / 关闭」按钮全不渲染、面板无法操作。此两条钉死按钮必须存在且可点。 */
   S.case('每日登录礼：断签 Δ=2 可补签时，面板渲染补签+领取+关闭三按钮，点补签扣 5 点续上第 4 天', async (t) => {
     const { win, doc, errors } = await boot({
-      seed: { dedao_meta: seedMeta({ last: daysAgoStr(2), streak: 3, total: 3, patch: 0 }, 20) }
+      seed: { dedao_meta: seedMeta({ last: daysAgoStr(2), streak: 3, total: 3, patch: 0 }, 20) },
+      now: TEST_TODAY
     });
     const body0 = (doc.getElementById('modal-body') || {}).textContent || '';
     t.ok(/断签/.test(body0), '断签态面板正文应提示已断签，实际：' + body0.slice(0, 60));
@@ -2297,7 +2316,8 @@ module.exports = async function build() {
 
   S.case('每日登录礼：断签 Δ≥3 不可补签时，仍须渲染领取+关闭按钮且可正常领取', async (t) => {
     const { win, doc, errors } = await boot({
-      seed: { dedao_meta: seedMeta({ last: daysAgoStr(5), streak: 4, total: 4, patch: 0 }, 7) }
+      seed: { dedao_meta: seedMeta({ last: daysAgoStr(5), streak: 4, total: 4, patch: 0 }, 7) },
+      now: TEST_TODAY
     });
     const btns = [...doc.querySelectorAll('#modal-body .daily-acts button')].map(b => b.textContent || '');
     t.eq(btns.length, 2, '不可补签时应有 2 个按钮（领取/关闭），实际 ' + btns.length + ' 个：' + JSON.stringify(btns));

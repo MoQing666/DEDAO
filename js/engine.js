@@ -39,6 +39,8 @@ const Engine = (function () {
     return {
       points: 0, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0, unlockedJie: 0,
       daily: { last: '', streak: 0, total: 0, patch: 0 },
+      guoqing: { last: '', streak: 0, total: 0 },
+      skins: {}, skin: 'me',
       notice: { readVer: 0, lastDate: '' }
     };
   }
@@ -186,6 +188,109 @@ const Engine = (function () {
         ? ('补签成功，轮回点 -' + PATCH_COST + '，连续天数已续上；本日奖励 +' + reward + ' 点')
         : ('领取成功，轮回点 +' + reward + '（已连续 ' + streak + ' 天）')
     };
+  }
+
+  /* ---------------- 国庆限时登录礼（2026-10-01 ~ 10-07） ----------------
+   * 独立于「每日登录礼」的「活动」轨道：窗口内本地自然日连签 7 天，累计 100 点轮回点，
+   * 第 1 天解锁皮肤「项羽 · 修仙版」、第 6 天解锁皮肤「白衣书生」。过窗即止、不顺延、不补签。
+   * 调整数值/皮肤只动 GUOQING_REWARDS 与窗口常量；测试可传 todayOverride 钉死日期。
+   */
+  const GUOQING_START = '2026-10-01';
+  const GUOQING_END = '2026-10-07';
+  const GUOQING_CYCLE = 7;
+  // index = 已签天数(streak) - 1；points 为当日轮回点，skin 为当日额外解锁的皮肤 key（null 表示无）
+  const GUOQING_REWARDS = [
+    { points: 20, skin: 'xiangyu' },
+    { points: 13 }, { points: 13 }, { points: 13 },
+    { points: 14 }, { points: 14, skin: 'scholar' }, { points: 13 }
+  ];
+  const GUOQING_SKINS = {
+    xiangyu: { name: '项羽 · 修仙版', desc: '力拔山兮气盖世，霸王戟下修罗场。' },
+    scholar: { name: '白衣书生', desc: '羽扇纶巾，谈笑间强敌灰飞烟灭。' }
+  };
+
+  function guoqingActive(today) {
+    const t = today || todayStr();
+    return diffDays(t, GUOQING_START) >= 0 && diffDays(GUOQING_END, t) >= 0;
+  }
+  function normGuoqing(m) {
+    if (!m) return { last: '', streak: 0, total: 0 };
+    const d = m.guoqing;
+    if (!d || typeof d !== 'object') return { last: '', streak: 0, total: 0 };
+    return {
+      last: typeof d.last === 'string' ? d.last : '',
+      streak: Number(d.streak) > 0 ? Math.floor(Number(d.streak)) : 0,
+      total: Number(d.total) > 0 ? Math.floor(Number(d.total)) : 0
+    };
+  }
+  /* 只读查询：不写档、不发奖，供 UI 渲染 */
+  function guoqingStatus(todayOverride) {
+    const m = loadMeta();
+    const today = todayOverride || todayStr();
+    if (!guoqingActive(today)) {
+      return { active: false, today: today, start: GUOQING_START, end: GUOQING_END };
+    }
+    const d = normGuoqing(m);
+    const has = !!d.last;
+    const delta = has ? diffDays(today, d.last) : null;
+    const claimed = has && delta === 0;
+    const anomaly = has && !(delta >= 0);
+    let next = 1;
+    if (!claimed && !anomaly) {
+      if (!has) next = 1;
+      else if (delta === 1) next = d.streak >= GUOQING_CYCLE ? 1 : d.streak + 1;
+      else next = 1; // 漏签（Δ≥2）重置为第 1 天，不做补签
+    }
+    const reward = (anomaly || claimed) ? null : (GUOQING_REWARDS[next - 1] || null);
+    return {
+      active: true, today: today, start: GUOQING_START, end: GUOQING_END,
+      claimed: claimed, streak: d.streak, total: d.total, last: d.last,
+      next: next, reward: reward, delta: delta, anomaly: anomaly,
+      points: m.points || 0, skins: Object.assign({}, (m.skins || {})), allSkins: GUOQING_SKINS, rewards: GUOQING_REWARDS.slice(), cycle: GUOQING_CYCLE
+    };
+  }
+  function guoqingClaim(todayOverride) {
+    const m = loadMeta();
+    const today = todayOverride || todayStr();
+    if (!guoqingActive(today)) return { ok: false, msg: '国庆活动已结束或尚未开始', inactive: true };
+    const d = normGuoqing(m);
+    const has = !!d.last;
+    const delta = has ? diffDays(today, d.last) : null;
+    if (has && !(delta >= 0)) return { ok: false, msg: '系统时间异常，暂无法领取', anomaly: true };
+    if (has && delta === 0) return { ok: false, msg: '今日已领取，明日再来', claimed: true };
+    let streak = 1;
+    if (!has) streak = 1;
+    else if (delta === 1) streak = (d.streak >= GUOQING_CYCLE) ? 1 : d.streak + 1;
+    else streak = 1; // 漏签重置
+    const reward = GUOQING_REWARDS[streak - 1] || { points: 0 };
+    m.points = (m.points || 0) + (reward.points || 0);
+    if (reward.skin) {
+      if (!m.skins) m.skins = {};
+      m.skins[reward.skin] = true;
+    }
+    d.streak = streak;
+    d.total = (d.total || 0) + 1;
+    d.last = today;
+    m.guoqing = d;
+    saveMeta(m);
+    return {
+      ok: true, reward: reward.points || 0, streak: streak, skin: reward.skin || null,
+      skinName: reward.skin ? (GUOQING_SKINS[reward.skin] && GUOQING_SKINS[reward.skin].name) : null,
+      points: m.points, last: today,
+      msg: '领取成功，国庆快乐！' + (reward.skin ? ('解锁皮肤【' + GUOQING_SKINS[reward.skin].name + '】') : '')
+    };
+  }
+  function setSkin(key) {
+    const m = loadMeta();
+    if (key !== 'me' && !(m.skins && m.skins[key])) return { ok: false, msg: '该皮肤尚未解锁' };
+    m.skin = key;
+    saveMeta(m);
+    return { ok: true, skin: key };
+  }
+  function currentSkin() {
+    const m = loadMeta();
+    if (m.skin && m.skin !== 'me' && m.skins && m.skins[m.skin]) return 'me_' + m.skin;
+    return 'me';
   }
 
   function loadMeta() {
@@ -855,7 +960,7 @@ const Engine = (function () {
     s.critPct = critPct;
     s.dodgePct = dodgePct;
     s.tribPct = tribPct;
-    s.flatDef = flatDef;      // 灵根土词条：绝对防御点
+    s.flatDef = flatDef + (s.altarDef || 0);      // 灵根土词条绝对防御点 + 古老祭坛等永久加成
     s.earthPct = earthPct;   // 五行阵·土阵：百分比减伤
   }
   function refreshStats(s) {
@@ -3013,9 +3118,12 @@ const Engine = (function () {
       } else {
         s.lifeMax -= 2;
         s.hp = Math.min(s.hpMax, s.hp + Math.round(s.hpMax * 0.3));
-        s.extraAtk = (s.extraAtk || 0) + 3;
+        // 2026-09-30 强度调整：献祭不再固定 +3 攻击，改为「攻击 +1 或 防御 +1」随机（防御复用现有 flatDef 平防字段）
+        const atkOrDef = Math.random() < 0.5;
+        if (atkOrDef) s.extraAtk = (s.extraAtk || 0) + 1;
+        else s.altarDef = (s.altarDef || 0) + 1;   // 防御 +1（持久字段，recalcLinggenBonus 不会覆盖）
         lines.push('你咬破舌尖，将两年寿元抹进坛中。');
-        lines.push('（寿元 -2 年，攻击 +3，气血回复三成：这笔买卖，你自己都觉得疯。）');
+        lines.push('（寿元 -2 年，' + (atkOrDef ? '攻击 +1' : '防御 +1') + '，气血回复三成：这笔买卖，你自己都觉得疯。）');
       }
       refreshStats(s); saveState(s);
       return { type: 'plain', lines: lines };
@@ -5982,6 +6090,11 @@ const Engine = (function () {
     DAILY_REWARDS: DAILY_REWARDS, PATCH_COST: PATCH_COST, DAILY_CYCLE: DAILY_CYCLE,
     todayStr: todayStr, diffDays: diffDays, normDaily: normDaily,
     dailyStatus: dailyStatus, dailyClaim: dailyClaim,
+    // —— 国庆限时登录礼 ——
+    GUOQING_START: GUOQING_START, GUOQING_END: GUOQING_END, GUOQING_CYCLE: GUOQING_CYCLE,
+    GUOQING_REWARDS: GUOQING_REWARDS, GUOQING_SKINS: GUOQING_SKINS,
+    guoqingActive: guoqingActive, guoqingStatus: guoqingStatus, guoqingClaim: guoqingClaim,
+    setSkin: setSkin, currentSkin: currentSkin,
     // —— 更新公告 ——
     noticeLatestVer: noticeLatestVer, noticeUnread: noticeUnread, noticeMarkRead: noticeMarkRead,
     cleanupLegacySaves: cleanupLegacySaves, clearAllSaves: clearAllSaves, isLegacySave: isLegacySave, SAVE_VERSION: SAVE_VERSION,

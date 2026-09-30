@@ -2341,5 +2341,100 @@ module.exports = async function build() {
     }
   });
 
+  /* ---------- 国庆登录礼（2026-10-01 ~ 10-07 限时窗口 · 100 点 + 2 皮肤）---------- */
+  function guoqingMeta(points) {
+    return JSON.stringify({
+      points: points === undefined ? 0 : points, lives: 0, reinc: {}, achievements: {}, flown: false, maxJie: 0,
+      achPaid: {}, _bonus20: true, guoqing: { last: '', streak: 0, total: 0 }
+    });
+  }
+
+  S.case('国庆登录礼：窗口外查询返回 active:false，领取返回 ok:false(inactive)', async (t) => {
+    const { win } = await boot({ seed: { dedao_meta: guoqingMeta(0) } });
+    // 经典脚本下 Engine 不挂 window，须经 window.eval 访问全局词法绑定的 Engine
+    const st = win.eval('Engine.guoqingStatus("2026-09-30")');
+    t.ok(st && st.active === false, '窗口外（9/30）guoqingStatus.active 应为 false');
+    const r = win.eval('Engine.guoqingClaim("2026-09-30")');
+    t.ok(r && r.ok === false && r.inactive === true, '窗口外领取应返回 ok:false 且 inactive:true');
+  });
+
+  S.case('国庆登录礼：窗口内连签 7 天累计 100 点，第 1 / 6 天解锁两款皮肤', async (t) => {
+    const { win } = await boot({ seed: { dedao_meta: guoqingMeta(0) } });
+    const dates = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07'];
+    let last;
+    for (const d of dates) { last = win.eval('Engine.guoqingClaim("' + d + '")'); }
+    t.ok(last && last.ok, '7 天连签应全部领取成功');
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m.points, 100, '连签 7 天累计应得 100 点，实际 ' + m.points);
+    t.eq(m.guoqing.streak, 7, 'streak 应为 7');
+    t.ok(m.skins && m.skins.xiangyu, '第 1 天应解锁皮肤 xiangyu（项羽 · 修仙版）');
+    t.ok(m.skins && m.skins.scholar, '第 6 天应解锁皮肤 scholar（白衣书生）');
+  });
+
+  S.case('国庆登录礼：漏签（Δ=2）重置为第 1 天，不顺延、不补签', async (t) => {
+    const { win } = await boot({ seed: { dedao_meta: guoqingMeta(0) } });
+    win.eval('Engine.guoqingClaim("2026-10-01")'); // 第 1 天
+    const r = win.eval('Engine.guoqingClaim("2026-10-03")'); // Δ=2 漏签 → 重置为第 1 天
+    t.eq(r.streak, 1, '漏签 Δ=2 应重置 streak 为 1（而非续到第 2 天）');
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m.guoqing.streak, 1, '漏签后 guoqing.streak 应为 1');
+  });
+
+  S.case('国庆登录礼：面板渲染（注入窗口内日期）7 格齐全、皮肤标记、当前可领高亮、领取解锁皮肤', async (t) => {
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: guoqingMeta(0) } });
+    // ui.js 函数不挂 window，只能经 DOM 点击触发；覆写 Engine 全局方法注入窗口内日期，绕开真实日期 2026-09-30
+    win.eval('Engine.__gqS = Engine.guoqingStatus; Engine.guoqingStatus = function (o) { return Engine.__gqS("2026-10-03"); };');
+    win.eval('Engine.__gqC = Engine.guoqingClaim; Engine.guoqingClaim = function (o) { return Engine.__gqC("2026-10-03"); };');
+    const btn = doc.getElementById('t-guoqing');
+    t.ok(!!btn, '标题页应有 #t-guoqing 按钮');
+    if (btn) btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    const body = doc.getElementById('modal-body');
+    t.ok(body && /国庆登录礼/.test(body.textContent || ''), '面板标题应为「国庆登录礼」');
+    t.eq(body.querySelectorAll('.daily-cell').length, 7, '面板应渲染 7 个格子');
+    t.eq(body.querySelectorAll('.daily-cell.cur').length, 1, '应有且仅有一个「当前可领」高亮格');
+    t.ok(/项羽/.test(body.textContent || '') && /书生/.test(body.textContent || ''), '两款皮肤（项羽 / 书生）应出现在面板中');
+    const claim = [...body.querySelectorAll('.daily-acts button')].find(b => /领取/.test(b.textContent || ''));
+    t.ok(!!claim, '应有领取按钮');
+    if (claim) {
+      claim.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 220));
+      const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+      t.ok(m.skins && m.skins.xiangyu, '领取第 1 天应解锁皮肤 xiangyu');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('国庆面板渲染报错: ' + real.slice(0, 3).join(' ;; '));
+  });
+
+  S.case('功法管理：可切换 / 可装备行「遗忘」按钮在左、「切换 / 装备」按钮在右', async (t) => {
+    const raw = Object.assign({}, await battleSave());
+    raw.techs = ['jingang', 'qingmu', 'xuanshui', 'jinren', 'jianqi', 'leiyin', 'xiaoyao', 'yingdun', 'suodi'];
+    raw.techEquip = { xinfa: 'jingang', shufa: ['jinren'], dunshu: 'xiaoyao' };
+    const { win, doc } = await boot({ seed: { dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 200));
+    await advanceChapters(win, doc);
+    await new Promise(r => setTimeout(r, 200));
+    const cb = doc.getElementById('btn-char-bottom');
+    if (cb) cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const tab = doc.querySelector('.char-tab[data-tab="tech"]');
+    if (tab) tab.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const rows = doc.querySelectorAll('#char-tech-list .formula-row');
+    let checked = 0, bad = 0;
+    rows.forEach(function (row) {
+      const btns = [...row.querySelectorAll('button')];
+      const fb = btns.find(b => /遗忘/.test(b.textContent || ''));
+      const sb = btns.find(b => /切换|装备/.test(b.textContent || ''));
+      if (fb && sb) {
+        checked++;
+        if (btns.indexOf(fb) >= btns.indexOf(sb)) bad++;
+      }
+    });
+    t.ok(checked >= 3, '应至少出现 3 个可切换 / 可装备行（心法 / 法术 / 遁术各一），实际 ' + checked);
+    t.eq(bad, 0, '所有可切换 / 可装备行，「遗忘」都应排在「切换 / 装备」左侧');
+  });
+
   return S;
 };

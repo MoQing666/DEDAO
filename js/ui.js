@@ -148,6 +148,8 @@
     if ($('h-avatar')) {
       const fb = $('h-avatar').querySelector('.avatar-fb');
       if (fb) fb.textContent = (S.name || '修').slice(0, 1);
+      const av = $('h-avatar-img');
+      if (av) av.src = PORTRAIT[Engine.currentSkin()] || 'assets/img/portrait/me.png';
     }
     const realmEl = $('h-realm');
     if (realmEl) {
@@ -517,7 +519,7 @@
       $('battle-log').innerHTML = '';
       $('b-me-name').textContent = '『' + S.name + '』';
       $('b-enemy-name').textContent = '『' + b.name + '』';
-      setPortrait('b-me-portrait', 'b-me-img', 'me');
+      setPortrait('b-me-portrait', 'b-me-img', Engine.currentSkin());
       setPortrait('b-enemy-portrait', 'b-enemy-img', b.portraitEnemy || 'foe');
       ov.style.display = 'flex';
       // BGM：秘境内的战斗沿用「仙魔浩劫」（探索与战斗同氛围曲），俗世战斗走 battle
@@ -668,6 +670,8 @@
   /* ---------------- 战斗立绘 / 飘字 / 特效 / 法术序 ---------------- */
   const PORTRAIT = {
     me: 'assets/img/portrait/me.png',
+    me_xiangyu: 'assets/img/portrait/me_xiangyu.png',   // 国庆皮肤·项羽修仙版
+    me_scholar: 'assets/img/portrait/me_scholar.png',    // 国庆皮肤·白衣书生
     foe: 'assets/img/portrait/foe.png',
     boss_huang: 'assets/img/portrait/boss_huang.png',
     boss_xuan: 'assets/img/portrait/boss_xuan.png',
@@ -5776,8 +5780,8 @@
           log('你改修【' + x.name + '】，从此专精此道。', 'good');
           renderTechPage();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         wrap.appendChild(row);
       });
     }
@@ -5835,8 +5839,8 @@
           log('你把【' + x.name + '】纳入法术位。', 'good');
           renderTechPage();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         wrap.appendChild(row);
       });
     }
@@ -5879,8 +5883,8 @@
           log('你身法焕然一新，习演【' + x.name + '】。', 'good');
           renderTechPage();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         wrap.appendChild(row);
       });
     }
@@ -6005,7 +6009,52 @@
       }
     };
     actions.appendChild(bClear);
-    
+
+    // —— 主角皮肤（国庆登录礼解锁；默认立绘始终可用）——
+    const skinSec = document.createElement('div');
+    skinSec.style.marginTop = '14px';
+    const skinTitle = document.createElement('h4');
+    skinTitle.textContent = '主角皮肤';
+    skinTitle.style.color = 'var(--text)';
+    skinSec.appendChild(skinTitle);
+    const skinsMeta = Engine.loadMeta();
+    const ownedSkins = skinsMeta.skins || {};
+    const curSkin = Engine.currentSkin();
+    const skinList = [{ key: 'me', name: '默认（原立绘）', desc: '游戏初始主角立绘。' }];
+    const GQ = Engine.GUOQING_SKINS || {};
+    Object.keys(GQ).forEach(function (k) {
+      skinList.push({ key: k, name: GQ[k].name, desc: GQ[k].desc, locked: !ownedSkins[k] });
+    });
+    skinList.forEach(function (sk) {
+      const row = document.createElement('div');
+      row.className = 'set-row';
+      const l = document.createElement('span');
+      l.textContent = sk.name + (sk.locked ? '（未解锁）' : '');
+      row.appendChild(l);
+      const b = document.createElement('button');
+      b.className = 'btn-small';
+      if (sk.locked) {
+        b.textContent = '未解锁';
+        b.disabled = true;
+        b.style.opacity = '0.5';
+      } else {
+        const portraitKey = sk.key === 'me' ? 'me' : 'me_' + sk.key;
+        const equipped = (curSkin === portraitKey);
+        b.textContent = equipped ? '使用中' : '使用';
+        if (equipped) b.classList.add('btn-forget');
+        b.onclick = function () {
+          const r = Engine.setSkin(sk.key);
+          if (!r.ok) { log(r.msg, 'bad'); return; }
+          sfx('good');
+          log('已切换皮肤【' + sk.name + '】。', 'good');
+          openSettings(); // 重绘刷新「使用中」状态
+        };
+      }
+      row.appendChild(b);
+      skinSec.appendChild(row);
+    });
+    wrap.appendChild(skinSec);
+
     wrap.appendChild(actions);
     box.appendChild(wrap);
   }
@@ -6357,6 +6406,7 @@
     $('t-points').textContent = M.points ? '轮回点累计 ' + M.points + jieInfo : (jieInfo ? jieInfo.slice(3) : '');
     dailyBtnSync();
     noticeBtnSync();
+    guoqingBtnSync();
   }
 
   /* ---------------- 每日登录礼（账号级 / 跨存档） ----------------
@@ -6472,6 +6522,113 @@
     try { st = Engine.dailyStatus(); } catch (e) { return false; }
     if (!st || st.claimed || st.anomaly) return false;
     openDailyPanel(afterClose);
+    return true;
+  }
+
+  /* ---------------- 国庆限时登录礼（2026-10-01 ~ 10-07） ----------------
+   * 独立于「每日登录礼」的活动轨道：窗口内连签 7 天累计 100 点，第 1 / 6 天各解锁一款主角皮肤。
+   * 数值与规则集中在 Engine（GUOQING_REWARDS / GUOQING_SKINS / 窗口常量），此处只做渲染与交互。
+   */
+  function guoqingBtnSync(todayOverride) {
+    const b = $('t-guoqing'); if (!b) return;
+    let st;
+    try { st = Engine.guoqingStatus(todayOverride); } catch (e) { return; }
+    if (!st || !st.active) { b.style.display = 'none'; return; }
+    b.style.display = 'inline-block';
+    b.classList.remove('daily-ready');
+    if (st.claimed) { b.textContent = '国庆登录礼 · 已领取'; }
+    else { b.textContent = '国庆登录礼 · 可领取'; b.classList.add('daily-ready'); }
+  }
+
+  function openGuoqingPanel(afterClose, todayOverride) {
+    const ov = $('modal'); const box = $('modal-body');
+    if (!ov || !box) return;
+
+    function close() {
+      ov.style.display = 'none'; ov.onclick = null; closeModal();
+      if (afterClose) { const f = afterClose; afterClose = null; f(); }
+    }
+
+    function render(msg) {
+      let st;
+      try { st = Engine.guoqingStatus(todayOverride); } catch (e) { return; }
+      if (!st || !st.active) {
+        box.innerHTML = '';
+        const p = document.createElement('p'); p.className = 'dim';
+        p.textContent = '国庆活动已结束或尚未开始'; box.appendChild(p);
+        return;
+      }
+      box.innerHTML = '';
+
+      const h = document.createElement('h3'); h.textContent = '国庆登录礼'; box.appendChild(h);
+      const sub = document.createElement('p'); sub.className = 'dim';
+      sub.textContent = '国庆 ' + st.start + ' ~ ' + st.end + ' · 连签 7 天共 100 点，第 1 / 6 天解锁主角皮肤'; box.appendChild(sub);
+
+      const line = document.createElement('p'); line.className = 'dim';
+      if (st.claimed) line.textContent = '今日已领取，明日再来（已签 ' + st.streak + ' 天）';
+      else if (st.anomaly) line.textContent = '系统时间异常，暂无法领取';
+      else line.textContent = '已签 ' + st.streak + ' 天 · 今日可领第 ' + st.next + ' 天';
+      box.appendChild(line);
+
+      // 7 格：点数 + 皮肤标记
+      const claimedN = st.streak;
+      const grid = document.createElement('div'); grid.className = 'daily-grid';
+      for (let i = 1; i <= st.cycle; i++) {
+        const rw = st.rewards[i - 1] || { points: 0 };
+        const cell = document.createElement('div');
+        let cls = 'daily-cell ';
+        if (i <= claimedN) cls += 'got';
+        else if (!st.claimed && !st.anomaly && i === st.next) cls += 'cur';
+        else cls += 'todo';
+        cell.className = cls;
+        const skinName = rw.skin && st.allSkins[rw.skin] ? st.allSkins[rw.skin].name : '';
+        cell.innerHTML = '<span class="dc-day">第' + i + '天</span>' +
+          '<span class="dc-num">' + rw.points + '</span>' +
+          (skinName ? '<span class="dc-skin">' + skinName + '</span>' : '') +
+          (i <= claimedN ? '<span class="dc-ok">✓</span>' : '');
+        grid.appendChild(cell);
+      }
+      box.appendChild(grid);
+
+      if (msg) {
+        const p = document.createElement('p'); p.className = 'daily-tip'; p.textContent = msg;
+        box.appendChild(p);
+      }
+
+      const acts = document.createElement('div'); acts.className = 'daily-acts';
+      if (!st.claimed && !st.anomaly) {
+        const cb = document.createElement('button'); cb.className = 'btn-main';
+        cb.textContent = '领取（+' + (st.reward ? st.reward.points : 0) + ' 轮回点' + (st.reward && st.reward.skin ? ' + 皮肤' : '') + '）';
+        cb.onclick = function () { sfx('click'); doClaim(); };
+        acts.appendChild(cb);
+      }
+      const kb = document.createElement('button'); kb.className = 'btn-main ghost';
+      kb.textContent = '关闭'; kb.onclick = function () { sfx('click'); close(); };
+      acts.appendChild(kb);
+      box.appendChild(acts);
+    }
+
+    function doClaim() {
+      const r = Engine.guoqingClaim(todayOverride);
+      M = Engine.loadMeta();
+      renderTitle();
+      if (r && r.ok) {
+        const tip = r.skinName ? (r.msg + '（前往 设置 → 主角皮肤 切换）') : r.msg;
+        render(tip);
+      } else if (r && r.msg) render(r.msg);
+    }
+
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) close(); };
+    render('');
+  }
+
+  /* 窗口内当日未领取时开机自动弹一次；返回是否弹了面板 */
+  function autoGuoqingPanel(afterClose, todayOverride) {
+    let st;
+    try { st = Engine.guoqingStatus(todayOverride); } catch (e) { return false; }
+    if (!st || !st.active || st.claimed || st.anomaly) return false;
+    openGuoqingPanel(afterClose);
     return true;
   }
 
@@ -6607,8 +6764,14 @@
     }
     // 公告接在「每日登录礼关闭之后」触发：每日礼未弹则公告也不弹（避免与每日礼测试/真实「已领每日礼的当日刷新」冲突）。
     // 仍满足需求——每次更新后、玩家每日首次登录（通常尚未领每日礼）时，每日礼关闭后即弹出未读公告。
-    if (!autoDailyPanel(function () { if (!autoNoticePanel(playTitleTutorial)) playTitleTutorial(); })) {
-      playTitleTutorial();
+    // 国庆活动面板插在每日礼之前：窗口内未领则先弹国庆，关闭后再走 每日礼 → 公告 → 引导。
+    const dailyThenNotice = function () {
+      if (!autoDailyPanel(function () { if (!autoNoticePanel(playTitleTutorial)) playTitleTutorial(); })) {
+        playTitleTutorial();
+      }
+    };
+    if (!autoGuoqingPanel(dailyThenNotice)) {
+      dailyThenNotice();
     }
     
     // 自动激活音频
@@ -6631,6 +6794,7 @@
     $('t-continue').onclick = function () { sfx('click'); actContinue(); };
     $('t-rebirth').onclick = function () { sfx('click'); renderRebirth(); showScreen('rebirth'); };
     if ($('t-daily')) $('t-daily').onclick = function () { sfx('click'); openDailyPanel(); };
+    if ($('t-guoqing')) $('t-guoqing').onclick = function () { sfx('click'); openGuoqingPanel(); };
     if ($('t-notice')) $('t-notice').onclick = function () { sfx('click'); openNoticePanel(null, false); };
     $('rb-back').onclick = function () { sfx('click'); renderTitle(); showScreen('title'); };
     $('btn-reborn').onclick = function () { sfx('click'); actReborn(); };
@@ -7307,8 +7471,8 @@
           log('你改修【' + x.name + '】，从此专精此道。', 'good');
           renderCharTech();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         techList.appendChild(row);
       });
     }
@@ -7366,8 +7530,8 @@
           log('你把【' + x.name + '】纳入法术位。', 'good');
           renderCharTech();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         techList.appendChild(row);
       });
     }
@@ -7410,8 +7574,8 @@
           log('你改习【' + x.name + '】，身法大进。', 'good');
           renderCharTech();
         });
-        row.appendChild(b);
         row.appendChild(forgetTechBtn(t, x));
+        row.appendChild(b);
         techList.appendChild(row);
       });
     }

@@ -6537,6 +6537,7 @@
     b.style.display = 'inline-block';
     b.classList.remove('daily-ready');
     if (st.claimed) { b.textContent = '国庆登录礼 · 已领取'; }
+    else if (st.gap) { b.textContent = '国庆登录礼 · 可补签'; b.classList.add('daily-ready'); }
     else { b.textContent = '国庆登录礼 · 可领取'; b.classList.add('daily-ready'); }
   }
 
@@ -6567,8 +6568,13 @@
       const line = document.createElement('p'); line.className = 'dim';
       if (st.claimed) line.textContent = '今日已领取，明日再来（已签 ' + st.streak + ' 天）';
       else if (st.anomaly) line.textContent = '系统时间异常，暂无法领取';
+      else if (st.gap) line.textContent = '漏签 ' + st.missed + ' 天 · 可花 ' + st.makeupCost + ' 轮回点/天 补签续上连签';
       else line.textContent = '已签 ' + st.streak + ' 天 · 今日可领第 ' + st.next + ' 天';
       box.appendChild(line);
+
+      const pts = document.createElement('p'); pts.className = 'dim';
+      pts.textContent = '当前轮回点：' + (st.points || 0);
+      box.appendChild(pts);
 
       // 7 格：点数 + 皮肤标记
       const claimedN = st.streak;
@@ -6597,10 +6603,21 @@
 
       const acts = document.createElement('div'); acts.className = 'daily-acts';
       if (!st.claimed && !st.anomaly) {
-        const cb = document.createElement('button'); cb.className = 'btn-main';
-        cb.textContent = '领取（+' + (st.reward ? st.reward.points : 0) + ' 轮回点' + (st.reward && st.reward.skin ? ' + 皮肤' : '') + '）';
-        cb.onclick = function () { sfx('click'); doClaim(); };
-        acts.appendChild(cb);
+        if (!st.gap) {
+          const cb = document.createElement('button'); cb.className = 'btn-main';
+          cb.textContent = '领取（+' + (st.reward ? st.reward.points : 0) + ' 轮回点' + (st.reward && st.reward.skin ? ' + 皮肤' : '') + '）';
+          cb.onclick = function () { sfx('click'); doClaim(); };
+          acts.appendChild(cb);
+        }
+        if (st.gap) {
+          const mb = document.createElement('button'); mb.className = 'btn-main ghost';
+          mb.textContent = st.canMakeup
+            ? '补签（花 ' + st.makeupCost + ' 轮回点，补 1 天' + (st.missed > 1 ? '，还可补 ' + (st.missed - 1) + ' 天' : '') + '）'
+            : '补签（轮回点不足，需 ' + st.makeupCost + '）';
+          if (st.canMakeup) mb.onclick = function () { sfx('click'); doMakeup(); };
+          else { mb.disabled = true; mb.style.opacity = '0.5'; }
+          acts.appendChild(mb);
+        }
       }
       const kb = document.createElement('button'); kb.className = 'btn-main ghost';
       kb.textContent = '关闭'; kb.onclick = function () { sfx('click'); close(); };
@@ -6616,6 +6633,13 @@
         const tip = r.skinName ? (r.msg + '（前往 设置 → 主角皮肤 切换）') : r.msg;
         render(tip);
       } else if (r && r.msg) render(r.msg);
+    }
+    function doMakeup() {
+      const r = Engine.guoqingMakeup(todayOverride);
+      M = Engine.loadMeta();
+      renderTitle();
+      if (r && r.ok) render(r.msg);
+      else if (r && r.msg) render(r.msg);
     }
 
     ov.style.display = 'flex';
@@ -6950,6 +6974,57 @@
   }
 
   /* ---------------- 角色页 ---------------- */
+  /* 游戏内头像/皮肤切换弹窗（角色页与设置页共用逻辑，封装为独立弹窗） */
+  function openSkinPicker(afterClose) {
+    const ov = $('modal'); const box = $('modal-body');
+    if (!ov || !box) return;
+    function close() {
+      ov.style.display = 'none'; ov.onclick = null; closeModal();
+      if (afterClose) { const f = afterClose; afterClose = null; f(); }
+    }
+    function render() {
+      box.innerHTML = '';
+      const h = document.createElement('h3'); h.textContent = '切换主角头像'; box.appendChild(h);
+      const sub = document.createElement('p'); sub.className = 'dim';
+      sub.textContent = '国庆登录礼解锁的皮肤可在游戏内随时切换。'; box.appendChild(sub);
+      const curSkin = Engine.currentSkin();
+      const skinsMeta = Engine.loadMeta();
+      const ownedSkins = skinsMeta.skins || {};
+      const skinList = [{ key: 'me', name: '默认（原立绘）' }];
+      const GQ = Engine.GUOQING_SKINS || {};
+      Object.keys(GQ).forEach(function (k) { skinList.push({ key: k, name: GQ[k].name, locked: !ownedSkins[k] }); });
+      skinList.forEach(function (sk) {
+        const row = document.createElement('div'); row.className = 'set-row';
+        const l = document.createElement('span');
+        l.textContent = sk.name + (sk.locked ? '（未解锁）' : '');
+        row.appendChild(l);
+        const b = document.createElement('button'); b.className = 'btn-small';
+        if (sk.locked) { b.textContent = '未解锁'; b.disabled = true; b.style.opacity = '0.5'; }
+        else {
+          const portraitKey = sk.key === 'me' ? 'me' : ('me_' + sk.key);
+          const equipped = (curSkin === portraitKey);
+          b.textContent = equipped ? '使用中' : '使用';
+          if (equipped) b.classList.add('btn-forget');
+          b.onclick = function () {
+            const r = Engine.setSkin(sk.key);
+            if (!r.ok) { log(r.msg, 'bad'); return; }
+            sfx('good');
+            log('已切换皮肤【' + sk.name + '】。', 'good');
+            refresh(); render();
+          };
+        }
+        row.appendChild(b); box.appendChild(row);
+      });
+      const acts = document.createElement('div'); acts.className = 'daily-acts';
+      const kb = document.createElement('button'); kb.className = 'btn-main ghost';
+      kb.textContent = '关闭'; kb.onclick = function () { sfx('click'); close(); };
+      acts.appendChild(kb); box.appendChild(acts);
+    }
+    ov.style.display = 'flex';
+    ov.onclick = function (e) { if (e.target === ov) close(); };
+    render();
+  }
+
   function openChar() {
     showScreen('char');
     renderCharPage();
@@ -6999,6 +7074,8 @@
     });
     
     $('char-back').onclick = function () { showScreen('game'); refresh(); };
+    const skinBtn = $('char-skin-btn');
+    if (skinBtn) skinBtn.onclick = function () { if (!S) return; sfx('click'); openSkinPicker(); };
   }
 
   function renderCharAttr() {

@@ -68,6 +68,14 @@ const Engine = (function () {
     return Date.UTC(+p[0], (+p[1]) - 1, +p[2]) / 86400000;
   }
   function diffDays(a, b) { return dayNum(a) - dayNum(b); }
+  function addDays(s, n) {
+    const p = String(s || '').split('-');
+    if (p.length !== 3) return s;
+    const dt = new Date(Date.UTC(+p[0], (+p[1]) - 1, +p[2]));
+    dt.setUTCDate(dt.getUTCDate() + n);
+    const y = dt.getUTCFullYear(), m = dt.getUTCMonth() + 1, dd = dt.getUTCDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+  }
 
   /* 兜底：旧档无 daily / daily 结构不完整时，一律按首次处理，禁止直接读属性崩溃 */
   function normDaily(m) {
@@ -192,7 +200,8 @@ const Engine = (function () {
 
   /* ---------------- 国庆限时登录礼（2026-10-01 ~ 10-07） ----------------
    * 独立于「每日登录礼」的「活动」轨道：窗口内本地自然日连签 7 天，累计 100 点轮回点，
-   * 第 1 天解锁皮肤「项羽 · 修仙版」、第 6 天解锁皮肤「白衣书生」。过窗即止、不顺延、不补签。
+   * 第 1 天解锁皮肤「项羽 · 修仙版」、第 6 天解锁皮肤「白衣书生」。过窗即止、不顺延；
+   * 漏签（Δ≥2）不自动重置，而是允许用 5 轮回点「补签」补回漏掉的天数并续上连签。
    * 调整数值/皮肤只动 GUOQING_REWARDS 与窗口常量；测试可传 todayOverride 钉死日期。
    */
   const GUOQING_START = '2026-10-01';
@@ -239,14 +248,51 @@ const Engine = (function () {
     if (!claimed && !anomaly) {
       if (!has) next = 1;
       else if (delta === 1) next = d.streak >= GUOQING_CYCLE ? 1 : d.streak + 1;
-      else next = 1; // 漏签（Δ≥2）重置为第 1 天，不做补签
+      else next = d.streak + 1; // 漏签（Δ≥2）不重置，等待补签续上
     }
-    const reward = (anomaly || claimed) ? null : (GUOQING_REWARDS[next - 1] || null);
+    const gap = !!(has && delta >= 2 && !anomaly && !claimed);
+    const reward = (anomaly || claimed || gap) ? null : (GUOQING_REWARDS[next - 1] || null);
+    const missed = (has && delta >= 2) ? (delta - 1) : 0;
+    const makeupCost = 5;
+    const canMakeup = !!(has && delta >= 2 && !anomaly && !claimed && d.streak < GUOQING_CYCLE && (m.points || 0) >= makeupCost);
     return {
       active: true, today: today, start: GUOQING_START, end: GUOQING_END,
       claimed: claimed, streak: d.streak, total: d.total, last: d.last,
-      next: next, reward: reward, delta: delta, anomaly: anomaly,
+      next: next, reward: reward, delta: delta, anomaly: anomaly, gap: gap,
+      missed: missed, makeupCost: makeupCost, canMakeup: canMakeup,
       points: m.points || 0, skins: Object.assign({}, (m.skins || {})), allSkins: GUOQING_SKINS, rewards: GUOQING_REWARDS.slice(), cycle: GUOQING_CYCLE
+    };
+  }
+  /* 补签：漏签（Δ≥2）时花 5 轮回点补回 1 天（连签续上、发放该天奖励）。
+   * 每次只补 1 天、发该天奖励；多次补签可逐天补齐直到 Δ=1 再正常领今日。窗口外不可补。 */
+  function guoqingMakeup(todayOverride) {
+    const m = loadMeta();
+    const today = todayOverride || todayStr();
+    if (!guoqingActive(today)) return { ok: false, msg: '国庆活动已结束或尚未开始', inactive: true };
+    const d = normGuoqing(m);
+    const has = !!d.last;
+    const delta = has ? diffDays(today, d.last) : null;
+    if (!has) return { ok: false, msg: '尚未开始连签，无法补签', noGap: true };
+    if (delta < 2) return { ok: false, msg: '没有可补签的漏签天数', noGap: true };
+    if (d.streak >= GUOQING_CYCLE) return { ok: false, msg: '连签已满 7 天，无需补签', full: true };
+    const cost = 5;
+    if ((m.points || 0) < cost) return { ok: false, msg: '轮回点不足（补签需 ' + cost + '）', poor: true };
+    const nextStreak = d.streak + 1;
+    const reward = GUOQING_REWARDS[nextStreak - 1] || { points: 0 };
+    m.points = (m.points || 0) - cost + (reward.points || 0);
+    if (reward.skin) { if (!m.skins) m.skins = {}; m.skins[reward.skin] = true; }
+    d.streak = nextStreak;
+    d.total = (d.total || 0) + 1;
+    d.last = addDays(d.last, 1);
+    m.guoqing = d;
+    saveMeta(m);
+    return {
+      ok: true, day: nextStreak, cost: cost, reward: reward.points || 0,
+      skin: reward.skin || null,
+      skinName: reward.skin ? (GUOQING_SKINS[reward.skin] && GUOQING_SKINS[reward.skin].name) : null,
+      points: m.points, last: d.last,
+      msg: '补签第 ' + nextStreak + ' 天成功（-' + cost + ' 轮回点，+' + (reward.points || 0) + ' 轮回点' +
+        (reward.skin ? '，解锁皮肤【' + GUOQING_SKINS[reward.skin].name + '】' : '') + '）'
     };
   }
   function guoqingClaim(todayOverride) {
@@ -258,10 +304,10 @@ const Engine = (function () {
     const delta = has ? diffDays(today, d.last) : null;
     if (has && !(delta >= 0)) return { ok: false, msg: '系统时间异常，暂无法领取', anomaly: true };
     if (has && delta === 0) return { ok: false, msg: '今日已领取，明日再来', claimed: true };
+    if (has && delta >= 2) return { ok: false, msg: '有漏签天数，请先补签（5 轮回点/天）', needMakeup: true }; // 不重置，等补签
     let streak = 1;
     if (!has) streak = 1;
     else if (delta === 1) streak = (d.streak >= GUOQING_CYCLE) ? 1 : d.streak + 1;
-    else streak = 1; // 漏签重置
     const reward = GUOQING_REWARDS[streak - 1] || { points: 0 };
     m.points = (m.points || 0) + (reward.points || 0);
     if (reward.skin) {
@@ -6080,7 +6126,7 @@ const Engine = (function () {
     // —— 国庆限时登录礼 ——
     GUOQING_START: GUOQING_START, GUOQING_END: GUOQING_END, GUOQING_CYCLE: GUOQING_CYCLE,
     GUOQING_REWARDS: GUOQING_REWARDS, GUOQING_SKINS: GUOQING_SKINS,
-    guoqingActive: guoqingActive, guoqingStatus: guoqingStatus, guoqingClaim: guoqingClaim,
+    guoqingActive: guoqingActive, guoqingStatus: guoqingStatus, guoqingClaim: guoqingClaim, guoqingMakeup: guoqingMakeup,
     setSkin: setSkin, currentSkin: currentSkin,
     // —— 更新公告 ——
     noticeLatestVer: noticeLatestVer, noticeUnread: noticeUnread, noticeMarkRead: noticeMarkRead,

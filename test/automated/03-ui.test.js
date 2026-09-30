@@ -2371,13 +2371,61 @@ module.exports = async function build() {
     t.ok(m.skins && m.skins.scholar, '第 6 天应解锁皮肤 scholar（白衣书生）');
   });
 
-  S.case('国庆登录礼：漏签（Δ=2）重置为第 1 天，不顺延、不补签', async (t) => {
-    const { win } = await boot({ seed: { dedao_meta: guoqingMeta(0) } });
-    win.eval('Engine.guoqingClaim("2026-10-01")'); // 第 1 天
-    const r = win.eval('Engine.guoqingClaim("2026-10-03")'); // Δ=2 漏签 → 重置为第 1 天
-    t.eq(r.streak, 1, '漏签 Δ=2 应重置 streak 为 1（而非续到第 2 天）');
+  S.case('国庆登录礼：漏签（Δ=2）不重置，领取被拒需先补签，补签后续上连签', async (t) => {
+    const { win } = await boot({ seed: { dedao_meta: guoqingMeta(50) } }); // 备足轮回点用于补签
+    win.eval('Engine.guoqingClaim("2026-10-01")'); // 第 1 天，streak=1
+    const stGap = win.eval('Engine.guoqingStatus("2026-10-03")'); // Δ=2 漏签第 2 天
+    t.ok(stGap.gap === true, '漏签 Δ=2 应标记 gap=true');
+    t.ok(stGap.canMakeup === true, '漏签 Δ=2 且轮回点充足时应允许补签');
+    t.eq(stGap.missed, 1, '漏签 1 天，missed 应为 1');
+    const rc = win.eval('Engine.guoqingClaim("2026-10-03")'); // 漏签日直接领取应被拒
+    t.ok(rc && rc.ok === false && rc.needMakeup === true, '漏签日领取应返回 needMakeup（不重置）');
+    const r = win.eval('Engine.guoqingMakeup("2026-10-03")'); // 花 5 点补回第 2 天
+    t.ok(r && r.ok, '补签应成功');
+    t.eq(r.day, 2, '补签应补回第 2 天');
+    t.eq(r.cost, 5, '补签应花费 5 轮回点');
     const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
-    t.eq(m.guoqing.streak, 1, '漏签后 guoqing.streak 应为 1');
+    t.eq(m.guoqing.streak, 2, '补签后 streak 应从 1 续到 2（而非重置为 1）');
+    t.eq(m.points, 78, '补签后轮回点应为 50 + 20(第1天) - 5(补签) + 13(第2天) = 78，实际 ' + m.points);
+    const stAfter = win.eval('Engine.guoqingStatus("2026-10-03")'); // 仍 Δ=1（last=10-02），今日可领
+    t.ok(stAfter.delta === 1, '补签后 last=10-02，到 10-03 应为 Δ=1');
+    t.ok(stAfter.canMakeup === false, '补签后无漏签，canMakeup 应为 false');
+    t.ok(stAfter.gap === false, '补签后 gap 应为 false');
+  });
+
+  S.case('国庆登录礼：补签需 5 轮回点，不足时拒绝', async (t) => {
+    // 直接构造「已签第 1 天、漏签到 10-03、轮回点仅 3」的存档（不走领取以免 +20 干扰）
+    const meta = JSON.parse(guoqingMeta(3));
+    meta.guoqing = { last: '2026-10-01', streak: 1, total: 1 };
+    const { win } = await boot({ seed: { dedao_meta: JSON.stringify(meta) } });
+    const r = win.eval('Engine.guoqingMakeup("2026-10-03")'); // Δ=2 想补签，点不足
+    t.ok(r && r.ok === false && r.poor === true, '轮回点 < 5 时补签应被拒（poor）');
+    const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+    t.eq(m.guoqing.streak, 1, '补签被拒后 streak 不应变化');
+    t.eq(m.points, 3, '补签被拒后轮回点不应变化');
+  });
+
+  S.case('国庆登录礼：面板漏签时显示「补签」按钮，点击可补签并刷新', async (t) => {
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: guoqingMeta(50) } });
+    win.eval('Engine.guoqingClaim("2026-10-01")'); // 第 1 天
+    // 覆写 Engine 方法注入窗口内日期（漏签状态）
+    win.eval('Engine.__gqS = Engine.guoqingStatus; Engine.guoqingStatus = function (o) { return Engine.__gqS("2026-10-03"); };');
+    win.eval('Engine.__gqC = Engine.guoqingClaim; Engine.guoqingClaim = function (o) { return Engine.__gqC("2026-10-03"); };');
+    win.eval('Engine.__gqM = Engine.guoqingMakeup; Engine.guoqingMakeup = function (o) { return Engine.__gqM("2026-10-03"); };');
+    const btn = doc.getElementById('t-guoqing');
+    if (btn) btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 220));
+    const body = doc.getElementById('modal-body');
+    const makeup = [...body.querySelectorAll('.daily-acts button')].find(b => /补签/.test(b.textContent || ''));
+    t.ok(!!makeup, '漏签面板应出现「补签」按钮');
+    if (makeup) {
+      makeup.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 220));
+      const m = JSON.parse(win.localStorage.getItem('dedao_meta') || 'null');
+      t.eq(m.guoqing.streak, 2, '点击补签后 streak 应为 2');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('国庆补签面板报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   S.case('国庆登录礼：面板渲染（注入窗口内日期）7 格齐全、皮肤标记、当前可领高亮、领取解锁皮肤', async (t) => {
@@ -2434,6 +2482,42 @@ module.exports = async function build() {
     });
     t.ok(checked >= 3, '应至少出现 3 个可切换 / 可装备行（心法 / 法术 / 遁术各一），实际 ' + checked);
     t.eq(bad, 0, '所有可切换 / 可装备行，「遗忘」都应排在「切换 / 装备」左侧');
+  });
+
+  S.case('游戏内头像切换：角色页「切换主角头像」按钮打开选择器，可切换已解锁皮肤并刷新立绘', async (t) => {
+    const raw = Object.assign({}, await battleSave());
+    const mObj = JSON.parse(guoqingMeta(50));
+    mObj.skins = { xiangyu: true }; // 预解锁项羽皮肤
+    const { win, doc, errors } = await boot({ seed: { dedao_meta: JSON.stringify(mObj), dedao_save: JSON.stringify(raw) } });
+    click(win, 't-continue');
+    await new Promise(r => setTimeout(r, 200));
+    await advanceChapters(win, doc);
+    await new Promise(r => setTimeout(r, 200));
+    const cb = doc.getElementById('btn-char-bottom');
+    t.ok(!!cb, '主界面应有角色页入口 #btn-char-bottom');
+    if (cb) cb.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 150));
+    const skinBtn = doc.getElementById('char-skin-btn');
+    t.ok(!!skinBtn, '角色页应有「切换主角头像」按钮 #char-skin-btn');
+    if (skinBtn) skinBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+    await new Promise(r => setTimeout(r, 200));
+    const body = doc.getElementById('modal-body');
+    t.ok(body && /切换主角头像/.test(body.textContent || ''), '应打开「切换主角头像」弹窗');
+    const rows = [...body.querySelectorAll('.set-row')];
+    const xRow = rows.find(r => /项羽/.test(r.textContent || ''));
+    t.ok(!!xRow, '选择器应列出已解锁的「项羽 · 修仙版」');
+    const useBtn = xRow && [...xRow.querySelectorAll('button')].find(b => /使用/.test(b.textContent || ''));
+    t.ok(!!useBtn, '项羽行应有「使用」按钮');
+    if (useBtn) {
+      useBtn.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, view: win }));
+      await new Promise(r => setTimeout(r, 200));
+      const cur = win.eval('Engine.currentSkin()');
+      t.eq(cur, 'me_xiangyu', '切换后当前皮肤应为 me_xiangyu，实际 ' + cur);
+      const av = doc.getElementById('h-avatar-img');
+      t.ok(av && /me_xiangyu/.test(av.getAttribute('src') || ''), '主界面头像应刷新为 me_xiangyu 立绘');
+    }
+    const real = errors.filter(e => !/Could not parse CSS|Not implemented|AudioContext|serviceWorker/i.test(e));
+    if (real.length) t.fail('头像切换报错: ' + real.slice(0, 3).join(' ;; '));
   });
 
   return S;
